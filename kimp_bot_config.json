@@ -1,0 +1,201 @@
+{
+    "node": "kp_trade_v2_okx_dev",
+    "node_settings":
+    {
+        "django_backend": null,
+        "kp_trade_v2_dev":
+        {
+            "MASTER": false,
+            "local_db_settings": "core2_local",
+            "remote_db_settings": "core2",
+            "telegram_bot_name": "people_v2_dev_bot",
+            "reference_node": "kp_trade_v2_master"
+        },
+        "kp_trade_v2_master":
+        {
+            "MASTER": true,
+            "local_db_settings": "core2_local",
+            "remote_db_settings": "core2",
+            "telegram_bot_name": "people_v2_1_bot",
+            "reference_node": "kp_trade_v2_master"
+        },
+        "kp_trade_v2_2":
+        {
+            "MASTER": true,
+            "local_db_settings": "core2_local",
+            "remote_db_settings": "core2",
+            "telegram_bot_name": "kp_trade_v2_2_bot",
+            "reference_node": "kp_trade_v2_master"
+        },
+        "kp_trade_v2_h_master":
+        {
+            "MASTER": true,
+            "local_db_settings": "hcore1_local",
+            "remote_db_settings": "hcore1",
+            "telegram_bot_name": "arbi_v2_1_bot",
+            "reference_node": "kp_trade_v2_h_master"
+        },
+        "kp_trade_v2_h_dev":
+        {
+            "MASTER": false,
+            "local_db_settings": "hcore1_local",
+            "remote_db_settings": "hcore1",
+            "telegram_bot_name": "arbi_v2_dev_bot",
+            "reference_node": "kp_trade_v2_h_master"
+        },
+        "kp_trade_v2_okx_dev":
+        {
+            "MASTER": true,
+            "local_db_settings": "mycore2_local",
+            "remote_db_settings": "hcore1",
+            "telegram_bot_name": "arbi_okx_v2_dev_bot",
+            "reference_node": "kp_trade_v2_okx_master"
+        },
+        "kp_trade_v2_okx_master":
+        {
+            "MASTER": true,
+            "local_db_settings": "hcore1_local",
+            "remote_db_settings": "hcore1",
+            "telegram_bot_name": "arbi_okx_v2_1_bot",
+            "reference_node": "kp_trade_v2_okx_master"
+        }
+    },
+    "telegram_bot_setting": 
+    {
+        "kimp_trading_bot": "1814931406:AAGONb4Bf2_6qzeAJofv83vfAcnrJiNfAvM",
+        "kimp_charlie_bot": "5230984052:AAGQA9Vkswcj_GDr1wScZge4W5KWKqAeOmg",
+        "kimp_telegram_bot": "1648411636:AAHH0tzXnrJPxg0erqmLrKnzVkWVkLhhjvA",
+        "new_telegram_bot": "1386878958:AAENPRtG9aeuzKYgkzMDYr6p1E_4RXPj8do",
+        "coin_futures_bot": "2010676769:AAGb98KGjHFCgiM2i6uypAMIJhqjTuei9D4",
+        "monitor_bot": "2107044564:AAFJUX_f2BEA-tp5TLxtOMUg5cqGE_mYnQo",
+        "test_bot": "1334132077:AAE7Pvj0bu4sHGKWlH6VsZFsSkcwPrwxB6I",
+        "kp_trade_monitor": "5556345865:AAFJy8wdyTjKxDBOb89bTRFsNs6UFMn4twY",
+        "people_kimp_trading_bot": "5117993070:AAEyzG7-qF4_lSoIxNfvlQhrbfgBfeey8Jo",
+        "people_v2_dev_bot": "5799573147:AAGbP9HiEhSyk38WsmuqqmyuXOLR6cBZKRI",
+        "people_v2_1_bot": "5632374952:AAFqRGLOrjizdQ9LfN3H63pOOXHcS1b2IO4",
+        "arbi_v2_1_bot": "5654523900:AAHTWLEw_uEWHFIn8ewpmnMPmovin8E7oec",
+        "arbi_v2_dev_bot": "5671069347:AAH7Urlx_tO25loIvVXGENm4ON9B1ERAYn8",
+        "arbi_okx_v2_dev_bot": "6173253116:AAHjj0IezLURIk3J3pU7sL5VQRZvhwvuj24",
+        "arbi_okx_v2_1_bot": "5770249693:AAG6eL3KMJBL7IiimsheSbwARz_5gYxVUls"
+    },
+    "telegram_admin_id":
+    {
+        "charlie1155": 1390695186
+    },
+    "monitor_setting":
+    {
+        "monitor_bot": "kp_trade_monitor",
+        "monitor_bot_api_url": "http://218.153.174.26:22180/api/monitor_v1/monitorbot/"
+    },
+    "database_name":
+    {
+        "kimp_trading_bot": "coin_trade",
+        "people_kimp_trading_bot": "coin_trade",
+        "kimp_trading2_bot": "coin_trade2",
+        "kimp_charlie_bot": "coin_trade_charlie",
+        "kimp_telegram_bot": "coin",
+        "new_telegram_bot": "scrapy",
+        "coin_futures_bot": "coin",
+        "monitor_bot": "",
+        "test_bot": "coin_trade_test",
+        "kp_trade_v2_dev": "kp_trade_v2_dev"
+    },
+    "database_setting":
+    {
+        "mycore":
+        {
+            "host":"121.129.140.175",
+            "port":3312,
+            "user":"root",
+            "passwd":"13245dh"
+        },
+        "mycore_local":
+        {
+            "host":"localhost",
+            "port":3306,
+            "user":"root",
+            "passwd":"13245dh"
+        },
+        "mycore2":
+        {
+            "host":"203.210.53.251",
+            "port":3306,
+            "user":"root",
+            "passwd":"13245dh"
+        },
+        "mycore2_local":
+        {
+            "host":"localhost",
+            "port":3306,
+            "user":"root",
+            "passwd":"13245dh"
+        },
+        "core1":
+        {
+            "host":"222.106.173.213",
+            "port":22153,
+            "user":"root",
+            "passwd":"13245dh!!"
+        },
+        "core1_local":
+        {
+            "host":"localhost",
+            "port":3306,
+            "user":"root",
+            "passwd":"13245dh!!"
+        },
+        "core2":
+        {
+            "host":"222.106.173.216",
+            "port":22153,
+            "user":"root",
+            "passwd":"13245dh!!"
+        },
+        "core2_local":
+        {
+            "host":"localhost",
+            "port":22153,
+            "user":"root",
+            "passwd":"13245dh!!"
+        },
+        "hcore1_local":
+        {
+            "host":"localhost",
+            "port":22153,
+            "user":"root",
+            "passwd":"13245dh!!"
+        },
+        "hcore1":
+        {
+            "host":"218.153.174.26",
+            "port":22153,
+            "user":"root",
+            "passwd":"13245dh!!"
+        }
+
+    },
+
+    "exchange_api_key":
+    {
+        "binance_read_only":
+        {
+            "api_key":"1GKDLJSYMV1vtKa7so8zvUHlDUQN05qjlZ7KAT86Aqip5OPe64QvCBfTwxq2tBrq",
+            "secret_key":"P92yaThTZoSQ7zOmCsuOQTvap54JW7m7flGaPst7rZEPLFIPo6Q75ndwsWXYV8Dp"
+        },
+        "okx_read_only":
+        {
+            "api_key":"fcb66a6e-0443-4743-8d9b-61caf7eab662",
+            "secret_key":"0029E09874B38F5AC7E68E9DFC348667"
+        }
+    },
+    "email_smtp":
+    {
+        "email_host": "smtp.naver.com",
+        "email_port":"587",
+        "email_host_user":"ckddjs116@naver.com",
+        "email_host_password":"XX7WGU9J2EWW",
+        "email_use_tls":true
+    },
+    "openai_api_key": "REDACTED_OPENAI_KEY",
+    "encryption_key": "people13245dh!!"
+}

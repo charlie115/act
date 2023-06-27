@@ -1,0 +1,30 @@
+module.exports = {
+  apps : [{
+    name: 'kp_trade_v2_django',
+    script: 'kimp_bot_main.py',
+    interpreter: 'python3.9',
+    args: "-r true",
+    restart_delay: 3000,
+  },
+  {
+    name: 'kp_trade_v2',
+    script: 'kimp_bot_main.py',
+    interpreter: 'python3.9',
+    args: "-p 2",
+    restart_delay: 3000,
+  },
+  ],
+
+  // deploy : {
+  //   production : {
+  //     user : 'SSH_USERNAME',
+  //     host : 'SSH_HOSTMACHINE',
+  //     ref  : 'origin/master',
+  //     repo : 'GIT_REPOSITORY',
+  //     path : 'DESTINATION_PATH',
+  //     'pre-deploy-local': '',
+  //     'post-deploy' : 'npm install && pm2 reload ecosystem.config.js --env production',
+  //     'pre-setup': ''
+  //   }
+  // }
+};
