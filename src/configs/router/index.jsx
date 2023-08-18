@@ -6,7 +6,7 @@ import {
   Route,
 } from 'react-router-dom';
 
-import FullLoading from 'components/FullLoading';
+import FullScreenLoading from 'components/FullScreenLoading';
 
 import { MainLayout, ProtectedLayout, PublicLayout } from './layouts';
 
@@ -19,18 +19,20 @@ export default createBrowserRouter(
         <Route
           index
           element={
-            <React.Suspense fallback={<FullLoading />}>
+            <React.Suspense fallback={<FullScreenLoading />}>
               <Home />
             </React.Suspense>
           }
         />
         <Route path="arbitrage" element={<div>Arbitrage</div>} />
+        <Route path="investment" element={<div>Investment</div>} />
+        <Route path="news" element={<div>News</div>} />
       </Route>
       <Route element={<ProtectedLayout />}>
         <Route
           index
           element={
-            <React.Suspense fallback={<FullLoading />}>
+            <React.Suspense fallback={<FullScreenLoading />}>
               <div>PrivatePage</div>
             </React.Suspense>
           }

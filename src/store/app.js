@@ -4,16 +4,16 @@ const initialState = {
   theme: 'dark',
 };
 
-export const authSlice = createSlice({
+export const appSlice = createSlice({
   name: 'app',
   initialState,
   reducers: {
-    changeTheme: (state, { payload }) => {
+    toggleTheme: (state, { payload }) => {
       state.theme = payload;
     },
   },
 });
 
-export const { signIn, signOut } = authSlice.actions;
+export const { toggleTheme } = appSlice.actions;
 
-export default authSlice.reducer;
+export default appSlice.reducer;

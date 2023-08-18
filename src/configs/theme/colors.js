@@ -6,65 +6,29 @@ export default {
 
   divider: 'rgba(0, 0, 0, 0.12)',
 
-  text: {
-    main: '#7b809a',
-    focus: '#7b809a',
-  },
+  text: { main: '#7b809a' },
 
-  transparent: {
-    main: 'transparent',
-  },
+  transparent: { main: 'transparent' },
 
-  white: {
-    main: '#ffffff',
-    focus: '#ffffff',
-  },
+  white: { main: '#ffffff' },
 
-  black: {
-    light: '#212529',
-    main: '#000000',
-    focus: '#000000',
-  },
+  black: { light: '#212529', main: '#000000' },
 
-  primary: {
-    main: '#1e7de9',
-    focus: '#1ea5e9',
-  },
+  primary: { main: '#1478FF' },
 
-  secondary: {
-    main: '#7b809a',
-    focus: '#8f93a9',
-  },
+  secondary: { main: '#8796A5' },
 
-  info: {
-    main: '#1A73E8',
-    focus: '#1662C4',
-  },
+  info: { main: '#1ea5e9' },
 
-  success: {
-    main: '#4ce08a',
-    focus: '#63e699',
-  },
+  success: { main: '#4ce08a' },
 
-  warning: {
-    main: '#fb8c00',
-    focus: '#fc9d26',
-  },
+  warning: { main: '#ffdc16' },
 
-  error: {
-    main: '#F44335',
-    focus: '#f65f53',
-  },
+  error: { main: '#F44335' },
 
-  light: {
-    main: '#f0f2f5',
-    focus: '#f0f2f5',
-  },
+  light: { main: '#f0f2f5' },
 
-  dark: {
-    main: '#344767',
-    focus: '#2c3c58',
-  },
+  dark: { light: '#344767', main: '#121212' },
 
   grey: {
     100: '#cfd8dc',
@@ -80,8 +44,8 @@ export default {
 
   gradients: {
     primary: {
-      main: '#EC407A',
-      state: '#D81B60',
+      main: '#1478FF',
+      state: '#1ea5e9',
     },
 
     secondary: {
@@ -180,59 +144,6 @@ export default {
       main: '#35465c',
       dark: '#2a3749',
     },
-  },
-
-  badgeColors: {
-    primary: {
-      background: '#f8b3ca',
-      text: '#cc084b',
-    },
-
-    secondary: {
-      background: '#d7d9e1',
-      text: '#6c757d',
-    },
-
-    info: {
-      background: '#aecef7',
-      text: '#095bc6',
-    },
-
-    success: {
-      background: '#bce2be',
-      text: '#339537',
-    },
-
-    warning: {
-      background: '#ffd59f',
-      text: '#c87000',
-    },
-
-    error: {
-      background: '#fcd3d0',
-      text: '#f61200',
-    },
-
-    light: {
-      background: '#ffffff',
-      text: '#c7d3de',
-    },
-
-    dark: {
-      background: '#121212',
-      text: '#fff',
-    },
-  },
-
-  coloredShadows: {
-    primary: '#e91e62',
-    secondary: '#110e0e',
-    info: '#00bbd4',
-    success: '#4caf4f',
-    warning: '#ff9900',
-    error: '#f44336',
-    light: '#adb5bd',
-    dark: '#404040',
   },
 
   inputBorderColor: '#d2d6da',

@@ -8,14 +8,13 @@ import GlobalStyles from '@mui/material/GlobalStyles';
 
 import { useSelector } from 'react-redux';
 
-import FullLoading from 'components/FullLoading';
+import FullScreenLoading from 'components/FullScreenLoading';
 
 import router from 'configs/router';
 import theme, { darkTheme } from 'configs/theme';
 
 function App() {
   const currentTheme = useSelector((state) => state.app.theme);
-  console.log('currentTheme: ', currentTheme);
 
   return (
     <ThemeProvider theme={currentTheme === 'light' ? theme : darkTheme}>
@@ -38,7 +37,7 @@ function App() {
           },
         }}
       />
-      <RouterProvider router={router} fallbackElement={<FullLoading />} />
+      <RouterProvider router={router} fallbackElement={<FullScreenLoading />} />
     </ThemeProvider>
   );
 }

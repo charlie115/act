@@ -32,6 +32,7 @@ module.exports = {
         ignoreRestSiblings: false,
       },
     ],
+    'react/prop-types': 'off',
   },
   settings: {
     'import/resolver': {
@@ -39,6 +40,7 @@ module.exports = {
         // prettier-ignore
         alias: {
           'src': './src',
+          'assets': './src/assets',
           'components': './src/components',
           'configs': './src/configs',
           'pages': './src/pages',

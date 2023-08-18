@@ -3,6 +3,7 @@
     "baseUrl": "./src",
     "paths": {
       "src/*": ["./"],
+      "assets/*": ["./assets/*"],
       "components/*": ["./components/*"],
       "configs/*": ["./configs/*"],
       "pages/*": ["./pages/*"],

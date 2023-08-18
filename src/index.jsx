@@ -6,7 +6,7 @@ import { persistStore } from 'redux-persist';
 import { PersistGate } from 'redux-persist/integration/react';
 import store from 'store';
 
-import FullLoading from 'components/FullLoading';
+import FullScreenLoading from 'components/FullScreenLoading';
 
 import App from './App';
 import reportWebVitals from './reportWebVitals';
@@ -17,7 +17,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <Provider store={store}>
-      <PersistGate loading={<FullLoading />} persistor={persistor}>
+      <PersistGate loading={<FullScreenLoading />} persistor={persistor}>
         <App />
       </PersistGate>
     </Provider>
