@@ -1,0 +1,41 @@
+services:
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: community-nginx
+    volumes:
+      - $PWD/nginx/conf.d:/etc/nginx/conf.d
+      - type: bind
+        source: /opt/community_frontend
+        target: /usr/share/nginx/html
+    ports:
+      - "80:80"
+      - "81:81"
+    depends_on:
+      - drf
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - community-network
+    restart: always
+
+  drf:
+    image: community-drf:latest
+    build:
+      context: "community_drf/"
+    container_name: community-drf
+    volumes:
+      - type: bind
+        source: /opt/community_drf/media
+        target: /opt/community_drf/media
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - community-network
+    restart: always
+  
+networks:
+  community-network:
+    driver: bridge
