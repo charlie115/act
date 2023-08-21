@@ -32,6 +32,7 @@ module.exports = {
         ignoreRestSiblings: false,
       },
     ],
+    'react/jsx-props-no-spreading': 'off',
     'react/prop-types': 'off',
   },
   settings: {
@@ -43,8 +44,9 @@ module.exports = {
           'assets': './src/assets',
           'components': './src/components',
           'configs': './src/configs',
+          'hooks': './src/hooks',
           'pages': './src/pages',
-          'store': './src/store',
+          'redux': './src/redux',
         },
         extensions: ['.js', '.jsx', '.scss'],
       },

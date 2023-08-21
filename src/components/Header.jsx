@@ -24,7 +24,7 @@ import { styled } from '@mui/material/styles';
 import debounce from 'lodash/debounce';
 
 import { useDispatch, useSelector } from 'react-redux';
-import { toggleTheme } from 'store/app';
+import { toggleTheme } from 'redux/reducers/app';
 
 import { ReactComponent as SiBitcoin } from 'assets/svg/bitcoincash.svg';
 import MoonSvg from 'assets/svg/moon.svg';

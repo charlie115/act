@@ -14,8 +14,10 @@ import {
 
 import logger from 'redux-logger';
 
-import app from './app';
-import auth from './auth';
+import websocketApi from './api/websocket';
+
+import app from './reducers/app';
+import auth from './reducers/auth';
 
 const rootPersistConfig = {
   key: 'root',
@@ -26,6 +28,7 @@ const rootPersistConfig = {
 const reducers = combineReducers({
   app,
   auth,
+  [websocketApi.reducerPath]: websocketApi.reducer,
 });
 
 const persistedReducer = persistReducer(rootPersistConfig, reducers);
@@ -38,5 +41,5 @@ export default configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }).concat(logger),
+    }).concat(websocketApi.middleware, logger),
 });

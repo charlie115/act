@@ -9,6 +9,10 @@ import Container from '@mui/material/Container';
 
 import Header from 'components/Header';
 
+const TVTickerWidget = React.lazy(() =>
+  import('components/trading_view/TVTickerWidget')
+);
+
 export function ProtectedLayout() {
   const token = useSelector((state) => state.auth.token);
 
@@ -34,9 +38,14 @@ export function MainLayout() {
   return (
     <Box>
       <Header />
-      <Container>
-        <Outlet />
-      </Container>
+      <Box sx={{ p: 1 }}>
+        <React.Suspense fallback={<Box />}>
+          <TVTickerWidget />
+        </React.Suspense>
+        <Box sx={{ mt: 2 }}>
+          <Outlet />
+        </Box>
+      </Box>
     </Box>
   );
 }

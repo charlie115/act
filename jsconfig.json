@@ -6,8 +6,9 @@
       "assets/*": ["./assets/*"],
       "components/*": ["./components/*"],
       "configs/*": ["./configs/*"],
+      "hooks/*": ["./hooks/*"],
       "pages/*": ["./pages/*"],
-      "store/*": ["./store/*"]
+      "redux/*": ["./redux/*"]
     },
     "target": "es6",
     "moduleResolution": "classic",

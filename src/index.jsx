@@ -1,10 +1,14 @@
+// eslint-disable-next-line import/no-unresolved
+import 'polyfills';
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
 import { Provider } from 'react-redux';
 import { persistStore } from 'redux-persist';
 import { PersistGate } from 'redux-persist/integration/react';
-import store from 'store';
+
+import store from 'redux/store';
 
 import FullScreenLoading from 'components/FullScreenLoading';
 
@@ -15,13 +19,13 @@ const persistor = persistStore(store);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <PersistGate loading={<FullScreenLoading />} persistor={persistor}>
-        <App />
-      </PersistGate>
-    </Provider>
-  </React.StrictMode>
+  // <React.StrictMode>
+  <Provider store={store}>
+    <PersistGate loading={<FullScreenLoading />} persistor={persistor}>
+      <App />
+    </PersistGate>
+  </Provider>
+  // </React.StrictMode>
 );
 
 // If you want to start measuring performance in your app, pass a function
