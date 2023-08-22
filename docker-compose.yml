@@ -1,13 +1,10 @@
 services:
 
   nginx:
-    image: nginx:1.25-alpine
+    image: community-nginx:latest
+    build:
+      context: "nginx/"
     container_name: community-nginx
-    volumes:
-      - $PWD/nginx/conf.d:/etc/nginx/conf.d
-      - type: bind
-        source: /opt/community_frontend
-        target: /usr/share/nginx/html
     ports:
       - "80:80"
       - "81:81"
