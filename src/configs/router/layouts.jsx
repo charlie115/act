@@ -5,7 +5,6 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 
 import Box from '@mui/material/Box';
-import Container from '@mui/material/Container';
 
 import Header from 'components/Header';
 

@@ -1,6 +1,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { current } from '@reduxjs/toolkit';
 import coins from '../../.dummy/coins.json';
+
+// TODO: Refactor when all websocket connections are finalized
 
 // TODO: Replace with actual URL
 const ws = new WebSocket('ws://localhost:5001');

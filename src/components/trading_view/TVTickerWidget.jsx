@@ -30,18 +30,18 @@ const TICKER_CONFIG = {
       proName: 'KRX:KOSPI',
     },
     {
-      description: '코스닥',
+      // description: '코스닥',
       proName: 'KRX:KOSDAQ',
     },
   ],
   isTransparent: false,
   showSymbolLogo: true,
-  locale: 'kr',
 };
 
 export default function TickerWidget() {
   const tickerRef = useRef();
 
+  const currentLanguage = useSelector((state) => state.app.language);
   const currentTheme = useSelector((state) => state.app.theme);
 
   useExternalScript(
@@ -53,10 +53,11 @@ export default function TickerWidget() {
         innerHTML: JSON.stringify({
           ...TICKER_CONFIG,
           colorTheme: currentTheme,
+          locale: currentLanguage,
         }),
       },
     },
-    [currentTheme]
+    [currentLanguage, currentTheme]
   );
 
   useEffect(() => {}, []);

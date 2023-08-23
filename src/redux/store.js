@@ -1,7 +1,7 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 
 import storage from 'redux-persist/lib/storage';
-import storageSession from 'redux-persist/lib/storage/session';
+// import storageSession from 'redux-persist/lib/storage/session';
 import {
   persistReducer,
   FLUSH,

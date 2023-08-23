@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function useScript(url, options = {}, dependencies = []) {
   const {
@@ -9,7 +9,6 @@ export default function useScript(url, options = {}, dependencies = []) {
   } = options;
 
   const [lib, setLib] = useState({});
-  console.log('lib: ', lib);
 
   useEffect(() => {
     let script;

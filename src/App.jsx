@@ -8,13 +8,19 @@ import GlobalStyles from '@mui/material/GlobalStyles';
 
 import { useSelector } from 'react-redux';
 
+import { useTranslation } from 'react-i18next';
+
 import FullScreenLoading from 'components/FullScreenLoading';
 
 import router from 'configs/router';
 import theme, { darkTheme } from 'configs/theme';
 
 function App() {
+  const { i18n } = useTranslation();
+
   const currentTheme = useSelector((state) => state.app.theme);
+
+  if (!i18n.isInitialized) return null;
 
   return (
     <ThemeProvider theme={currentTheme === 'light' ? theme : darkTheme}>

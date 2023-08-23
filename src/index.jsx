@@ -15,6 +15,8 @@ import FullScreenLoading from 'components/FullScreenLoading';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+import 'configs/i18n';
+
 const persistor = persistStore(store);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

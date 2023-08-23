@@ -21,6 +21,8 @@ import MenuIcon from '@mui/icons-material/Menu';
 
 import { styled } from '@mui/material/styles';
 
+import { Trans } from 'react-i18next';
+
 import debounce from 'lodash/debounce';
 
 import { useDispatch, useSelector } from 'react-redux';
@@ -30,7 +32,7 @@ import { ReactComponent as SiBitcoin } from 'assets/svg/bitcoincash.svg';
 import MoonSvg from 'assets/svg/moon.svg';
 import SunSvg from 'assets/svg/sun.svg';
 
-import routes from 'configs/router/routes';
+import LanguageSelector from 'components/LanguageSelector';
 
 export default function Header() {
   const dispatch = useDispatch();
@@ -41,6 +43,7 @@ export default function Header() {
 
   const [hidden, setHidden] = useState(false);
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const [pages, setPages] = useState({});
   // const [userAnchorEl, setUserAnchorEl] = useState(null);
 
   const showHeader = useCallback(
@@ -54,6 +57,10 @@ export default function Header() {
       showHeader();
     }
   };
+
+  useEffect(() => {
+    import('configs/navigation').then((res) => setPages(res.default));
+  }, []);
 
   useEffect(() => {
     window.addEventListener('scroll', handleScroll);
@@ -103,9 +110,11 @@ export default function Header() {
                 onClose={() => setMenuAnchorEl(null)}
                 sx={{ display: { xs: 'block', md: 'none' } }}
               >
-                {routes.pages.map((page) => (
+                {pages.main?.map((page) => (
                   <MenuItem key={page.name} onClick={() => navigate(page.path)}>
-                    <Typography textAlign="center">{page.title}</Typography>
+                    <Typography textAlign="center">
+                      {/* {page.getTitle()} */}
+                    </Typography>
                   </MenuItem>
                 ))}
               </Menu>
@@ -129,19 +138,20 @@ export default function Header() {
             <Box
               sx={{ flexGrow: 1, ml: 3, display: { xs: 'none', md: 'flex' } }}
             >
-              {routes.pages.map((page) => (
+              {pages.main?.map((page) => (
                 <MenuButton
                   key={page.name}
                   active={page.path === location.pathname}
                   onClick={() => navigate(page.path)}
                   sx={{ ml: 1, my: 2, px: 1 }}
                 >
-                  {page.title}
+                  {page.getTitle()}
                 </MenuButton>
               ))}
             </Box>
             <Box sx={{ flexGrow: 0 }}>
-              <Tooltip title="Toggle theme">
+              <LanguageSelector sx={{ mr: 3 }} />
+              <Tooltip title={<Trans>Toggle Theme</Trans>}>
                 <ThemeToggle
                   checked={currentTheme === 'dark'}
                   onChange={(e) =>
