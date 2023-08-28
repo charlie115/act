@@ -5,10 +5,12 @@
       "src/*": ["./"],
       "assets/*": ["./assets/*"],
       "components/*": ["./components/*"],
+      "constants/*": ["./constants/*"],
       "configs/*": ["./configs/*"],
       "hooks/*": ["./hooks/*"],
       "pages/*": ["./pages/*"],
-      "redux/*": ["./redux/*"]
+      "redux/*": ["./redux/*"],
+      "utils/*": ["./utils/*"]
     },
     "target": "es6",
     "moduleResolution": "classic",

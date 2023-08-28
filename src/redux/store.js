@@ -12,12 +12,13 @@ import {
   REGISTER,
 } from 'redux-persist';
 
-import logger from 'redux-logger';
+import { createLogger } from 'redux-logger';
 
 import websocketApi from './api/websocket';
 
 import app from './reducers/app';
 import auth from './reducers/auth';
+import websocket from './reducers/websocket';
 
 const rootPersistConfig = {
   key: 'root',
@@ -28,10 +29,16 @@ const rootPersistConfig = {
 const reducers = combineReducers({
   app,
   auth,
+  websocket,
   [websocketApi.reducerPath]: websocketApi.reducer,
 });
 
 const persistedReducer = persistReducer(rootPersistConfig, reducers);
+
+const loggerMiddleware = createLogger({
+  predicate: (getState, action) =>
+    action.type !== 'websocketApi/queries/queryResultPatched',
+});
 
 export default configureStore({
   reducer: persistedReducer,
@@ -40,6 +47,8 @@ export default configureStore({
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        ignoredActionPaths: ['payload'],
+        ignoredPaths: ['websocketApi.queries'],
       },
-    }).concat(websocketApi.middleware, logger),
+    }).concat(websocketApi.middleware, loggerMiddleware),
 });

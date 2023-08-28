@@ -45,6 +45,7 @@ export default function LanguageSelector(props) {
       onChange={handleChange}
       size="small"
       variant="standard"
+      sx={{ color: 'light.main', '& .MuiSelect-icon': { color: 'light.main' } }}
       {...props}
     >
       {LANGUAGES.map((lang) => (

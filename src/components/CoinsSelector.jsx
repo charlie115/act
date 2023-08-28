@@ -5,13 +5,13 @@ import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import TextField from '@mui/material/TextField';
 
-import { useGetCoinsQuery } from 'redux/api/websocket';
+import { useGetDummyWebsocketDataQuery } from 'redux/api/websocket';
 
 export default function CoinsSelector() {
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState([]);
 
-  const { data, isLoading } = useGetCoinsQuery();
+  const { data, isLoading } = useGetDummyWebsocketDataQuery();
 
   useEffect(() => {
     setOptions(data?.coins);
@@ -54,7 +54,6 @@ export default function CoinsSelector() {
           <img
             loading="lazy"
             width="20"
-            // eslint-disable-next-line import/no-dynamic-require, global-require
             src={require(`assets/icons/coinicon/${option.name}.png`)}
             alt=""
           />

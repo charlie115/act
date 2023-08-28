@@ -32,7 +32,6 @@ export default function TVRealTimeChart({
         timezone: 'Etc/UTC',
         style: '1',
         locale: 'kr',
-        toolbar_bg: '#f1f3f6',
         enable_publishing: false,
         hide_side_toolbar: false,
         allow_symbol_change: false,
@@ -45,7 +44,7 @@ export default function TVRealTimeChart({
   }, [currentTheme, symbol, TradingView]);
 
   return (
-    <Box sx={{ my: 1 }}>
+    <Box>
       <div className="tradingview-widget-container">
         <div id={containerId} />
         <div className="tradingview-widget-copyright" />

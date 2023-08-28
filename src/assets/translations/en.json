@@ -1,7 +1,21 @@
 {
-  "Toggle Theme": "Toggle Theme",
-  "Home": "Home",
+  "52-Week High": "52-Week High",
+  "52-Week Low": "52-Week Low",
   "Arbitrage": "Arbitrage",
+  "Binance": "Binance",
+  "Change": "Change",
+  "Day": "Day",
+  "Home": "Home",
   "Investment": "Investment",
-  "News": "News"
+  "KIMP": "KIMP",
+  "Month": "Month",
+  "Name": "Name",
+  "News": "News",
+  "Price": "Price",
+  "UPbit": "UPbit",
+  "Volume": "Volume",
+  "Week": "Week",
+  "intlNumber": "{{value, number}}",
+  "{{value}}h": "{{value}}h",
+  "{{value}}m": "{{value}}m"
 }

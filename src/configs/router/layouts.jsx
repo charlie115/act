@@ -37,10 +37,14 @@ export function MainLayout() {
   return (
     <Box>
       <Header />
-      <Box sx={{ p: 1 }}>
-        <React.Suspense fallback={<Box />}>
-          <TVTickerWidget />
-        </React.Suspense>
+      <Box sx={{ mb: 4, p: 1 }}>
+        <Box
+        // sx={{ position: 'sticky', top: 70 }}
+        >
+          <React.Suspense fallback={<Box />}>
+            <TVTickerWidget />
+          </React.Suspense>
+        </Box>
         <Box sx={{ mt: 2 }}>
           <Outlet />
         </Box>

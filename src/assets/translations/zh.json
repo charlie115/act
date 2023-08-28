@@ -1,7 +1,21 @@
 {
-  "Toggle Theme": "",
-  "Home": "",
+  "52-Week High": "",
+  "52-Week Low": "",
   "Arbitrage": "",
+  "Binance": "",
+  "Change": "",
+  "Day": "",
+  "Home": "",
   "Investment": "",
-  "News": ""
+  "KIMP": "",
+  "Month": "",
+  "Name": "",
+  "News": "",
+  "Price": "",
+  "UPbit": "",
+  "Volume": "",
+  "Week": "",
+  "intlNumber": "{{value, number}}",
+  "{{value}}h": "",
+  "{{value}}m": ""
 }

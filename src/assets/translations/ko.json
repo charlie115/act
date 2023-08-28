@@ -1,7 +1,21 @@
 {
-  "Toggle Theme": "테마 전환",
-  "Home": "홈",
+  "52-Week High": "고가대비(52주)",
+  "52-Week Low": "저가대비(52주)",
   "Arbitrage": "아비트라지",
+  "Binance": "",
+  "Change": "전일대비",
+  "Day": "일",
+  "Home": "홈",
   "Investment": "투자정보",
-  "News": "뉴스"
+  "KIMP": "",
+  "Month": "월",
+  "Name": "이름",
+  "News": "뉴스",
+  "Price": "현재가",
+  "UPbit": "",
+  "Volume": "거래액(일)",
+  "Week": "주",
+  "intlNumber": "{{value, number}}",
+  "{{value}}h": "{{value}}시간",
+  "{{value}}m": "{{value}}분"
 }

@@ -20,6 +20,8 @@ module.exports = {
     sourceType: 'module',
   },
   rules: {
+    'global-require': 'off',
+    'import/no-dynamic-require': 'off',
     'no-param-reassign': 'off',
     'no-unused-vars': [
       'warn',
@@ -43,10 +45,12 @@ module.exports = {
           'src': './src',
           'assets': './src/assets',
           'components': './src/components',
+          'constants': './src/constants',
           'configs': './src/configs',
           'hooks': './src/hooks',
           'pages': './src/pages',
           'redux': './src/redux',
+          'utils': './src/utils',
         },
         extensions: ['.js', '.jsx', '.scss'],
       },

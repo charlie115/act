@@ -11,6 +11,7 @@ import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Slide from '@mui/material/Slide';
+import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import SvgIcon from '@mui/material/SvgIcon';
 import Toolbar from '@mui/material/Toolbar';
@@ -113,7 +114,7 @@ export default function Header() {
                 {pages.main?.map((page) => (
                   <MenuItem key={page.name} onClick={() => navigate(page.path)}>
                     <Typography textAlign="center">
-                      {/* {page.getTitle()} */}
+                      {page.getTitle()}
                     </Typography>
                   </MenuItem>
                 ))}
@@ -149,21 +150,18 @@ export default function Header() {
                 </MenuButton>
               ))}
             </Box>
-            <Box sx={{ flexGrow: 0 }}>
-              <LanguageSelector sx={{ mr: 3 }} />
-              <Tooltip title={<Trans>Toggle Theme</Trans>}>
-                <ThemeToggle
-                  checked={currentTheme === 'dark'}
-                  onChange={(e) =>
-                    dispatch(toggleTheme(e.target.checked ? 'dark' : 'light'))
-                  }
-                  sx={{ mr: 3 }}
-                />
-              </Tooltip>
+            <Stack direction="row" spacing={2} sx={{ flexGrow: 0 }}>
+              <LanguageSelector />
+              <ThemeToggle
+                checked={currentTheme === 'dark'}
+                onChange={(e) =>
+                  dispatch(toggleTheme(e.target.checked ? 'dark' : 'light'))
+                }
+              />
               <IconButton onClick={() => {}} sx={{ p: 0 }}>
                 <Avatar />
               </IconButton>
-            </Box>
+            </Stack>
           </Toolbar>
         </Container>
       </AppBar>
