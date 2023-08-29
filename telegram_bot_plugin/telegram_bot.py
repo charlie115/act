@@ -147,11 +147,9 @@ class MyTelegramBot(telegram.Bot):
 ####################################################################################################################################
 
 class InitTelegramBot:
-    # def __init__(self, logging_dir, node, encryption_key, email_smtp_dict, local_db_dict, remote_db_dict, websocket_proc_status_func, dollar_update_thread_status, reinitiate_dollar_update_thread, kline_fetcher_proc_status,
-    #              get_kimp_df, get_wa_kimp_dict_func, get_dollar_dict, get_both_listed_binance_symbols, monitor_bot_token, monitor_bot_url, bot_token, kline_schema_name='coin_kimp_kline', admin_id=1390695186):
-    def __init__(self, logging_dir, node, encryption_key, email_smtp_dict, local_db_dict, remote_db_dict, kimp_core, kline_fetcher_proc_status, monitor_bot_token, monitor_bot_url, bot_token, kline_schema_name='coin_kimp_kline', admin_id=1390695186):
+    def __init__(self, logging_dir, node, db_dict, kimp_core, kline_fetcher_proc_status, register_monitor_msg, bot_token, kline_schema_name='coin_kimp_kline', admin_id=1390695186):
         self.node = node
-        self.encryption_key = encryption_key
+        # self.encryption_key = encryption_key
         self.okx_adaptor = kimp_core.okx_adaptor
         self.upbit_adaptor = kimp_core.upbit_adaptor
         self.websocket_proc_status_func = kimp_core.websocket_proc_status_func
@@ -172,16 +170,15 @@ class InitTelegramBot:
         # self.bot = telegram.Bot(token=bot_token, request=request_object)
         self.bot = MyTelegramBot(logger=self.telegram_bot_logger, token=bot_token, request=request_object)
         self.free_service_period = 14
-        self.email_smtp_dict = email_smtp_dict
-        self.local_db_dict = local_db_dict
-        self.remote_db_dict = remote_db_dict
+        # self.email_smtp_dict = email_smtp_dict
+        self.db_dict = db_dict
 
         # Server check
         self.upbit_server_check = False
         self.okx_server_check = False
 
         # Initiate data processor
-        self.data_processor = InitDataProcessor(logging_dir, remote_db_dict, kline_schema_name=self.kline_schema_name)
+        self.data_processor = InitDataProcessor(logging_dir, db_dict, kline_schema_name=self.kline_schema_name)
 
         # Initiate Snatcher
         # self.snatcher = InitSnatcher(logging_dir, node, encryption_key, local_db_dict, remote_db_dict, get_kimp_df, get_wa_kimp_dict_func, get_dollar_dict, monitor_bot_token, monitor_bot_url, self.bot, self.kline_schema_name, admin_id)

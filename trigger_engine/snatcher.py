@@ -15,7 +15,7 @@ upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from data_process.processor import InitDataProcessor
 from etc.db_handler.create_schema_tables import InitDBClient, InitDBPool
-from etc.register_msg import register
+from kp_info_loader.etc.register_monitor_msg import RegisterMonitorMsg
 from loggers.logger import KimpBotLogger
 
 def krw(krw_num):
@@ -45,9 +45,6 @@ def display_id_to_redis_uuid(user_id, df, display_id):
     return redis_uuid
 
 class InitSnatcher:
-    # def __init__(self, logging_dir, node, encryption_key, local_db_dict, remote_db_dict, get_kimp_df_func, get_wa_kimp_dict_func, get_dollar_dict, \
-    #     monitor_bot_token=None, monitor_bot_url=None, telegram_bot=None, kline_schema_name='coin_kimp_kline', admin_id=1390695186, \
-    #         read_only_binance_access_key="kP5QOKAkN8XQ43f8GOu2HAnaV8vFMhrcT7wd0Zohgy8EwIfl6qYBB9HybOoes2i9", read_only_binance_secret_key="rydpSfGlA7Ba5c2JNaPK26SQy5nuBi4nLsu9Ot75u7qfygrlgmzWNeuGujEWbqwV"):
     def __init__(self, logging_dir, node, encryption_key, local_db_dict, remote_db_dict, kimp_core, \
         monitor_bot_token=None, monitor_bot_url=None, telegram_bot=None, kline_schema_name='coin_kimp_kline', admin_id=1390695186, \
             read_only_okx_access_key="", read_only_okx_secret_key=""):

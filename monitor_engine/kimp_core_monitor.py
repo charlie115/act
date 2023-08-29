@@ -9,7 +9,7 @@ import pymysql
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
-from etc.register_msg import register
+from kp_info_loader.etc.register_monitor_msg import register
 from loggers.logger import KimpBotLogger
 
 # Connect to DB
@@ -25,7 +25,7 @@ def connect_db(database, host, port, user, passwd):
     return conn,curr
 
 class InitKimpCoreMonitor:
-    def __init__(self, logging_dir, node, admin_id, prod_n, remote_db_dict, get_kimp_df_func, get_dollar_dict_func, monitor_bot_token, monitor_bot_url):
+    def __init__(self, logging_dir, node, admin_id, prod_n, remote_db_dict, get_kimp_df_func, get_dollar_dict_func, register_monitor_msg):
         self.node = node
         self.admin_id = admin_id
         # self.helper_id_list = [1007931055, 1976936977, 1100166438] # 영익, 준우, 홍갑
@@ -33,8 +33,7 @@ class InitKimpCoreMonitor:
         self.prod_n = prod_n
         self.logging_dir = logging_dir
         self.remote_db_dict = remote_db_dict
-        self.monitor_bot_token = monitor_bot_token
-        self.monitor_bot_url = monitor_bot_url
+        self.register_monitor_msg = register_monitor_msg
         self.kimp_core_monitor_logger = KimpBotLogger("kimp_core_monitor", logging_dir).logger
         self.get_kimp_df_func = get_kimp_df_func
         self.get_dollar_dict_func = get_dollar_dict_func
@@ -48,7 +47,7 @@ class InitKimpCoreMonitor:
         while True:
             try:
                 if self.websocket_time_error_counter >= 10:
-                    register(self.monitor_bot_token, self.monitor_bot_url, [self.admin_id]+self.helper_id_list, self.node, 'error', title, f'Restarting kimp_bot.. websocket_time_error_counter: {self.websocket_time_error_counter}')
+                    self.register_monitor_msg.register([self.admin_id]+self.helper_id_list, self.node, 'error', title, f'Restarting kimp_bot.. websocket_time_error_counter: {self.websocket_time_error_counter}')
                     os.system(os.getcwd() + '/restart.sh')
                 kimp_time_df = self.get_kimp_df_func()[['symbol','upbit_timestamp', 'binance_event_time']]
                 total_coin_num = len(kimp_time_df)
@@ -70,7 +69,7 @@ class InitKimpCoreMonitor:
                     content += f"binance_slow_symbols: {binance_slow_symbols}"
                     if len(content) > 1000:
                         content = content[:1000]
-                    register(self.monitor_bot_token, self.monitor_bot_url, [self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
+                    self.register_monitor_msg.register([self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
                     self.websocket_time_error_counter += 1
                 else:
                     self.websocket_time_error_counter = 0
@@ -78,7 +77,7 @@ class InitKimpCoreMonitor:
             except:
                 self.websocket_time_error_counter += 1
                 self.kimp_core_monitor_logger.error(f"loop_monitor_websocket_time|{traceback.format_exc()}")
-                register(self.monitor_bot_token, self.monitor_bot_url, self.admin_id, self.node, 'error', 'Error occured in loop_monitor_websocket_time', str(traceback.format_exc())[:500])
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', 'Error occured in loop_monitor_websocket_time', str(traceback.format_exc())[:500])
                 time.sleep(loop_secs)
 
     def loop_monitor_dollar_time(self, threshold_minutes, loop_secs=3):
@@ -87,7 +86,7 @@ class InitKimpCoreMonitor:
         while True:
             try:
                 if self.dollar_time_error_counter >= 10 and 'master' in self.node:
-                    register(self.monitor_bot_token, self.monitor_bot_url, [self.admin_id]+self.helper_id_list, self.node, 'error', title, f'Restarting kimp_bot.. dollar_time_error_counter: {self.dollar_time_error_counter}')
+                    self.register_monitor_msg.register([self.admin_id]+self.helper_id_list, self.node, 'error', title, f'Restarting kimp_bot.. dollar_time_error_counter: {self.dollar_time_error_counter}')
                     os.system(os.getcwd() + '/restart.sh')
                 dollar_dict = self.get_dollar_dict_func()
                 dollar_last_updated_datetime = dollar_dict['last_updated_time']
@@ -99,14 +98,14 @@ class InitKimpCoreMonitor:
                     content += f"self.dollar_time_error_counter: {self.dollar_time_error_counter}"
                     content += f"self.dollar_time_error_counter >= 10 and 'master' in self.node: {self.dollar_time_error_counter >= 10 and 'master' in self.node}"
                     content += f"self.node: {self.node}"
-                    register(self.monitor_bot_token, self.monitor_bot_url, [self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
+                    self.register_monitor_msg.register([self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
                     self.dollar_time_error_counter += 1
                 else:
                     self.dollar_time_error_counter = 0
                 time.sleep(loop_secs)
             except:
                 self.kimp_core_monitor_logger.error(f"loop_monitor_dollar_time|{traceback.format_exc()}")
-                register(self.monitor_bot_token, self.monitor_bot_url, self.admin_id, self.node, 'error', 'Error occured in loop_monitor_dollar_time', str(traceback.format_exc())[:500])
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', 'Error occured in loop_monitor_dollar_time', str(traceback.format_exc())[:500])
                 time.sleep(loop_secs)
 
     def loop_monitor_kline_data(self, threshold_minutes, loop_secs=2.5):
@@ -116,7 +115,7 @@ class InitKimpCoreMonitor:
         while True:
             try:
                 if self.kline_date_error_counter >= 20 and 'master' in self.node:
-                    register(self.monitor_bot_token, self.monitor_bot_url, [self.admin_id]+self.helper_id_list, self.node, 'error', title, f'Restarting kimp_bot.. kline_date_error_counter: {self.kline_date_error_counter}')
+                    self.register_monitor_msg.register([self.admin_id]+self.helper_id_list, self.node, 'error', title, f'Restarting kimp_bot.. kline_date_error_counter: {self.kline_date_error_counter}')
                     os.system(os.getcwd() + '/restart.sh')
                 time.sleep(loop_secs)
                 # 1min
@@ -133,7 +132,7 @@ class InitKimpCoreMonitor:
                     content += f"self.kline_data_error_counter: {self.kline_date_error_counter}"
                     content += f"self.kline_date_error_counter >= 20 and 'master' in self.node: {self.kline_date_error_counter >= 20 and 'master' in self.node}"
                     content += f"self.node: {self.node}"
-                    register(self.monitor_bot_token, self.monitor_bot_url, [self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
+                    self.register_monitor_msg.register([self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
                     self.kline_date_error_counter += 1
                 else:
                     self.kline_date_error_counter = 0
@@ -147,7 +146,7 @@ class InitKimpCoreMonitor:
                     content = f"5분봉 차트 마지막 업데이트 시각 kline_5m_last_updated_datetime: {kline_5m_last_updated_datetime}\n"
                     content += f"datetime.datetime.now(): {datetime.datetime.now()}\n"
                     content += f"threshold_minutes: {threshold_minutes}"
-                    register(self.monitor_bot_token, self.monitor_bot_url, [self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
+                    self.register_monitor_msg.register([self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
                 # 30min
                 conn, curr = connect_db('coin_kimp_kline', self.remote_db_dict['host'], self.remote_db_dict['port'], self.remote_db_dict['user'], self.remote_db_dict['passwd'])
                 curr.execute("""SELECT datetime_kst FROM upbit_binancef_BTC WHERE period=30 ORDER BY id DESC LIMIT 1""")
@@ -158,7 +157,7 @@ class InitKimpCoreMonitor:
                     content = f"30분봉 차트 마지막 업데이트 시각 kline_30m_last_updated_datetime: {kline_30m_last_updated_datetime}\n"
                     content += f"datetime.datetime.now(): {datetime.datetime.now()}\n"
                     content += f"threshold_minutes: {threshold_minutes}"
-                    register(self.monitor_bot_token, self.monitor_bot_url, [self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
+                    self.register_monitor_msg.register([self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
                 # 60min
                 conn, curr = connect_db('coin_kimp_kline', self.remote_db_dict['host'], self.remote_db_dict['port'], self.remote_db_dict['user'], self.remote_db_dict['passwd'])
                 curr.execute("""SELECT datetime_kst FROM upbit_binancef_BTC WHERE period=60 ORDER BY id DESC LIMIT 1""")
@@ -169,7 +168,7 @@ class InitKimpCoreMonitor:
                     content = f"60분봉 차트 마지막 업데이트 시각 kline_60m_last_updated_datetime: {kline_60m_last_updated_datetime}\n"
                     content += f"datetime.datetime.now(): {datetime.datetime.now()}\n"
                     content += f"threshold_minutes: {threshold_minutes}"
-                    register(self.monitor_bot_token, self.monitor_bot_url, [self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
+                    self.register_monitor_msg.register([self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
                 # 240min
                 conn, curr = connect_db('coin_kimp_kline', self.remote_db_dict['host'], self.remote_db_dict['port'], self.remote_db_dict['user'], self.remote_db_dict['passwd'])
                 curr.execute("""SELECT datetime_kst FROM upbit_binancef_BTC WHERE period=240 ORDER BY id DESC LIMIT 1""")
@@ -180,7 +179,7 @@ class InitKimpCoreMonitor:
                     content = f"240분봉 차트 마지막 업데이트 시각 kline_240m_last_updated_datetime: {kline_240m_last_updated_datetime}\n"
                     content += f"datetime.datetime.now(): {datetime.datetime.now()}\n"
                     content += f"threshold_minutes: {threshold_minutes}"
-                    register(self.monitor_bot_token, self.monitor_bot_url, [self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
+                    self.register_monitor_msg.register([self.admin_id]+self.helper_id_list, self.node, 'monitor', title, content)
 
             except:
                 try:
@@ -188,7 +187,7 @@ class InitKimpCoreMonitor:
                 except:
                     pass
                 self.kimp_core_monitor_logger.error(f"loop_monitor_kline_data|{traceback.format_exc()}")
-                register(self.monitor_bot_token, self.monitor_bot_url, self.admin_id, self.node, 'error', 'Error occured in loop_monitor_kline_data', str(traceback.format_exc())[:500])
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', 'Error occured in loop_monitor_kline_data', str(traceback.format_exc())[:500])
                 time.sleep(loop_secs)
 
     def start_loop_monitor_websocket_time(self, threshold_minutes=3):

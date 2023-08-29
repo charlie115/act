@@ -24,7 +24,7 @@ import mplfinance as mpf
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from etc.db_handler.create_schema_tables import InitDBClient
-from etc.register_msg import register
+from kp_info_loader.etc.register_monitor_msg import register
 from loggers.logger import KimpBotLogger
 
 def mean_norm(df_input):
@@ -79,13 +79,11 @@ def calculate_service_charge(net_profit, referral_flag=False):
 
 #######################################################################################################################################################################
 class InitCommonInfo:
-    def __init__(self, logging_dir, node, admin_id, local_db_dict, remote_db_dict, monitor_bot_token, monitor_bot_api_url, kimp_core, kline_schema_name='coin_kimp_kline', MASTER=True):
+    def __init__(self, logging_dir, node, admin_id, db_dict, register_monitor_msg, kimp_core, kline_schema_name='coin_kimp_kline', MASTER=True):
         self.node = node
         self.admin_id = admin_id
-        self.local_db_dict = local_db_dict
-        self.remote_db_dict = remote_db_dict
-        self.monitor_bot_token = monitor_bot_token
-        self.monitor_bot_api_url = monitor_bot_api_url
+        self.db_dict = db_dict
+        self.register_monitor_msg = register_monitor_msg
         self.get_both_listed_okx_symbols = kimp_core.get_both_listed_okx_symbols
         self.common_info_logger = KimpBotLogger("common_info_logger", logging_dir).logger
         self.upbit_adaptor = kimp_core.upbit_adaptor
@@ -111,11 +109,7 @@ class InitCommonInfo:
         return integrity_flag, status_str
         
     # Fetch dollar exchage rate for 200days
-    def fetch_update_dollar_200(self, use_local_db):
-        if use_local_db:
-            db_dict = self.local_db_dict
-        else:
-            db_dict = self.remote_db_dict
+    def fetch_update_dollar_200(self):
         # If today's dollar data has already been stored, than use it
         def update_dollar_200():
             self.common_info_logger.info(f"update_dollar_200|Updating dollar 200 data.")
@@ -129,11 +123,11 @@ class InitCommonInfo:
             dollar_df = concat_df.sort_values(by=['날짜'])
             dollar_df['last_updated_time'] = datetime.datetime.now()
             # Save to DB
-            engine = db_engine(**db_dict)
+            engine = db_engine(**self.db_dict)
             dollar_df.to_sql('dollar200', con=engine, if_exists='replace')
             return dollar_df
         
-        db_client = InitDBClient(**db_dict)
+        db_client = InitDBClient(**self.db_dict)
         db_client.curr.execute("""SELECT * from dollar200;""")
         db_client.conn.close()
         fetched = db_client.curr.fetchall()
@@ -161,7 +155,7 @@ class InitCommonInfo:
             # curr.execute("""UPDATE pickle SET object=%s WHERE name='dollar_time'""", (pickle.dumps(datetime.datetime.now())))
             # conn.commit()
             # conn.close()
-            db_client = InitDBClient(**db_dict)
+            db_client = InitDBClient(**self.db_dict)
             db_client.curr.execute("""UPDATE dollar200 SET last_updated_time=%s""", (datetime.datetime.now()))
             db_client.conn.commit()
             db_client.conn.close()
@@ -179,7 +173,7 @@ class InitCommonInfo:
                 dollar_df = fetched_df
                 # Update newest dollar price to DB
                 print(f"Updating only the latest day's dollar info of dollar200")
-                db_client = InitDBClient(**db_dict)
+                db_client = InitDBClient(**self.db_dict)
                 db_client.curr.execute("""UPDATE dollar200 SET 매매기준율=%s, last_updated_time=%s WHERE 날짜=%s""",(dollar, datetime.datetime.now(), today_adjusted))
                 db_client.conn.commit()
                 db_client.conn.close()
@@ -193,7 +187,7 @@ class InitCommonInfo:
         upbit = self.upbit_adaptor.upbit_fetch_candle(f'KRW-{coin}'.upper(), period, count)[0]
         okx = self.okx_adaptor.okx_fetch_candle(f'{coin}-USDT-SWAP'.upper(), period, count)
         # Fetch dollar data
-        dollar_df = self.fetch_update_dollar_200(use_local_db=False)
+        dollar_df = self.fetch_update_dollar_200()
         # Merge info from upbit and okx
         merged = upbit[['candle_date_time_kst','opening_price','high_price','low_price','trade_price']].merge(okx, how='inner', left_on='candle_date_time_kst', right_on='okx_time')
         merged['date'] = merged['candle_date_time_kst'].apply(lambda x: x.date())
@@ -336,7 +330,7 @@ class InitCommonInfo:
                     time.sleep(1)
             except Exception as e:
                 self.common_info_logger.error(f"Error occurred in while_kimp_kline1, {e}|{traceback.format_exc()}")
-                register(self.monitor_bot_token, self.monitor_bot_api_url, self.admin_id, self.node, 'error', "while_kimp_kline1", content=f"{e}")
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', "while_kimp_kline1", content=f"{e}")
                 print(f'Error occurred in while_kimp_kline1, {e}')
                 time.sleep(0.5)
             time.sleep(0.1)
@@ -350,10 +344,10 @@ class InitCommonInfo:
                 time.sleep(monitor_loop_secs)
                 if not self.kimp_kline_proc1.is_alive():
                     self.common_info_logger.error(f"start_monitor_kimp_kline1|kimp_kline_proc1 stopped! Restarting the process..")
-                    register(self.monitor_bot_token, self.monitor_bot_api_url, self.admin_id, self.node, 'error', "start_monitor_kimp_kline1", "kimp_kline_proc1 stopped! Restarting the process..")
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', "start_monitor_kimp_kline1", "kimp_kline_proc1 stopped! Restarting the process..")
                     self.kimp_kline_proc1 = Process(target=self.while_kimp_kline1, args=(both_listed_symbols,), daemon=True)
                     self.kimp_kline_proc1.start()
-                    register(self.monitor_bot_token, self.monitor_bot_api_url, self.admin_id, self.node, 'error', "start_monitor_kimp_kline1", f"kimp_kline_proc1.is_alive: {self.kimp_kline_proc1.is_alive()}")
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', "start_monitor_kimp_kline1", f"kimp_kline_proc1.is_alive: {self.kimp_kline_proc1.is_alive()}")
         monitor_func1_thread = Thread(target=monitor_func1, daemon=True)
         monitor_func1_thread.start()
 
@@ -370,7 +364,7 @@ class InitCommonInfo:
                     time.sleep(1)
             except Exception as e:
                 self.common_info_logger.error(f"Error occurred in while_kimp_kline2, {e}|{traceback.format_exc()}")
-                register(self.monitor_bot_token, self.monitor_bot_api_url, self.admin_id, self.node, 'error', "while_kimp_kline2", content=f"{e}")
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', "while_kimp_kline2", content=f"{e}")
                 time.sleep(0.5)
             time.sleep(0.1)
 
@@ -383,10 +377,10 @@ class InitCommonInfo:
                 time.sleep(monitor_loop_secs)
                 if not self.kimp_kline_proc2.is_alive():
                     self.common_info_logger.error(f"start_monitor_kimp_kline2|kimp_kline_proc2 stopped! Restarting the process..")
-                    register(self.monitor_bot_token, self.monitor_bot_api_url, self.admin_id, self.node, 'error', "start_monitor_kimp_kline2", "kimp_kline_proc2 stopped! Restarting the process..")
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', "start_monitor_kimp_kline2", "kimp_kline_proc2 stopped! Restarting the process..")
                     self.kimp_kline_proc2 = Process(target=self.while_kimp_kline2, args=(both_listed_symbols,), daemon=True)
                     self.kimp_kline_proc2.start()
-                    register(self.monitor_bot_token, self.monitor_bot_api_url, self.admin_id, self.node, 'error', "start_monitor_kimp_kline2", f"kimp_kline_proc2.is_alive: {self.kimp_kline_proc2.is_alive()}")
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', "start_monitor_kimp_kline2", f"kimp_kline_proc2.is_alive: {self.kimp_kline_proc2.is_alive()}")
         monitor_func2_thread = Thread(target=monitor_func2, daemon=True)
         monitor_func2_thread.start()
 
@@ -488,7 +482,7 @@ class InitCommonInfo:
                 time.sleep(loop_time)
         except Exception:
             self.common_info_logger.error(f"update_funding_info|{traceback.format_exc()}")
-            register(self.monitor_bot_token, self.monitor_bot_api_url, self.admin_id, self.node, 'error', "update_funding_info", f"{traceback.format_exc()}")
+            self.register_monitor_msg.register(self.admin_id, self.node, 'error', "update_funding_info", f"{traceback.format_exc()}")
             raise Exception(f"update_funding_info|{traceback.format_exc()}")
 
     def start_monitor_funding_info(self, monitor_loop_secs=2.5):
@@ -500,9 +494,9 @@ class InitCommonInfo:
                 time.sleep(monitor_loop_secs)
                 if not self.update_fundinginfo_proc.is_alive():
                     self.common_info_logger.error(f"start_monitor_funding_info|update_fundinginfo_proc stopped! Restarting the process..")
-                    register(self.monitor_bot_token, self.monitor_bot_api_url, self.admin_id, self.node, 'error', "start_monitor_funding_info", "update_fundinginfo_proc stopped! Restarting the process..")
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', "start_monitor_funding_info", "update_fundinginfo_proc stopped! Restarting the process..")
                     self.update_fundinginfo_proc = Process(target=self.update_funding_info, daemon=True)
                     self.update_fundinginfo_proc.start()
-                    register(self.monitor_bot_token, self.monitor_bot_api_url, self.admin_id, self.node, 'error', "start_monitor_funding_info", f"update_fundinginfo_proc.is_alive: {self.update_fundinginfo_proc.is_alive()}")
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', "start_monitor_funding_info", f"update_fundinginfo_proc.is_alive: {self.update_fundinginfo_proc.is_alive()}")
         funding_monitor_func_thread = Thread(target=funding_monitor_func, daemon=True)
         funding_monitor_func_thread.start()

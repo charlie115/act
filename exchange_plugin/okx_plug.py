@@ -46,8 +46,8 @@ class OkxClient:
 class InitOkxAdaptor:
     def __init__(self, read_only_okx_access_key='-1', read_only_okx_secret_key='-1', passphrase='-1', demo_trading='0', debug=False, logging_dir=None):
         self.demo_trading = demo_trading
-        self.my_okx_client = OkxClient(okx_api_key=read_only_okx_access_key, okx_secret_key=read_only_okx_secret_key, passphrase=passphrase, demo_trading=demo_trading, debug=debug)
-        self.pub_okx_client = OkxClient()
+        self.my_client = OkxClient(okx_api_key=read_only_okx_access_key, okx_secret_key=read_only_okx_secret_key, passphrase=passphrase, demo_trading=demo_trading, debug=debug)
+        self.pub_client = OkxClient()
         self.user_client_dict = {}
         self.okx_plug_logger = KimpBotLogger("okx_plug", logging_dir).logger
         self.retry_term_sec = 0.2
@@ -56,7 +56,7 @@ class InitOkxAdaptor:
         self.instrument_info = self.get_instrument_info()
 
     def get_instrument_info(self):
-        result = pd.DataFrame(self.pub_okx_client.PublicAPI.get_instruments(instType='SWAP')['data'])[['instId','ctVal','lever','maxMktSz','minSz','state','tickSz']]
+        result = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='SWAP')['data'])[['instId','ctVal','lever','maxMktSz','minSz','state','tickSz']]
         result.loc[:, 'maxMktSz'] = result['maxMktSz'].astype(float)
         result['minQty'] = result['ctVal'].astype(float) * result['minSz'].astype(float)
         result['maxQty'] = result['ctVal'].astype(float) * result['maxMktSz'].astype(float)
@@ -86,7 +86,7 @@ class InitOkxAdaptor:
 
     # Admin
     def get_deposit(self, asset='EOS'):
-        deposit = pd.DataFrame(self.my_okx_client.FundingAPI.get_deposit_history(ccy=asset)['data'])
+        deposit = pd.DataFrame(self.my_client.FundingAPI.get_deposit_history(ccy=asset)['data'])
         if len(deposit) == 0:
             print(f'No deposit history for {asset}')
             return deposit
@@ -412,7 +412,7 @@ class InitOkxAdaptor:
         else:
             print('Error occured while processing period.')
 
-        kline = self.pub_okx_client.MarketAPI.get_candlesticks(instId=symbol, bar=period, limit=str(count))
+        kline = self.pub_client.MarketAPI.get_candlesticks(instId=symbol, bar=period, limit=str(count))
         kline = pd.DataFrame(kline['data'])
         kline.loc[:, 0] = kline.loc[:, 0].apply(lambda x: datetime.datetime.fromtimestamp(float(x)/1000))
         columns = ['okx_time', 'okx_open', 'okx_high', 'okx_low', 'okx_close', 'okx_volume', 'okx_volCcy','okx_volCcyQuote','okx_completed']

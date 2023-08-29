@@ -2,8 +2,10 @@ import pandas as pd
 from price_websocket import dict_convert, update_dollar, price_websocket
 from exchange_plugin.okx_plug import InitOkxAdaptor
 from exchange_plugin.upbit_plug import InitUpbitAdaptor
+from exchange_plugin.binance_plug import InitBinanceAdaptor
+from exchange_websocket.binance_websocket import BinanceWebsocket
+from exchange_websocket.upbit_websocket import UpbitWebsocket
 from loggers.logger import KimpBotLogger
-from etc.register_msg import register
 from etc.redis_connector.redis_connector import InitRedis
 from etc.db_handler.create_schema_tables import InitDBClient
 import _pickle as pickle
@@ -17,39 +19,58 @@ current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
 logging_dir = f"{current_folder_dir}/loggers/logs/"
 
 class InitKimpCore:
-    if not os.path.exists(logging_dir):
-        os.mkdir(logging_dir)
-    kimp_bot_core_logger = KimpBotLogger("kimp_bot_core", logging_dir).logger
-    price_websocket_logger = KimpBotLogger("price_websocket", logging_dir).logger
-    update_dollar_logger = KimpBotLogger("update_dollar", logging_dir).logger
-
-    def __init__(self, proc_n, node, admin_id, okx_demo_trading='0'):
+    def __init__(self, logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict):
         # Inital value setting
-        self.origin = node
+        self.kimp_bot_core_logger = KimpBotLogger("kimp_bot_core", logging_dir).logger
+        self.price_websocket_logger = KimpBotLogger("price_websocket", logging_dir).logger
+        self.update_dollar_logger = KimpBotLogger("update_dollar", logging_dir).logger
+        self.node = node
         self.admin_id = admin_id
         self.proc_n = proc_n
         self.monitor_websocket_switch = True
         self.exclude_outliers = True
-        self.monitor_bot_token = None
-        self.monitor_api_url = None
+        self.register_monitor_msg = register_monitor_msg
+        self.exchange_api_key_dict = exchange_api_key_dict
         # For redis connection
         self.redis_client = InitRedis()
 
         self.kimp_bot_core_logger.info(f"InitKimpCore|InitKimpCore initiated with proc_n={proc_n}")
 
-        self.okx_adaptor = InitOkxAdaptor(demo_trading=okx_demo_trading)
-        self.upbit_adaptor = InitUpbitAdaptor()
+        self.okx_adaptor = InitOkxAdaptor()
+        self.upbit_adaptor = InitUpbitAdaptor(self.exchange_api_key_dict['upbit_read_only']['api_key'], self.exchange_api_key_dict['upbit_read_only']['secret_key'])
+        self.binance_adaptor = InitBinanceAdaptor(self.exchange_api_key_dict['binance_read_only']['api_key'], self.exchange_api_key_dict['binance_read_only']['secret_key'])
 
-        self.shared_listed_symbol_dict = self.fetch_both_listed_symbol_dict()
-        self.both_listed_okx_symbols = self.shared_listed_symbol_dict['both_listed_okx_symbols']
-        self.both_listed_upbit_symbols = self.shared_listed_symbol_dict['both_listed_upbit_symbols']
+        self.info_dict = {}
+        self.info_thread_dict = {}
 
-        self.price_websocket_thread = Thread(target=price_websocket.okx_upbit_websocket,
-                                                args=(self.both_listed_okx_symbols,
-                                                        self.both_listed_upbit_symbols,
-                                                        self.proc_n,
-                                                        self.price_websocket_logger), daemon=True)
-        self.price_websocket_thread.start()
+        # UPBIT SPOT (KRW, BTC Market)
+        # UPBIT wallet status
+        # BINANCE SPOT, USD-M Futures, COIN-M Futures
+        self.data_name_list = [
+            "upbit_all_ticker_df",
+            "upbit_wallet_status_df",
+            "binance_spot_ticker_df",
+            "binance_usdm_ticker_df",
+            "binance_coinm_ticker_df",
+        ]
+
+        for data_name in self.data_name_list:
+            self.info_thread_dict[f"update_{data_name}"] = Thread(target=self.update_exchange_info_as_df, args=(data_name,), daemon=True)
+            self.info_thread_dict[f"update_{data_name}"].start()
+            self.kimp_bot_core_logger.info(f"InitKimpCore|update_{data_name} thread has started.")
+
+        # Wait until all info df has been updated
+        while True:
+            if all([x in self.info_dict.keys() for x in self.data_name_list]):
+                self.kimp_bot_core_logger.info(f"InitKimpCore|All info df has been updated.")
+                break
+            else:
+                self.kimp_bot_core_logger.info(f"InitKimpCore|Waiting for all info to be updated.")
+                time.sleep(0.25)
+
+        
+
+        
 
         self.update_dollar_return_dict = {}
         self.update_dollar_thread = Thread(target=update_dollar.fetch_dollar_loop, args=(self.update_dollar_return_dict, self.update_dollar_logger), daemon=True)
@@ -57,42 +78,34 @@ class InitKimpCore:
 
         time.sleep(2)
 
-        self.OKX_BOOKTICKER_PROC_LIST = price_websocket.OKX_TICKER_PROC_LIST
-        self.UPBIT_TICKER_PROC_LIST = price_websocket.UPBIT_TICKER_PROC_LIST
-        self.UPBIT_ORDERBOOK_PROC_LIST = price_websocket.UPBIT_ORDERBOOK_PROC_LIST
+    def update_exchange_info_as_df(self, data_name, loop_time_secs=15):
+        while True:
+            try:
+                if data_name == "upbit_all_ticker_df":
+                    self.info_dict[data_name] = self.upbit_adaptor.all_tickers()
+                elif data_name == "upbit_wallet_status_df":
+                    self.info_dict[data_name] = self.upbit_adaptor.wallet_status()
+                elif data_name == "binance_spot_ticker_df":
+                    self.info_dict[data_name] = self.binance_adaptor.spot_all_tickers()
+                elif data_name == "binance_usdm_ticker_df":
+                    self.info_dict[data_name] = self.binance_adaptor.usdm_exchange_info()
+                elif data_name == "binance_coinm_ticker_df":
+                    self.info_dict[data_name] = self.binance_adaptor.coinm_exchange_info()
+                else:
+                    self.kimp_bot_core_logger.error(f"update_exchange_info_as_df|name:{data_name} is not valid.")
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                    break
+                time.sleep(loop_time_secs)
+            except Exception as e:
+                self.kimp_bot_core_logger.error(f"update_exchange_info_as_df|name:{data_name}, {traceback.format_exc()}")
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} failed.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                time.sleep(loop_time_secs)
 
-        self.OKX_BOOKTICKER_DICT = price_websocket.OKX_TICKER_DICT
-        self.UPBIT_TICKER_DICT = price_websocket.UPBIT_TICKER_DICT
-        self.UPBIT_ORDERBOOK_DICT = price_websocket.UPBIT_ORDERBOOK_DICT
-
-    def fetch_both_listed_symbol_dict(self):
-        okx_all_tickers = pd.DataFrame(self.okx_adaptor.pub_okx_client.MarketAPI.get_tickers('SWAP')['data'])
-        okx_all_tickers = okx_all_tickers[okx_all_tickers['instId'].str.endswith('-USDT-SWAP')]
-        okx_all_tickers.loc[:, ['last', 'volCcy24h', 'vol24h']] = okx_all_tickers.loc[:, ['last', 'volCcy24h', 'vol24h']].astype(float)
-        okx_all_tickers['24h_turnover'] = okx_all_tickers['volCcy24h'] * okx_all_tickers['last']
-        okx_all_tickers = okx_all_tickers.sort_values('24h_turnover', ascending=False).reset_index(drop=True)[['instId','last','24h_turnover']]
-        okx_all_tickers['symbol'] = okx_all_tickers['instId'].apply(lambda x: x.split('-')[0])
-        upbit_ticker_df = self.upbit_adaptor.upbit_all_ticker(None, None)
-        upbit_ticker_df['symbol'] = upbit_ticker_df['market'].apply(lambda x: x.split('-')[1])
-        both_listed_symbol_df = pd.merge(okx_all_tickers, upbit_ticker_df, on='symbol', how='inner')
-        both_listed_okx_symbols = both_listed_symbol_df.sort_values('24h_turnover', ascending=False)['instId'].tolist()
-        both_listed_upbit_symbols = both_listed_symbol_df.sort_values('acc_trade_price_24h', ascending=False)['market'].tolist()
-        return {'both_listed_okx_symbols': both_listed_okx_symbols, 'both_listed_upbit_symbols': both_listed_upbit_symbols}
+    
 
     def get_dollar_dict(self):
         return self.update_dollar_return_dict
 
-    def get_both_listed_okx_symbols(self):
-        return self.both_listed_okx_symbols
-    
-    def get_both_listed_upbit_symbols(self):
-        return self.both_listed_upbit_symbols
-
-    def set_monitor_bot_token(self, bot_token):
-        self.monitor_bot_token = bot_token
-
-    def set_monitor_api_url(self, api_url):
-        self.monitor_api_url = api_url
 
     def start_monitor_update_to_redis(self):
         if self.monitor_bot_token is None or self.monitor_api_url is None:
@@ -103,15 +116,6 @@ class InitKimpCore:
             self.start_monitor_update_kimp_to_redis()
             self.start_monitor_update_wa_kimp_to_redis()
             self.start_monitor_update_dollar_to_redis()
-
-    # def set_local_db_client(self, host, port, user, passwd, database, master_node=True):
-    #     self.kimp_bot_core_logger.info("set_local_db_client|self.local_db_client has been set.")
-    #     self.local_db_client = InitDBClient(host, port, user, passwd, database, self.create_schema_tables_logger)
-    #     self.local_db_client.create_all_table(master_node=master_node)
-
-    # def set_remote_db_client(self, host, port, user, passwd, database):
-    #     self.kimp_bot_core_logger.info("set_remote_db_client|self.remote_db_client has been set.")
-    #     self.remote_db_client = InitDBClient(host, port, user, passwd, database, self.create_schema_tables_logger)
 
     def get_kimp_df(self):
         return dict_convert.get_kimp_df(
@@ -187,7 +191,7 @@ class InitKimpCore:
             )
 
     def monitor_websocket(self, loop_secs=2.5):
-        if self.monitor_bot_token is None or self.monitor_api_url is None:
+        if self.register_monitor_msg is None:
             self.kimp_bot_core_logger.error(f"monitor_websocket|monitor setting hasn't configured.")
             return
         self.kimp_bot_core_logger.info(f"monitor_websocket|monitor_websocket_procs started.")
@@ -200,18 +204,18 @@ class InitKimpCore:
                     integrity_flag, whole_status_str = self.websocket_proc_status(print_status=False)
                     if integrity_flag == False:
                         self.kimp_bot_core_logger.error(f"websocket integrity has broken. proc_stats: {whole_status_str}")
-                        register(monitor_bot_token, monitor_api_url, self.admin_id, self.origin, input_type, title1, content=whole_status_str, code=None, sent_switch=0, send_counts=1, remark=None)
+                        self.register_monitor_msg.register(self.admin_id, self.node, input_type, title1, content=whole_status_str, code=None, sent_switch=0, send_counts=1, remark=None)
                         # print(f"Before re_init by monitor_loop")
                         self.terminate_websocket_procs()
-                        self.__init__(self.proc_n, self.origin, self.admin_id)
+                        self.__init__(self.proc_n, self.node, self.admin_id)
                         # print(f"After re_init by monitor_loop")
                         integrity_flag, whole_status_str = self.websocket_proc_status(print_status=False)
                         status_after_restart = f"monitor_websocket|After re_init by monitor_loop. proc_stats: {whole_status_str}"
                         self.kimp_bot_core_logger.info(status_after_restart)
-                        register(monitor_bot_token, monitor_api_url, self.admin_id, self.origin, input_type, title2, content=status_after_restart, code=None, sent_switch=0, send_counts=1, remark=None)
+                        self.register_monitor_msg.register(self.admin_id, self.node, input_type, title2, content=status_after_restart, code=None, sent_switch=0, send_counts=1, remark=None)
                 except Exception as e:
                         self.kimp_bot_core_logger.critical(f"monitor_websocket|monitor_websocket_procs 에러!|{traceback.format_exc()}")
-                        register(self.monitor_bot_token, self.monitor_api_url, self.admin_id, self.origin, input_type, 'monitor_websocket_procs 에러!', content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                        self.register_monitor_msg.register(self.admin_id, self.origin, input_type, 'monitor_websocket_procs 에러!', content=None, code=None, sent_switch=0, send_counts=1, remark=None)
                 time.sleep(loop_secs)
         self.monitor_websocket_thread = Thread(target=monitor_loop, daemon=True)
         self.monitor_websocket_thread.start()
@@ -225,7 +229,7 @@ class InitKimpCore:
         self.kimp_bot_core_logger.info(f"stop_monitor_websocket|self.monitor_websocket_thread.is_alive: {self.monitor_websocket_thread.is_alive()}")
 
     def start_monitor_update_kimp_to_redis(self, pickled_kimp_df_name="pickled_kp", update_loop_secs=0.1, monitor_loop_secs=2.5):
-        if self.monitor_bot_token is None or self.monitor_api_url is None:
+        if self.register_monitor_msg is None:
             self.kimp_bot_core_logger.error(f"start_monitor_update_kimp_to_redis|monitor setting hasn't configured.")
             return
         def loop_monitor_update_kimp_to_redis():
@@ -244,7 +248,7 @@ class InitKimpCore:
             while True:
                 if not self.update_kimp_to_redis_thread.is_alive():
                     self.kimp_bot_core_logger.error(f"loop_monitor_update_kimp_to_redis|update_kimp_to_redis_thread stopped!")
-                    register(self.monitor_bot_token, self.monitor_api_url, self.admin_id, self.origin, input_type, title, "restarting update_kimp_to_redis_thread..")
+                    self.register_monitor_msg.register(self.admin_id, self.node, input_type, title, "restarting update_kimp_to_redis_thread..")
                     self.update_kimp_to_redis_thread = Thread(target=update_kimp_to_redis, daemon=True)
                     self.update_kimp_to_redis_thread.start()
                 time.sleep(monitor_loop_secs)
@@ -252,7 +256,7 @@ class InitKimpCore:
         loop_monitor_update_kimp_to_redis_thread.start()
 
     def start_monitor_update_wa_kimp_to_redis(self, pickled_wa_kimp_dict_name="pickled_wa_kp", update_loop_secs=0.15, monitor_loop_secs=2.5):
-        if self.monitor_bot_token is None or self.monitor_api_url is None:
+        if self.register_monitor_msg is None:
             self.kimp_bot_core_logger.error(f"start_monitor_update_wa_kimp_to_redis|monitor setting hasn't configured.")
             return
         def loop_monitor_update_wa_kimp_to_redis():
@@ -271,7 +275,7 @@ class InitKimpCore:
             while True:
                 if not self.update_wa_kimp_to_redis_thread.is_alive():
                     self.kimp_bot_core_logger.error(f"loop_monitor_update_wa_kimp_to_redis|update_wa_kimp_to_redis_thread stopped!")
-                    register(self.monitor_bot_token, self.monitor_api_url, self.admin_id, self.origin, input_type, title, "restarting update_wa_kimp_to_redis_thread..")
+                    self.register_monitor_msg.register(self.admin_id, self.node, input_type, title, "restarting update_wa_kimp_to_redis_thread..")
                     self.update_wa_kimp_to_redis_thread = Thread(target=update_wa_kimp_to_redis, daemon=True)
                     self.update_wa_kimp_to_redis_thread.start()
                 time.sleep(monitor_loop_secs)
@@ -279,7 +283,7 @@ class InitKimpCore:
         loop_monitor_update_wa_kimp_to_redis_thread.start()
 
     def start_monitor_update_dollar_to_redis(self, pickled_dollar_dict_name="pickled_dollar_dict", update_loop_secs=1, monitor_loop_secs=2.5):
-        if self.monitor_bot_token is None or self.monitor_api_url is None:
+        if self.register_monitor_msg is None:
             self.kimp_bot_core_logger.error(f"start_monitor_update_dollar_to_redis|monitor setting hasn't configured.")
             return
         def loop_monitor_update_dollar_to_redis():
@@ -298,7 +302,7 @@ class InitKimpCore:
             while True:
                 if not self.update_dollar_to_redis_thread.is_alive():
                     self.kimp_bot_core_logger.error(f"loop_monitor_update_dollar_to_redis|update_dollar_to_redis_thread stopped!")
-                    register(self.monitor_bot_token, self.monitor_api_url, self.admin_id, self.origin, input_type, title, "restarting update_dollar_to_redis_thread..")
+                    self.register_monitor_msg.register(self.admin_id, self.node, input_type, title, "restarting update_dollar_to_redis_thread..")
                     self.update_dollar_to_redis_thread = Thread(target=update_dollar_to_redis, daemon=True)
                     self.update_dollar_to_redis_thread.start()
                 time.sleep(monitor_loop_secs)
