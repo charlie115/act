@@ -1,3 +1,4 @@
+version: '3'
 services:
 
   nginx:
@@ -17,9 +18,7 @@ services:
     restart: always
 
   drf:
-    image: community-drf:latest
-    build:
-      context: "community_drf/"
+    image: $LOCAL_REGISTRY_URL/community-drf:latest
     container_name: community-drf
     volumes:
       - type: bind
