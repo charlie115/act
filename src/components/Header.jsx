@@ -70,7 +70,7 @@ export default function Header() {
 
   return (
     <Slide in={!hidden}>
-      <AppBar position="sticky" sx={{ bgcolor: 'dark.main' }}>
+      <AppBar position="sticky" sx={{ bgcolor: 'dark.light' }}>
         <Container maxWidth="xl">
           <Toolbar disableGutters>
             <SvgIcon

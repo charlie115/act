@@ -15,6 +15,10 @@ import FullScreenLoading from 'components/FullScreenLoading';
 import router from 'configs/router';
 import theme, { darkTheme } from 'configs/theme';
 
+import chartjs from 'configs/chartjs';
+
+chartjs.init();
+
 function App() {
   const { i18n } = useTranslation();
 

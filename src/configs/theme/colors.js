@@ -28,7 +28,7 @@ export default {
 
   light: { main: '#f0f2f5' },
 
-  dark: { light: '#1A2027', main: '#121212' },
+  dark: { light: '#0e1114', main: '#121212' },
 
   grey: {
     100: '#cfd8dc',

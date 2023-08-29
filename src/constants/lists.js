@@ -5,7 +5,8 @@ const DEFAULT_FIELD_PROPS = {
   hasTooltip: true,
   cellProps: { align: 'right', fontSize: 8 },
   headerProps: { align: 'right', width: '14%' },
-  stackProps: { sx: { justifyContent: 'end' } },
+  headerStackStyle: { alignItems: 'center', justifyContent: 'end' },
+  stackStyle: { justifyContent: 'end' },
   formatValue: (value) =>
     value
       ? i18n.t('intlNumber', {
@@ -19,6 +20,7 @@ export const COIN_FIELDS = [
     fieldKey: 'name',
     getLabel: () => i18n.t('Name'),
     headerProps: { width: '10%' },
+    headerStackStyle: { alignItems: 'center' },
     cellProps: { align: 'left' },
   },
   {

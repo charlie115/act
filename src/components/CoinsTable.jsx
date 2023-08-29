@@ -24,6 +24,8 @@ import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import BlockIcon from '@mui/icons-material/Block';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDownSharp';
@@ -44,6 +46,8 @@ import { styled } from '@mui/material/styles';
 
 import { useGetKpWebsocketDataQuery } from 'redux/api/websocket';
 
+import ChartJsPriceChart from 'components/charts/ChartJsPriceChart';
+import LightWeightPriceChart from 'components/charts/LightWeightPriceChart';
 import TVRealTimeChart from 'components/trading_view/TVRealTimeChart';
 
 import { coinicons } from 'assets/exports';
@@ -62,15 +66,10 @@ const THeadCell = styled(TableCell)(({ theme }) => ({
   fontSize: 11,
 }));
 
-export default function CoinsTable({ id }) {
+function CoinsTable({ data, priceData }) {
   const { t } = useTranslation();
 
   const language = useSelector((state) => state.app.language);
-  const { data } = useGetKpWebsocketDataQuery({ componentId: id });
-  // console.log('data: ', data);
-
-  // const coins = useSelector(() => selectAll(data?.coins || {}));
-  // console.log('coins: ', coins);
 
   const [fields, setFields] = useState([]);
   const [expandedRows, setExpandedRows] = useState([]);
@@ -87,22 +86,15 @@ export default function CoinsTable({ id }) {
   });
 
   const rows = useMemo(() => {
-    const parsedData = data?.coins.ids.map((coinId) => {
-      const coin = data.coins.entities[coinId];
-      const name = coin.symbol.endsWith('USDT')
-        ? coin.symbol.slice(0, -4)
-        : coin.symbol;
-      return {
-        id: coinId,
-        name,
-        price: coin.tp_kimp,
-        volume: coin.acc_trade_price_24h,
-      };
-    });
+    const parsedData = Object.entries(data ?? {}).map(([_, value]) => value);
     return sortFilter.sortKey
       ? orderBy(parsedData, sortFilter.sortKey, sortFilter.sortOrder)
       : parsedData;
   }, [data, sortFilter]);
+
+  useEffect(() => {
+    setExpandedRows([]);
+  }, [sortFilter]);
 
   useEffect(() => {
     setFields(
@@ -128,12 +120,12 @@ export default function CoinsTable({ id }) {
       if (state.sortKey === sortKey) {
         switch (state.sortOrder) {
           case '':
-            state.sortOrder = 'desc';
-            break;
-          case 'desc':
             state.sortOrder = 'asc';
             break;
           case 'asc':
+            state.sortOrder = 'desc';
+            break;
+          case 'desc':
             state.sortKey = '';
             state.sortOrder = '';
             break;
@@ -142,7 +134,7 @@ export default function CoinsTable({ id }) {
         }
       } else {
         state.sortKey = sortKey;
-        state.sortOrder = 'desc';
+        state.sortOrder = 'asc';
       }
       return state;
     });
@@ -169,29 +161,38 @@ export default function CoinsTable({ id }) {
                   key={field.fieldKey}
                   nowrap="nowrap"
                   {...field.headerProps}
-                  sx={{
-                    color:
-                      sortFilter.sortKey === field.fieldKey
-                        ? 'white.main'
-                        : null,
-                  }}
-                  onClick={() => onChangeSortFilter(field.fieldKey)}
+                  sx={
+                    sortFilter.sortKey === field.fieldKey
+                      ? { color: 'white.main', fontWeight: 700 }
+                      : {}
+                  }
                 >
                   <Stack
                     direction="row"
                     spacing={1}
-                    sx={{ alignItems: 'center', justifyContent: 'end' }}
+                    sx={{ ...field.headerStackStyle }}
+                    onClick={() => onChangeSortFilter(field.fieldKey)}
                   >
-                    {sortFilter.sortKey === field.fieldKey && (
-                      <>
-                        {sortFilter.sortOrder === 'desc' && (
-                          <ArrowDownwardIcon sx={{ fontSize: 14 }} />
-                        )}
-                        {sortFilter.sortOrder === 'asc' && (
-                          <ArrowUpwardIcon sx={{ fontSize: 14 }} />
-                        )}
-                      </>
-                    )}
+                    <Stack spacing={-1.25}>
+                      <ArrowDropUpIcon
+                        color={
+                          sortFilter.sortKey === field.fieldKey &&
+                          sortFilter.sortOrder === 'asc'
+                            ? 'white'
+                            : 'secondary'
+                        }
+                        sx={{ fontSize: 16 }}
+                      />
+                      <ArrowDropDownIcon
+                        color={
+                          sortFilter.sortKey === field.fieldKey &&
+                          sortFilter.sortOrder === 'desc'
+                            ? 'white'
+                            : 'secondary'
+                        }
+                        sx={{ fontSize: 16 }}
+                      />
+                    </Stack>
                     {field.label}
                   </Stack>
                 </THeadCell>
@@ -199,7 +200,7 @@ export default function CoinsTable({ id }) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows?.map((row, i) => (
+            {rows?.map((row) => (
               <Fragment key={row.id}>
                 <TableRow
                   hover
@@ -226,7 +227,7 @@ export default function CoinsTable({ id }) {
                       ) : (
                         <BlockIcon color="secondary" sx={{ fontSize: 15 }} />
                       )}
-                      {expandedRows.includes(i) ? (
+                      {expandedRows.includes(row.id) ? (
                         <KeyboardArrowUpIcon fontSize="small" />
                       ) : (
                         <KeyboardArrowDownIcon fontSize="small" />
@@ -234,31 +235,32 @@ export default function CoinsTable({ id }) {
                     </Stack>
                   </TBodyCell>
                   {fields.map((field) => (
-                    <Tooltip
-                      title={field.hasTooltip ? row[field.fieldKey] : null}
-                    >
-                      <TBodyCell key={field.fieldKey} {...field.cellProps}>
-                        <Stack spacing={0} {...field.stackProps}>
+                    <TBodyCell key={field.fieldKey} {...field.cellProps}>
+                      <Stack spacing={0} {...field.stackProps}>
+                        <Tooltip
+                          title={field.hasTooltip ? row[field.fieldKey] : null}
+                          placement="right-end"
+                        >
                           <Typography>
                             {field.formatValue
                               ? field.formatValue(row[field.fieldKey], field)
                               : row[field.fieldKey]}
                           </Typography>
-                          <Typography
-                            sx={{ color: 'secondary.main', fontSize: 11 }}
-                          >
-                            ...
-                            {/* {field.formatValue
+                        </Tooltip>
+                        <Typography
+                          sx={{ color: 'secondary.main', fontSize: 11 }}
+                        >
+                          ...
+                          {/* {field.formatValue
                               ? field.formatValue(
                                   data?.coinListPrev[i]?.[field.fieldKey],
                                   field,
                                   { t }
                                 )
                               : data?.coinListPrev[i]?.[field.fieldKey]} */}
-                          </Typography>
-                        </Stack>
-                      </TBodyCell>
-                    </Tooltip>
+                        </Typography>
+                      </Stack>
+                    </TBodyCell>
                   ))}
                 </TableRow>
                 <TableRow>
@@ -270,7 +272,7 @@ export default function CoinsTable({ id }) {
                             display: 'flex',
                             flexDirection: 'row',
                             justifyContent: 'space-between',
-                            mb: 0.5,
+                            mb: 1,
                           }}
                         >
                           <Button
@@ -324,10 +326,11 @@ export default function CoinsTable({ id }) {
                             ))}
                           </ToggleButtonGroup>
                         </Box>
-                        <TVRealTimeChart
+                        <LightWeightPriceChart data={priceData[row.name]} />
+                        {/* <TVRealTimeChart
                           containerId={`tv-realtime-chart-${row.name}`}
                           symbol={`${selectedTradingCo?.value}:${row.name}${selectedTradingCo?.currency}`}
-                        />
+                        /> */}
                       </Stack>
                     </Collapse>
                   </TableCell>
@@ -340,3 +343,5 @@ export default function CoinsTable({ id }) {
     </Box>
   );
 }
+
+export default React.memo(CoinsTable);

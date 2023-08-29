@@ -1,18 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import Box from '@mui/material/Box';
-
+import Paper from '@mui/material/Paper';
 import { Line } from 'react-chartjs-2';
 
 import { DateTime } from 'luxon';
 import sortBy from 'lodash/sortBy';
 
-export const options = {
+import { useTheme } from '@mui/material/styles';
+
+export const DEFAULT_OPTIONS = {
   // spanGaps: 1000 * 60 * 60 * 24 * 2, // 2 days
   responsive: true,
   interaction: {
-    mode: 'nearest',
-    // intersect: false,
+    mode: 'index',
+    intersect: true,
   },
   stacked: false,
   plugins: {
@@ -43,11 +45,10 @@ export const options = {
   },
 };
 
-function RealTimePriceChart({ data, symbol }) {
-  useEffect(() => {}, []);
+function ChartJsPriceChart({ data }) {
+  const chartRef = useRef();
 
-  // useEffect(() => {
-  // }, [data]);
+  const theme = useTheme();
 
   const chartData = useMemo(
     () => ({
@@ -58,12 +59,20 @@ function RealTimePriceChart({ data, symbol }) {
       datasets: [
         {
           label: 'tp_kimp',
-          data: data?.map((datum) => {
-            const coin = datum.find((item) => item.symbol.includes(symbol));
-            return { x: coin.timestamp, y: coin.tp_kimp };
-          }),
+          data: data?.map((coin) => ({ x: coin.time, y: coin.tp_kimp })),
           backgroundColor: 'rgba(255, 99, 132, 0.5)',
           borderColor: 'rgb(255, 99, 132)',
+          yAxisID: 'y1',
+        },
+        {
+          label: 'binance???',
+          data: data?.map((coin) => ({
+            x: coin.time,
+            y: coin.trade_price,
+          })),
+          backgroundColor: 'rgba(94, 118, 255, 0.5)',
+          borderColor: 'rgb(94, 118, 255)',
+          yAxisID: 'y',
         },
       ],
     }),
@@ -71,10 +80,10 @@ function RealTimePriceChart({ data, symbol }) {
   );
 
   return (
-    <Box>
-      <Line options={options} data={chartData} />
+    <Box component={Paper} sx={{ bgcolor: theme.palette.background.default }}>
+      <Line ref={chartRef} options={DEFAULT_OPTIONS} data={chartData} />
     </Box>
   );
 }
 
-export default React.memo(RealTimePriceChart);
+export default React.memo(ChartJsPriceChart);

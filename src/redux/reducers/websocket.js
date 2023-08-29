@@ -1,21 +1,18 @@
-import { createEntityAdapter, createSlice, current } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
 
 export const websocketSlice = createSlice({
   name: 'websocket',
-  initialState: {}, // coinsAdapter.getInitialState(),
-  reducers: {},
-  extraReducers: (builder) => {
-    // builder.addMatcher(
-    //   websocketApi.internalActions.queryResultPatched,
-    //   (state, action) => {
-    //     console.log('action: ', action);
-    //   }
-    // );
+  initialState: {
+    coins: [],
   },
+  reducers: {
+    storeCoins: (state, { payload }) => {
+      console.log('payload: ', payload);
+    },
+  },
+  // extraReducers: () => {
+  // },
 });
 
+export const { storeCoins } = websocketSlice.actions;
 export default websocketSlice.reducer;
-
-// export const { selectAll } = coinsAdapter.getSelectors(
-//   (state) => state.websocket
-// );
