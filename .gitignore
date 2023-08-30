@@ -11,6 +11,7 @@ dist/
 *.class
 
 # Compiled Python bytecode
+__pycache__/
 *.py[cod]
 
 # Log files
@@ -25,6 +26,9 @@ dist/
 
 # JetBrains IDE
 .idea/
+
+# VSCode IDE
+.history
 
 # Unit test reports
 TEST*.xml
@@ -48,3 +52,13 @@ Thumbs.db
 *.mov
 *.wmv
 
+# Env
+.env*
+!.env.example
+*venv*
+
+# Build files
+build/
+
+# Database files
+*db.sqlite*
