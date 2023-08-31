@@ -1,5 +1,3 @@
-import dj_database_url
-
 from .base import *  # noqa
 
 
@@ -12,10 +10,3 @@ CORS_ORIGIN_WHITELIST = env.list('CORS_ORIGIN_WHITELIST', default=[])
 INSTALLED_APPS += (
     "gunicorn",
 )
-
-DATABASES = {
-    'default': dj_database_url.config(
-        default=env('COMMUNITY_DB_URL'),
-        conn_max_age=600
-    ),
-}

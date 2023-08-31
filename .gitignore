@@ -57,8 +57,10 @@ Thumbs.db
 !.env.example
 *venv*
 
-# Build files
+# Build/static files
+assets/
 build/
+static/
 
 # Database files
 *db.sqlite*
