@@ -31,5 +31,6 @@ class EndpointListView(routers.APIRootView):
 urlpatterns = [
     path('', EndpointListView.as_view(), name='endpoint list'),
     path('admin/', admin.site.urls),
+    path('auth/', include('authentication.urls'), name='authentication urls'),
     path('users/', include('users.urls'), name='users urls'),
 ]
