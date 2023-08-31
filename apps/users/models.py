@@ -1,3 +1,4 @@
+from typing import Iterable, Optional
 import uuid
 
 from django.conf import settings
@@ -29,6 +30,12 @@ class User(AbstractUser):
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['password']
+
+    def save(self, *args, **kwargs):
+        if self.username == "":
+            self.username = self.email
+
+        super(User, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.email
