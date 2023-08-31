@@ -2,47 +2,77 @@ import React, { useEffect, useState } from 'react';
 
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
 import TextField from '@mui/material/TextField';
 
-import { useGetDummyWebsocketDataQuery } from 'redux/api/websocket';
+import BlockIcon from '@mui/icons-material/Block';
+import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 
-export default function CoinsSelector() {
+import { alpha, useTheme } from '@mui/material/styles';
+
+import debounce from 'lodash/debounce';
+import { matchSorter } from 'match-sorter';
+
+import { useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
+
+import { coinicons } from 'assets/exports';
+
+export default function CoinsSelector({ onChange }) {
+  const { t } = useTranslation();
+  const theme = useTheme();
+
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState([]);
+  const [selected, setSelected] = useState([]);
 
-  const { data, isLoading } = useGetDummyWebsocketDataQuery();
+  const coins = useSelector((state) => state.websocket.coins);
 
   useEffect(() => {
-    setOptions(data?.coins);
-  }, [data]);
+    setOptions(coins.map((coin) => ({ name: coin })));
+  }, [coins]);
+
+  const onInputChange = debounce((newInput) => {
+    if (selected.length === 0)
+      onChange(
+        matchSorter(coins, newInput, {
+          maxRanking: matchSorter.rankings.STARTS_WITH,
+        })
+      );
+  }, 1500);
+
+  const onValueChange = debounce(
+    (newValue) => onChange(newValue.map((val) => val.name)),
+    1500
+  );
 
   return (
     <Autocomplete
-      id="asynchronous-demo"
+      disableCloseOnSelect
+      // freeSolo
+      multiple
+      clearOnBlur={false}
+      id="coins-selector"
       open={open}
       onOpen={() => setOpen(true)}
       onClose={() => setOpen(false)}
+      onChange={(e, newValue) => {
+        setSelected(newValue);
+        onValueChange(newValue);
+      }}
+      onInputChange={(e, newInput) => onInputChange(newInput)}
       isOptionEqualToValue={(option, value) => option.name === value.name}
       getOptionLabel={(option) => option.name}
       options={options}
-      loading={isLoading}
+      noOptionsText={t('Coin does not exist')}
+      loading={coins.length === 0}
+      limitTags={5}
       renderInput={(params) => (
         <TextField
           {...params}
-          variant="standard"
-          // label="Select Coin"
-          InputProps={{
-            ...params.InputProps,
-            endAdornment: (
-              <>
-                {isLoading ? (
-                  <CircularProgress color="inherit" size={20} />
-                ) : null}
-                {params.InputProps.endAdornment}
-              </>
-            ),
-          }}
+          color="secondary"
+          variant="outlined"
+          label={t('Search Coins')}
+          InputProps={params.InputProps}
         />
       )}
       renderOption={(props, option) => (
@@ -51,17 +81,30 @@ export default function CoinsSelector() {
           sx={{ '& > img': { mr: 2, flexShrink: 0 } }}
           {...props}
         >
-          <img
-            loading="lazy"
-            width="20"
-            src={require(`assets/icons/coinicon/${option.name}.png`)}
-            alt=""
-          />
+          {coinicons[`${option.name}.png`] ? (
+            <img
+              loading="lazy"
+              width="20"
+              src={require(`assets/icons/coinicon/${option.name}.png`)}
+              alt=""
+            />
+          ) : (
+            <BlockIcon color="secondary" sx={{ fontSize: 20, mr: 2 }} />
+          )}
           {option.name}
         </Box>
       )}
+      ListboxProps={{
+        sx: { bgcolor: alpha(theme.palette.background.default, 0.15) },
+      }}
+      popupIcon={<SearchOutlinedIcon color="secondary" fontSize="small" />}
       size="small"
-      sx={{ mb: 2, width: 300 }}
+      sx={{
+        mb: 2,
+        width: 325,
+        '& .MuiAutocomplete-popupIndicator': { transform: 'none' },
+        '& .MuiAutocomplete-input': { textTransform: 'uppercase' },
+      }}
     />
   );
 }

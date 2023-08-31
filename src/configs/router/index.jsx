@@ -11,6 +11,7 @@ import FullScreenLoading from 'components/FullScreenLoading';
 import { MainLayout, ProtectedLayout, PublicLayout } from './layouts';
 
 const Home = React.lazy(() => import('pages/Home'));
+const Login = React.lazy(() => import('pages/Login'));
 
 export default createBrowserRouter(
   createRoutesFromElements(
@@ -24,6 +25,15 @@ export default createBrowserRouter(
             </React.Suspense>
           }
         />
+        <Route
+          path="login"
+          element={
+            <React.Suspense fallback={<FullScreenLoading />}>
+              <Login />
+            </React.Suspense>
+          }
+        />
+
         <Route path="arbitrage" element={<div>Arbitrage</div>} />
         <Route path="investment" element={<div>Investment</div>} />
         <Route path="news" element={<div>News</div>} />

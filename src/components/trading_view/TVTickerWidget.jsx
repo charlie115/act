@@ -1,39 +1,15 @@
-/* eslint-disable new-cap */
-/* eslint-disable no-new */
 import React, { useEffect, useRef } from 'react';
+
 import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
 
 import { useSelector } from 'react-redux';
 
 import useExternalScript from 'hooks/useExternalScript';
 
+import { TRADING_VIEW_TICKER_SYMBOLS } from 'constants/lists';
+
 const TICKER_CONFIG = {
-  symbols: [
-    {
-      description: '달러환율',
-      proName: 'FX_IDC:USDKRW',
-    },
-    {
-      description: '나스닥',
-      proName: 'FOREXCOM:NSXUSD',
-    },
-    {
-      description: 'S&P 500',
-      proName: 'FOREXCOM:SPXUSD',
-    },
-    {
-      description: 'BTC도미넌스',
-      proName: 'CRYPTOCAP:BTC.D',
-    },
-    {
-      description: '코스피',
-      proName: 'KRX:KOSPI',
-    },
-    {
-      // description: '코스닥',
-      proName: 'KRX:KOSDAQ',
-    },
-  ],
   isTransparent: false,
   showSymbolLogo: true,
 };
@@ -44,14 +20,13 @@ export default function TickerWidget() {
   const currentLanguage = useSelector((state) => state.app.language);
   const currentTheme = useSelector((state) => state.app.theme);
 
-  useExternalScript(
+  const script = useExternalScript(
     'https://s3.tradingview.com/external-embedding/embed-widget-tickers.js',
     {
-      attachToHeader: false,
-      containerRef: tickerRef,
-      scriptAttributes: {
+      attributes: {
         innerHTML: JSON.stringify({
           ...TICKER_CONFIG,
+          symbols: TRADING_VIEW_TICKER_SYMBOLS,
           colorTheme: currentTheme,
           locale: currentLanguage,
         }),
@@ -60,14 +35,15 @@ export default function TickerWidget() {
     [currentLanguage, currentTheme]
   );
 
-  useEffect(() => {}, []);
+  useEffect(() => {
+    while (tickerRef?.current.firstChild)
+      tickerRef?.current.removeChild(tickerRef?.current.firstChild);
+    tickerRef.current.appendChild(script.current);
+  }, [currentLanguage, currentTheme]);
 
   return (
-    <Box sx={{ my: 1 }}>
-      <div ref={tickerRef} className="tradingview-widget-container">
-        <div className="tradingview-widget-container__widget" />
-        <div className="tradingview-widget-copyright" />
-      </div>
+    <Box component={Paper} sx={{ mb: 1 }}>
+      <div ref={tickerRef} className="tradingview-widget-container" />
     </Box>
   );
 }

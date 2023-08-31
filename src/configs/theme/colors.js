@@ -6,7 +6,7 @@ export default {
 
   divider: 'rgba(0, 0, 0, 0.12)',
 
-  text: { main: '#7b809a' },
+  text: { main: '#373a48' },
 
   transparent: { main: 'transparent' },
 

@@ -1,3 +1,5 @@
+import { alpha } from '@mui/material/styles';
+
 import colors from './colors';
 
 export default {
@@ -27,6 +29,11 @@ export default {
           borderColor: colors.grey['700'],
           color: colors.grey['700'],
           opacity: 0.5,
+        },
+        '&.Mui-selected': {
+          backgroundColor: alpha(theme.palette.primary.main, 0.2),
+          color: theme.palette.text.main,
+          fontWeight: 700,
         },
       }),
     },

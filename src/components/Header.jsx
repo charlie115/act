@@ -22,8 +22,6 @@ import MenuIcon from '@mui/icons-material/Menu';
 
 import { styled } from '@mui/material/styles';
 
-import { Trans } from 'react-i18next';
-
 import debounce from 'lodash/debounce';
 
 import { useDispatch, useSelector } from 'react-redux';
@@ -61,9 +59,7 @@ export default function Header() {
 
   useEffect(() => {
     import('configs/navigation').then((res) => setPages(res.default));
-  }, []);
 
-  useEffect(() => {
     window.addEventListener('scroll', handleScroll);
     return () => window.addEventListener('scroll', handleScroll);
   }, []);

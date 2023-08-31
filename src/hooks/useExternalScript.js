@@ -1,59 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
-export default function useScript(url, options = {}, dependencies = []) {
-  const {
-    attachToHeader = true,
-    containerRef = null,
-    name = null,
-    scriptAttributes = {},
-  } = options;
+export default function useExternalScript(
+  url,
+  options = {},
+  dependencies = []
+) {
+  const script = useRef();
 
-  const [lib, setLib] = useState({});
+  const { attachToHeader = true, attributes = {}, onLoad } = options;
 
   useEffect(() => {
-    let script;
+    const scriptLoadingPromise = new Promise((resolve) => {
+      script.current = document.createElement('script');
+      script.current.src = url;
+      script.current.type = 'text/javascript';
+      script.current.async = true;
 
-    const removeScript = () => {
-      if (script)
-        try {
-          if (containerRef?.current) containerRef.current.removeChild(script);
-        } catch (e) {
-          while (containerRef?.current.firstChild) {
-            containerRef.current.removeChild(containerRef.current.firstChild);
-          }
-        }
-    };
-
-    if (name && window[name]) {
-      setLib({ [name]: window[name] });
-    } else {
-      const scriptLoadingPromise = new Promise((resolve) => {
-        script = document.createElement('script');
-        script.src = url;
-        script.type = 'text/javascript';
-        script.async = true;
-
-        Object.entries(scriptAttributes).forEach(([key, value]) => {
-          script[key] = value;
-        });
-
-        script.onload = resolve;
-
-        if (!attachToHeader) {
-          removeScript();
-          containerRef?.current?.appendChild(script);
-        } else document.head.appendChild(script);
+      Object.entries(attributes).forEach(([key, value]) => {
+        script.current[key] = value;
       });
 
-      scriptLoadingPromise.then(() => {
-        if (name) setLib({ [name]: window[name] });
-      });
-    }
+      script.current.onload = resolve;
 
-    return () => {
-      if (!attachToHeader) removeScript();
-    };
+      if (attachToHeader) document.head.appendChild(script.current);
+    });
+
+    scriptLoadingPromise.then(() => {
+      if (onLoad) onLoad();
+    });
   }, [url, ...dependencies]);
 
-  return lib[name] ?? null;
+  return script;
 }

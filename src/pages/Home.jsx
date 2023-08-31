@@ -6,16 +6,12 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 
-import { alpha, styled } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 
 import { useGetKpWebsocketDataQuery } from 'redux/api/websocket';
 
-// import CoinsSelector from 'components/CoinsSelector';
 import CoinsTable from 'components/CoinsTable';
-
-import ChartJsPriceChart from 'components/charts/ChartJsPriceChart';
-import LightWeightPriceChart from 'components/charts/LightWeightPriceChart';
-import RealTimePriceChart from 'components/charts/RealTimePriceChart';
+import TVTickerWidget from 'components/trading_view/TVTickerWidget';
 
 const SectionContainer = styled(Paper)(() => ({
   minHeight: 400,
@@ -29,18 +25,14 @@ function Home() {
 
   return (
     <Box>
-      <Grid container spacing={2}>
+      <TVTickerWidget />
+      <Grid container spacing={1.25}>
         <Box item md={2} component={Grid} display={{ sm: 'none', md: 'block' }}>
           <SectionContainer>AD???</SectionContainer>
         </Box>
         <Grid item sm={12} md={8}>
-          {/* <CoinsSelector /> */}
           <SectionContainer sx={{ p: 1 }}>
             <CoinsTable data={data?.coinData} priceData={data?.coinPriceData} />
-            {/* <ChartJsPriceChart data={data?.prices} symbol="SUI" /> */}
-            {/* <LightWeightPriceChart data={data?.prices} symbol="SUI" /> */}
-            {/* <RealTimePriceChart data={data?.prices} symbol="SUI" /> */}
-            {/* <TVRealTimeChart containerId="chart-1" symbol="BINANCE:SUIUSDT" /> */}
           </SectionContainer>
         </Grid>
         <Box item md={2} component={Grid} display={{ sm: 'none', md: 'block' }}>

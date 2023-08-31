@@ -70,3 +70,30 @@ export const TRADING_COMPANIES = [
   { getLabel: () => i18n.t('UPbit'), value: 'UPBIT', currency: 'KRW' },
   { getLabel: () => i18n.t('KIMP'), value: 'KIMP', currency: 'KRW' },
 ];
+
+export const TRADING_VIEW_TICKER_SYMBOLS = [
+  {
+    description: '달러환율',
+    proName: 'FX_IDC:USDKRW',
+  },
+  {
+    description: '나스닥',
+    proName: 'FOREXCOM:NSXUSD',
+  },
+  {
+    description: 'S&P 500',
+    proName: 'FOREXCOM:SPXUSD',
+  },
+  {
+    description: 'BTC도미넌스',
+    proName: 'CRYPTOCAP:BTC.D',
+  },
+  {
+    description: '코스피',
+    proName: 'KRX:KOSPI',
+  },
+  {
+    // description: '코스닥',
+    proName: 'KRX:KOSDAQ',
+  },
+];

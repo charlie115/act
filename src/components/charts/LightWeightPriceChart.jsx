@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -15,8 +15,24 @@ function LightWeightPriceChart({ data }) {
 
   const chartRef = useRef();
   const chartContainerRef = useRef();
-  const kimpPriceSeriesRef = useRef();
-  const binancePriceSeriesRef = useRef();
+  const leftPriceSeriesRef = useRef();
+  const rightPriceSeriesRef = useRef();
+
+  const chartData = useMemo(() => {
+    const leftData = data?.map((coin) => ({
+      time: coin.time,
+      value: coin.trade_price,
+    }));
+    const rightData = data?.map((coin) => ({
+      time: coin.time,
+      value: coin.tp_kimp,
+    }));
+
+    return {
+      left: sortBy(leftData ?? [], 'time'),
+      right: sortBy(rightData ?? [], 'time'),
+    };
+  }, [data]);
 
   useEffect(() => {
     chartRef.current = createChart(chartContainerRef.current, {
@@ -29,6 +45,10 @@ function LightWeightPriceChart({ data }) {
         },
         textColor: theme.palette.text.main,
       },
+      localization: {
+        timeFormatter: (time) =>
+          DateTime.fromMillis(time).toFormat('DD HH:mm:ss'),
+      },
       crosshair: { mode: 0 },
       width: chartContainerRef.current.clientWidth,
       height: 300,
@@ -37,40 +57,31 @@ function LightWeightPriceChart({ data }) {
       tickMarkFormatter: (time) =>
         DateTime.fromMillis(time).toFormat('HH:mm:ss'),
     });
-    kimpPriceSeriesRef.current = chartRef.current.addLineSeries({
-      color: '#2962FF',
-      lineWidth: 2,
-      priceFormat: {
-        minMove: 1,
-        precision: 0,
-      },
-    });
-    binancePriceSeriesRef.current = chartRef.current.addLineSeries({
+    leftPriceSeriesRef.current = chartRef.current.addLineSeries({
       priceScaleId: 'left',
       color: '#fd6396',
       lineWidth: 2,
-      priceFormat: {
-        minMove: 1,
-        precision: 0,
-      },
+      priceFormat: { precision: 2, minMove: 0.01 },
+      title: 'upbit?',
+    });
+    rightPriceSeriesRef.current = chartRef.current.addLineSeries({
+      priceScaleId: 'right',
+      color: '#2962FF',
+      lineWidth: 2,
+      priceFormat: { precision: 2, minMove: 0.01 },
+      title: 'tp_kimp',
+    });
+    rightPriceSeriesRef.current.priceScale().applyOptions({
+      autoScale: false,
+      scaleMargins: { bottom: 0, top: 0.9 },
     });
   }, []);
 
   useEffect(() => {
-    const kimpData = data?.map((coin) => ({
-      time: coin.time,
-      value: coin.tp_kimp,
-    }));
-    const binanceData = data?.map((coin) => ({
-      time: coin.time,
-      value: coin.binance_ask_price,
-    }));
-
-    kimpPriceSeriesRef.current.setData(sortBy(kimpData ?? [], 'time'));
-    binancePriceSeriesRef.current.setData(sortBy(binanceData ?? [], 'time'));
-
+    leftPriceSeriesRef.current.setData(chartData.left);
+    rightPriceSeriesRef.current.setData(chartData.right);
     chartRef.current.timeScale().fitContent();
-  }, [data]);
+  }, [chartData]);
 
   useEffect(() => {
     chartRef.current.applyOptions({

@@ -16,6 +16,7 @@ export const darkTheme = createTheme({
       default: '#000000',
       paper: '#0e1114',
     },
+    text: { main: '#ffffff' },
     divider: 'rgba(255, 255, 255, 0.12)',
     mode: 'dark',
   },

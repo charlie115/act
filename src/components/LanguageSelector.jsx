@@ -3,6 +3,8 @@ import React, { useEffect } from 'react';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 
+import { Settings } from 'luxon';
+
 import { useTranslation } from 'react-i18next';
 
 import { useDispatch, useSelector } from 'react-redux';
@@ -31,6 +33,7 @@ export default function LanguageSelector(props) {
 
   useEffect(() => {
     i18n.changeLanguage(language).then();
+    Settings.defaultLocale = language;
   }, [language]);
 
   const handleChange = async (e) => {

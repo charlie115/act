@@ -7,7 +7,7 @@ export const websocketSlice = createSlice({
   },
   reducers: {
     storeCoins: (state, { payload }) => {
-      console.log('payload: ', payload);
+      state.coins = payload;
     },
   },
   // extraReducers: () => {

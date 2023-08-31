@@ -1,18 +1,10 @@
-import React, {
-  Fragment,
-  useEffect,
-  useMemo,
-  useState,
-  useTransition,
-} from 'react';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import ButtonGroup from '@mui/material/ButtonGroup';
 import Collapse from '@mui/material/Collapse';
-import CircularProgress from '@mui/material/CircularProgress';
+import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -21,34 +13,25 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
 
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import BlockIcon from '@mui/icons-material/Block';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDownSharp';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUpSharp';
-import SearchIcon from '@mui/icons-material/Search';
 import StarIcon from '@mui/icons-material/Star';
 import StarOutlineIcon from '@mui/icons-material/StarOutline';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
-import { matchSort } from 'match-sorter';
+import debounce from 'lodash/debounce';
 import orderBy from 'lodash/orderBy';
 
-import { Trans, useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 
-import { styled } from '@mui/material/styles';
+import { styled, useTheme } from '@mui/material/styles';
 
-import { useGetKpWebsocketDataQuery } from 'redux/api/websocket';
-
-import ChartJsPriceChart from 'components/charts/ChartJsPriceChart';
-import LightWeightPriceChart from 'components/charts/LightWeightPriceChart';
-import TVRealTimeChart from 'components/trading_view/TVRealTimeChart';
+import CoinsSelector from 'components/CoinsSelector';
 
 import { coinicons } from 'assets/exports';
 
@@ -58,16 +41,27 @@ import {
   TRADING_COMPANIES,
 } from 'constants/lists';
 
+const IntervalBtn = styled(ToggleButton)(() => ({ textTransform: 'none' }));
+
 const TBodyCell = styled(TableCell)(() => ({ borderBottom: 0 }));
 
-const THeadCell = styled(TableCell)(({ theme }) => ({
-  color: theme.palette.grey[theme.palette.mode === 'dark' ? '300' : '400'],
+const THeadCell = styled(TableCell, {
+  shouldForwardProp: (prop) => prop !== 'active',
+})(({ active, theme }) => ({
+  color: active
+    ? theme.palette.text.main
+    : theme.palette.grey[theme.palette.mode === 'dark' ? '300' : '400'],
   cursor: 'pointer',
   fontSize: 11,
+  fontWeight: active ? 700 : 'normal',
 }));
 
+const LightWeightPriceChart = React.lazy(() =>
+  import('components/charts/LightWeightPriceChart')
+);
+
 function CoinsTable({ data, priceData }) {
-  const { t } = useTranslation();
+  const theme = useTheme();
 
   const language = useSelector((state) => state.app.language);
 
@@ -80,21 +74,26 @@ function CoinsTable({ data, priceData }) {
   const [tradingCo, setTradingCo] = useState([]);
   const [selectedTradingCo, setSelectedTradingCo] = useState(null);
 
-  const [sortFilter, setSortFilter] = useState({
+  const [filteredCoins, setFilteredCoins] = useState([]);
+
+  const [sortSetting, setSortSetting] = useState({
     sortKey: '',
     sortOrder: '',
   });
 
   const rows = useMemo(() => {
-    const parsedData = Object.entries(data ?? {}).map(([_, value]) => value);
-    return sortFilter.sortKey
-      ? orderBy(parsedData, sortFilter.sortKey, sortFilter.sortOrder)
+    const parsedData =
+      filteredCoins.length > 0
+        ? filteredCoins.map((coin) => data[coin])
+        : Object.entries(data ?? {}).map(([_, value]) => value);
+    return sortSetting.sortKey
+      ? orderBy(parsedData, sortSetting.sortKey, sortSetting.sortOrder)
       : parsedData;
-  }, [data, sortFilter]);
+  }, [data, filteredCoins, sortSetting]);
 
   useEffect(() => {
     setExpandedRows([]);
-  }, [sortFilter]);
+  }, [sortSetting]);
 
   useEffect(() => {
     setFields(
@@ -106,7 +105,6 @@ function CoinsTable({ data, priceData }) {
         ...interval,
       }))
     );
-
     const companies = TRADING_COMPANIES.map((comp) => ({
       label: comp.getLabel(),
       ...comp,
@@ -115,8 +113,8 @@ function CoinsTable({ data, priceData }) {
     setSelectedTradingCo(companies[0]);
   }, [language]);
 
-  const onChangeSortFilter = (sortKey) => {
-    setSortFilter((state) => {
+  const onChangeSortSetting = (sortKey) => {
+    setSortSetting((state) => {
       if (state.sortKey === sortKey) {
         switch (state.sortOrder) {
           case '':
@@ -148,8 +146,11 @@ function CoinsTable({ data, priceData }) {
     );
   };
 
+  const onFilterChange = debounce((value) => setFilteredCoins(value), 1000);
+
   return (
     <Box>
+      <CoinsSelector onChange={onFilterChange} />
       <TableContainer component={Paper}>
         <Table size="small" sx={{ tableLayout: 'fixed' }}>
           <TableHead>
@@ -160,34 +161,30 @@ function CoinsTable({ data, priceData }) {
                 <THeadCell
                   key={field.fieldKey}
                   nowrap="nowrap"
+                  active={sortSetting.sortKey === field.fieldKey}
                   {...field.headerProps}
-                  sx={
-                    sortFilter.sortKey === field.fieldKey
-                      ? { color: 'white.main', fontWeight: 700 }
-                      : {}
-                  }
                 >
                   <Stack
                     direction="row"
                     spacing={1}
                     sx={{ ...field.headerStackStyle }}
-                    onClick={() => onChangeSortFilter(field.fieldKey)}
+                    onClick={() => onChangeSortSetting(field.fieldKey)}
                   >
                     <Stack spacing={-1.25}>
                       <ArrowDropUpIcon
                         color={
-                          sortFilter.sortKey === field.fieldKey &&
-                          sortFilter.sortOrder === 'asc'
-                            ? 'white'
+                          sortSetting.sortKey === field.fieldKey &&
+                          sortSetting.sortOrder === 'asc'
+                            ? theme.palette.text.main
                             : 'secondary'
                         }
                         sx={{ fontSize: 16 }}
                       />
                       <ArrowDropDownIcon
                         color={
-                          sortFilter.sortKey === field.fieldKey &&
-                          sortFilter.sortOrder === 'desc'
-                            ? 'white'
+                          sortSetting.sortKey === field.fieldKey &&
+                          sortSetting.sortOrder === 'desc'
+                            ? theme.palette.text.main
                             : 'secondary'
                         }
                         sx={{ fontSize: 16 }}
@@ -294,13 +291,13 @@ function CoinsTable({ data, priceData }) {
                             size="small"
                           >
                             {intervals.map((interval) => (
-                              <ToggleButton
+                              <IntervalBtn
                                 key={interval.value}
                                 value={interval.value}
                                 sx={{ fontSize: 11, py: 0 }}
                               >
                                 {interval.label}
-                              </ToggleButton>
+                              </IntervalBtn>
                             ))}
                           </ToggleButtonGroup>
                           <ToggleButtonGroup
@@ -326,11 +323,9 @@ function CoinsTable({ data, priceData }) {
                             ))}
                           </ToggleButtonGroup>
                         </Box>
-                        <LightWeightPriceChart data={priceData[row.name]} />
-                        {/* <TVRealTimeChart
-                          containerId={`tv-realtime-chart-${row.name}`}
-                          symbol={`${selectedTradingCo?.value}:${row.name}${selectedTradingCo?.currency}`}
-                        /> */}
+                        <React.Suspense fallback={null}>
+                          <LightWeightPriceChart data={priceData[row.name]} />
+                        </React.Suspense>
                       </Stack>
                     </Collapse>
                   </TableCell>

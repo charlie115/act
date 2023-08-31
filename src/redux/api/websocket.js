@@ -1,10 +1,15 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { createEntityAdapter, current } from '@reduxjs/toolkit';
+import { current } from '@reduxjs/toolkit';
 
 import { DateTime } from 'luxon';
 
 import debounce from 'lodash/debounce';
+import isEqual from 'lodash/isEqual';
 import throttle from 'lodash/throttle';
+
+import { storeCoins } from 'redux/reducers/websocket';
+
+const CACHE_MAX_ENTRY = 1000;
 
 // TODO: Refactor when all websocket connections are finalized
 let kpWs;
@@ -32,7 +37,14 @@ const websocketApi = createApi({
       //   coinsAdapter.addMany(coinsAdapter.getInitialState(), response),
       onCacheEntryAdded: async (
         arg,
-        { cacheDataLoaded, cacheEntryRemoved, dispatch, updateCachedData }
+        {
+          cacheDataLoaded,
+          cacheEntryRemoved,
+          dispatch,
+          getCacheEntry,
+          getState,
+          updateCachedData,
+        }
       ) => {
         const socket = await getKpWebsocketConnection();
 
@@ -42,7 +54,6 @@ const websocketApi = createApi({
           try {
             const result = JSON.parse(message.result);
             updateCachedData((draft) => {
-              // draft.rawData.push(result);
               result.forEach((item) => {
                 const name = item.symbol.endsWith('USDT')
                   ? item.symbol.slice(0, -4)
@@ -94,7 +105,6 @@ const websocketApi = createApi({
                       price: item.tp_kimp,
                       volume: item.acc_trade_price_24h,
                     };
-
                     draft.coinPriceData[name].push({
                       name,
                       id: name,
@@ -103,9 +113,16 @@ const websocketApi = createApi({
                     });
                   }
                 }
+                if (draft.coinPriceData[name]?.length > CACHE_MAX_ENTRY)
+                  draft.coinPriceData[name].shift();
                 draft.coinTimestamps[name] = item.upbit_timestamp;
               });
             });
+
+            const cache = getCacheEntry();
+            const state = getState();
+            if (!isEqual(cache.data.coinList, state.websocket.coins))
+              dispatch(storeCoins(cache.data.coinList));
           } catch {
             /* empty */
           }

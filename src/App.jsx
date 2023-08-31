@@ -7,7 +7,6 @@ import CssBaseline from '@mui/material/CssBaseline';
 import GlobalStyles from '@mui/material/GlobalStyles';
 
 import { useSelector } from 'react-redux';
-
 import { useTranslation } from 'react-i18next';
 
 import FullScreenLoading from 'components/FullScreenLoading';
@@ -45,6 +44,7 @@ function App() {
           '::-webkit-scrollbar-thumb:window-inactive': {
             background: 'rgba(203, 227, 236, 0.4)',
           },
+          input: { textTransform: 'unset' },
         }}
       />
       <RouterProvider router={router} fallbackElement={<FullScreenLoading />} />
