@@ -61,9 +61,8 @@ THIRD_PARTY_APPS = (
     'allauth.socialaccount.providers.google',
     'dj_rest_auth',
     'dj_rest_auth.registration',
-    # 'rest_auth',                    # rest authentication
-    # 'django_filters',               # for filtering rest endpoints
-    # 'drf_spectacular',              # api doc
+    # 'django_filters',
+    'drf_spectacular',
 )
 
 LOCAL_APPS = (
@@ -141,7 +140,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
     ],
-    # 'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 REST_AUTH = {
@@ -206,11 +205,11 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'Arbitrage Community APIs',
     'DESCRIPTION': 'List of all available APIs in Arbitrage Community',
     'VERSION': '1.0.0',
-    'AUTHENTICATION_WHITELIST': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
-    ],
-    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],   # ['rest_framework.permissions.IsAuthenticated'],
+    # 'AUTHENTICATION_WHITELIST': [
+    #     'rest_framework_simplejwt.authentication.JWTAuthentication',
+    #     'rest_framework.authentication.SessionAuthentication'
+    # ],
+    'SERVE_PERMISSIONS': ['lib.permissions.IsDjangoAdmin' or 'lib.permissions.IsACWAdmin'],
     'SERVE_INCLUDE_SCHEMA': False,
 }
 

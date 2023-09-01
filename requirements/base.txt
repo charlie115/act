@@ -7,5 +7,6 @@ django-environ==0.10.0
 django-filter==23.2
 djangorestframework==3.14.0
 djangorestframework-simplejwt==5.2.2
+drf-spectacular==0.26.4
 Markdown==3.4.4
 psycopg[binary]==3.1.10
