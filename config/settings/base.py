@@ -67,6 +67,7 @@ THIRD_PARTY_APPS = (
 )
 
 LOCAL_APPS = (
+    'arbot',
     'authentication',
     'users',
 )

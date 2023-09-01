@@ -1,9 +1,11 @@
 from rest_framework import serializers
 
+from arbot.serializers import ArbotUserConfigSerializer
+from users.mixins import UserUUIDSerializerMixin
 from users.models import User, UserFavoriteSymbols, UserProfile
 
 
-class UserFavoriteSymbolsSerializer(serializers.ModelSerializer):
+class UserFavoriteSymbolsSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
 
     class Meta:
         model = UserFavoriteSymbols
@@ -15,7 +17,7 @@ class UserFavoriteSymbolsSerializer(serializers.ModelSerializer):
         }
 
 
-class UserProfileSerializer(serializers.ModelSerializer):
+class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
@@ -25,8 +27,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    profile = UserProfileSerializer(source='userprofile')
-    favorite_symbols = UserFavoriteSymbolsSerializer(many=True)
+    profile = UserProfileSerializer(source='userprofile', read_only=True)
+    favorite_symbols = UserFavoriteSymbolsSerializer(many=True, read_only=True)
+    arbot_config = ArbotUserConfigSerializer()
 
     def create(self, validated_data):
         password = validated_data.pop('password')
@@ -40,14 +43,15 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'uuid', 'email', 'password', 'first_name', 'last_name', 'is_active', 'profile', 'favorite_symbols',
+            'uuid', 'email', 'password', 'first_name', 'last_name', 'is_active',
+            'profile', 'favorite_symbols', 'arbot_config'
         )
         extra_kwargs = {
             'email': {
                 'style': {'input_type': 'email', 'placeholder': 'Email'}
             },
             'password': {
-                'write_only': True, 
+                'write_only': True,
                 'style': {'input_type': 'password', 'placeholder': 'Password'}
             },
             'is_active': {'read_only': True},

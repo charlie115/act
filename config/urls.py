@@ -32,5 +32,6 @@ urlpatterns = [
     path('', EndpointListView.as_view(), name='endpoint list'),
     path('admin/', admin.site.urls),
     path('auth/', include('authentication.urls'), name='authentication urls'),
+    path('arbot/', include('arbot.urls'), name='arbot urls'),
     path('users/', include('users.urls'), name='users urls'),
 ]
