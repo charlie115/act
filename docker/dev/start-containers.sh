@@ -9,7 +9,7 @@ source $BASE_DIR/scripts/cecho.sh
 if [ ! -f $BASE_DIR/.env.dev ]; then
     echo
     echo "${RED}.env.dev${SET} file not found."
-    echo "Check env.example and prepare your ${RED}.env.dev${SET} file first."
+    echo "Check $BASE_DIR/.env.example and prepare your ${RED}$BASE_DIR/.env.dev${SET} file first."
     echo
     exit
 fi
@@ -18,7 +18,7 @@ fi
 if [ ! -f $BASE_DIR/docker/dev/.env ]; then
     echo
     echo "${RED}.env${SET} file not found."
-    echo "Check env.example and prepare ${RED}.env${SET} file for the docker compose first."
+    echo "Check .env.example and prepare ${RED}.env${SET} file for the docker compose first."
     echo
     exit
 fi
