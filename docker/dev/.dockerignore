@@ -1,0 +1,8 @@
+.editorconfig
+.gitattributes
+.gitignore
+.idea
+.git
+.envs/
+*venv*
+*db.sqlite*

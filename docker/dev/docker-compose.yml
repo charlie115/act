@@ -1,0 +1,39 @@
+services:
+
+  postgres:
+    image: postgres
+    container_name: dev-community-db
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    networks:
+      - dev-drf-network
+    restart: always
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "${POSTGRES_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  drf:
+    image: community-drf:dev
+    build:
+      dockerfile: ${PROJECT_DIR}/docker/dev/Dockerfile
+      context:  ${PROJECT_DIR}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    container_name: dev-community-drf
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - dev-drf-network
+    restart: always
+  
+networks:
+  dev-drf-network:
+    driver: bridge
