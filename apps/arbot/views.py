@@ -5,10 +5,10 @@ from arbot.serializers import ArbotNodeSerializer, ArbotUserConfigSerializer
 
 
 class ArbotNodeViewSet(viewsets.ModelViewSet):
-    queryset = ArbotNode.objects.all().order_by('id')
+    queryset = ArbotNode.objects.all().order_by("id")
     serializer_class = ArbotNodeSerializer
 
 
 class ArbotUserConfigViewSet(viewsets.ModelViewSet):
-    queryset = ArbotUserConfig.objects.all().order_by('id')
+    queryset = ArbotUserConfig.objects.all().order_by("id")
     serializer_class = ArbotUserConfigSerializer

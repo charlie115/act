@@ -7,7 +7,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -16,33 +15,105 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='ArbotNode',
+            name="ArbotNode",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=150)),
-                ('domain', models.CharField(max_length=200)),
-                ('port', models.CharField(max_length=5, validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(65535)])),
-                ('telegram_bot_id', models.CharField(max_length=50)),
-                ('telegram_bot_token', models.CharField(max_length=50)),
-                ('description', models.CharField(blank=True, max_length=255, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=150)),
+                ("domain", models.CharField(max_length=200)),
+                (
+                    "port",
+                    models.CharField(
+                        max_length=5,
+                        validators=[
+                            django.core.validators.MinValueValidator(1),
+                            django.core.validators.MaxValueValidator(65535),
+                        ],
+                    ),
+                ),
+                ("telegram_bot_id", models.CharField(max_length=50)),
+                ("telegram_bot_token", models.CharField(max_length=50)),
+                (
+                    "description",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='ArbotUserConfig',
+            name="ArbotUserConfig",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('service_expiry_date', models.DateTimeField()),
-                ('addcir_limit', models.DecimalField(blank=True, decimal_places=4, help_text='Format: 000.0000', max_digits=7, null=True)),
-                ('addcir_num_limit', models.IntegerField(blank=True, null=True)),
-                ('binance_leverage', models.IntegerField(default=4, validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(100)])),
-                ('binance_cross', models.BooleanField(default=False)),
-                ('risk_warning_mode', models.IntegerField(choices=[(0, 0), (1, 1), (2, 2)], default=2)),
-                ('risk_warning_threshold_p', models.DecimalField(blank=True, decimal_places=4, max_digits=5, null=True, validators=[django.core.validators.MaxValueValidator(0)])),
-                ('safe_reverse', models.BooleanField(default=True)),
-                ('alarm_num', models.IntegerField(default=1)),
-                ('alarm_term_sec', models.IntegerField(default=1)),
-                ('node', models.ForeignKey(on_delete=django.db.models.deletion.RESTRICT, related_name='user_configs', to='arbot.arbotnode')),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='arbot_config', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("service_expiry_date", models.DateTimeField()),
+                (
+                    "addcir_limit",
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=4,
+                        help_text="Format: 000.0000",
+                        max_digits=7,
+                        null=True,
+                    ),
+                ),
+                ("addcir_num_limit", models.IntegerField(blank=True, null=True)),
+                (
+                    "binance_leverage",
+                    models.IntegerField(
+                        default=4,
+                        validators=[
+                            django.core.validators.MinValueValidator(1),
+                            django.core.validators.MaxValueValidator(100),
+                        ],
+                    ),
+                ),
+                ("binance_cross", models.BooleanField(default=False)),
+                (
+                    "risk_warning_mode",
+                    models.IntegerField(choices=[(0, 0), (1, 1), (2, 2)], default=2),
+                ),
+                (
+                    "risk_warning_threshold_p",
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=4,
+                        max_digits=5,
+                        null=True,
+                        validators=[django.core.validators.MaxValueValidator(0)],
+                    ),
+                ),
+                ("safe_reverse", models.BooleanField(default=True)),
+                ("alarm_num", models.IntegerField(default=1)),
+                ("alarm_term_sec", models.IntegerField(default=1)),
+                (
+                    "node",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.RESTRICT,
+                        related_name="user_configs",
+                        to="arbot.arbotnode",
+                    ),
+                ),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="arbot_config",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

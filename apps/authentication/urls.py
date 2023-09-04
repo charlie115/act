@@ -12,7 +12,8 @@ class AuthAPIListView(routers.APIRootView):
     """
     Authentication API endpoints
     """
-    http_method_names = ['get']
+
+    http_method_names = ["get"]
 
     def get(self, request, *args, **kwargs):
         api_list = {
@@ -20,7 +21,7 @@ class AuthAPIListView(routers.APIRootView):
             for url in dj_rest_auth_urls
         }
         if os.environ["DJANGO_SETTINGS_MODULE"] == "config.settings.dev":
-            api_list['login/basic'] = request.build_absolute_uri('login/basic/')
+            api_list["login/basic"] = request.build_absolute_uri("login/basic/")
 
         api_list = dict(sorted(api_list.items()))
 
@@ -28,12 +29,12 @@ class AuthAPIListView(routers.APIRootView):
 
 
 urlpatterns = [
-    path('', AuthAPIListView.as_view(), name='auth api list'),
-    path('login/', GoogleLogin.as_view(), name='google login'),
-    path('', include('dj_rest_auth.urls')),
+    path("", AuthAPIListView.as_view(), name="auth api list"),
+    path("login/", GoogleLogin.as_view(), name="google login"),
+    path("", include("dj_rest_auth.urls")),
 ]
 
 if os.environ["DJANGO_SETTINGS_MODULE"] == "config.settings.dev":
     urlpatterns += [
-        path('login/basic/', LoginView.as_view(), name='basic login'),
+        path("login/basic/", LoginView.as_view(), name="basic login"),
     ]

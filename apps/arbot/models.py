@@ -6,7 +6,9 @@ from django.db import models
 class ArbotNode(models.Model):
     name = models.CharField(max_length=150)
     domain = models.CharField(max_length=200)
-    port = models.CharField(max_length=5, validators=[MinValueValidator(1), MaxValueValidator(65535)])
+    port = models.CharField(
+        max_length=5, validators=[MinValueValidator(1), MaxValueValidator(65535)]
+    )
     telegram_bot_id = models.CharField(max_length=50)
     telegram_bot_token = models.CharField(max_length=50)
     description = models.CharField(max_length=255, blank=True, null=True)
@@ -28,27 +30,38 @@ class ArbotUserConfig(models.Model):
         (RISK_WARNING_MODE_SEND_AND_EXIT, 2),
     )
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='arbot_config')
-    node = models.ForeignKey(ArbotNode, on_delete=models.RESTRICT, related_name='user_configs')
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="arbot_config"
+    )
+    node = models.ForeignKey(
+        ArbotNode, on_delete=models.RESTRICT, related_name="user_configs"
+    )
 
     service_expiry_date = models.DateTimeField()
 
     addcir_limit = models.DecimalField(
-        max_digits=7, decimal_places=4, blank=True, null=True,
-        help_text="Format: 000.0000"
+        max_digits=7,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        help_text="Format: 000.0000",
     )
     addcir_num_limit = models.IntegerField(blank=True, null=True)
 
-    binance_leverage = models.IntegerField(default=4, validators=[MinValueValidator(1), MaxValueValidator(100)])
+    binance_leverage = models.IntegerField(
+        default=4, validators=[MinValueValidator(1), MaxValueValidator(100)]
+    )
     binance_cross = models.BooleanField(default=BINANCE_MARGIN_MODE_ISOLATED)
 
     risk_warning_mode = models.IntegerField(
-        default=RISK_WARNING_MODE_SEND_AND_EXIT,
-        choices=RiskWarningModes
+        default=RISK_WARNING_MODE_SEND_AND_EXIT, choices=RiskWarningModes
     )
     risk_warning_threshold_p = models.DecimalField(
-        max_digits=5, decimal_places=4, blank=True, null=True,
-        validators=[MaxValueValidator(0)]
+        max_digits=5,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        validators=[MaxValueValidator(0)],
     )
 
     safe_reverse = models.BooleanField(default=True)

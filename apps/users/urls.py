@@ -7,6 +7,7 @@ class UserAPIListView(routers.APIRootView):
     """
     List of User APIs
     """
+
     pass
 
 
@@ -15,8 +16,8 @@ class DocumentedRouter(routers.DefaultRouter):
 
 
 router = DocumentedRouter()
-router.register(r'users', UserViewSet)
-router.register(r'favorite-symbols', UserFavoriteSymbolsViewSet)
-router.register(r'profiles', UserProfileViewSet)
+router.register(r"users", UserViewSet)
+router.register(r"favorite-symbols", UserFavoriteSymbolsViewSet)
+router.register(r"profiles", UserProfileViewSet)
 
 urlpatterns = router.urls

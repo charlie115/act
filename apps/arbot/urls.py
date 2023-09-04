@@ -7,6 +7,7 @@ class ArbotAPIListView(routers.APIRootView):
     """
     Arbot API endpoints
     """
+
     pass
 
 
@@ -15,7 +16,7 @@ class DocumentedRouter(routers.DefaultRouter):
 
 
 router = DocumentedRouter()
-router.register(r'nodes', ArbotNodeViewSet)
-router.register(r'user-configs', ArbotUserConfigViewSet)
+router.register(r"nodes", ArbotNodeViewSet)
+router.register(r"user-configs", ArbotUserConfigViewSet)
 
 urlpatterns = router.urls

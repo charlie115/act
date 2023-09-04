@@ -13,11 +13,11 @@ class CustomUserAdmin(BaseUserAdmin):
         new_fieldsets = []
         for name, fieldset in fieldsets:
             if name == "Personal info":
-                new_fields = fieldset['fields'] + ('telegram_id', )
-                new_fieldsets.append((name, {'fields': new_fields}))
+                new_fields = fieldset["fields"] + ("telegram_id",)
+                new_fieldsets.append((name, {"fields": new_fields}))
             elif name == "Important dates":
-                new_fields = fieldset['fields'] + ('last_username_change', )
-                new_fieldsets.append((name, {'fields': new_fields}))
+                new_fields = fieldset["fields"] + ("last_username_change",)
+                new_fieldsets.append((name, {"fields": new_fields}))
             else:
                 new_fieldsets.append((name, fieldset))
 
