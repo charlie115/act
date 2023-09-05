@@ -50,13 +50,13 @@ DJANGO_APPS = (
 
 THIRD_PARTY_APPS = (
     "corsheaders",
-    "rest_framework",
-    "rest_framework.authtoken",
-    "rest_framework_simplejwt",
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
+    "rest_framework",
+    "rest_framework.authtoken",
+    "rest_framework_simplejwt",
     "dj_rest_auth",
     "dj_rest_auth.registration",
     # 'django_filters',
@@ -142,6 +142,8 @@ REST_AUTH = {
     "USE_JWT": True,
     "JWT_AUTH_HTTPONLY": False,
     "JWT_AUTH_RETURN_EXPIRATION": True,
+    "JWT_AUTH_COOKIE": "drf-auth",
+    "JWT_AUTH_REFRESH_COOKIE": "drf-refresh",
     "USER_DETAILS_SERIALIZER": "users.serializers.UserSerializer",
 }
 
@@ -203,6 +205,22 @@ SPECTACULAR_SETTINGS = {
         "lib.permissions.IsDjangoAdmin" or "lib.permissions.IsACWAdmin"
     ],
     "SERVE_INCLUDE_SCHEMA": False,
+    "EXTENSIONS_ROOT": {
+        "x-tagGroups": [
+            {
+                "name": "ARBOT",
+                "tags": ["ArbotNode", "ArbotUserConfig"],
+            },
+            {
+                "name": "AUTHORIZATION",
+                "tags": ["Auth"],
+            },
+            {
+                "name": "USER",
+                "tags": ["User", "UserProfile", "UserFavoriteSymbol"],
+            },
+        ],
+    },
 }
 
 # Static files (CSS, JavaScript, Images)

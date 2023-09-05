@@ -3,5 +3,7 @@ BASE_DIR=$(dirname $(dirname "$CURRENT_DIR"))
 
 source $BASE_DIR/scripts/cecho.sh
 
-# Stop and remove containers
+
+echo "${BCYAN}Stopping and removing docker containers...${SET}"
+echo
 docker compose down -v
