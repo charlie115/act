@@ -17,15 +17,24 @@ class UserFavoriteSymbolsSerializer(
 
 
 class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
+    picture = serializers.SerializerMethodField()
+
+    def get_picture(self, obj):
+        google_accounts = obj.user.socialaccount_set.filter(provider="google")
+        if len(google_accounts) > 0:
+            return google_accounts.first().extra_data["picture"]
+        else:
+            return None
+
     class Meta:
         model = UserProfile
-        fields = ("referral", "level", "points")
+        fields = ("referral", "level", "points", "picture")
 
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(source="userprofile", read_only=True)
     favorite_symbols = UserFavoriteSymbolsSerializer(many=True, read_only=True)
-    arbot_config = ArbotUserConfigSerializer()
+    arbot_config = ArbotUserConfigSerializer(read_only=True)
 
     def create(self, validated_data):
         password = validated_data.pop("password")

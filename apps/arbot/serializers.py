@@ -20,6 +20,9 @@ class ArbotNodeSerializer(ArbotNodeValidatorMixin, serializers.ModelSerializer):
             "description",
             "user_configs",
         )
+        extra_kwargs = {
+            "user_configs": {"read_only": True},
+        }
 
 
 class ArbotUserConfigSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
