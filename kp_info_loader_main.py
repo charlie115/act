@@ -73,6 +73,8 @@ if __name__ == '__main__':
     register_monitor_msg = RegisterMonitorMsg(monitor_bot_token, monitor_bot_api_url, admin_id)
     # Read api keys
     exchange_api_key_dict = config['exchange_api_key']
+    # Exchange market settings
+    enabled_markets_dict = config['enabled_markets']
 
     # idle
     # kimp_core.update_kimp_to_redis_thread.join()
@@ -99,10 +101,8 @@ if __name__ == '__main__':
     kline_schema_name = 'coin_kimp_kline'
     
     # Initiate Kimp core (Websocket engine)
-    kimp_core = InitKimpCore(logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict)
-    # kimp_core.set_monitor_bot_token(monitor_bot_token)
-    # kimp_core.set_monitor_api_url(monitor_bot_api_url)
-    kimp_core.monitor_websocket()
+    kimp_core = InitKimpCore(logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_markets_dict)
+    # kimp_core.monitor_websocket()
     kimp_core.start_monitor_update_kimp_to_redis()
     kimp_core.start_monitor_update_wa_kimp_to_redis()
     kimp_core.start_monitor_update_dollar_to_redis()

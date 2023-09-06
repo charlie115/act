@@ -11,6 +11,19 @@
             "reference_node": null
         }
     },
+    "enabled_markets":
+    {
+        "UPBIT": 
+        {
+            "SPOT": ["KRW-","BTC-"]
+        },
+        "BINANCE":
+        {
+            "SPOT": ["USDT", "BUSD", "BTC"],
+            "USD_M_FUTURES": ["USDT_PERPETUAL", "BUSD_PERPETUAL"],
+            "COIN_M_FUTURES": ["PERPETUAL"]
+        }
+    },
     "telegram_bot_setting": 
     {
         "monitor_bot": "2107044564:AAFJUX_f2BEA-tp5TLxtOMUg5cqGE_mYnQo",
@@ -26,19 +39,6 @@
     {
         "monitor_bot": "kp_trade_monitor",
         "monitor_bot_api_url": "http://221.148.128.214:22180/api/monitor_v1/monitorbot/"
-    },
-    "database_name":
-    {
-        "kimp_trading_bot": "coin_trade",
-        "people_kimp_trading_bot": "coin_trade",
-        "kimp_trading2_bot": "coin_trade2",
-        "kimp_charlie_bot": "coin_trade_charlie",
-        "kimp_telegram_bot": "coin",
-        "new_telegram_bot": "scrapy",
-        "coin_futures_bot": "coin",
-        "monitor_bot": "",
-        "test_bot": "coin_trade_test",
-        "kp_trade_v2_dev": "kp_trade_v2_dev"
     },
     "database_setting":
     {

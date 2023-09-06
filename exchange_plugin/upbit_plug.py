@@ -37,9 +37,10 @@ def calculate_upbit_price(price):
     return price
 
 class InitUpbitAdaptor:
-    def __init__(self, my_upbit_access_key=None, my_upbit_secret_key=None, logging_dir=None):
+    def __init__(self, my_upbit_access_key=None, my_upbit_secret_key=None, info_dict=None, logging_dir=None):
         self.my_client = Upbit(my_upbit_access_key, my_upbit_secret_key)
         self.pub_client = Upbit()
+        self.info_dict = info_dict
         self.upbit_plug_logger = KimpBotLogger("upbit_plug", logging_dir).logger
         self.upbit_plug_logger.info(f"upbit_plug_logger started.")
 
@@ -53,6 +54,19 @@ class InitUpbitAdaptor:
         upbit_symbols = upbit_symbols_df['market'].to_list()
         upbit_all_ticker_df = pd.DataFrame(upbit_client.Trade.Trade_ticker(markets=','.join(upbit_symbols))['result'])
         upbit_all_ticker_df = upbit_all_ticker_df.applymap(lambda x: pd.to_numeric(x, errors='ignore'))
+        def convert_to_krw(x):
+            if x['market'].startswith('KRW-'):
+                return x['acc_trade_price_24h']
+            else:
+                try:
+                    output = x['acc_trade_price_24h'] * upbit_all_ticker_df[upbit_all_ticker_df['market']==f"KRW-{x['market'].split('-')[0]}"]['trade_price'].iloc[0]
+                except:
+                    output = None
+                return output
+        upbit_all_ticker_df['base_asset'] = upbit_all_ticker_df['market'].apply(lambda x: x.split('-')[1])
+        upbit_all_ticker_df['quote_asset'] = upbit_all_ticker_df['market'].apply(lambda x: x.split('-')[0])
+        upbit_all_ticker_df['acc_trade_price_24h_krw'] = upbit_all_ticker_df.apply(convert_to_krw, axis=1)
+        upbit_all_ticker_df.rename(columns={"trade_price": "lastPrice"}, inplace=True)
         if return_dict is None:
             res = upbit_all_ticker_df
             return res
