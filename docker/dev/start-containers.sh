@@ -5,7 +5,7 @@ source $BASE_DIR/scripts/cecho.sh
 
 
 echo
-echo "${BCYAN}[1/5] Checking .env for docker compose...${SET}"
+echo "${BCYAN}[1/6] Checking .env for docker compose...${SET}"
 if [ ! -f $BASE_DIR/docker/dev/.env ]; then
     echo "  ${RED}.env${SET} file for ${BRED}docker compose${SET} not found."
     echo "  Check ./.env.example and prepare ${RED}./.env${SET} file for the docker compose first."
@@ -15,7 +15,7 @@ fi
 
 
 echo
-echo "${BCYAN}[2/5] Checking .env.dev for the django project...${SET}"
+echo "${BCYAN}[2/6] Checking .env.dev for the django project...${SET}"
 if [ ! -f $BASE_DIR/.env.dev ]; then
     echo "  ${RED}.env.dev${SET} file for ${BRED}django project${SET} not found."
     echo "  Check $BASE_DIR/.env.example"
@@ -26,18 +26,23 @@ fi
 
 
 echo
-echo "${BCYAN}[3/5] Building and running docker containers...${SET}"
+echo "${BCYAN}[3/6] Creating directory for postgres data...${SET}"
+mkdir -p $HOME/dev-community-db
+
+
+echo
+echo "${BCYAN}[4/6] Building and running docker containers...${SET}"
 docker compose up --build -d
 
 
 echo
-echo "${BCYAN}[4/5] Migrating django migrations to the database...${SET}"
+echo "${BCYAN}[5/6] Migrating django migrations to the database...${SET}"
 echo
 docker exec -it dev-community-drf python manage.py migrate
 
 
 echo
-echo "${BCYAN}[5/5] Creating superuser...${SET}"
+echo "${BCYAN}[6/6] Creating superuser...${SET}"
 echo
 echo "${BCYAN}Create superuser?${SET} y/Y"
 read create_superuser
