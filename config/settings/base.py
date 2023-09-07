@@ -39,6 +39,10 @@ SITE_ID = 1
 # Application definition
 
 DJANGO_APPS = (
+    "unfold",
+    "unfold.contrib.filters",  # optional, if special filters are needed
+    "unfold.contrib.forms",  # optional, if special form elements are needed
+    "unfold.contrib.import_export",  # optional, if django-import-export package is used
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -172,6 +176,7 @@ SIMPLE_JWT = {
 
 # django-allauth config
 ACCOUNT_USER_MODEL_USERNAME_FIELD = "email"
+
 ACCOUNT_AUTHENTICATION_METHOD = "username_email"
 
 SOCIALACCOUNT_PROVIDERS = {
@@ -273,3 +278,20 @@ LANGUAGES = [
 LOCALE_PATHS = [
     join(Path(BASE_DIR).parent.absolute(), "locale"),
 ]
+
+
+UNFOLD = {
+    "SITE_TITLE": "Django Admin",
+    "SITE_HEADER": "Django Admin",
+    "SITE_URL": "/",
+    "SITE_SYMBOL": "settings",  # symbol from icon set
+    # "LOGIN": {
+    #     "image": lambda r: static("sample/login-bg.jpg"),
+    # },
+    # "STYLES": [
+    #     lambda request: static("css/style.css"),
+    # ],
+    # "SCRIPTS": [
+    #     lambda request: static("js/script.js"),
+    # ],
+}
