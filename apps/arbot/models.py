@@ -6,8 +6,8 @@ from django.db import models
 class ArbotNode(models.Model):
     name = models.CharField(max_length=150)
     domain = models.CharField(max_length=200)
-    port = models.CharField(
-        max_length=5, validators=[MinValueValidator(1), MaxValueValidator(65535)]
+    port = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(65535)]
     )
     telegram_bot_id = models.CharField(max_length=50)
     telegram_bot_token = models.CharField(max_length=50)

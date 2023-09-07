@@ -7,8 +7,6 @@ from users.mixins import UserUUIDSerializerMixin
 
 
 class ArbotNodeSerializer(ArbotNodeValidatorMixin, serializers.ModelSerializer):
-    port = serializers.IntegerField()
-
     class Meta:
         model = ArbotNode
         fields = (

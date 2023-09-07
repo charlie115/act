@@ -12,3 +12,10 @@ class ArbotNodeValidatorMixin(object):
         URLValidator()(domain)
 
         return domain
+
+    def clean(self):
+        cleaned_data = super().clean()
+        domain = cleaned_data.get("domain")
+        cleaned_data["domain"] = self.validate_domain(domain)
+
+        return cleaned_data
