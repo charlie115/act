@@ -20,9 +20,11 @@ export const darkTheme = createTheme({
     divider: 'rgba(255, 255, 255, 0.12)',
     mode: 'dark',
   },
+  typography: { fontSize: 12 },
 });
 
 export default createTheme({
   components,
   palette: { ...colors },
+  typography: { fontSize: 12 },
 });

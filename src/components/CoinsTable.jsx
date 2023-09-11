@@ -3,6 +3,8 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -11,6 +13,8 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
@@ -21,27 +25,31 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDownSharp';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUpSharp';
 import StarIcon from '@mui/icons-material/Star';
 import StarOutlineIcon from '@mui/icons-material/StarOutline';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import SyncAltIcon from '@mui/icons-material/SyncAlt';
 
 import debounce from 'lodash/debounce';
 import orderBy from 'lodash/orderBy';
 
 import { useSelector } from 'react-redux';
 
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { styled, useTheme } from '@mui/material/styles';
 
 import CoinsSelector from 'components/CoinsSelector';
+import PeriodIntervalToggle from 'components/PeriodIntervalToggle';
 
 import { coinicons } from 'assets/exports';
 
-import {
-  COIN_FIELDS,
-  DATA_INTERVALS,
-  TRADING_COMPANIES,
-} from 'constants/lists';
+import { TRADING_PLATFORMS } from 'constants/lists';
 
-const IntervalBtn = styled(ToggleButton)(() => ({ textTransform: 'none' }));
+const FROM_MARKET = ['Upbit', 'Upbit(BTC)', 'Bithumb', 'Coinone'];
+const TO_MARKET = [
+  'Binance BTC Market',
+  'Binance USDT Market',
+  'Binance BUSD Market',
+  'Binance Futures USD-M Market',
+  'Binance Futures BUSD Market',
+];
 
 const TBodyCell = styled(TableCell)(() => ({ borderBottom: 0 }));
 
@@ -68,8 +76,7 @@ function CoinsTable({ data, priceData }) {
   const [fields, setFields] = useState([]);
   const [expandedRows, setExpandedRows] = useState([]);
 
-  const [intervals, setIntervals] = useState([]);
-  const [selectedInterval, setSelectedInterval] = useState(null);
+  const [interval, setInterval] = useState();
 
   const [tradingCo, setTradingCo] = useState([]);
   const [selectedTradingCo, setSelectedTradingCo] = useState(null);
@@ -80,6 +87,12 @@ function CoinsTable({ data, priceData }) {
     sortKey: '',
     sortOrder: '',
   });
+
+  const [fromAnchorEl, setFromAnchorEl] = React.useState(null);
+  const [toAnchorEl, setToAnchorEl] = React.useState(null);
+
+  const [fromMarket, setFromMarket] = React.useState(FROM_MARKET[0]);
+  const [toMarket, setToMarket] = React.useState(TO_MARKET[0]);
 
   const rows = useMemo(() => {
     const parsedData =
@@ -93,25 +106,19 @@ function CoinsTable({ data, priceData }) {
 
   useEffect(() => {
     setExpandedRows([]);
-  }, [sortSetting]);
+  }, [filteredCoins, sortSetting]);
 
   useEffect(() => {
-    setFields(
-      COIN_FIELDS.map((field) => ({ label: field.getLabel(), ...field }))
-    );
-    setIntervals(
-      DATA_INTERVALS.map((interval) => ({
-        label: interval.getLabel(),
-        ...interval,
-      }))
-    );
-    const companies = TRADING_COMPANIES.map((comp) => ({
+    setFields([].map((field) => ({ label: field.getLabel(), ...field })));
+    const companies = TRADING_PLATFORMS.map((comp) => ({
       label: comp.getLabel(),
       ...comp,
     }));
     setTradingCo(companies);
     setSelectedTradingCo(companies[0]);
   }, [language]);
+
+  const matchLargeScreen = useMediaQuery('(min-width:600px)');
 
   const onChangeSortSetting = (sortKey) => {
     setSortSetting((state) => {
@@ -149,51 +156,125 @@ function CoinsTable({ data, priceData }) {
   const onFilterChange = debounce((value) => setFilteredCoins(value), 1000);
 
   return (
-    <Box>
-      <CoinsSelector onChange={onFilterChange} />
+    <Box sx={{ p: 1 }}>
+      <Stack
+        useFlexGap
+        direction="row"
+        flexWrap="wrap"
+        sx={{ alignItems: 'flex-end', justifyContent: 'space-between', mb: 2 }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Button
+            onClick={(e) => {
+              setFromAnchorEl(e.currentTarget);
+              setToAnchorEl(null);
+            }}
+            sx={{ px: 1, zIndex: toAnchorEl ? 10001 : null }}
+          >
+            {fromMarket}
+          </Button>
+          <Menu
+            anchorEl={fromAnchorEl}
+            open={!!fromAnchorEl}
+            onClose={() => setFromAnchorEl(null)}
+            variant="menu"
+          >
+            {FROM_MARKET.map((item) => (
+              <MenuItem
+                key={item}
+                selected={item === fromMarket}
+                onClick={() => {
+                  setFromMarket(item);
+                  setFromAnchorEl(null);
+                }}
+              >
+                {item}
+              </MenuItem>
+            ))}
+          </Menu>
+          <SyncAltIcon color="secondary" fontSize="small" />
+          <Button
+            onClick={(e) => {
+              setFromAnchorEl(null);
+              setToAnchorEl(e.currentTarget);
+            }}
+            sx={{ px: 1, zIndex: fromAnchorEl ? 10001 : null }}
+          >
+            {toMarket}
+          </Button>
+          <Menu
+            anchorEl={toAnchorEl}
+            open={!!toAnchorEl}
+            onClose={() => setToAnchorEl(null)}
+          >
+            {TO_MARKET.map((item) => (
+              <MenuItem
+                key={item}
+                selected={item === toMarket}
+                onClick={() => {
+                  setToMarket(item);
+                  setToAnchorEl(null);
+                }}
+              >
+                {item}
+              </MenuItem>
+            ))}
+          </Menu>
+        </Box>
+        <CoinsSelector onChange={onFilterChange} />
+      </Stack>
       <TableContainer component={Paper}>
         <Table size="small" sx={{ tableLayout: 'fixed' }}>
           <TableHead>
             <TableRow>
               {/* <TableCell sx={{ p: 0, width: '3%' }} /> */}
-              <TableCell sx={{ p: 0, width: '3%' }} />
-              {fields.map((field) => (
-                <THeadCell
-                  key={field.fieldKey}
-                  nowrap="nowrap"
-                  active={sortSetting.sortKey === field.fieldKey}
-                  {...field.headerProps}
-                >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{ ...field.headerStackStyle }}
-                    onClick={() => onChangeSortSetting(field.fieldKey)}
+              <TableCell width={10} sx={{ p: 0, pl: 4 }} />
+              {fields.map((field) =>
+                !(field.hideOnSmallScreen && !matchLargeScreen) ? (
+                  <THeadCell
+                    key={field.fieldKey}
+                    nowrap="nowrap"
+                    active={sortSetting.sortKey === field.fieldKey}
+                    sx={{ ...field.headerStyle }}
+                    {...field.headerProps}
                   >
-                    <Stack spacing={-1.25}>
-                      <ArrowDropUpIcon
-                        color={
-                          sortSetting.sortKey === field.fieldKey &&
-                          sortSetting.sortOrder === 'asc'
-                            ? theme.palette.text.main
-                            : 'secondary'
-                        }
-                        sx={{ fontSize: 16 }}
-                      />
-                      <ArrowDropDownIcon
-                        color={
-                          sortSetting.sortKey === field.fieldKey &&
-                          sortSetting.sortOrder === 'desc'
-                            ? theme.palette.text.main
-                            : 'secondary'
-                        }
-                        sx={{ fontSize: 16 }}
-                      />
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{ ...field.headerStackStyle }}
+                      onClick={() => onChangeSortSetting(field.fieldKey)}
+                    >
+                      <Stack spacing={-1.25}>
+                        <ArrowDropUpIcon
+                          color={
+                            sortSetting.sortKey === field.fieldKey &&
+                            sortSetting.sortOrder === 'asc'
+                              ? theme.palette.text.main
+                              : 'secondary'
+                          }
+                          sx={{ fontSize: 16 }}
+                        />
+                        <ArrowDropDownIcon
+                          color={
+                            sortSetting.sortKey === field.fieldKey &&
+                            sortSetting.sortOrder === 'desc'
+                              ? theme.palette.text.main
+                              : 'secondary'
+                          }
+                          sx={{ fontSize: 16 }}
+                        />
+                      </Stack>
+                      {field.label}
                     </Stack>
-                    {field.label}
-                  </Stack>
-                </THeadCell>
-              ))}
+                  </THeadCell>
+                ) : null
+              )}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -231,46 +312,50 @@ function CoinsTable({ data, priceData }) {
                       )}
                     </Stack>
                   </TBodyCell>
-                  {fields.map((field) => (
-                    <TBodyCell key={field.fieldKey} {...field.cellProps}>
-                      <Stack spacing={0} {...field.stackProps}>
-                        <Tooltip
-                          title={field.hasTooltip ? row[field.fieldKey] : null}
-                          placement="right-end"
-                        >
-                          <Typography>
-                            {field.formatValue
-                              ? field.formatValue(row[field.fieldKey], field)
-                              : row[field.fieldKey]}
-                          </Typography>
-                        </Tooltip>
-                        <Typography
-                          sx={{ color: 'secondary.main', fontSize: 11 }}
-                        >
-                          ...
-                          {/* {field.formatValue
+                  {fields.map((field) => {
+                    const value = field.formatValue
+                      ? field.formatValue(row[field.fieldKey], row, field)
+                      : row[field.fieldKey];
+                    return !(field.hideOnSmallScreen && !matchLargeScreen) ? (
+                      <TBodyCell
+                        key={field.fieldKey}
+                        sx={{ ...field.cellStyle }}
+                        {...field.cellProps}
+                      >
+                        <Stack spacing={0} {...field.stackProps}>
+                          <Tooltip
+                            title={
+                              field.hasTooltip ? row[field.fieldKey] : null
+                            }
+                            placement="right-end"
+                          >
+                            <Typography>{value}</Typography>
+                          </Tooltip>
+                          <Typography
+                            sx={{ color: 'secondary.main', fontSize: 11 }}
+                          >
+                            ...
+                            {/* {field.formatValue
                               ? field.formatValue(
                                   data?.coinListPrev[i]?.[field.fieldKey],
                                   field,
                                   { t }
                                 )
                               : data?.coinListPrev[i]?.[field.fieldKey]} */}
-                        </Typography>
-                      </Stack>
-                    </TBodyCell>
-                  ))}
+                          </Typography>
+                        </Stack>
+                      </TBodyCell>
+                    ) : null;
+                  })}
                 </TableRow>
                 <TableRow>
                   <TableCell colSpan={8} sx={{ p: 0 }}>
                     <Collapse unmountOnExit in={expandedRows.includes(row.id)}>
                       <Stack sx={{ mb: 1, mt: 0.5 }}>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            mb: 1,
-                          }}
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          sx={{ justifyContent: 'space-between', mb: 1 }}
                         >
                           <Button
                             color="secondary"
@@ -281,25 +366,10 @@ function CoinsTable({ data, priceData }) {
                           >
                             {row.name}
                           </Button>
-                          <ToggleButtonGroup
-                            exclusive
-                            value={selectedInterval}
-                            onChange={(e, newInterval) =>
-                              setSelectedInterval(newInterval)
-                            }
-                            color="secondary"
-                            size="small"
-                          >
-                            {intervals.map((interval) => (
-                              <IntervalBtn
-                                key={interval.value}
-                                value={interval.value}
-                                sx={{ fontSize: 11, py: 0 }}
-                              >
-                                {interval.label}
-                              </IntervalBtn>
-                            ))}
-                          </ToggleButtonGroup>
+                          <PeriodIntervalToggle
+                            selected={interval}
+                            onChange={(val) => setInterval(val)}
+                          />
                           <ToggleButtonGroup
                             exclusive
                             value={selectedTradingCo?.value}
@@ -322,7 +392,7 @@ function CoinsTable({ data, priceData }) {
                               </ToggleButton>
                             ))}
                           </ToggleButtonGroup>
-                        </Box>
+                        </Stack>
                         <React.Suspense fallback={null}>
                           <LightWeightPriceChart data={priceData[row.name]} />
                         </React.Suspense>

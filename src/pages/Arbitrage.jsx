@@ -6,11 +6,13 @@ import Box from '@mui/material/Box';
 
 import { useGetKpWebsocketDataQuery } from 'redux/api/websocket';
 
-import RealTimeCoinsTable from 'components/RealTimeCoinsTable';
+import ArbitrageTable from 'components/ArbitrageTable';
 
 import { coinicons } from 'assets/exports';
 
-function Home() {
+export default function Arbitrage() {
+  const location = useLocation();
+
   const { data } = useGetKpWebsocketDataQuery();
 
   const coinData = useMemo(
@@ -26,12 +28,7 @@ function Home() {
 
   return (
     <Box>
-      <RealTimeCoinsTable
-        realTimeData={coinData || []}
-        seriesData={data?.coinSeriesData}
-      />
+      <ArbitrageTable data={coinData || []} />
     </Box>
   );
 }
-
-export default Home;

@@ -14,11 +14,13 @@ export default {
 
   black: { light: '#212529', main: '#000000' },
 
-  primary: { main: '#1478FF' },
+  accent: { main: '#ffcd16' },
+
+  primary: { main: '#28eae4' },
 
   secondary: { main: '#8796A5' },
 
-  info: { main: '#1ea5e9' },
+  info: { main: '#1478FF' },
 
   success: { main: '#4ce08a' },
 

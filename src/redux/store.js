@@ -14,6 +14,7 @@ import {
 
 import { createLogger } from 'redux-logger';
 
+import drfApi from './api/drf';
 import websocketApi from './api/websocket';
 
 import app from './reducers/app';
@@ -30,6 +31,7 @@ const reducers = combineReducers({
   app,
   auth,
   websocket,
+  [drfApi.reducerPath]: drfApi.reducer,
   [websocketApi.reducerPath]: websocketApi.reducer,
 });
 
@@ -47,8 +49,7 @@ export default configureStore({
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-        ignoredActionPaths: ['payload'],
         ignoredPaths: ['websocketApi.queries'],
       },
-    }).concat(websocketApi.middleware, loggerMiddleware),
+    }).concat(drfApi.middleware, websocketApi.middleware, loggerMiddleware),
 });

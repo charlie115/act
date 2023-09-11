@@ -4,6 +4,8 @@ import 'polyfills';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
 import { Provider } from 'react-redux';
 import { persistStore } from 'redux-persist';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -18,16 +20,20 @@ import reportWebVitals from './reportWebVitals';
 import 'configs/i18n';
 import 'chartjs-adapter-luxon';
 
+import 'animate.css';
+
 const persistor = persistStore(store);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   // <React.StrictMode>
-  <Provider store={store}>
-    <PersistGate loading={<FullScreenLoading />} persistor={persistor}>
-      <App />
-    </PersistGate>
-  </Provider>
+  <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
+    <Provider store={store}>
+      <PersistGate loading={<FullScreenLoading />} persistor={persistor}>
+        <App />
+      </PersistGate>
+    </Provider>
+  </GoogleOAuthProvider>
   // </React.StrictMode>
 );
 

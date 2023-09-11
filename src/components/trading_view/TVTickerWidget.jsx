@@ -10,11 +10,11 @@ import useExternalScript from 'hooks/useExternalScript';
 import { TRADING_VIEW_TICKER_SYMBOLS } from 'constants/lists';
 
 const TICKER_CONFIG = {
-  isTransparent: false,
+  isTransparent: true,
   showSymbolLogo: true,
 };
 
-export default function TickerWidget() {
+export default function TickerWidget({ isVisible }) {
   const tickerRef = useRef();
 
   const currentLanguage = useSelector((state) => state.app.language);
@@ -36,14 +36,20 @@ export default function TickerWidget() {
   );
 
   useEffect(() => {
-    while (tickerRef?.current.firstChild)
-      tickerRef?.current.removeChild(tickerRef?.current.firstChild);
     tickerRef.current.appendChild(script.current);
+    return () => {
+      while (tickerRef?.current?.firstChild)
+        tickerRef?.current?.removeChild(tickerRef?.current?.firstChild);
+    };
   }, [currentLanguage, currentTheme]);
 
   return (
-    <Box component={Paper} sx={{ mb: 1 }}>
+    <Box
+      component={Paper}
+      sx={{ display: isVisible ? 'block' : 'none', mb: 1 }}
+    >
       <div ref={tickerRef} className="tradingview-widget-container" />
+      <div className="tradingview-widget-copyright" />
     </Box>
   );
 }

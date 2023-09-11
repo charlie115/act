@@ -9,6 +9,8 @@ import GlobalStyles from '@mui/material/GlobalStyles';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 
+import { useGetKpWebsocketDataQuery } from 'redux/api/websocket';
+
 import FullScreenLoading from 'components/FullScreenLoading';
 
 import router from 'configs/router';
@@ -44,6 +46,7 @@ function App() {
           '::-webkit-scrollbar-thumb:window-inactive': {
             background: 'rgba(203, 227, 236, 0.4)',
           },
+          '#root': { minHeight: '100vh' },
           input: { textTransform: 'unset' },
         }}
       />

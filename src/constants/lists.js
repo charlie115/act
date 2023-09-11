@@ -1,58 +1,9 @@
 import i18n from 'configs/i18n';
-import formatShortNumber from 'utils/formatShortNumber';
 
-const DEFAULT_FIELD_PROPS = {
-  hasTooltip: true,
-  cellProps: { align: 'right', fontSize: 8 },
-  headerProps: { align: 'right', width: '14%' },
-  headerStackStyle: { alignItems: 'center', justifyContent: 'end' },
-  stackStyle: { justifyContent: 'end' },
-  formatValue: (value) =>
-    value
-      ? i18n.t('intlNumber', {
-          value: Math.round((value + Number.EPSILON) * 1000) / 1000,
-        })
-      : '',
-};
+import { ReactComponent as BinanceSvg } from 'assets/svg/binance.svg';
+import { ReactComponent as UPbitSvg } from 'assets/svg/upbit.svg';
 
-export const COIN_FIELDS = [
-  {
-    fieldKey: 'name',
-    getLabel: () => i18n.t('Name'),
-    headerProps: { width: '10%' },
-    headerStackStyle: { alignItems: 'center' },
-    cellProps: { align: 'left' },
-  },
-  {
-    fieldKey: 'price',
-    getLabel: () => i18n.t('Price'),
-    ...DEFAULT_FIELD_PROPS,
-  },
-  { fieldKey: 'kimp', getLabel: () => i18n.t('KIMP'), ...DEFAULT_FIELD_PROPS },
-  {
-    fieldKey: 'change',
-    getLabel: () => i18n.t('Change'),
-    ...DEFAULT_FIELD_PROPS,
-  },
-  {
-    fieldKey: 'weekhigh',
-    getLabel: () => i18n.t('52-Week High'),
-    ...DEFAULT_FIELD_PROPS,
-  },
-  {
-    fieldKey: 'weeklow',
-    getLabel: () => i18n.t('52-Week Low'),
-    ...DEFAULT_FIELD_PROPS,
-  },
-  {
-    fieldKey: 'volume',
-    getLabel: () => i18n.t('Volume'),
-    ...DEFAULT_FIELD_PROPS,
-    formatValue: (value) => formatShortNumber(value, 1),
-  },
-];
-
-export const DATA_INTERVALS = [
+export const DATA_PERIOD_INTERVALS = [
   { getLabel: () => i18n.t('{{value}}m', { value: 1 }), value: '1m' },
   { getLabel: () => i18n.t('{{value}}m', { value: 3 }), value: '3m' },
   { getLabel: () => i18n.t('{{value}}m', { value: 5 }), value: '5m' },
@@ -65,7 +16,42 @@ export const DATA_INTERVALS = [
   { getLabel: () => i18n.t('Month'), value: 'month' },
 ];
 
-export const TRADING_COMPANIES = [
+export const MARKETS = [
+  { getLabel: () => i18n.t('UPbit'), value: 'UPBIT', icon: UPbitSvg },
+  { getLabel: () => i18n.t('UPbit (BTC)'), value: 'UPBIT-BTC', icon: UPbitSvg },
+  {
+    getLabel: () => i18n.t('Binance (BTC)'),
+    value: 'BINANCE-BTC',
+    icon: BinanceSvg,
+  },
+  {
+    getLabel: () => i18n.t('Binance (USDT)'),
+    value: 'BINANCE-USDT',
+    icon: BinanceSvg,
+  },
+  {
+    getLabel: () => i18n.t('Binance (BUSD)'),
+    value: 'BINANCE-BUSD',
+    icon: BinanceSvg,
+  },
+  {
+    getLabel: () => i18n.t('Binance USDⓈ-M (USDT)'),
+    value: 'BINANCE-USDM-USDT',
+    icon: BinanceSvg,
+  },
+  {
+    getLabel: () => i18n.t('Binance USDⓈ-M (BUSD)'),
+    value: 'BINANCE-USDM-BUSD',
+    icon: BinanceSvg,
+  },
+  {
+    getLabel: () => i18n.t('Binance COIN-M (USD)'),
+    value: 'BINANCE-COINM-USD',
+    icon: BinanceSvg,
+  },
+];
+
+export const TRADING_PLATFORMS = [
   { getLabel: () => i18n.t('Binance'), value: 'BINANCE', currency: 'USDT' },
   { getLabel: () => i18n.t('UPbit'), value: 'UPBIT', currency: 'KRW' },
   { getLabel: () => i18n.t('KIMP'), value: 'KIMP', currency: 'KRW' },

@@ -27,8 +27,8 @@ const websocketApi = createApi({
       queryFn: () => ({
         data: {
           coinList: [],
-          coinData: {},
-          coinPriceData: {},
+          coinRealTimeData: {},
+          coinSeriesData: {},
           coinTimestamps: {},
         },
       }),
@@ -58,19 +58,21 @@ const websocketApi = createApi({
                 const name = item.symbol.endsWith('USDT')
                   ? item.symbol.slice(0, -4)
                   : item.symbol;
-                if (!draft.coinList.includes(name)) {
-                  draft.coinList.push(name);
-                  draft.coinData[name] = {
-                    name,
-                    id: name,
-                    price: item.tp_kimp,
-                    volume: item.acc_trade_price_24h,
-                  };
-                }
-                draft.coinList.sort();
+                if (!draft.coinList.includes(name)) draft.coinList.push(name);
 
-                if (!draft.coinPriceData[name])
-                  draft.coinPriceData[name] = [
+                // draft.coinList.sort();
+                draft.coinRealTimeData[name] = {
+                  name,
+                  id: name,
+                  change: item.tp_kimp,
+                  kimp: item.tp_kimp,
+                  price: item.trade_price,
+                  volume: item.acc_trade_price_24h,
+                  ...item,
+                };
+
+                if (!draft.coinSeriesData[name])
+                  draft.coinSeriesData[name] = [
                     {
                       name,
                       id: name,
@@ -79,14 +81,14 @@ const websocketApi = createApi({
                     },
                   ];
 
-                // draft.coinData[name] = {
+                // draft.coinRealTimeData[name] = {
                 //   name,
                 //   id: name,
                 //   price: item.tp_kimp,
                 //   volume: item.acc_trade_price_24h,
                 // };
 
-                // draft.coinPriceData[name].push({
+                // draft.coinSeriesData[name].push({
                 //   name,
                 //   id: name,
                 //   time: item.upbit_timestamp,
@@ -99,13 +101,7 @@ const websocketApi = createApi({
                     ['milliseconds']
                   );
                   if (diff.values.milliseconds > 100) {
-                    draft.coinData[name] = {
-                      name,
-                      id: name,
-                      price: item.tp_kimp,
-                      volume: item.acc_trade_price_24h,
-                    };
-                    draft.coinPriceData[name].push({
+                    draft.coinSeriesData[name].push({
                       name,
                       id: name,
                       time: item.upbit_timestamp,
@@ -113,8 +109,8 @@ const websocketApi = createApi({
                     });
                   }
                 }
-                if (draft.coinPriceData[name]?.length > CACHE_MAX_ENTRY)
-                  draft.coinPriceData[name].shift();
+                if (draft.coinSeriesData[name]?.length > CACHE_MAX_ENTRY)
+                  draft.coinSeriesData[name].shift();
                 draft.coinTimestamps[name] = item.upbit_timestamp;
               });
             });

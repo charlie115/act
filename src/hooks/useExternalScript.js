@@ -9,7 +9,7 @@ export default function useExternalScript(
 
   const { attachToHeader = true, attributes = {}, onLoad } = options;
 
-  useEffect(() => {
+  const loadScript = () => {
     const scriptLoadingPromise = new Promise((resolve) => {
       script.current = document.createElement('script');
       script.current.src = url;
@@ -28,6 +28,10 @@ export default function useExternalScript(
     scriptLoadingPromise.then(() => {
       if (onLoad) onLoad();
     });
+  };
+
+  useEffect(() => {
+    loadScript();
   }, [url, ...dependencies]);
 
   return script;

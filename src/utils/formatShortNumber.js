@@ -5,6 +5,7 @@ import i18n from 'configs/i18n';
 const SHORT_NUMBER_SYMBOL = {
   en: ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'],
   ko: ['', '천', '만', 'G', 'T', 'P', 'E', 'Z', 'Y'],
+  zh: ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'],
 };
 
 export default (num, decimal, lang) => {

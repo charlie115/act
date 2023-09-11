@@ -22,6 +22,15 @@ module.exports = {
   rules: {
     'global-require': 'off',
     'import/no-dynamic-require': 'off',
+    'import/no-extraneous-dependencies': [
+      'error',
+      {
+        devDependencies: false,
+        optionalDependencies: false,
+        peerDependencies: false,
+        packageDir: __dirname,
+      },
+    ],
     'no-param-reassign': 'off',
     'no-unused-vars': [
       'warn',

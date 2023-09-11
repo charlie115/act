@@ -1,24 +1,31 @@
 import { alpha } from '@mui/material/styles';
 
-import colors from './colors';
-
 export default {
   MuiButton: {
     styleOverrides: {
-      contained: {
+      contained: ({ theme }) => ({
         '&:disabled': {
-          backgroundColor: colors.grey['700'],
-          opacity: 0.5,
-        },
-      },
-      outlined: ({ ownerState, theme }) => ({
-        color: theme.palette[ownerState.color].main,
-        '&:disabled': {
-          borderColor: colors.grey['700'],
-          color: colors.grey['700'],
+          backgroundColor: theme.palette.grey['700'],
           opacity: 0.5,
         },
       }),
+      outlined: ({ ownerState, theme }) => ({
+        backgroundColor:
+          theme.palette.mode === 'dark'
+            ? 'transparent'
+            : alpha(theme.palette[ownerState.color].main, 0.15),
+        color:
+          theme.palette.mode === 'dark'
+            ? theme.palette[ownerState.color].main
+            : theme.palette.grey['700'],
+        fontWeight: 700,
+        '&:disabled': {
+          borderColor: theme.palette.grey['700'],
+          color: theme.palette.grey['700'],
+          opacity: 0.5,
+        },
+      }),
+      // root: { minWidth: 'max-content', whiteSpace: 'nowrap' },
     },
   },
   MuiToggleButton: {
@@ -26,8 +33,8 @@ export default {
       root: ({ ownerState, theme }) => ({
         color: theme.palette[ownerState.color].main,
         '&:disabled': {
-          borderColor: colors.grey['700'],
-          color: colors.grey['700'],
+          borderColor: theme.palette.grey['700'],
+          color: theme.palette.grey['700'],
           opacity: 0.5,
         },
         '&.Mui-selected': {

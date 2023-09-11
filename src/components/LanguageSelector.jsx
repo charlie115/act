@@ -1,5 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 
@@ -46,9 +49,15 @@ export default function LanguageSelector(props) {
       // label="Language"
       value={language}
       onChange={handleChange}
-      size="small"
+      color="secondary"
       variant="standard"
-      sx={{ color: 'light.main', '& .MuiSelect-icon': { color: 'light.main' } }}
+      sx={{
+        color: 'light.main',
+        '::after': { display: 'none' },
+        '::before': { display: 'none' },
+        '& .MuiSelect-select': { pr: '0!important' },
+        '& .MuiSelect-icon': { display: 'none', width: 0 },
+      }}
       {...props}
     >
       {LANGUAGES.map((lang) => (
