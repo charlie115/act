@@ -32,7 +32,7 @@ class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer
 
 
 class UserSerializer(serializers.ModelSerializer):
-    profile = UserProfileSerializer(source="userprofile", read_only=True)
+    profile = UserProfileSerializer(read_only=True)
     favorite_symbols = UserFavoriteSymbolsSerializer(many=True, read_only=True)
     arbot_config = ArbotUserConfigSerializer(read_only=True)
 
@@ -53,6 +53,7 @@ class UserSerializer(serializers.ModelSerializer):
             "password",
             "first_name",
             "last_name",
+            "role",
             "is_active",
             "profile",
             "favorite_symbols",

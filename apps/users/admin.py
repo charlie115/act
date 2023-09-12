@@ -67,6 +67,7 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
         "first_name",
         "last_name",
         "is_staff",
+        "role",
     )
     search_fields = [
         "email",
@@ -106,7 +107,7 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
         (
             _("Permissions"),
             {
-                "fields": ("is_staff", "groups"),
+                "fields": ("is_staff", "role", "groups"),
                 "classes": ("collapse",),
             },
         ),

@@ -1,9 +1,10 @@
 from rest_framework import routers
 
+from lib.views import BaseEndpointListView
 from users.views import UserViewSet, UserFavoriteSymbolsViewSet, UserProfileViewSet
 
 
-class UserAPIListView(routers.APIRootView):
+class UserAPIListView(BaseEndpointListView):
     """
     List of User APIs
     """

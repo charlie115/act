@@ -2,7 +2,7 @@ import os
 
 from django.urls import path
 from dj_rest_auth.urls import urlpatterns as dj_rest_auth_urls
-from rest_framework import response, routers
+from rest_framework import response
 
 from authentication.views import (
     AuthGoogleLoginView,
@@ -15,14 +15,13 @@ from authentication.views import (
     AuthTokenVerifyView,
     AuthUserDetailsView,
 )
+from lib.views import BaseEndpointListView
 
 
-class AuthAPIListView(routers.APIRootView):
+class AuthAPIListView(BaseEndpointListView):
     """
     Authentication API endpoints
     """
-
-    http_method_names = ["get"]
 
     def get(self, request, *args, **kwargs):
         api_list = {

@@ -11,11 +11,21 @@ from users.managers import UserManager
 
 
 class User(AbstractUser):
+    VISITOR = "visitor"
+    USER = "user"
+    INTERNAL_USER = "internal"
+    UserRoles = (
+        (VISITOR, "Visitor"),
+        (USER, "User"),
+        (INTERNAL_USER, "Internal"),
+    )
+
     email = models.EmailField(_("email address"), unique=True)
     uuid = models.UUIDField(primary_key=False, default=uuid.uuid4, editable=False)
     username = models.CharField(max_length=100, unique=True, blank=True)
     telegram_id = models.CharField(max_length=150, blank=True, null=True)
     last_username_change = models.DateTimeField(default=now)
+    role = models.CharField(default=VISITOR, choices=UserRoles)
 
     managers = models.ManyToManyField(
         "self",

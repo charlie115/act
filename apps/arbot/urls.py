@@ -1,9 +1,10 @@
 from rest_framework import routers
 
 from arbot.views import ArbotNodeViewSet, ArbotUserConfigViewSet
+from lib.views import BaseEndpointListView
 
 
-class ArbotAPIListView(routers.APIRootView):
+class ArbotAPIListView(BaseEndpointListView):
     """
     Arbot API endpoints
     """

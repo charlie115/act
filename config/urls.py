@@ -10,20 +10,12 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
-from rest_framework import routers
 from rest_framework.response import Response
 
-from lib.permissions import IsDjangoAdmin, IsACWAdmin
+from lib.views import BaseEndpointListView
 
 
-class EndpointListView(routers.APIRootView):
-    """
-    List of all endpoints
-    """
-
-    http_method_names = ["get"]
-    permission_classes = [IsDjangoAdmin or IsACWAdmin]
-
+class EndpointListView(BaseEndpointListView):
     def get(self, request, *args, **kwargs):
         api_list = {
             "admin": request.build_absolute_uri("admin/"),

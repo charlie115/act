@@ -1,5 +1,7 @@
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import viewsets
+
+from lib.permissions import IsDjangoAdmin, IsAdminOrIsSelf
+from lib.views import BaseViewSet
 from users.models import User, UserFavoriteSymbols, UserProfile
 from users.serializers import (
     UserSerializer,
@@ -38,9 +40,33 @@ from users.serializers import (
         description="Deletes an existing `user`.",
     ),
 )
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(BaseViewSet):
     queryset = User.objects.all().order_by("id")
     serializer_class = UserSerializer
+    lookup_field = "uuid"
+
+    def get_permissions(self):
+        permission_classes = self.permission_classes
+
+        if self.action == "create":
+            permission_classes = [IsDjangoAdmin]
+        elif self.action != "list":
+            permission_classes = [IsAdminOrIsSelf]
+
+        return [permission() for permission in permission_classes]
+
+    def get_queryset(self):
+        if self.action == "list":
+            if IsDjangoAdmin().has_permission(self.request, self):
+                pass
+            else:
+                return (
+                    super(UserViewSet, self)
+                    .get_queryset()
+                    .filter(id=self.request.user.id)
+                )
+
+        return self.queryset
 
 
 @extend_schema(tags=["UserFavoriteSymbol"])
@@ -61,7 +87,7 @@ class UserViewSet(viewsets.ModelViewSet):
         description="Deletes an existing user `favorite symbol`.",
     ),
 )
-class UserFavoriteSymbolsViewSet(viewsets.ModelViewSet):
+class UserFavoriteSymbolsViewSet(BaseViewSet):
     queryset = UserFavoriteSymbols.objects.all().order_by("id")
     serializer_class = UserFavoriteSymbolsSerializer
     http_method_names = ["get", "post", "delete"]
@@ -91,7 +117,7 @@ class UserFavoriteSymbolsViewSet(viewsets.ModelViewSet):
     ),
     destroy=extend_schema(exclude=True),
 )
-class UserProfileViewSet(viewsets.ModelViewSet):
+class UserProfileViewSet(BaseViewSet):
     queryset = UserProfile.objects.all().order_by("id")
     serializer_class = UserProfileSerializer
     http_method_names = ["get", "put", "patch", "delete"]
