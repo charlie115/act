@@ -477,8 +477,79 @@ class InitCore:
         if include_text:
             return proc_status, print_text
         return proc_status
-
     
+    def convert_asset_rate(self, origin_market, origin_quote_asset, target_market, target_quote_asset):
+        if origin_quote_asset == "USD":
+            origin_quote_asset = "USDT"
+        if target_quote_asset == "USD":
+            target_quote_asset = "USDT"
+        if origin_quote_asset == target_quote_asset:
+            return 1
+        origin_market_spot_info_df = self.info_dict[f"{origin_market.lower().split('_')[0]}_spot_ticker_df"]
+        # First try to find the rate from the info_dict
+
+        def convert_between_coins(origin_market_spot_info_df, origin_quote_asset, target_quote_asset):
+            df = origin_market_spot_info_df[(origin_market_spot_info_df['base_asset']==origin_quote_asset)&(origin_market_spot_info_df['quote_asset']==target_quote_asset)]
+            reverse_df = origin_market_spot_info_df[(origin_market_spot_info_df['quote_asset']==origin_quote_asset)&(origin_market_spot_info_df['base_asset']==target_quote_asset)]
+            if len(df) == 1:
+                convert_rate = df['lastPrice'].values[0]
+            elif len(reverse_df) == 1:
+                convert_rate = 1 / reverse_df['lastPrice'].values[0]
+            else:
+                convert_rate = None
+            return convert_rate
+        convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, target_quote_asset)
+        if convert_rate is None: # not between coins
+            # print("1st convert_rate is None, Not between coins")
+            if target_quote_asset == "KRW" and origin_quote_asset == "USDT":
+                convert_rate = self.update_dollar_return_dict['price']
+            elif target_quote_asset == "USDT" and origin_quote_asset == "KRW":
+                convert_rate = 1 / self.update_dollar_return_dict['price']
+            elif target_quote_asset == "KRW":
+                convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, "USDT") * self.update_dollar_return_dict['price']
+            elif origin_quote_asset == "KRW":
+                temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset)
+                if temp_convert_rate is not None:
+                    convert_rate = 1 / temp_convert_rate
+                else:
+                    title = f"target_quote_asset: {target_quote_asset}, origin_quote_asset: {origin_quote_asset}"
+                    raise Exception(f"Cannot find the convert rate for {title}")
+            else:
+                title = f"target_quote_asset: {target_quote_asset}, origin_quote_asset: {origin_quote_asset}"
+                raise Exception(f"Cannot find the convert rate for {title}")
+        return convert_rate
+
+    def get_premium_df(self, origin_exchange_code, target_exchange_code):
+        # POSSIBLE quote_assets: USDT, BUSD, BTC, KRW
+        origin_market = origin_exchange_code.split('/')[0]
+        quote_asset_one = origin_exchange_code.split('/')[1]
+        target_market = target_exchange_code.split('/')[0]
+        quote_asset_two = target_exchange_code.split('/')[1]
+
+        origin_market_df = self.exchange_websocket_dict[origin_market].get_price_df()
+        origin_market_df = origin_market_df[origin_market_df['quote_asset'] == quote_asset_one]
+        target_market_df = self.exchange_websocket_dict[target_market].get_price_df()
+        target_market_df = target_market_df[target_market_df['quote_asset'] == quote_asset_two]
+
+        shared_bass_asset_list = list(set(origin_market_df['base_asset'].values).intersection(set(target_market_df['base_asset'].values)))
+        origin_market_df = origin_market_df[origin_market_df['base_asset'].isin(shared_bass_asset_list)].sort_values('base_asset').reset_index(drop=True)
+        target_market_df = target_market_df[target_market_df['base_asset'].isin(shared_bass_asset_list)].sort_values('base_asset').reset_index(drop=True)
+
+        convert_rate = self.convert_asset_rate(origin_market, quote_asset_one, target_market, quote_asset_two)
+        origin_market_df[['converted_tp','converted_ap','converted_bp']] = origin_market_df[['tp','ap','bp']] * convert_rate
+        # target_market_df[['converted_tp','converted_ap','converted_bp']] = target_market_df[['tp','ap','bp']]
+
+        # divide by target_market_df[['tp','ap','bp']]
+        premium_df = pd.DataFrame((target_market_df[['tp','ap','bp']].values - origin_market_df[['converted_tp','converted_bp','converted_ap']].values)/
+                                origin_market_df[['converted_tp','converted_bp','converted_ap']].values, columns=['tp_premium','LS_premium','SL_premium'])
+        premium_df['LS_SL_spread'] = premium_df['LS_premium'] - premium_df['SL_premium']
+        premium_df[['base_asset','quote_asset','tp','ap','bp','atp24h']] = target_market_df[['base_asset','quote_asset','tp','ap','bp','atp24h']]
+        premium_df[['converted_tp','converted_ap','converted_bp']] = origin_market_df[['converted_tp','converted_ap', 'converted_bp']]
+        premium_df.loc[:, ['tp_premium','LS_premium','SL_premium','LS_SL_spread']] = premium_df[['tp_premium','LS_premium','SL_premium','LS_SL_spread']] * 100
+        premium_df = premium_df.sort_values('atp24h', ascending=False).reset_index(drop=True)
+        return premium_df
+
+        
 
 
 

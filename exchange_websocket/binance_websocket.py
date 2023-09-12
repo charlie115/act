@@ -98,31 +98,35 @@ class BinanceWebsocket:
     def _start_websocket(self):
         def handle_price_procs():
             while True:
-                for i in range(self.proc_n):
-                    # Check if the process exists and is alive
-                    start_proc = False
-                    restarted = False
-                    if f"{i+1}th_price_proc" in self.websocket_proc_dict and not self.websocket_proc_dict[f"{i+1}th_price_proc"].is_alive():
-                        content = f"handle_price_procs|[BINANCE SPOT]{i+1}th_price_proc has died. terminating and restarting.."
-                        self.websocket_logger.error(content)
-                        self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"].terminate()
-                        start_proc = True
-                        restarted = True
-                    elif f"{i+1}th_price_proc" not in self.websocket_proc_dict:
-                        self.websocket_logger.info(f"[BINANCE SPOT]{i+1}th_price_proc is not in self.websocket_proc_dict. starting..")
-                        start_proc = True
-                    if start_proc:
-                        error_event = Event()
-                        symbol_list = self.sliced_symbol_list[i]
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"] = Process(target=self.price_websocket, args=(self.bookticker_dict, self.ticker_dict, symbol_list, error_event), daemon=True)
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"].start()
-                        self.websocket_logger.info(f"[BINANCE SPOT]started {i+1}th_price_proc websocket proc..")
-                        if restarted:
-                            content = f"handle_price_procs|[BINANCE SPOT]{i+1}th_price_proc has been restarted. alive status: {self.websocket_proc_dict[f'{i+1}th_price_proc'].is_alive()}"
+                try:
+                    for i in range(self.proc_n):
+                        # Check if the process exists and is alive
+                        start_proc = False
+                        restarted = False
+                        if f"{i+1}th_price_proc" in self.websocket_proc_dict and not self.websocket_proc_dict[f"{i+1}th_price_proc"].is_alive():
+                            content = f"handle_price_procs|[BINANCE SPOT]{i+1}th_price_proc has died. terminating and restarting.."
+                            self.websocket_logger.error(content)
                             self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                        time.sleep(0.15)
-
+                            self.websocket_proc_dict[f"{i+1}th_price_proc"].terminate()
+                            start_proc = True
+                            restarted = True
+                        elif f"{i+1}th_price_proc" not in self.websocket_proc_dict:
+                            self.websocket_logger.info(f"[BINANCE SPOT]{i+1}th_price_proc is not in self.websocket_proc_dict. starting..")
+                            start_proc = True
+                        if start_proc:
+                            error_event = Event()
+                            symbol_list = self.sliced_symbol_list[i]
+                            self.websocket_proc_dict[f"{i+1}th_price_proc"] = Process(target=self.price_websocket, args=(self.bookticker_dict, self.ticker_dict, symbol_list, error_event), daemon=True)
+                            self.websocket_proc_dict[f"{i+1}th_price_proc"].start()
+                            self.websocket_logger.info(f"[BINANCE SPOT]started {i+1}th_price_proc websocket proc..")
+                            if restarted:
+                                content = f"handle_price_procs|[BINANCE SPOT]{i+1}th_price_proc has been restarted. alive status: {self.websocket_proc_dict[f'{i+1}th_price_proc'].is_alive()}"
+                                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                            time.sleep(0.15)
+                except Exception as e:
+                    self.websocket_logger.error(f"handle_price_procs|{traceback.format_exc()}")
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"Binance Spot Websocket|handle_price_procs", content=e, code=None, sent_switch=0, send_counts=1, remark=None)
+                    time.sleep(2)
                 time.sleep(0.25)
         self.handle_price_procs_thread = Thread(target=handle_price_procs, daemon=True)
         self.handle_price_procs_thread.start()
@@ -299,49 +303,53 @@ class BinanceUSDMWebsocket:
     def _start_websocket(self):
         def handle_price_procs():
             while True:
-                for i in range(self.proc_n):
-                    # Check if the process exists and is alive
-                    start_proc = False
-                    restarted = False
-                    if f"{i+1}th_price_proc" in self.websocket_proc_dict and not self.websocket_proc_dict[f"{i+1}th_price_proc"].is_alive():
-                        content = f"handle_price_procs|[BINANCE USD-M]{i+1}th_price_proc has died. terminating and restarting.."
+                try:
+                    for i in range(self.proc_n):
+                        # Check if the process exists and is alive
+                        start_proc = False
+                        restarted = False
+                        if f"{i+1}th_price_proc" in self.websocket_proc_dict and not self.websocket_proc_dict[f"{i+1}th_price_proc"].is_alive():
+                            content = f"handle_price_procs|[BINANCE USD-M]{i+1}th_price_proc has died. terminating and restarting.."
+                            self.websocket_logger.error(content)
+                            self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                            self.websocket_proc_dict[f"{i+1}th_price_proc"].terminate()
+                            start_proc = True
+                            restarted = True
+                        elif f"{i+1}th_price_proc" not in self.websocket_proc_dict:
+                            self.websocket_logger.info(f"[BINANCE USD-M]{i+1}th_price_proc is not in self.websocket_proc_dict. starting..")
+                            start_proc = True
+                        if start_proc:
+                            error_event = Event()
+                            symbol_list = self.sliced_symbol_list[i]
+                            self.websocket_proc_dict[f"{i+1}th_price_proc"] = Process(target=self.price_websocket, args=(self.bookticker_dict, self.ticker_dict, symbol_list, error_event), daemon=True)
+                            self.websocket_proc_dict[f"{i+1}th_price_proc"].start()
+                            self.websocket_logger.info(f"[BINANCE USD-M]started {i+1}th_price_proc websocket..")
+                            if restarted:
+                                content = f"handle_price_procs|[BINANCE USD-M]{i+1}th_price_proc has been restarted. alive status: {self.websocket_proc_dict[f'{i+1}th_price_proc'].is_alive()}"
+                                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                            time.sleep(0.15)
+
+                    if "liquidation_proc" in self.websocket_proc_dict and not self.websocket_proc_dict["liquidation_proc"].is_alive():
+                        content = f"handle_price_procs|[BINANCE USD-M]liquidation_proc has died. terminating and restarting.."
                         self.websocket_logger.error(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"].terminate()
-                        start_proc = True
-                        restarted = True
-                    elif f"{i+1}th_price_proc" not in self.websocket_proc_dict:
-                        self.websocket_logger.info(f"[BINANCE USD-M]{i+1}th_price_proc is not in self.websocket_proc_dict. starting..")
-                        start_proc = True
-                    if start_proc:
+                        self.websocket_proc_dict["liquidation_proc"].terminate()
                         error_event = Event()
-                        symbol_list = self.sliced_symbol_list[i]
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"] = Process(target=self.price_websocket, args=(self.bookticker_dict, self.ticker_dict, symbol_list, error_event), daemon=True)
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"].start()
-                        self.websocket_logger.info(f"[BINANCE USD-M]started {i+1}th_price_proc websocket..")
-                        if restarted:
-                            content = f"handle_price_procs|[BINANCE USD-M]{i+1}th_price_proc has been restarted. alive status: {self.websocket_proc_dict[f'{i+1}th_price_proc'].is_alive()}"
-                            self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                        time.sleep(0.15)
-
-                if "liquidation_proc" in self.websocket_proc_dict and not self.websocket_proc_dict["liquidation_proc"].is_alive():
-                    content = f"handle_price_procs|[BINANCE USD-M]liquidation_proc has died. terminating and restarting.."
-                    self.websocket_logger.error(content)
-                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                    self.websocket_proc_dict["liquidation_proc"].terminate()
-                    error_event = Event()
-                    self.websocket_proc_dict["liquidation_proc"] = Process(target=self.liquidation_websocket, args=(self.liquidation_list, error_event), daemon=True)
-                    self.websocket_proc_dict["liquidation_proc"].start()
-                    content = f"handle_price_procs|liquidation_proc has been restarted. alive status: {self.websocket_proc_dict['liquidation_proc'].is_alive()}"
-                    self.websocket_logger.info(f"[BINANCE USD-M]restarted liquidation_proc websocket alive status: {self.websocket_proc_dict['liquidation_proc'].is_alive()}")
-                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                elif "liquidation_proc" not in self.websocket_proc_dict:
-                    self.websocket_logger.info(f"[BINANCE USD-M]liquidation_proc is not in self.websocket_proc_dict. starting..")
-                    error_event = Event()
-                    self.websocket_proc_dict["liquidation_proc"] = Process(target=self.liquidation_websocket, args=(self.liquidation_list, error_event), daemon=True)
-                    self.websocket_proc_dict["liquidation_proc"].start()
-                    self.websocket_logger.info(f"[BINANCE USD-M]started liquidation_proc websocket proc..")
-
+                        self.websocket_proc_dict["liquidation_proc"] = Process(target=self.liquidation_websocket, args=(self.liquidation_list, error_event), daemon=True)
+                        self.websocket_proc_dict["liquidation_proc"].start()
+                        content = f"handle_price_procs|liquidation_proc has been restarted. alive status: {self.websocket_proc_dict['liquidation_proc'].is_alive()}"
+                        self.websocket_logger.info(f"[BINANCE USD-M]restarted liquidation_proc websocket alive status: {self.websocket_proc_dict['liquidation_proc'].is_alive()}")
+                        self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                    elif "liquidation_proc" not in self.websocket_proc_dict:
+                        self.websocket_logger.info(f"[BINANCE USD-M]liquidation_proc is not in self.websocket_proc_dict. starting..")
+                        error_event = Event()
+                        self.websocket_proc_dict["liquidation_proc"] = Process(target=self.liquidation_websocket, args=(self.liquidation_list, error_event), daemon=True)
+                        self.websocket_proc_dict["liquidation_proc"].start()
+                        self.websocket_logger.info(f"[BINANCE USD-M]started liquidation_proc websocket proc..")
+                except Exception as e:
+                    self.websocket_logger.error(f"handle_price_procs|{traceback.format_exc()}")
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"Binance USD-M Websocket|handle_price_procs", content=e, code=None, sent_switch=0, send_counts=1, remark=None)
+                    time.sleep(2)
                 time.sleep(0.25)
         self.handle_price_procs_thread = Thread(target=handle_price_procs, daemon=True)
         self.handle_price_procs_thread.start()
@@ -519,49 +527,53 @@ class BinanceCOINMWebsocket:
     def _start_websocket(self):
         def handle_price_procs():
             while True:
-                for i in range(self.proc_n):
-                    # Check if the process exists and is alive
-                    start_proc = False
-                    restarted = False
-                    if f"{i+1}th_price_proc" in self.websocket_proc_dict and not self.websocket_proc_dict[f"{i+1}th_price_proc"].is_alive():
-                        content = f"handle_price_procs|[BINANCE COIN-M]{i+1}th_price_proc has died. terminating and restarting.."
+                try:
+                    for i in range(self.proc_n):
+                        # Check if the process exists and is alive
+                        start_proc = False
+                        restarted = False
+                        if f"{i+1}th_price_proc" in self.websocket_proc_dict and not self.websocket_proc_dict[f"{i+1}th_price_proc"].is_alive():
+                            content = f"handle_price_procs|[BINANCE COIN-M]{i+1}th_price_proc has died. terminating and restarting.."
+                            self.websocket_logger.error(content)
+                            self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                            self.websocket_proc_dict[f"{i+1}th_price_proc"].terminate()
+                            start_proc = True
+                            restarted = True
+                        elif f"{i+1}th_price_proc" not in self.websocket_proc_dict:
+                            self.websocket_logger.info(f"[BINANCE COIN-M]{i+1}th_price_proc is not in self.websocket_proc_dict. starting..")
+                            start_proc = True
+                        if start_proc:
+                            error_event = Event()
+                            symbol_list = self.sliced_symbol_list[i]
+                            self.websocket_proc_dict[f"{i+1}th_price_proc"] = Process(target=self.price_websocket, args=(self.bookticker_dict, self.ticker_dict, symbol_list, error_event), daemon=True)
+                            self.websocket_proc_dict[f"{i+1}th_price_proc"].start()
+                            self.websocket_logger.info(f"[BINANCE COIN-M]started {i+1}th_price_proc websocket proc..")
+                            if restarted:
+                                content = f"handle_price_procs|[BINANCE COIN-M]{i+1}th_price_proc has been restarted. alive status: {self.websocket_proc_dict[f'{i+1}th_price_proc'].is_alive()}"
+                                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                            time.sleep(0.15)
+
+                    if "liquidation_proc" in self.websocket_proc_dict and not self.websocket_proc_dict["liquidation_proc"].is_alive():
+                        content = f"handle_price_procs|[BINANCE COIN-M]liquidation_proc has died. terminating and restarting.."
                         self.websocket_logger.error(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"].terminate()
-                        start_proc = True
-                        restarted = True
-                    elif f"{i+1}th_price_proc" not in self.websocket_proc_dict:
-                        self.websocket_logger.info(f"[BINANCE COIN-M]{i+1}th_price_proc is not in self.websocket_proc_dict. starting..")
-                        start_proc = True
-                    if start_proc:
+                        self.websocket_proc_dict["liquidation_proc"].terminate()
                         error_event = Event()
-                        symbol_list = self.sliced_symbol_list[i]
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"] = Process(target=self.price_websocket, args=(self.bookticker_dict, self.ticker_dict, symbol_list, error_event), daemon=True)
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"].start()
-                        self.websocket_logger.info(f"[BINANCE COIN-M]started {i+1}th_price_proc websocket proc..")
-                        if restarted:
-                            content = f"handle_price_procs|[BINANCE COIN-M]{i+1}th_price_proc has been restarted. alive status: {self.websocket_proc_dict[f'{i+1}th_price_proc'].is_alive()}"
-                            self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                        time.sleep(0.15)
-
-                if "liquidation_proc" in self.websocket_proc_dict and not self.websocket_proc_dict["liquidation_proc"].is_alive():
-                    content = f"handle_price_procs|[BINANCE COIN-M]liquidation_proc has died. terminating and restarting.."
-                    self.websocket_logger.error(content)
-                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                    self.websocket_proc_dict["liquidation_proc"].terminate()
-                    error_event = Event()
-                    self.websocket_proc_dict["liquidation_proc"] = Process(target=self.liquidation_websocket, args=(self.liquidation_list, error_event), daemon=True)
-                    self.websocket_proc_dict["liquidation_proc"].start()
-                    content = f"handle_price_procs|liquidation_proc has been restarted. alive status: {self.websocket_proc_dict['liquidation_proc'].is_alive()}"
-                    self.websocket_logger.info(f"[BINANCE COIN-M]restarted liquidation_proc websocket proc.. alive status: {self.websocket_proc_dict['liquidation_proc'].is_alive()}")
-                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                elif "liquidation_proc" not in self.websocket_proc_dict:
-                    self.websocket_logger.info(f"[BINANCE COIN-M]liquidation_proc is not in self.websocket_proc_dict. starting..")
-                    error_event = Event()
-                    self.websocket_proc_dict["liquidation_proc"] = Process(target=self.liquidation_websocket, args=(self.liquidation_list, error_event), daemon=True)
-                    self.websocket_proc_dict["liquidation_proc"].start()
-                    self.websocket_logger.info(f"[BINANCE COIN-M]started liquidation_proc websocket proc..")
-
+                        self.websocket_proc_dict["liquidation_proc"] = Process(target=self.liquidation_websocket, args=(self.liquidation_list, error_event), daemon=True)
+                        self.websocket_proc_dict["liquidation_proc"].start()
+                        content = f"handle_price_procs|liquidation_proc has been restarted. alive status: {self.websocket_proc_dict['liquidation_proc'].is_alive()}"
+                        self.websocket_logger.info(f"[BINANCE COIN-M]restarted liquidation_proc websocket proc.. alive status: {self.websocket_proc_dict['liquidation_proc'].is_alive()}")
+                        self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                    elif "liquidation_proc" not in self.websocket_proc_dict:
+                        self.websocket_logger.info(f"[BINANCE COIN-M]liquidation_proc is not in self.websocket_proc_dict. starting..")
+                        error_event = Event()
+                        self.websocket_proc_dict["liquidation_proc"] = Process(target=self.liquidation_websocket, args=(self.liquidation_list, error_event), daemon=True)
+                        self.websocket_proc_dict["liquidation_proc"].start()
+                        self.websocket_logger.info(f"[BINANCE COIN-M]started liquidation_proc websocket proc..")
+                except Exception as e:
+                    self.websocket_logger.error(f"handle_price_procs|{traceback.format_exc()}")
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"Binance COIN-M Websocket|handle_price_procs", content=e, code=None, sent_switch=0, send_counts=1, remark=None)
+                    time.sleep(2)
                 time.sleep(0.25)
         self.handle_price_procs_thread = Thread(target=handle_price_procs, daemon=True)
         self.handle_price_procs_thread.start()
