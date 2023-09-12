@@ -59,14 +59,14 @@ function LightWeightPriceChart({ data }) {
     });
     leftPriceSeriesRef.current = chartRef.current.addLineSeries({
       priceScaleId: 'left',
-      color: '#fd6396',
+      color: theme.palette.primary.main,
       lineWidth: 2,
       priceFormat: { precision: 2, minMove: 0.01 },
       title: 'upbit?',
     });
     rightPriceSeriesRef.current = chartRef.current.addLineSeries({
       priceScaleId: 'right',
-      color: '#2962FF',
+      color: theme.palette.accent.main,
       lineWidth: 2,
       priceFormat: { precision: 2, minMove: 0.01 },
       title: 'tp_kimp',

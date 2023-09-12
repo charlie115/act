@@ -16,9 +16,8 @@ import BlockIcon from '@mui/icons-material/Block';
 import InsightsIcon from '@mui/icons-material/Insights';
 import StarIcon from '@mui/icons-material/Star';
 import StarOutlineIcon from '@mui/icons-material/StarOutline';
-import SyncAltIcon from '@mui/icons-material/SyncAlt';
 
-import { alpha, styled, useTheme } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { useTranslation } from 'react-i18next';
@@ -30,16 +29,11 @@ import MarketExchangeSelector from 'components/MarketExchangeSelector';
 import MaterialReactTable from 'components/MaterialReactTable';
 import PeriodIntervalToggle from 'components/PeriodIntervalToggle';
 
-import { DATA_PERIOD_INTERVALS, TRADING_PLATFORMS } from 'constants/lists';
+import { TRADING_PLATFORMS } from 'constants/lists';
 
 const LightWeightPriceChart = React.lazy(() =>
   import('components/charts/LightWeightPriceChart')
 );
-
-const IntervalToggleBtn = styled(ToggleButton)(() => ({
-  fontSize: 11,
-  textTransform: 'none',
-}));
 
 export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
   const { i18n, t } = useTranslation();
@@ -48,7 +42,6 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
 
   const [expanded, setExpanded] = useState({});
 
-  const [intervals, setIntervals] = useState([]);
   const [selectedInterval, setSelectedInterval] = useState(null);
 
   const [tradingPlatforms, setTradingPlatforms] = useState([]);
@@ -79,7 +72,7 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
       onClick={() =>
         setExpanded({ ...expanded, [row.id]: !row.getIsExpanded() })
       }
-      color={row.getIsExpanded() ? 'accent' : ''}
+      color={row.getIsExpanded() ? 'info' : ''}
       fontSize="small"
     />
   );
@@ -88,7 +81,10 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
     isStarred ? (
       <StarIcon fontSize="small" />
     ) : (
-      <StarOutlineIcon fontSize="small" />
+      <StarOutlineIcon
+        fontSize="small"
+        onClick={() => console.log('starred')}
+      />
     );
 
   const columns = useMemo(
@@ -173,12 +169,6 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
   );
 
   useEffect(() => {
-    setIntervals(
-      DATA_PERIOD_INTERVALS.map((interval) => ({
-        label: interval.getLabel(),
-        ...interval,
-      }))
-    );
     const platforms = TRADING_PLATFORMS.map((item) => ({
       label: item.getLabel(),
       ...item,

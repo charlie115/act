@@ -31,7 +31,6 @@ const DEFAULT_PROPS = {
   muiTableProps: { sx: { tableLayout: 'fixed' } },
   muiTableBodyCellProps: { sx: { px: 0 } },
   muiTableHeadCellProps: { sx: { px: 0 } },
-  // muiTopToolbarProps: { sx: { mb: 0.5 } },
   positionExpandColumn: 'last',
 };
 

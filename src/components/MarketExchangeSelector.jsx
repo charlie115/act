@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 
 import Button from '@mui/material/Button';
+import Grow from '@mui/material/Grow';
 import ListItemText from '@mui/material/ListItemText';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import MenuList from '@mui/material/MenuList';
+import Popper from '@mui/material/Popper';
 import Stack from '@mui/material/Stack';
 import SvgIcon from '@mui/material/SvgIcon';
 import Tooltip from '@mui/material/Tooltip';
@@ -13,14 +16,13 @@ import SyncAltIcon from '@mui/icons-material/SyncAlt';
 
 import { useTranslation } from 'react-i18next';
 
-import isNumber from 'lodash/isNumber';
-
 import AnimatedClick from 'components/AnimatedClick';
+import DropdownMenu from 'components/DropdownMenu';
 
 import { MARKETS } from 'constants/lists';
 
 function MarketExchangeSelector({ onChange }) {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
 
   const [markets, setMarkets] = useState([]);
 
@@ -40,15 +42,18 @@ function MarketExchangeSelector({ onChange }) {
 
   useEffect(() => {
     setMarkets(
-      MARKETS.map((market) => ({
-        label: market.getLabel(),
+      MARKETS.map((market, index) => ({
         ...market,
+        index,
+        label: market.getLabel(),
+        icon: (
+          <SvgIcon>
+            <market.icon />
+          </SvgIcon>
+        ),
       }))
     );
   }, [i18n.language]);
-
-  const BaseIcon = markets[baseMarket]?.icon || 'div';
-  const CompareIcon = markets[compareMarket]?.icon || 'div';
 
   return (
     <Stack
@@ -60,42 +65,19 @@ function MarketExchangeSelector({ onChange }) {
         mb: { xs: 3, md: 0 },
       }}
     >
-      <Tooltip title="Base Exchange">
-        <Button
-          onClick={(e) => {
-            setBaseAnchorEl(e.currentTarget);
-            setCompareAnchorEl(null);
-          }}
-          size="large"
-          variant="outlined"
-          startIcon={
-            <SvgIcon>
-              <BaseIcon />
-            </SvgIcon>
-          }
-          sx={{
-            alignSelf: 'stretch',
-            justifyContent: 'start',
-            flex: 1.5,
-            px: 2,
-            zIndex: compareAnchorEl ? 10001 : null,
-          }}
-        >
-          {markets[baseMarket]?.label}
-        </Button>
-      </Tooltip>
-      <MarketMenu
-        anchorEl={baseAnchorEl}
-        markets={markets}
-        selectedIdx={baseMarket}
-        onClick={(idx) => {
-          setBaseMarket(idx);
-          setBaseAnchorEl(null);
-
-          if (idx === compareMarket)
-            setCompareMarket(idx === markets.length - 1 ? 0 : idx + 1);
+      <DropdownMenu
+        options={markets}
+        value={markets[baseMarket]}
+        tooltipTitle={t('Base Exchange')}
+        onSelectItem={(item) => {
+          setBaseMarket(item.index);
+          if (item.index === compareMarket)
+            setCompareMarket(
+              item.index === markets.length - 1 ? 0 : item.index + 1
+            );
         }}
-        onClose={() => setBaseAnchorEl(null)}
+        buttonStyle={{ justifyContent: 'start', px: 2 }}
+        containerStyle={{ alignSelf: 'stretch', flex: 1.5 }}
       />
       <AnimatedClick
         animation="flipOutY"
@@ -115,69 +97,15 @@ function MarketExchangeSelector({ onChange }) {
           sx={{ cursor: 'pointer' }}
         />
       </AnimatedClick>
-      <Button
-        onClick={(e) => {
-          setCompareAnchorEl(e.currentTarget);
-          setBaseAnchorEl(null);
-        }}
-        size="large"
-        variant="outlined"
-        startIcon={
-          <SvgIcon>
-            <CompareIcon />
-          </SvgIcon>
-        }
-        sx={{
-          alignSelf: 'stretch',
-          justifyContent: 'start',
-          flex: 1.5,
-          px: 2,
-          zIndex: baseAnchorEl ? 10001 : null,
-        }}
-      >
-        {markets[compareMarket]?.label}
-      </Button>
-      <MarketMenu
-        anchorEl={compareAnchorEl}
-        markets={markets}
-        disabledIdx={baseMarket}
-        selectedIdx={compareMarket}
-        onClick={(idx) => {
-          setCompareMarket(idx);
-          setCompareAnchorEl(null);
-        }}
-        onClose={() => setCompareAnchorEl(null)}
+      <DropdownMenu
+        options={markets}
+        value={markets[compareMarket]}
+        disabledValue={markets[baseMarket]}
+        onSelectItem={(item) => setCompareMarket(item.index)}
+        buttonStyle={{ justifyContent: 'start', px: 2 }}
+        containerStyle={{ alignSelf: 'stretch', flex: 1.5 }}
       />
     </Stack>
-  );
-}
-
-function MarketMenu({
-  anchorEl,
-  markets,
-  disabledIdx,
-  selectedIdx,
-  onClick,
-  onClose,
-}) {
-  return (
-    <Menu anchorEl={anchorEl} open={!!anchorEl} onClose={onClose}>
-      {markets.map((item, idx) => (
-        <MenuItem
-          key={item.value}
-          disabled={isNumber(disabledIdx) && idx === disabledIdx}
-          selected={idx === selectedIdx}
-          onClick={() => onClick(idx)}
-        >
-          <ListItemIcon>
-            <SvgIcon>
-              <item.icon />
-            </SvgIcon>
-          </ListItemIcon>
-          <ListItemText>{item.label}</ListItemText>
-        </MenuItem>
-      ))}
-    </Menu>
   );
 }
 

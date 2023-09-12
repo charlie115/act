@@ -1,8 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 
@@ -53,6 +50,8 @@ export default function LanguageSelector(props) {
       variant="standard"
       sx={{
         color: 'light.main',
+        fontSize: 12,
+        fontWeight: 700,
         '::after': { display: 'none' },
         '::before': { display: 'none' },
         '& .MuiSelect-select': { pr: '0!important' },
