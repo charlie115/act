@@ -6,13 +6,13 @@ services:
     build:
       context: "nginx/"
     container_name: test-community-nginx
+    volumes:
+      - $HOME/test-community-web/build/:/opt/community_frontend/build/
     ports:
-      - "20080:80"
-      - "20081:81"
-    # depends_on:
-    #   - drf
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "20080:20080"
+      - "20081:20081"
+    depends_on:
+      - drf
     networks:
       - test-community-network
     restart: always
@@ -25,9 +25,11 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - PGDATA=/var/lib/postgresql/data/
     volumes:
-      - $HOME/test-community-postgres/:/var/lib/postgresql/data/:rw
+      - $HOME/test-community-postgres/:/var/lib/postgresql/data/
     ports:
       - "25432:5432"
+    expose:
+      - "5432"
     networks:
       - test-community-network
     healthcheck:
@@ -44,8 +46,8 @@ services:
       - $HOME/test-community-redis:/data
     ports:
       - "26379:6379"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    expose:
+      - "6379"
     networks:
       - test-community-network
     restart: always
@@ -58,10 +60,8 @@ services:
     container_name: test-community-drf
     volumes:
       - $HOME/test-community-drf/media:/community_drf/media
-    ports:
-      - "28000:8000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    expose:
+      - "8000"
     networks:
       - test-community-network
     restart: always
