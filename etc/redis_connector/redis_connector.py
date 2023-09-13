@@ -4,7 +4,7 @@ import datetime
 import pandas as pd
 
 class InitRedis:
-    def __init__(self, host='127.0.0.1', port=6379, db=0):
+    def __init__(self, host='221.148.128.212', port=26379, db=0):
         self.redis_pool = redis.ConnectionPool(host=host, port=port, db=db, decode_responses=False)
         self.redis_conn = redis.Redis(connection_pool=self.redis_pool)
 

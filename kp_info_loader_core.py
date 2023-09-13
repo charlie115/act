@@ -9,6 +9,7 @@ from exchange_websocket.upbit_websocket import UpbitWebsocket
 from loggers.logger import KimpBotLogger
 from etc.redis_connector.redis_connector import InitRedis
 from etc.db_handler.create_schema_tables import InitDBClient
+from kline_generator.kline_core import InitKlineCore
 import _pickle as pickle
 from threading import Thread
 import time
@@ -38,6 +39,10 @@ class InitCore:
         self.redis_client = InitRedis()
 
         self.kimp_bot_core_logger.info(f"InitCore|InitCore initiated with proc_n={proc_n}")
+
+        self.update_dollar_return_dict = {}
+        self.update_dollar_thread = Thread(target=update_dollar.fetch_dollar_loop, args=(self.update_dollar_return_dict, self.update_dollar_logger), daemon=True)
+        self.update_dollar_thread.start()
 
         self.info_dict = {}
         self.info_thread_dict = {}
@@ -79,11 +84,11 @@ class InitCore:
         self.exchange_websocket_dict['BINANCE_SPOT'] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_spot_symbol_list, register_monitor_msg, self.info_dict, logging_dir)
         self.exchange_websocket_dict['BINANCE_USD_M'] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_usdm_symbol_list, register_monitor_msg, self.info_dict, logging_dir)
         self.exchange_websocket_dict['BINANCE_COIN_M'] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_coinm_symbol_list, register_monitor_msg, self.info_dict, logging_dir)
-
-        self.update_dollar_return_dict = {}
-        self.update_dollar_thread = Thread(target=update_dollar.fetch_dollar_loop, args=(self.update_dollar_return_dict, self.update_dollar_logger), daemon=True)
-        self.update_dollar_thread.start()
         time.sleep(2)
+
+        # Start kline generator
+        kline_generator = InitKlineCore(node, self.get_premium_df, self.get_market_code_list, register_monitor_msg, logging_dir)
+
 
     def update_exchange_info_as_df(self, data_name, loop_time_secs=15):
         while True:
@@ -125,20 +130,20 @@ class InitCore:
             self.start_monitor_update_wa_kimp_to_redis()
             self.start_monitor_update_dollar_to_redis()
 
-    # def get_kimp_df(self):
-    #     return dict_convert.get_kimp_df(
-    #         self.OKX_BOOKTICKER_DICT,
-    #         self.UPBIT_TICKER_DICT,
-    #         self.UPBIT_ORDERBOOK_DICT,
-    #         float(self.update_dollar_return_dict['price']))
+    def get_market_code_list(self):
+        market_code_list = []
+        for exchange in self.exchange_websocket_dict.keys():
+            for quete_asset in self.exchange_websocket_dict[exchange].get_price_df()['quote_asset'].unique():
+                market_code_list.append(f"{exchange}/{quete_asset}")
+        return market_code_list
 
-    # def get_wa_kimp_dict(self, exclude_outliers=True, kimp_side='last'):
-    #     if exclude_outliers == True:
-    #         kimp_df = self.get_kimp_df().sort_values('tp_kimp').iloc[1:-1,:]
-    #     else:
-    #         kimp_df = self.get_kimp_df()
-    #     if kimp_side == 'last':
-    #         wa_kimp = (kimp_df['acc_trade_price_24h']/kimp_df['acc_trade_price_24h'].sum() * kimp_df['tp_kimp']).sum()
+        # def get_wa_kimp_dict(self, exclude_outliers=True, kimp_side='last'):
+        #     if exclude_outliers == True:
+        #         kimp_df = self.get_kimp_df().sort_values('tp_kimp').iloc[1:-1,:]
+        #     else:
+        #         kimp_df = self.get_kimp_df()
+        #     if kimp_side == 'last':
+        #         wa_kimp = (kimp_df['acc_trade_price_24h']/kimp_df['acc_trade_price_24h'].sum() * kimp_df['tp_kimp']).sum()
     #         wa_usdt = (kimp_df['acc_trade_price_24h']/kimp_df['acc_trade_price_24h'].sum() * kimp_df['tp_usdt']).sum()
     #         wa_kimp_dict = {
     #             "wa_kimp": wa_kimp,

@@ -60,12 +60,12 @@ class InitBinanceAdaptor:
     def usdm_all_tickers(self):
         df = pd.DataFrame(self.pub_client.futures_ticker())
         df = df.applymap(lambda x: pd.to_numeric(x, errors='ignore'))
-        if self.info_dict is None or self.info_dict.get('binance_usdm_info_df') is None:
+        if self.info_dict is None or self.info_dict.get('binance_usd_m_info_df') is None:
             # TEST
             usdm_exchange_info_df = self.usdm_exchange_info()
-            self.binance_plug_logger.info(f"self.info_dict is None or self.info_dict.get('binance_spot_info_df') is None, Fetched from API")
+            self.binance_plug_logger.info(f"self.info_dict is None or self.info_dict.get('binance_usd_m_info_df') is None, Fetched from API")
         else:
-            usdm_exchange_info_df = self.info_dict.get('binance_usdm_info_df')
+            usdm_exchange_info_df = self.info_dict.get('binance_usd_m_info_df')
         if self.info_dict is None or self.info_dict.get('binance_spot_ticker_df') is None:
             # TEST
             binance_spot_ticker_df = self.spot_all_tickers()
