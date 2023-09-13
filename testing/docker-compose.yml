@@ -1,0 +1,71 @@
+version: '3'
+services:
+
+  nginx:
+    image: community-nginx:test
+    build:
+      context: "nginx/"
+    container_name: test-community-nginx
+    ports:
+      - "20080:80"
+      - "20081:81"
+    # depends_on:
+    #   - drf
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - test-community-network
+    restart: always
+  
+  postgres:
+    image: postgres:16rc1-alpine
+    container_name: test-community-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PGDATA=/var/lib/postgresql/data/
+    volumes:
+      - $HOME/test-community-postgres/:/var/lib/postgresql/data/:rw
+    ports:
+      - "25432:5432"
+    networks:
+      - test-community-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "${POSTGRES_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+  
+  redis:
+    image: redis:7-alpine
+    container_name: test-community-redis
+    volumes:
+      - $HOME/test-community-redis:/data
+    ports:
+      - "26379:6379"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - test-community-network
+    restart: always
+
+  drf:
+    image: $LOCAL_REGISTRY_URL/community-drf:test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    container_name: test-community-drf
+    volumes:
+      - $HOME/test-community-drf/media:/community_drf/media
+    ports:
+      - "28000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - test-community-network
+    restart: always
+  
+networks:
+  test-community-network:
+    driver: bridge

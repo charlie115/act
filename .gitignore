@@ -26,6 +26,9 @@ dist/
 # JetBrains IDE
 .idea/
 
+# VSCode IDE
+.history
+
 # Unit test reports
 TEST*.xml
 
@@ -50,3 +53,8 @@ Thumbs.db
 
 # Build files
 build/
+
+# Env
+*.env*
+!.env.example
+*venv*
