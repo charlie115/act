@@ -37,6 +37,7 @@ class UserSerializer(serializers.ModelSerializer):
     arbot_config = ArbotUserConfigSerializer(read_only=True)
 
     def create(self, validated_data):
+        validated_data.pop("username", None)
         password = validated_data.pop("password")
 
         user = User(**validated_data)
@@ -50,6 +51,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             "uuid",
             "email",
+            "username",
             "password",
             "first_name",
             "last_name",
@@ -59,11 +61,11 @@ class UserSerializer(serializers.ModelSerializer):
             "favorite_symbols",
             "arbot_config",
         )
+        read_only_fields = ("role", "is_active")
         extra_kwargs = {
             "email": {"style": {"input_type": "email", "placeholder": "Email"}},
             "password": {
                 "write_only": True,
                 "style": {"input_type": "password", "placeholder": "Password"},
             },
-            "is_active": {"read_only": True},
         }

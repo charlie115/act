@@ -129,3 +129,29 @@ class AuthTokenVerifyView(TokenVerifyView):
 )
 class AuthUserDetailsView(UserDetailsView):
     pass
+
+
+@extend_schema(tags=["Auth"])
+@extend_schema_view(
+    patch=extend_schema(
+        operation_id="Register the logged in user",
+        description="Reigster the `logged in user`.<br>"
+        "*User registration info is saved and the user's role finally becomes VISITOR → **USER**.*",
+    ),
+)
+class AuthUserRegisterView(UserDetailsView):
+    http_method_names = ["patch"]
+
+    def perform_update(self, serializer):
+        current_username = serializer.instance.username
+        new_username = serializer.validated_data["username"]
+
+        if (
+            "username" in serializer.validated_data
+            and current_username != new_username
+            and not new_username.startswith("@")
+            and new_username[0].isalpha()
+        ):
+            serializer.instance.role = serializer.instance.USER
+
+        serializer.save()

@@ -1,5 +1,7 @@
+import random
 import uuid
 
+from datetime import datetime
 from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import AbstractUser
@@ -42,7 +44,9 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
         if self.username == "":
-            self.username = self.email
+            email_username = list(self.email.split("@")[0])
+            temp_username = "".join(random.sample(email_username, len(email_username)))
+            self.username = f"@{temp_username}{datetime.now().microsecond}"
 
         super(User, self).save(*args, **kwargs)
 

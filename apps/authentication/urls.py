@@ -14,6 +14,7 @@ from authentication.views import (
     AuthTokenRefreshView,
     AuthTokenVerifyView,
     AuthUserDetailsView,
+    AuthUserRegisterView,
 )
 from lib.views import BaseEndpointListView
 
@@ -50,6 +51,7 @@ urlpatterns = [
     path("token/refresh/", AuthTokenRefreshView.as_view(), name="token refresh"),
     path("token/verify/", AuthTokenVerifyView.as_view(), name="token verify"),
     path("user/", AuthUserDetailsView.as_view(), name="logged in user"),
+    path("user/register/", AuthUserRegisterView.as_view(), name="register user"),
 ]
 
 if os.environ["DJANGO_SETTINGS_MODULE"] == "config.settings.dev":
