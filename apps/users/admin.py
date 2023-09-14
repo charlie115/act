@@ -18,6 +18,7 @@ from users.models import (
 class ProfileInline(StackedInline):
     model = UserProfile
     verbose_name = "Profile"
+    classes = ("collapse",)
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -77,6 +78,7 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
         "profile__referral",
     ]
     readonly_fields = (
+        "uuid",
         "date_joined",
         "last_login",
         "last_username_change",
@@ -93,8 +95,8 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
             {
                 "fields": (
                     "is_active",
-                    "username",
-                    "email",
+                    "uuid",
+                    ("username", "email"),
                     "password",
                     ("date_joined", "last_login", "last_username_change"),
                 )
@@ -108,7 +110,6 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
             _("Permissions"),
             {
                 "fields": ("is_staff", "role", "groups"),
-                "classes": ("collapse",),
             },
         ),
     )
