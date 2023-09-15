@@ -30,15 +30,24 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
-ROOT_URLCONF = "config.urls"
+CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
-WSGI_APPLICATION = "config.wsgi.application"
+X_FRAME_OPTIONS = "SAMEORIGIN"
 
-SITE_ID = 1
+SILENCED_SYSTEM_CHECKS = ["security.W019"]
 
 # Application definition
 
+SITE_ID = 1
+
+ROOT_URLCONF = "config.urls"
+
+ASGI_APPLICATION = "config.asgi.application"
+
+WSGI_APPLICATION = "config.wsgi.application"
+
 DJANGO_APPS = (
+    "daphne",
     "unfold",
     "unfold.contrib.filters",  # optional, if special filters are needed
     "unfold.contrib.forms",  # optional, if special form elements are needed
@@ -65,6 +74,7 @@ THIRD_PARTY_APPS = (
     "dj_rest_auth.registration",
     # 'django_filters',
     "drf_spectacular",
+    "channels",
 )
 
 LOCAL_APPS = (
@@ -91,6 +101,16 @@ DATABASES = {
     "default": dj_database_url.config(
         default=env("COMMUNITY_DB_URL"), conn_max_age=600
     ),
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": env("REDIS_DB_URL", default="redis://localhost:6379"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    }
 }
 
 # Default primary key field type
