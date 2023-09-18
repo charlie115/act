@@ -48,8 +48,8 @@ function App() {
           '::-webkit-scrollbar-thumb:window-inactive': {
             background: 'rgba(203, 227, 236, 0.4)',
           },
-          '#root': { minHeight: '100vh' },
           input: { textTransform: 'unset' },
+          '#root': { minHeight: '100vh' },
         }}
       />
       <RouterProvider router={router} fallbackElement={<FullScreenLoading />} />

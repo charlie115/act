@@ -8,10 +8,12 @@ import Typography from '@mui/material/Typography';
 
 import { styled } from '@mui/material/styles';
 
+import { useSelector } from 'react-redux';
+
 import { ReactComponent as BitcoinCashSvg } from 'assets/svg/bitcoincash.svg';
 
 const NavTitle = styled(Typography)(({ theme }) => ({
-  background: `linear-gradient(90deg, ${theme.palette.gradients.primary.main} 40%, ${theme.palette.gradients.primary.state} 50%)`,
+  background: `linear-gradient(90deg, ${theme.palette.gradients.primary.main} 35%, ${theme.palette.gradients.primary.state} 65%)`,
   backgroundClip: 'text',
   WebkitBackgroundClip: 'text',
   WebkitTextFillColor: 'transparent',
@@ -20,27 +22,35 @@ const NavTitle = styled(Typography)(({ theme }) => ({
   textDecoration: 'none',
 }));
 
-export default function BrandLogo({ iconSize = 24, nameVariant = 'h5', sx }) {
-  const navigate = useNavigate();
+export default function BrandLogo({
+  iconProps,
+  iconSize = 24,
+  titleVariant = 'h5',
+  onClick,
+  sx,
+}) {
+  const theme = useSelector((state) => state.app.theme);
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', ...sx }}>
+    <Box
+      onClick={onClick}
+      sx={{
+        cursor: onClick ? 'pointer' : null,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...sx,
+      }}
+    >
       <SvgIcon
-        color="white"
+        color={theme === 'dark' ? 'white' : 'primary'}
         fontSize="medium"
-        sx={{ cursor: 'pointer', fontSize: iconSize, mr: 1 }}
-        onClick={() => navigate('/')}
+        sx={{ fontSize: iconSize, mr: 1 }}
+        {...iconProps}
       >
         <BitcoinCashSvg />
       </SvgIcon>
-      <NavTitle
-        noWrap
-        color="primary"
-        variant={nameVariant}
-        component="a"
-        href="/"
-        sx={{ mr: 4 }}
-      >
+      <NavTitle noWrap color="primary" variant={titleVariant}>
         AR-Kimp
       </NavTitle>
     </Box>

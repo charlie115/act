@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
 
 import { useGetKpWebsocketDataQuery } from 'redux/api/websocket';
 

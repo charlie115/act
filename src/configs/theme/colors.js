@@ -14,19 +14,19 @@ export default {
 
   black: { light: '#212529', main: '#000000' },
 
-  accent: { main: '#ffcd16' },
+  accent: { main: '#f9f871' },
 
   primary: { main: '#007cff', light: '#44b0fd' },
 
-  secondary: { main: '#8796A5' },
+  secondary: { main: '#a8aabc' },
 
-  info: { main: '#1478FF' },
+  info: { main: '#00dbf0' },
 
-  success: { main: '#4ce08a' },
+  success: { main: '#25C196' },
 
-  warning: { main: '#ffdc16' },
+  warning: { main: '#ffc65f' },
 
-  error: { main: '#F44335' },
+  error: { main: '#ff0d45' },
 
   light: { main: '#f0f2f5' },
 
@@ -46,33 +46,33 @@ export default {
 
   gradients: {
     primary: {
-      main: '#1478FF',
-      state: '#1ea5e9',
+      main: '#007cff',
+      state: '#6A6EEC',
     },
 
     secondary: {
-      main: '#747b8a',
+      main: '#a8aabc',
       state: '#495361',
     },
 
     info: {
-      main: '#49a3f1',
-      state: '#1A73E8',
+      main: '#00dbf0',
+      state: '#00c4f0',
     },
 
     success: {
-      main: '#66BB6A',
-      state: '#43A047',
+      main: '#25C196',
+      state: '#1b906f',
     },
 
     warning: {
-      main: '#FFA726',
+      main: '#ffc65f',
       state: '#FB8C00',
     },
 
     error: {
-      main: '#EF5350',
-      state: '#E53935',
+      main: '#ff0d45',
+      state: '#fd2f5e',
     },
 
     light: {
@@ -81,8 +81,8 @@ export default {
     },
 
     dark: {
-      main: '#42424a',
-      state: '#191919',
+      main: '#121212',
+      state: '#42424a',
     },
   },
 

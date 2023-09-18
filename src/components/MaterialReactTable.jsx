@@ -26,16 +26,22 @@ const DEFAULT_PROPS = {
   enablePagination: false,
   enableStickyHeader: true,
   initialState: { showGlobalFilter: true },
+  muiSearchTextFieldProps: {
+    size: 'small',
+    variant: 'outlined',
+    inputProps: { style: { marginBottom: '3px' } },
+    sx: { ml: { xs: -1, sm: 0 } },
+  },
   muiTableProps: { sx: { tableLayout: 'fixed' } },
-  muiTableBodyCellProps: { sx: { px: 0 } },
-  muiTableHeadCellProps: { sx: { px: 0 } },
+  muiTableBodyCellProps: { sx: { px: { xs: 0, sm: 0.5 } } },
+  muiTableHeadCellProps: { sx: { px: { xs: 0, sm: 0.5 } } },
   positionExpandColumn: 'last',
 };
 
 export default function MRTable({ columns, data, ...props }) {
   const ref = useRef();
 
-  const { i18n, t } = useTranslation();
+  const { i18n } = useTranslation();
   const globalTheme = useTheme();
 
   const cols = useMemo(() => columns, [columns]);
@@ -78,17 +84,6 @@ export default function MRTable({ columns, data, ...props }) {
           </>
         )}
         positionGlobalFilter={matchLargeScreen ? 'right' : 'left'}
-        muiSearchTextFieldProps={{
-          size: 'small',
-          variant: 'outlined',
-          inputProps: {
-            placeholder: t('Search {{size}} coins', {
-              size: rows.length,
-            }),
-            style: { marginBottom: '3px' },
-          },
-          sx: { ml: { xs: -1, sm: 0 } },
-        }}
         muiTableHeadCellProps={({ column }) => ({
           sx: {
             color: column.getIsSorted()
@@ -105,5 +100,3 @@ export default function MRTable({ columns, data, ...props }) {
     </ThemeProvider>
   );
 }
-
-// export default React.memo(MRTTable);

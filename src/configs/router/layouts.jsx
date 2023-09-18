@@ -12,6 +12,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
 
 import { useSelector } from 'react-redux';
+
 import { useTranslation } from 'react-i18next';
 
 import { routes } from 'configs/navigation';

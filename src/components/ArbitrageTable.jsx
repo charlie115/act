@@ -38,14 +38,14 @@ export default function ArbitrageTable({ data }) {
     <Stack spacing={0.5}>
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
         <CustomChip sx={{ bgcolor: 'warning.main' }}>Margin</CustomChip>
-        <CustomChip sx={{ bgcolor: 'error.main' }}>S</CustomChip>
+        <CustomChip sx={{ bgcolor: 'error.main', mr: 3 }}>S</CustomChip>
         {row.original.icon ? (
           <img
             loading="lazy"
             height="16"
             width="16"
             src={row.original.icon}
-            alt=""
+            alt={row.original.symbol}
           />
         ) : (
           <BlockIcon color="secondary" sx={{ fontSize: 16 }} />
@@ -67,7 +67,7 @@ export default function ArbitrageTable({ data }) {
             height="16"
             width="16"
             src={row.original.icon}
-            alt=""
+            alt={row.original.symbol}
           />
         ) : (
           <BlockIcon color="secondary" sx={{ fontSize: 16 }} />
@@ -89,6 +89,7 @@ export default function ArbitrageTable({ data }) {
         header: t('Strategy'),
         accessorKey: 'strategy',
         size: 50,
+        muiTableHeadCellProps: { align: 'left' },
         Cell: ({ row, renderedCellValue }) => renderStrategyCell(row),
       },
       {
@@ -127,39 +128,23 @@ export default function ArbitrageTable({ data }) {
           // showGlobalFilter: true,
         }}
         state={{ expanded }}
-        renderDetailPanel={({ row }) => (
-          <Box>
-            <Collapse unmountOnExit in={row.getIsExpanded()}>
-              <React.Suspense>
-                {/* <LightWeightPriceChart
-                  data={seriesData[row.original.name] || []}
-                /> */}
-              </React.Suspense>
-            </Collapse>
-          </Box>
-        )}
-        positionExpandColumn="last"
-        displayColumnDefOptions={{
-          'mrt-row-expand': { size: 10, maxSize: 10 },
+        // renderDetailPanel={({ row }) => (
+        //   <Box>
+        //     <Collapse unmountOnExit in={row.getIsExpanded()}>
+        //       <React.Suspense>
+        //       </React.Suspense>
+        //     </Collapse>
+        //   </Box>
+        // )}
+        muiSearchTextFieldProps={{
+          inputProps: {
+            placeholder: t('Search {{size}} coins', {
+              size: data.length,
+            }),
+          },
         }}
-        muiExpandAllButtonProps={({ table }) => ({
-          onClick: () => {
-            const { rows } = table.getCoreRowModel();
-            if (Object.keys(expanded).length < rows.length)
-              setExpanded(
-                rows.reduce((acc, curr) => ({ ...acc, [curr.id]: true }), {})
-              );
-            else setExpanded({});
-          },
-          sx: {
-            color:
-              theme.palette.grey[theme.palette.mode === 'dark' ? '300' : '400'],
-          },
-        })}
-        muiExpandButtonProps={({ row }) => ({
-          onClick: () =>
-            setExpanded({ ...expanded, [row.id]: !expanded[row.id] }),
-        })}
+        muiTableHeadCellProps={{ align: 'right' }}
+        muiTableBodyCellProps={{ align: 'right', sx: { fontSize: 13 } }}
         muiTableBodyRowProps={({ row }) => ({
           onClick: (e) => {
             if (

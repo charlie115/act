@@ -5,9 +5,6 @@ import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
 import Grid from '@mui/material/Grid';
 import LinearProgress from '@mui/material/LinearProgress';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -267,6 +264,13 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
           onClick: () =>
             setExpanded({ ...expanded, [row.id]: !expanded[row.id] }),
         })}
+        muiSearchTextFieldProps={{
+          inputProps: {
+            placeholder: t('Search {{size}} coins', {
+              size: realTimeData.length,
+            }),
+          },
+        }}
         muiTableHeadCellProps={{ align: 'right' }}
         muiTableBodyCellProps={{ align: 'right', sx: { fontSize: 13 } }}
         muiTableBodyRowProps={({ row }) => ({
