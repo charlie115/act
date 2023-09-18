@@ -1,16 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
-import Button from '@mui/material/Button';
-import Grow from '@mui/material/Grow';
-import ListItemText from '@mui/material/ListItemText';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import MenuList from '@mui/material/MenuList';
-import Popper from '@mui/material/Popper';
 import Stack from '@mui/material/Stack';
 import SvgIcon from '@mui/material/SvgIcon';
-import Tooltip from '@mui/material/Tooltip';
 
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 
@@ -19,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import AnimatedClick from 'components/AnimatedClick';
 import DropdownMenu from 'components/DropdownMenu';
 
-import { MARKETS } from 'constants/lists';
+import { MARKET_EXCHANGES } from 'constants/lists';
 
 function MarketExchangeSelector({ onChange }) {
   const { i18n, t } = useTranslation();
@@ -42,7 +33,7 @@ function MarketExchangeSelector({ onChange }) {
 
   useEffect(() => {
     setMarkets(
-      MARKETS.map((market, index) => ({
+      MARKET_EXCHANGES.map((market, index) => ({
         ...market,
         index,
         label: market.getLabel(),

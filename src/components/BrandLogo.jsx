@@ -51,7 +51,7 @@ export default function BrandLogo({
         <BitcoinCashSvg />
       </SvgIcon>
       <NavTitle noWrap color="primary" variant={titleVariant}>
-        AR-Kimp
+        Ar-Kimp
       </NavTitle>
     </Box>
   );

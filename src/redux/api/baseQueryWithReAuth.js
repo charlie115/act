@@ -34,10 +34,14 @@ export default async (args, api, extraOptions) => {
             type: 'auth/newTokenReceived',
             payload: refreshResult.data,
           });
-          // api.dispatch(newTokenReceived(refreshResult.data));
           // retry the initial query
           result = await baseQuery(args, api, extraOptions);
         } else {
+          await baseQuery(
+            { url: '/auth/logout/', method: 'POST' },
+            api,
+            extraOptions
+          );
           api.dispatch({ type: 'auth/logout' });
         }
       } finally {

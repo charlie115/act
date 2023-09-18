@@ -34,9 +34,7 @@ export default function Register() {
 
   const { t } = useTranslation();
 
-  const isAuthorized = useSelector((state) => state.auth.isAuthorized);
-
-  const user = useSelector((state) => state.auth.user);
+  const { isAuthorized, user } = useSelector((state) => state.auth);
 
   const [register, { isError, isLoading, reset }] =
     useAuthUserRegisterMutation();
@@ -126,6 +124,7 @@ export default function Register() {
               {...field}
             >
               <OutlinedInput
+                autoFocus
                 placeholder={t('Enter username')}
                 startAdornment={
                   <InputAdornment position="start">

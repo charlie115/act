@@ -34,6 +34,12 @@ export const authSlice = createSlice({
           state.isAuthorized = payload.user.role !== 'visitor';
         }
       )
+      .addMatcher(drfApi.endpoints.authLogout.matchFulfilled, (state) => {
+        state.accessToken = null;
+        state.refreshToken = null;
+        state.isAuthorized = false;
+        state.user = null;
+      })
       .addMatcher(
         drfApi.endpoints.authUserRegister.matchFulfilled,
         (state, { payload }) => {

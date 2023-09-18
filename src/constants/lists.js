@@ -16,7 +16,7 @@ export const DATA_PERIOD_INTERVALS = [
   { getLabel: () => i18n.t('Month'), value: 'month' },
 ];
 
-export const MARKETS = [
+export const MARKET_EXCHANGES = [
   { getLabel: () => i18n.t('UPbit'), value: 'UPBIT', icon: UPbitSvg },
   { getLabel: () => i18n.t('UPbit (BTC)'), value: 'UPBIT-BTC', icon: UPbitSvg },
   {

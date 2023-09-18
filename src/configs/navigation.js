@@ -1,7 +1,8 @@
-import React, { createRef, lazy } from 'react';
+import { createRef, lazy } from 'react';
 
 import i18n from 'configs/i18n';
 
+const Account = lazy(() => import('pages/Account'));
 const Arbitrage = lazy(() => import('pages/Arbitrage'));
 const Home = lazy(() => import('pages/Home'));
 const Investment = lazy(() => import('pages/Investment'));
@@ -42,6 +43,16 @@ const main = [
   },
 ];
 
+const protectedRoutes = [
+  {
+    name: 'account',
+    path: '/account',
+    element: Account,
+    getTitle: () => i18n.t('Account'),
+    ref: createRef(),
+  },
+];
+
 const publicRoutes = [
   {
     name: 'login',
@@ -61,6 +72,7 @@ const publicRoutes = [
 
 export default {
   main,
+  protectedRoutes,
   publicRoutes,
 };
-export const routes = main.concat(publicRoutes);
+export const routes = main.concat(publicRoutes, protectedRoutes);

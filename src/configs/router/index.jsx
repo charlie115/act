@@ -12,10 +12,6 @@ import navigation from 'configs/navigation';
 
 import { MainLayout, ProtectedLayout, PublicLayout } from './layouts';
 
-const Arbitrage = React.lazy(() => import('pages/Arbitrage'));
-const Home = React.lazy(() => import('pages/Home'));
-const Login = React.lazy(() => import('pages/Login'));
-
 export default createBrowserRouter(
   createRoutesFromElements(
     <Route element={<MainLayout />}>
@@ -44,14 +40,17 @@ export default createBrowserRouter(
         ))}
       </Route>
       <Route element={<ProtectedLayout />}>
-        <Route
-          index
-          element={
-            <React.Suspense fallback={<FullScreenLoading />}>
-              <div>PrivatePage</div>
-            </React.Suspense>
-          }
-        />
+        {navigation.protectedRoutes.map(({ element: Element, ...props }) => (
+          <Route
+            key={props.name}
+            element={
+              <React.Suspense fallback={<FullScreenLoading />}>
+                <Element />
+              </React.Suspense>
+            }
+            {...props}
+          />
+        ))}
       </Route>
       {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
       {/* <Route path="*" element={<PageNotFound />} /> */}

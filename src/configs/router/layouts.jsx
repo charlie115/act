@@ -25,12 +25,12 @@ const TVTickerWidget = React.lazy(() =>
 );
 
 export function ProtectedLayout() {
-  const token = useSelector((state) => state.auth.token);
+  const isAuthorized = useSelector((state) => state.auth.isAuthorized);
 
   const location = useLocation();
 
-  if (!token)
-    return <Navigate to="/login" replace state={{ from: location }} />;
+  if (!isAuthorized)
+    return <Navigate replace to="/login" state={{ from: location }} />;
 
   return <Outlet />;
 }
@@ -57,7 +57,7 @@ export function MainLayout() {
   return (
     <>
       <Helmet>
-        <title>{currentRoute.getTitle()} - AR-Kimp</title>
+        <title>{currentRoute.getTitle()} — Ar-Kimp</title>
       </Helmet>
       <Box>
         <Header />

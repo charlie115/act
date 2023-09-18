@@ -30,8 +30,7 @@ const rootPersistConfig = {
   transforms: [
     encryptTransform({
       secretKey: 'my-super-secret-key',
-      onError(error) {
-        console.log('error: ', error);
+      onError() {
         // Handle the error.
       },
     }),

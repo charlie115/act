@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -10,7 +10,6 @@ import Container from '@mui/material/Container';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import Slide from '@mui/material/Slide';
 import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -22,6 +21,7 @@ import { styled } from '@mui/material/styles';
 import { useSelector } from 'react-redux';
 
 import BrandLogo from 'components/BrandLogo';
+import HeaderUserMenu from 'components/HeaderUserMenu';
 import LanguageSelector from 'components/LanguageSelector';
 import ThemeSelector from 'components/ThemeSelector';
 
@@ -128,15 +128,20 @@ export default function Header() {
           >
             <LanguageSelector />
             <ThemeSelector />
-            <IconButton onClick={handleUserClick} sx={{ p: 0 }}>
+            <HeaderUserMenu />
+            {/* <IconButton onClick={handleUserClick} sx={{ p: 0 }}>
               <Avatar
                 src={user?.profile?.picture}
                 alt={`${user?.first_name} ${user?.last_name}`}
                 sx={{ bgcolor: user ? 'primary.main' : null }}
               />
-            </IconButton>
+            </IconButton> */}
           </Stack>
-          <IconButton
+
+          <HeaderUserMenu
+            iconStyle={{ display: { xs: 'block', sm: 'none' } }}
+          />
+          {/* <IconButton
             onClick={handleUserClick}
             sx={{ display: { xs: 'block', sm: 'none' }, p: 0 }}
           >
@@ -145,7 +150,7 @@ export default function Header() {
               alt={`${user?.first_name} ${user?.last_name}`}
               sx={{ bgcolor: user ? 'primary.main' : null }}
             />
-          </IconButton>
+          </IconButton> */}
         </Toolbar>
       </Container>
     </AppBar>

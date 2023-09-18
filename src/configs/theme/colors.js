@@ -20,7 +20,7 @@ export default {
 
   secondary: { main: '#a8aabc' },
 
-  info: { main: '#00dbf0' },
+  info: { main: '#00bbff' },
 
   success: { main: '#25C196' },
 
@@ -56,7 +56,7 @@ export default {
     },
 
     info: {
-      main: '#00dbf0',
+      main: '#00bbff',
       state: '#00c4f0',
     },
 
