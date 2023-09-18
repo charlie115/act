@@ -2,8 +2,6 @@
 /* eslint-disable camelcase */
 import React, { useMemo, useRef } from 'react';
 
-import Box from '@mui/material/Box';
-
 import {
   MaterialReactTable,
   MRT_FullScreenToggleButton,
@@ -26,7 +24,7 @@ const DEFAULT_PROPS = {
   enableExpanding: false,
   enableGlobalFilter: true,
   enablePagination: false,
-  enableStickyHeader: false,
+  enableStickyHeader: true,
   initialState: { showGlobalFilter: true },
   muiTableProps: { sx: { tableLayout: 'fixed' } },
   muiTableBodyCellProps: { sx: { px: 0 } },

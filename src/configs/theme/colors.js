@@ -16,7 +16,7 @@ export default {
 
   accent: { main: '#ffcd16' },
 
-  primary: { main: '#28eae4' },
+  primary: { main: '#007cff', light: '#44b0fd' },
 
   secondary: { main: '#8796A5' },
 

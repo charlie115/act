@@ -19,9 +19,9 @@ import MenuIcon from '@mui/icons-material/Menu';
 
 import { styled } from '@mui/material/styles';
 
-import debounce from 'lodash/debounce';
-
 import { useSelector } from 'react-redux';
+
+import debounce from 'lodash/debounce';
 
 import BrandLogo from 'components/BrandLogo';
 import LanguageSelector from 'components/LanguageSelector';
