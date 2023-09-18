@@ -1,21 +1,22 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+
+import baseQueryWithReAuth from './baseQueryWithReAuth';
 
 const api = createApi({
   reducerPath: 'api',
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.REACT_APP_DRF_URL,
-    prepareHeaders: (headers, { getState }) => {
-      const { accessToken } = getState().auth;
-      if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
-
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReAuth,
   endpoints: (builder) => ({
-    login: builder.mutation({
+    authLogin: builder.mutation({
       query: (body) => ({
         url: '/auth/login/',
         method: 'POST',
+        body,
+      }),
+    }),
+    authUserRegister: builder.mutation({
+      query: (body) => ({
+        url: '/auth/user/register/',
+        method: 'PATCH',
         body,
       }),
     }),
@@ -23,4 +24,4 @@ const api = createApi({
 });
 
 export default api;
-export const { useLoginMutation } = api;
+export const { useAuthLoginMutation, useAuthUserRegisterMutation } = api;

@@ -1,11 +1,12 @@
 import { createSlice } from '@reduxjs/toolkit';
-import jwtDecode from 'jwt-decode';
+
 import drfApi from 'redux/api/drf';
 
 const initialState = {
   accessToken: null,
   refreshToken: null,
-  user: {},
+  user: null,
+  isAuthorized: false,
 };
 
 export const authSlice = createSlice({
@@ -15,24 +16,34 @@ export const authSlice = createSlice({
     logout: (state) => {
       state.accessToken = null;
       state.refreshToken = null;
-      state.accessExpiration = null;
-      state.refreshExpiration = null;
-      state.user = {};
+      state.isAuthorized = false;
+      state.user = null;
+    },
+    newTokenReceived: (state, { payload }) => {
+      state.accessToken = payload.access;
     },
   },
   extraReducers: (builder) => {
-    builder.addMatcher(
-      drfApi.endpoints.login.matchFulfilled,
-      (state, { payload }) => {
-        state.accessToken = payload.access;
-        state.refreshToken = payload.refresh;
-        console.log(jwtDecode(payload.access));
-        state.user = payload.user;
-      }
-    );
+    builder
+      .addMatcher(
+        drfApi.endpoints.authLogin.matchFulfilled,
+        (state, { payload }) => {
+          state.accessToken = payload.access;
+          state.refreshToken = payload.refresh;
+          state.user = payload.user;
+          state.isAuthorized = payload.user.role !== 'visitor';
+        }
+      )
+      .addMatcher(
+        drfApi.endpoints.authUserRegister.matchFulfilled,
+        (state, { payload }) => {
+          state.user = payload;
+          state.isAuthorized = payload.role !== 'visitor';
+        }
+      );
   },
 });
 
-export const { login, logout } = authSlice.actions;
+export const { logout, newTokenReceived } = authSlice.actions;
 
 export default authSlice.reducer;
