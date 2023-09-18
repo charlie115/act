@@ -12,6 +12,8 @@ import {
   REGISTER,
 } from 'redux-persist';
 
+import { encryptTransform } from 'redux-persist-transform-encrypt';
+
 import { createLogger } from 'redux-logger';
 
 import drfApi from './api/drf';
@@ -25,6 +27,15 @@ const rootPersistConfig = {
   key: 'root',
   storage,
   whitelist: ['app', 'auth'],
+  transforms: [
+    encryptTransform({
+      secretKey: 'my-super-secret-key',
+      onError(error) {
+        console.log('error: ', error);
+        // Handle the error.
+      },
+    }),
+  ],
 };
 
 const reducers = combineReducers({

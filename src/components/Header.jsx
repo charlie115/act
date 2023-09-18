@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -18,8 +18,6 @@ import Typography from '@mui/material/Typography';
 import MenuIcon from '@mui/icons-material/Menu';
 
 import { styled } from '@mui/material/styles';
-
-import debounce from 'lodash/debounce';
 
 import { useSelector } from 'react-redux';
 
@@ -44,117 +42,112 @@ export default function Header() {
   const navigate = useNavigate();
 
   const token = useSelector((state) => state.auth.token);
+  const user = useSelector((state) => state.auth.user);
 
-  const [hidden, setHidden] = useState(false);
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [pages, setPages] = useState({});
   // const [userAnchorEl, setUserAnchorEl] = useState(null);
-
-  const showHeader = useCallback(
-    debounce(() => setHidden(false), 500),
-    []
-  );
 
   const handleUserClick = () => {
     if (token) console.log('open drawer');
     else navigate('/login');
   };
 
-  const handleScroll = () => {
-    if (window.scrollY > 300) {
-      setHidden(true);
-      showHeader();
-    }
-  };
-
   useEffect(() => {
     import('configs/navigation').then((res) => setPages(res.default));
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.addEventListener('scroll', handleScroll);
   }, []);
 
   return (
-    <Slide in={!hidden}>
-      <AppBar position="sticky" sx={{ bgcolor: 'dark.light' }}>
-        <Container maxWidth="xl">
-          <Toolbar disableGutters>
-            <BrandLogo sx={{ display: { xs: 'none', md: 'flex' } }} />
-            <Box
-              sx={{
-                alignItems: 'center',
-                flexGrow: 1,
-                display: { xs: 'flex', md: 'none' },
-              }}
+    <AppBar position="sticky" sx={{ bgcolor: 'dark.light' }}>
+      <Container maxWidth="xl">
+        <Toolbar disableGutters>
+          <BrandLogo
+            onClick={() => navigate('/')}
+            iconProps={{ color: 'white' }}
+            sx={{ display: { xs: 'none', md: 'flex' } }}
+          />
+          <Box
+            sx={{
+              alignItems: 'center',
+              flexGrow: 1,
+              display: { xs: 'flex', md: 'none' },
+            }}
+          >
+            <IconButton
+              size="large"
+              aria-label="header-menu"
+              aria-controls="header-menu"
+              aria-haspopup="true"
+              onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+              color="white"
             >
-              <IconButton
-                size="large"
-                aria-label="header-menu"
-                aria-controls="header-menu"
-                aria-haspopup="true"
-                onClick={(e) => setMenuAnchorEl(e.currentTarget)}
-                color="white"
-              >
-                <MenuIcon />
-              </IconButton>
-              <Menu
-                id="header-menu"
-                anchorEl={menuAnchorEl}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                keepMounted
-                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                open={!!menuAnchorEl}
-                onClose={() => setMenuAnchorEl(null)}
-                sx={{ display: { xs: 'block', md: 'none' } }}
-              >
-                {pages.main?.map((page) => (
-                  <MenuItem
-                    key={page.name}
-                    onClick={() => navigate(page.path)}
-                    selected={page.path === location.pathname}
-                  >
-                    <Typography textAlign="center">
-                      {page.getTitle()}
-                    </Typography>
-                  </MenuItem>
-                ))}
-              </Menu>
-              <BrandLogo sx={{ display: { xs: 'flex', md: 'none' } }} />
-            </Box>
-            <Box
-              sx={{ flexGrow: 1, ml: 3, display: { xs: 'none', md: 'flex' } }}
+              <MenuIcon />
+            </IconButton>
+            <Menu
+              id="header-menu"
+              anchorEl={menuAnchorEl}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+              keepMounted
+              transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+              open={!!menuAnchorEl}
+              onClose={() => setMenuAnchorEl(null)}
+              sx={{ display: { xs: 'block', md: 'none' } }}
             >
               {pages.main?.map((page) => (
-                <MenuButton
+                <MenuItem
                   key={page.name}
-                  active={page.path === location.pathname}
                   onClick={() => navigate(page.path)}
-                  sx={{ ml: 1, my: 2, px: 1 }}
+                  selected={page.path === location.pathname}
                 >
-                  {page.getTitle()}
-                </MenuButton>
+                  <Typography textAlign="center">{page.getTitle()}</Typography>
+                </MenuItem>
               ))}
-            </Box>
-            <Stack
-              direction="row"
-              spacing={2}
-              sx={{ display: { xs: 'none', sm: 'flex' } }}
-            >
-              <LanguageSelector />
-              <ThemeSelector />
-              <IconButton onClick={handleUserClick} sx={{ p: 0 }}>
-                <Avatar />
-              </IconButton>
-            </Stack>
-            <IconButton
-              onClick={handleUserClick}
-              sx={{ display: { xs: 'block', sm: 'none' }, p: 0 }}
-            >
-              <Avatar />
+            </Menu>
+            <BrandLogo
+              onClick={() => navigate('/')}
+              iconProps={{ color: 'white' }}
+              sx={{ display: { xs: 'flex', md: 'none' } }}
+            />
+          </Box>
+          <Box sx={{ flexGrow: 1, ml: 3, display: { xs: 'none', md: 'flex' } }}>
+            {pages.main?.map((page) => (
+              <MenuButton
+                key={page.name}
+                active={page.path === location.pathname}
+                onClick={() => navigate(page.path)}
+                sx={{ ml: 1, my: 2, px: 1 }}
+              >
+                {page.getTitle()}
+              </MenuButton>
+            ))}
+          </Box>
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{ display: { xs: 'none', sm: 'flex' } }}
+          >
+            <LanguageSelector />
+            <ThemeSelector />
+            <IconButton onClick={handleUserClick} sx={{ p: 0 }}>
+              <Avatar
+                src={user?.profile?.picture}
+                alt={`${user?.first_name} ${user?.last_name}`}
+                sx={{ bgcolor: user ? 'primary.main' : null }}
+              />
             </IconButton>
-          </Toolbar>
-        </Container>
-      </AppBar>
-    </Slide>
+          </Stack>
+          <IconButton
+            onClick={handleUserClick}
+            sx={{ display: { xs: 'block', sm: 'none' }, p: 0 }}
+          >
+            <Avatar
+              src={user?.profile?.picture}
+              alt={`${user?.first_name} ${user?.last_name}`}
+              sx={{ bgcolor: user ? 'primary.main' : null }}
+            />
+          </IconButton>
+        </Toolbar>
+      </Container>
+    </AppBar>
   );
 }

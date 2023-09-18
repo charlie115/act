@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 
 import Switch from '@mui/material/Switch';
 
@@ -8,7 +8,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toggleTheme } from 'redux/reducers/app';
 
 import debounce from 'lodash/debounce';
-import throttle from 'lodash/throttle';
 
 import MoonSvg from 'assets/svg/moon.svg';
 import SunSvg from 'assets/svg/sun.svg';

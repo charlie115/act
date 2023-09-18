@@ -18,8 +18,8 @@ import { usePrevious } from '@uidotdev/usehooks';
 
 function DropdownMenu({
   options = [],
-  disabledValue,
   value,
+  disabledValue,
   tooltipTitle,
   onSelectItem,
   buttonStyle,
