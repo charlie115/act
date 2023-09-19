@@ -16,7 +16,7 @@ from django.urls import path
 from arbot.consumers import CoinConsumer
 
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.prod")
 
 
 application = ProtocolTypeRouter(
@@ -24,7 +24,7 @@ application = ProtocolTypeRouter(
         "http": get_asgi_application(),
         "websocket": URLRouter(
             [
-                path("ws/coin/", CoinConsumer.as_asgi()),
+                path("ws/coins/", CoinConsumer.as_asgi()),
             ]
         ),
     }
