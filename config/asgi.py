@@ -8,24 +8,22 @@ https://docs.djangoproject.com/en/4.2/howto/deployment/asgi/
 """
 
 import os
+import sys
 
 from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
-from django.urls import path
+from pathlib import Path
 
-from arbot.consumers import CoinConsumer
-
+BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
+sys.path.append(str(BASE_DIR / "apps"))
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.prod")
 
+from . import routing  # noqa: E402
 
 application = ProtocolTypeRouter(
     {
         "http": get_asgi_application(),
-        "websocket": URLRouter(
-            [
-                path("ws/coins/", CoinConsumer.as_asgi()),
-            ]
-        ),
+        "websocket": URLRouter(routing.websocket_urlpatterns),
     }
 )
