@@ -10,7 +10,7 @@ https://docs.djangoproject.com/en/4.2/howto/deployment/asgi/
 import os
 import sys
 
-from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.routing import ProtocolTypeRouter
 from django.core.asgi import get_asgi_application
 from pathlib import Path
 
@@ -24,6 +24,6 @@ from . import routing  # noqa: E402
 application = ProtocolTypeRouter(
     {
         "http": get_asgi_application(),
-        "websocket": URLRouter(routing.websocket_urlpatterns),
+        "websocket": routing.websocket_urlpatterns,
     }
 )

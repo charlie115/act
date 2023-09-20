@@ -4,9 +4,9 @@ import pickle
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django_redis import get_redis_connection
-from threading import Thread, Event
 from urllib.parse import parse_qsl
 
+from users.models import User  # noqa: F401
 
 redis_conn = get_redis_connection("default")
 
@@ -16,9 +16,19 @@ class CoinConsumer(AsyncWebsocketConsumer):
         super().__init__(*args, **kwargs)
 
         self._thread = None
-        self._stop_event = Event()
+        self._redis_ps = redis_conn.pubsub(ignore_subscribe_messages=True)
+
+    def __del__(self, *args, **kwargs):
+        # Cleanup
+        self._redis_ps.close()
 
     async def connect(self):
+        # # Authentication
+        # if type(self.scope["user"]) == User:
+        #     await self.accept()
+        # else:
+        #     await self.close()
+
         await self.accept()
         await self.send(
             json.dumps(
@@ -36,42 +46,39 @@ class CoinConsumer(AsyncWebsocketConsumer):
         period = query_params.get("period", None)
 
         if exchange_market_1 and exchange_market_2 and period:
-            self.cache_key = (
+            cache_key = (
                 f"INFO_CORE|{exchange_market_1}:{exchange_market_2}_{period}_now"
             )
+            self._redis_ps.subscribe(**{cache_key: self._callback})
+            self._thread = self._redis_ps.run_in_thread(sleep_time=60, daemon=True)
 
-            self._thread = Thread(target=self._callback)
-            self._thread.start()
+    async def publish(self, message):
+        if message and message.get("type", None) == "message":
+            try:
+                data = {
+                    "result": pickle.loads(message["data"]).to_json(orient="records"),
+                    "type": "publish",
+                    "status": "OK",
+                }
+            except TypeError:
+                data = {
+                    "result": "",
+                    "type": "publish",
+                    "status": "UNAVAILABLE",
+                }
 
-    async def process_requests(self):
-        while True:
-            if not self._stop_event.is_set():
-                try:
-                    data = {
-                        "result": pickle.loads(redis_conn.get(self.cache_key)).to_json(
-                            orient="records"
-                        ),
-                        "type": "push",
-                        "status": "OK",
-                    }
-                except TypeError:
-                    data = {
-                        "result": "",
-                        "type": "push",
-                        "status": "UNAVAILABLE",
-                    }
-                await self.send(json.dumps(data))
-                await asyncio.sleep(0.5)
-            else:
-                break
+            await self.send(json.dumps(data))
 
-    def _callback(self):
+    def _callback(self, message):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        loop.run_until_complete(self.process_requests())
+        loop.run_until_complete(self.publish(message))
         loop.close()
 
     async def disconnect(self, code):
-        self._stop_event.set()
+        self._redis_ps.unsubscribe()
+        self._thread.stop()
+        self._thread._running.set()
+
         super().disconnect(code)
