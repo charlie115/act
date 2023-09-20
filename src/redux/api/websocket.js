@@ -5,6 +5,7 @@ import { DateTime } from 'luxon';
 
 import debounce from 'lodash/debounce';
 import isEqual from 'lodash/isEqual';
+import memoize from 'lodash/memoize';
 import throttle from 'lodash/throttle';
 
 import { storeCoins } from 'redux/reducers/websocket';
@@ -20,9 +21,74 @@ const getKpWebsocketConnection = async () => {
   return kpWs;
 };
 
+const websocketBaseQuery = (url, token) => {};
+
 const websocketApi = createApi({
   reducerPath: 'websocketApi',
   endpoints: (build) => ({
+    getWsCoins: build.query({
+      queryFn: () => ({
+        data: {},
+      }),
+      // serializeQueryArgs: ({ queryArgs }) => Object.keys(queryArgs).join(),
+      // transformResponse: (response) =>
+      //   coinsAdapter.addMany(coinsAdapter.getInitialState(), response),
+      onCacheEntryAdded: async (
+        arg,
+        {
+          cacheDataLoaded,
+          cacheEntryRemoved,
+          dispatch,
+          getCacheEntry,
+          getState,
+          updateCachedData,
+        }
+      ) => {
+        const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/ws/coins/`);
+        url.searchParams.set('exchange_market_1', arg.baseMarket);
+        url.searchParams.set('exchange_market_2', arg.compareMarket);
+        url.searchParams.set('period', arg.period);
+        const socket = new WebSocket(url.toString());
+
+        const onMessage = memoize((event) => {
+          const message = JSON.parse(event.data);
+          try {
+            const result = JSON.parse(message.result);
+            updateCachedData((draft) => {
+              result.forEach((item) => {
+                if (!(item.base_asset in draft)) draft[item.base_asset] = {};
+                if (!isEqual(item, draft[item.base_asset]))
+                  draft[item.base_asset] = item;
+                // if (!(item.datetime_now in draft[item.base_asset]))
+                //   draft[item.base_asset][item.datetime_now] = item;
+                // else if (
+                //   !isEqual(item, draft[item.base_asset][item.datetime_now])
+                // )
+                //   draft[item.base_asset][item.datetime_now] = item;
+              });
+            });
+          } catch {
+            /* empty */
+          }
+        });
+
+        try {
+          await cacheDataLoaded;
+          socket.addEventListener(
+            'message',
+            onMessage
+            // throttle(onMessage, 1000, { leading: true })
+          );
+        } catch {
+          // no-op in case `cacheEntryRemoved` resolves before `cacheDataLoaded`,
+          // in which case `cacheDataLoaded` will throw
+        }
+        await cacheEntryRemoved;
+
+        socket.removeEventListener('message', onMessage);
+        socket.close();
+      },
+    }),
     getKpWebsocketData: build.query({
       queryFn: () => ({
         data: {
@@ -145,5 +211,4 @@ const websocketApi = createApi({
 });
 
 export default websocketApi;
-export const { useGetDummyWebsocketDataQuery, useGetKpWebsocketDataQuery } =
-  websocketApi;
+export const { useGetWsCoinsQuery, useGetKpWebsocketDataQuery } = websocketApi;

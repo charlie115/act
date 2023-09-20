@@ -24,7 +24,7 @@ const DEFAULT_PROPS = {
   enableExpanding: false,
   enableGlobalFilter: true,
   enablePagination: false,
-  enableStickyHeader: true,
+  enableStickyHeader: false,
   initialState: { showGlobalFilter: true },
   muiSearchTextFieldProps: {
     size: 'small',

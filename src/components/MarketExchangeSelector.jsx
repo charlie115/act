@@ -18,7 +18,7 @@ function MarketExchangeSelector({ onChange }) {
   const [markets, setMarkets] = useState([]);
 
   const [baseMarket, setBaseMarket] = useState(0);
-  const [compareMarket, setCompareMarket] = useState(2);
+  const [compareMarket, setCompareMarket] = useState(5);
 
   const [baseAnchorEl, setBaseAnchorEl] = useState(null);
   const [compareAnchorEl, setCompareAnchorEl] = useState(null);

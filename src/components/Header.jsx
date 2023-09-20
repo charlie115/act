@@ -41,17 +41,8 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const token = useSelector((state) => state.auth.token);
-  const user = useSelector((state) => state.auth.user);
-
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [pages, setPages] = useState({});
-  // const [userAnchorEl, setUserAnchorEl] = useState(null);
-
-  const handleUserClick = () => {
-    if (token) console.log('open drawer');
-    else navigate('/login');
-  };
 
   useEffect(() => {
     import('configs/navigation').then((res) => setPages(res.default));

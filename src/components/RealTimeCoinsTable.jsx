@@ -19,9 +19,12 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { useTranslation } from 'react-i18next';
 
+import { useGetWsCoinsQuery } from 'redux/api/websocket';
+
 import formatIntlNumber from 'utils/formatIntlNumber';
 import formatShortNumber from 'utils/formatShortNumber';
 
+import LightWeightKLineChart from 'components/charts/LightWeightKLineChart';
 import MarketExchangeSelector from 'components/MarketExchangeSelector';
 import MaterialReactTable from 'components/MaterialReactTable';
 import PeriodIntervalToggle from 'components/PeriodIntervalToggle';
@@ -39,10 +42,21 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
 
   const [expanded, setExpanded] = useState({});
 
-  const [selectedInterval, setSelectedInterval] = useState(null);
+  const [selectedInterval, setSelectedInterval] = useState('1T');
+
+  const [markets, setMarkets] = useState(null);
 
   const [tradingPlatforms, setTradingPlatforms] = useState([]);
   const [selectedTradingPlatform, setSelectedTradingPlatform] = useState(null);
+
+  const { data } = useGetWsCoinsQuery(
+    { ...markets, period: selectedInterval },
+    { skip: !markets }
+  );
+
+  // useEffect(() => {
+  //   console.log('data: ', data);
+  // }, [data]);
 
   const matchLargeScreen = useMediaQuery('(min-width:600px)');
 
@@ -174,10 +188,14 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
     setSelectedTradingPlatform(platforms[0]);
   }, [i18n.language]);
 
+  useEffect(() => {
+    setExpanded({});
+  }, [markets]);
+
   return (
     <Box>
       {!matchLargeScreen && (
-        <MarketExchangeSelector onChange={(value) => console.log(value)} />
+        <MarketExchangeSelector onChange={(value) => setMarkets(value)} />
       )}
       <MaterialReactTable
         columns={columns}
@@ -243,11 +261,12 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
               </Grid>
             </Grid>
             <Collapse unmountOnExit in={row.getIsExpanded()}>
-              <React.Suspense fallback={<LinearProgress />}>
+              {/* <React.Suspense fallback={<LinearProgress />}>
                 <LightWeightPriceChart
                   data={seriesData[row.original.name] || []}
                 />
-              </React.Suspense>
+              </React.Suspense> */}
+              <LightWeightKLineChart data={data?.[row.original.name]} />
             </Collapse>
           </Box>
         )}
@@ -255,7 +274,7 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
           matchLargeScreen
             ? () => (
                 <MarketExchangeSelector
-                  onChange={(value) => console.log(value)}
+                  onChange={(value) => setMarkets(value)}
                 />
               )
             : null
