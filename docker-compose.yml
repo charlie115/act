@@ -1,0 +1,13 @@
+services:
+
+  drf:
+    build:
+      context: .
+      target: dev
+    image: community-drf:dev
+    container_name: dev-community-drf
+    ports:
+      - 8000:8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always

@@ -54,18 +54,20 @@ class CoinConsumer(AsyncWebsocketConsumer):
 
     async def publish(self, message):
         if message and message.get("type", None) == "message":
+            data = {
+                "result": None,
+                "type": "publish",
+                "status": "OK",
+            }
+
             try:
-                data = {
-                    "result": pickle.loads(message["data"]).to_json(orient="records"),
-                    "type": "publish",
-                    "status": "OK",
-                }
-            except TypeError:
-                data = {
-                    "result": "",
-                    "type": "publish",
-                    "status": "UNAVAILABLE",
-                }
+                data["result"] = pickle.loads(message["data"]).to_json(orient="records")
+            except TypeError as err:
+                data["status"] = "UNAVAILABLE"
+                data["error"] = {"message": str(err)}
+            except Exception as err:
+                data["status"] = "ERROR"
+                data["error"] = {"message": str(err)}
 
             await self.send(json.dumps(data))
 
