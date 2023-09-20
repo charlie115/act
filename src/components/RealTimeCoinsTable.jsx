@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -19,6 +19,11 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { useTranslation } from 'react-i18next';
 
+import { useSelector } from 'react-redux';
+import {
+  useGetUsersFavoriteSymbolsQuery,
+  useUsersFavoriteSymbolsMutation,
+} from 'redux/api/drf';
 import { useGetWsCoinsQuery } from 'redux/api/websocket';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
@@ -35,10 +40,15 @@ const LightWeightPriceChart = React.lazy(() =>
   import('components/charts/LightWeightPriceChart')
 );
 
+// TODO: Remove later
+const USER = 27;
+
 export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
   const { i18n, t } = useTranslation();
 
   const theme = useTheme();
+
+  const { isAuthorized } = useSelector((state) => state.auth);
 
   const [expanded, setExpanded] = useState({});
 
@@ -54,9 +64,15 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
     { skip: !markets }
   );
 
-  // useEffect(() => {
-  //   console.log('data: ', data);
-  // }, [data]);
+  const { data: starred } = useGetUsersFavoriteSymbolsQuery(
+    {},
+    { skip: !markets }
+  );
+
+  console.log('starred: ', starred);
+
+  const [mutateFavoriteSymbols, favoriteSymbolsRes] =
+    useUsersFavoriteSymbolsMutation();
 
   const matchLargeScreen = useMediaQuery('(min-width:600px)');
 
@@ -88,13 +104,24 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
     />
   );
 
-  const renderStarIcon = (isStarred) =>
+  const renderStarIcon = (isStarred, row, state) =>
     isStarred ? (
       <StarIcon fontSize="small" />
     ) : (
       <StarOutlineIcon
         fontSize="small"
-        onClick={() => console.log('starred')}
+        onClick={() => {
+          if (isAuthorized)
+            mutateFavoriteSymbols({
+              method: isStarred ? 'DELETE' : 'POST',
+              body: {
+                base_symbol: row.original.name,
+                market_name_1: markets?.baseMarket,
+                market_name_2: markets?.compareMarket,
+                user: USER, // TODO: update when API is updated
+              },
+            });
+        }}
       />
     );
 
@@ -108,7 +135,8 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
         maxSize: matchLargeScreen ? 10 : 35,
         // muiTableBodyCellProps: { sx: { pr: 0 } },
         // muiTableHeadCellProps: { sx: { pointerEvents: 'none', pr: 0 } },
-        Cell: ({ cell }) => renderStarIcon(cell.getValue()),
+        Cell: ({ cell, row, state }) =>
+          renderStarIcon(cell.getValue(), row, state),
         Header: <span />,
       },
       {
@@ -176,7 +204,7 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
         Header: <span />,
       },
     ],
-    [i18n.language]
+    [i18n.language, markets]
   );
 
   useEffect(() => {
@@ -291,7 +319,13 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
           },
         }}
         muiTableHeadCellProps={{ align: 'right' }}
-        muiTableBodyCellProps={{ align: 'right', sx: { fontSize: 13 } }}
+        muiTableBodyCellProps={{
+          align: 'right',
+          sx: { fontSize: 13 },
+          onClick: ({ cell }) => {
+            console.log('cell: ', cell);
+          },
+        }}
         muiTableBodyRowProps={({ row }) => ({
           onClick: (e) => {
             if (

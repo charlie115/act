@@ -26,6 +26,21 @@ const api = createApi({
         body,
       }),
     }),
+    getUsersFavoriteSymbols: builder.query({
+      query: (params) => ({
+        url: '/users/favorite-symbols/',
+        params,
+      }),
+      providesTags: ['FavoriteSymbols'],
+    }),
+    usersFavoriteSymbols: builder.mutation({
+      query: ({ method, body }) => ({
+        url: '/users/favorite-symbols/',
+        method,
+        body,
+      }),
+      invalidatesTags: ['FavoriteSymbols'],
+    }),
   }),
 });
 
@@ -34,4 +49,6 @@ export const {
   useAuthLoginMutation,
   useAuthLogoutMutation,
   useAuthUserRegisterMutation,
+  useUsersFavoriteSymbolsMutation,
+  useGetUsersFavoriteSymbolsQuery,
 } = api;
