@@ -80,7 +80,9 @@ export default function RealTimeCoinsTable() {
       ) : (
         <BlockIcon color="secondary" sx={{ fontSize: 15 }} />
       )}
-      <span>{renderedCellValue}</span>
+      <Box component="span" sx={{ fontSize: 16 }}>
+        {renderedCellValue}
+      </Box>
     </Stack>
   );
 
@@ -114,32 +116,37 @@ export default function RealTimeCoinsTable() {
     );
 
   const renderPriceCell = ({ cell, row: { original } }) => (
-    <Stack>
-      <Typography>
-        {formatIntlNumber(cell.getValue(), cell.getValue() > 0 ? 0 : 4)}
-      </Typography>
-      <Typography
+    <>
+      {formatIntlNumber(cell.getValue(), cell.getValue() > 0 ? 0 : 4)}
+      <Box
+        component="small"
         sx={{
           color: original.scr > 0 ? 'success.main' : 'error.main',
           display: 'inline',
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: 700,
+          ml: 1,
         }}
       >
         {original.scr > 0 ? '+' : ''}
-        {original.scr.toFixed(2)}%
+        {original.scr?.toFixed(2)}%
+      </Box>
+      <Typography sx={{ color: 'secondary.main' }}>
+        {formatIntlNumber(
+          original.converted_tp,
+          original.converted_tp > 0 ? 0 : 4
+        )}
       </Typography>
-      {/* <Typography sx={{ fontWeight: 700 }}>
-        {formatIntlNumber(cell.getValue(), cell.getValue() > 0 ? 0 : 4)}{' '}
-        <Box
-          component="small"
-          sx={{ color: original.scr > 0 ? 'success.main' : 'error.main' }}
-        >
-          {original.scr > 0 ? '+' : ''}
-          {original.scr.toFixed(2)}%
-        </Box>
-      </Typography> */}
-    </Stack>
+    </>
+  );
+
+  const renderPremiumCell = ({ cell }) => (
+    <>
+      <Typography sx={{ display: 'inline', fontSize: 17, fontWeight: 700 }}>
+        {formatIntlNumber(cell.getValue(), 3)}
+      </Typography>{' '}
+      <small>%</small>
+    </>
   );
 
   const tableData = useMemo(
@@ -173,8 +180,8 @@ export default function RealTimeCoinsTable() {
         header: t('Name'),
         accessorKey: 'base_asset',
         size: 50,
-        muiTableBodyCellProps: { align: 'left', sx: { pl: { xs: 0, sm: 2 } } },
-        muiTableHeadCellProps: { align: 'left', sx: { pl: { xs: 0, sm: 2 } } },
+        muiTableBodyCellProps: { sx: { pl: { xs: 0, sm: 2 } } },
+        muiTableHeadCellProps: { sx: { pl: { xs: 0, sm: 2 } } },
         Cell: renderNameCell,
         Header: renderNameHeader,
       },
@@ -183,16 +190,16 @@ export default function RealTimeCoinsTable() {
         accessorKey: 'tp',
         enableGlobalFilter: false,
         size: 50,
-        // muiTableBodyCellProps: { align: 'left' },
-        // muiTableHeadCellProps: { align: 'left' },
         Cell: renderPriceCell,
       },
       {
-        header: t('KIMP'),
+        header: selectedExchanges?.baseExchange.includes('UPBIT')
+          ? t('KIMP')
+          : t('Premium'),
         accessorKey: 'tp_close',
         enableGlobalFilter: false,
         size: 50,
-        Cell: ({ cell }) => formatIntlNumber(cell.getValue(), 4),
+        Cell: renderPremiumCell,
         // formatIntlNumber(cell.getValue(), cell.getValue() > 0 ? 2 : 4),
       },
       // {
@@ -220,7 +227,7 @@ export default function RealTimeCoinsTable() {
         accessorKey: 'atp24h',
         enableGlobalFilter: false,
         size: 50,
-        Cell: ({ cell }) => formatShortNumber(cell.getValue(), 1),
+        Cell: ({ cell }) => formatShortNumber(cell.getValue(), 2),
       },
       {
         header: t('Expand'),
@@ -228,13 +235,16 @@ export default function RealTimeCoinsTable() {
         enableGlobalFilter: false,
         size: matchLargeScreen ? 10 : 35,
         maxSize: matchLargeScreen ? 10 : 35,
-        muiTableBodyCellProps: { sx: { px: 0.5 } },
-        muiTableHeadCellProps: { sx: { pointerEvents: 'none', pr: 0 } },
+        muiTableBodyCellProps: { align: 'right', sx: { px: 0.5 } },
+        muiTableHeadCellProps: {
+          align: 'right',
+          sx: { pointerEvents: 'none', pr: 0 },
+        },
         Cell: renderExpandCell,
         Header: <span />,
       },
     ],
-    [i18n.language]
+    [i18n.language, selectedExchanges]
   );
 
   useEffect(() => {
@@ -256,8 +266,8 @@ export default function RealTimeCoinsTable() {
           columnOrder: columns.map((col) => col.accessorKey),
           columnVisibility: {
             isStarred: matchLargeScreen,
-            weekhigh: matchLargeScreen,
-            weeklow: matchLargeScreen,
+            // weekhigh: matchLargeScreen,
+            // weeklow: matchLargeScreen,
             expand: matchLargeScreen,
             'mrt-row-expand': false, // matchLargeScreen,
           },
@@ -291,8 +301,11 @@ export default function RealTimeCoinsTable() {
             }),
           },
         }}
-        muiTableHeadCellProps={{ align: 'right' }}
-        muiTableBodyCellProps={{ align: 'right', sx: { fontSize: 13 } }}
+        muiTableHeadCellProps={{ align: 'left' }}
+        muiTableBodyCellProps={{
+          align: 'left',
+          sx: { fontSize: 16 },
+        }}
         muiTableBodyRowProps={({ row }) => ({
           onClick: (e) => {
             if (

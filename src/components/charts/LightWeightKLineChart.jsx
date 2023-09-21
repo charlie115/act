@@ -72,17 +72,6 @@ function LightWeightKLineChart({ coinData, selectedExchanges, initialData }) {
     };
   }, [data?.[coinData.base_asset], selectedKLineData]);
 
-  // const chartData = useMemo(() => {
-  //   const left = Object.values(data).map((item) => ({
-  //     time: item.datetime_now,
-  //     open: item.tp_open,
-  //     high: item.tp_high,
-  //     low: item.tp_low,
-  //     close: item.tp_close,
-  //   }));
-  //   return { left: sortBy(left ?? [], 'datetime_now') };
-  // }, [data]);
-
   const onVisibleLogicalRangeChange = useCallback((newLogicalRange) => {
     console.log('newLogicalRange: ', newLogicalRange);
   }, []);
@@ -139,7 +128,7 @@ function LightWeightKLineChart({ coinData, selectedExchanges, initialData }) {
       wickDownColor: theme.palette.error.main,
       wickUpColor: theme.palette.success.main,
       priceFormat: { minMove: 0.01, precision: 2, type: 'percent' },
-      title: t('TP'),
+      title: t('Premium'),
     });
     lineSeriesRef.current = chartRef.current.addLineSeries({
       priceScaleId: 'left',
@@ -184,9 +173,13 @@ function LightWeightKLineChart({ coinData, selectedExchanges, initialData }) {
 
   useEffect(() => {
     candlestickSeriesRef?.current.applyOptions({
-      title: selectedKLineData.toUpperCase(),
+      title: `${
+        selectedExchanges?.baseExchange.includes('UPBIT')
+          ? t('KIMP')
+          : t('Premium')
+      } (${selectedKLineData.toUpperCase()})`,
     });
-  }, [selectedKLineData]);
+  }, [i18n.language, selectedExchanges, selectedKLineData]);
 
   useEffect(() => {
     const value = selectedExchanges?.baseExchange;
