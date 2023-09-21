@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -6,8 +6,7 @@ import Collapse from '@mui/material/Collapse';
 import Grid from '@mui/material/Grid';
 import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import Typography from '@mui/material/Typography';
 
 import BlockIcon from '@mui/icons-material/Block';
 import InsightsIcon from '@mui/icons-material/Insights';
@@ -19,7 +18,11 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { useTranslation } from 'react-i18next';
 
+import { useSelector } from 'react-redux';
+
 import { useGetWsCoinsQuery } from 'redux/api/websocket';
+
+import debounce from 'lodash/debounce';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
 import formatShortNumber from 'utils/formatShortNumber';
@@ -27,69 +30,81 @@ import formatShortNumber from 'utils/formatShortNumber';
 import LightWeightKLineChart from 'components/charts/LightWeightKLineChart';
 import MarketExchangeSelector from 'components/MarketExchangeSelector';
 import MaterialReactTable from 'components/MaterialReactTable';
-import PeriodIntervalToggle from 'components/PeriodIntervalToggle';
 
-import { TRADING_PLATFORMS } from 'constants/lists';
+import { coinicons } from 'assets/exports';
 
 const LightWeightPriceChart = React.lazy(() =>
   import('components/charts/LightWeightPriceChart')
 );
 
-export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
+const REALTIME_INTERVAL_KEY = '1T';
+
+const HISTORICAL_DATA = [];
+
+export default function RealTimeCoinsTable() {
   const { i18n, t } = useTranslation();
 
   const theme = useTheme();
 
   const [expanded, setExpanded] = useState({});
 
-  const [selectedInterval, setSelectedInterval] = useState('1T');
+  const [selectedExchanges, setSelectedExchanges] = useState(null);
 
-  const [markets, setMarkets] = useState(null);
+  // const { data } = useGetWsCoinsQuery(
+  //   { ...selectedExchanges, period: selectedInterval },
+  //   { skip: !selectedExchanges || selectedInterval === REALTIME_INTERVAL_KEY }
+  // );
 
-  const [tradingPlatforms, setTradingPlatforms] = useState([]);
-  const [selectedTradingPlatform, setSelectedTradingPlatform] = useState(null);
+  const { assets } = useSelector((state) => state.websocket);
 
-  const { data } = useGetWsCoinsQuery(
-    { ...markets, period: selectedInterval },
-    { skip: !markets }
+  const { data: realTimeData } = useGetWsCoinsQuery(
+    { ...selectedExchanges, period: REALTIME_INTERVAL_KEY },
+    { skip: !selectedExchanges }
   );
-
-  // useEffect(() => {
-  //   console.log('data: ', data);
-  // }, [data]);
 
   const matchLargeScreen = useMediaQuery('(min-width:600px)');
 
-  const renderName = (value, icon) => (
+  const handleExpandRow = (newExpanded) => setExpanded(newExpanded);
+  const debouncedHandleExpandRow = useCallback(
+    debounce(handleExpandRow, 500, {
+      leading: true,
+      trailing: true,
+    }),
+    []
+  );
+
+  const renderNameCell = ({ renderedCellValue, row }) => (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-      {icon ? (
-        <img loading="lazy" width="15" src={icon} alt="" />
+      {row.original.icon ? (
+        <img loading="lazy" width="15" src={row.original.icon} alt="" />
       ) : (
         <BlockIcon color="secondary" sx={{ fontSize: 15 }} />
       )}
-      <span>{value}</span>
+      <span>{renderedCellValue}</span>
     </Stack>
   );
 
-  const renderNameHeader = (header) => (
+  const renderNameHeader = ({ column }) => (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
       <Box sx={{ width: '15px' }} />
-      {header}
+      {column.columnDef.header}
     </Stack>
   );
 
-  const renderExpandIcon = (row) => (
+  const renderExpandCell = ({ row }) => (
     <InsightsIcon
       onClick={() =>
-        setExpanded({ ...expanded, [row.id]: !row.getIsExpanded() })
+        debouncedHandleExpandRow({
+          [row.id]: !row.getIsExpanded(),
+        })
       }
       color={row.getIsExpanded() ? 'info' : ''}
       fontSize="small"
     />
   );
 
-  const renderStarIcon = (isStarred) =>
-    isStarred ? (
+  const renderStarCell = ({ cell }) =>
+    cell.getValue() ? (
       <StarIcon fontSize="small" />
     ) : (
       <StarOutlineIcon
@@ -97,6 +112,49 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
         onClick={() => console.log('starred')}
       />
     );
+
+  const renderPriceCell = ({ cell, row: { original } }) => (
+    <Stack>
+      <Typography>
+        {formatIntlNumber(cell.getValue(), cell.getValue() > 0 ? 0 : 4)}
+      </Typography>
+      <Typography
+        sx={{
+          color: original.scr > 0 ? 'success.main' : 'error.main',
+          display: 'inline',
+          fontSize: 11,
+          fontWeight: 700,
+        }}
+      >
+        {original.scr > 0 ? '+' : ''}
+        {original.scr.toFixed(2)}%
+      </Typography>
+      {/* <Typography sx={{ fontWeight: 700 }}>
+        {formatIntlNumber(cell.getValue(), cell.getValue() > 0 ? 0 : 4)}{' '}
+        <Box
+          component="small"
+          sx={{ color: original.scr > 0 ? 'success.main' : 'error.main' }}
+        >
+          {original.scr > 0 ? '+' : ''}
+          {original.scr.toFixed(2)}%
+        </Box>
+      </Typography> */}
+    </Stack>
+  );
+
+  const tableData = useMemo(
+    () =>
+      assets
+        // .sort()
+        ?.map((asset) => ({
+          base_asset: asset,
+          icon: coinicons[`${asset}.png`]
+            ? require(`assets/icons/coinicon/${asset}.png`)
+            : null,
+          ...realTimeData[asset],
+        })) ?? [],
+    [assets, realTimeData]
+  );
 
   const columns = useMemo(
     () => [
@@ -108,58 +166,58 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
         maxSize: matchLargeScreen ? 10 : 35,
         // muiTableBodyCellProps: { sx: { pr: 0 } },
         // muiTableHeadCellProps: { sx: { pointerEvents: 'none', pr: 0 } },
-        Cell: ({ cell }) => renderStarIcon(cell.getValue()),
+        Cell: renderStarCell,
         Header: <span />,
       },
       {
         header: t('Name'),
-        accessorKey: 'name',
+        accessorKey: 'base_asset',
         size: 50,
         muiTableBodyCellProps: { align: 'left', sx: { pl: { xs: 0, sm: 2 } } },
         muiTableHeadCellProps: { align: 'left', sx: { pl: { xs: 0, sm: 2 } } },
-        Cell: ({ renderedCellValue, row }) =>
-          renderName(renderedCellValue, row.original.icon),
-        Header: ({ column }) => renderNameHeader(column.columnDef.header),
+        Cell: renderNameCell,
+        Header: renderNameHeader,
       },
       {
         header: t('Price'),
-        accessorKey: 'price',
+        accessorKey: 'tp',
         enableGlobalFilter: false,
         size: 50,
-        Cell: ({ cell }) =>
-          formatIntlNumber(cell.getValue(), cell.getValue() > 0 ? 0 : 4),
+        // muiTableBodyCellProps: { align: 'left' },
+        // muiTableHeadCellProps: { align: 'left' },
+        Cell: renderPriceCell,
       },
       {
         header: t('KIMP'),
-        accessorKey: 'kimp',
+        accessorKey: 'tp_close',
         enableGlobalFilter: false,
         size: 50,
         Cell: ({ cell }) => formatIntlNumber(cell.getValue(), 4),
         // formatIntlNumber(cell.getValue(), cell.getValue() > 0 ? 2 : 4),
       },
+      // {
+      //   header: t('Change'),
+      //   accessorKey: 'change',
+      //   enableGlobalFilter: false,
+      //   size: 50,
+      //   Cell: ({ cell }) => formatIntlNumber(cell.getValue(), 4),
+      // },
+      // {
+      //   header: t('52-Week High'),
+      //   accessorKey: 'weekhigh',
+      //   enableGlobalFilter: false,
+      //   size: 50,
+      // },
+      // {
+      //   header: t('52-Week Low'),
+      //   accessorKey: 'weeklow',
+      //   enableGlobalFilter: false,
+      //   size: 50,
+      //   Cell: ({ cell }) => formatIntlNumber(cell.getValue(), 4),
+      // },
       {
-        header: t('Change'),
-        accessorKey: 'change',
-        enableGlobalFilter: false,
-        size: 50,
-        Cell: ({ cell }) => formatIntlNumber(cell.getValue(), 4),
-      },
-      {
-        header: t('52-Week High'),
-        accessorKey: 'weekhigh',
-        enableGlobalFilter: false,
-        size: 50,
-      },
-      {
-        header: t('52-Week Low'),
-        accessorKey: 'weeklow',
-        enableGlobalFilter: false,
-        size: 50,
-        Cell: ({ cell }) => formatIntlNumber(cell.getValue(), 4),
-      },
-      {
-        header: t('Volume'),
-        accessorKey: 'volume',
+        header: t('Volume (24h)'),
+        accessorKey: 'atp24h',
         enableGlobalFilter: false,
         size: 50,
         Cell: ({ cell }) => formatShortNumber(cell.getValue(), 1),
@@ -172,7 +230,7 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
         maxSize: matchLargeScreen ? 10 : 35,
         muiTableBodyCellProps: { sx: { px: 0.5 } },
         muiTableHeadCellProps: { sx: { pointerEvents: 'none', pr: 0 } },
-        Cell: ({ row }) => renderExpandIcon(row),
+        Cell: renderExpandCell,
         Header: <span />,
       },
     ],
@@ -180,26 +238,20 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
   );
 
   useEffect(() => {
-    const platforms = TRADING_PLATFORMS.map((item) => ({
-      label: item.getLabel(),
-      ...item,
-    }));
-    setTradingPlatforms(platforms);
-    setSelectedTradingPlatform(platforms[0]);
-  }, [i18n.language]);
-
-  useEffect(() => {
-    setExpanded({});
-  }, [markets]);
+    debouncedHandleExpandRow({});
+  }, [selectedExchanges]);
 
   return (
     <Box>
       {!matchLargeScreen && (
-        <MarketExchangeSelector onChange={(value) => setMarkets(value)} />
+        <MarketExchangeSelector
+          onChange={(value) => setSelectedExchanges(value)}
+        />
       )}
       <MaterialReactTable
         columns={columns}
-        data={realTimeData}
+        data={tableData}
+        getRowId={(row) => row.base_asset}
         initialState={{
           columnOrder: columns.map((col) => col.accessorKey),
           columnVisibility: {
@@ -211,62 +263,15 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
           },
           showColumnFilters: false,
         }}
-        state={{ expanded, isLoading: realTimeData.length === 0 }}
+        state={{ expanded, isLoading: tableData?.length === 0 }}
         renderDetailPanel={({ row }) => (
           <Box>
-            <Grid container sx={{ mb: 3 }}>
-              <Grid item xs={3} sm={3}>
-                <Button
-                  color="secondary"
-                  size="small"
-                  variant="outlined"
-                  startIcon={
-                    row.original.isStarred ? <StarIcon /> : <StarOutlineIcon />
-                  }
-                  sx={{ fontSize: 11, px: 0.5, py: 0 }}
-                >
-                  {row.original.name}
-                </Button>
-              </Grid>
-              <Grid item xs={3} sm={6}>
-                <PeriodIntervalToggle
-                  value={selectedInterval}
-                  onChange={(value) => setSelectedInterval(value)}
-                />
-              </Grid>
-              <Grid item xs={6} sm={3}>
-                <ToggleButtonGroup
-                  exclusive
-                  value={selectedTradingPlatform?.value}
-                  onChange={(e) => {
-                    setSelectedTradingPlatform(
-                      tradingPlatforms[Number(e.target.id)]
-                    );
-                    e.stopPropagation();
-                  }}
-                  color="secondary"
-                  size="small"
-                >
-                  {tradingPlatforms.map((company, idx) => (
-                    <ToggleButton
-                      key={company.value}
-                      id={idx}
-                      value={company.value}
-                      sx={{ fontSize: 11, py: 0 }}
-                    >
-                      {company.label}
-                    </ToggleButton>
-                  ))}
-                </ToggleButtonGroup>
-              </Grid>
-            </Grid>
             <Collapse unmountOnExit in={row.getIsExpanded()}>
-              {/* <React.Suspense fallback={<LinearProgress />}>
-                <LightWeightPriceChart
-                  data={seriesData[row.original.name] || []}
-                />
-              </React.Suspense> */}
-              <LightWeightKLineChart data={data?.[row.original.name]} />
+              <LightWeightKLineChart
+                coinData={row.original}
+                selectedExchanges={selectedExchanges}
+                initialData={HISTORICAL_DATA}
+              />
             </Collapse>
           </Box>
         )}
@@ -274,19 +279,15 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
           matchLargeScreen
             ? () => (
                 <MarketExchangeSelector
-                  onChange={(value) => setMarkets(value)}
+                  onChange={(value) => setSelectedExchanges(value)}
                 />
               )
             : null
         }
-        muiExpandButtonProps={({ row }) => ({
-          onClick: () =>
-            setExpanded({ ...expanded, [row.id]: !expanded[row.id] }),
-        })}
         muiSearchTextFieldProps={{
           inputProps: {
             placeholder: t('Search {{size}} coins', {
-              size: realTimeData.length,
+              size: tableData?.length,
             }),
           },
         }}
@@ -298,12 +299,13 @@ export default function RealTimeCoinsTable({ realTimeData, seriesData }) {
               e.target.classList.contains('MuiTableCell-root') &&
               !e.target.classList.contains('Mui-TableBodyCell-DetailPanel')
             )
-              setExpanded({ ...expanded, [row.id]: !expanded[row.id] });
+              debouncedHandleExpandRow({ [row.id]: !expanded[row.id] });
+            // setExpanded({ ...expanded, [row.id]: !expanded[row.id] });
           },
           sx: {
             cursor: 'pointer',
             ...(row.getIsExpanded()
-              ? { borderBottomColor: alpha(theme.palette.primary.main, 0.9) }
+              ? { bgcolor: alpha(theme.palette.primary.main, 0.075) }
               : {}),
           },
         })}

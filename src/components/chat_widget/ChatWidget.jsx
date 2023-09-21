@@ -68,7 +68,7 @@ export default function ChatWidget() {
 
   return (
     <>
-      <Box sx={{ position: 'fixed', bottom: 0, right: 0, p: 2 }}>
+      <Box sx={{ position: 'fixed', bottom: 0, right: 0, p: 2, zIndex: 10 }}>
         <Fab
           color="primary"
           variant={hovered || open ? 'extended' : 'circular'}

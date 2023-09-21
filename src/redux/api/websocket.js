@@ -8,7 +8,7 @@ import isEqual from 'lodash/isEqual';
 import memoize from 'lodash/memoize';
 import throttle from 'lodash/throttle';
 
-import { storeCoins } from 'redux/reducers/websocket';
+import { storeAssetsList } from 'redux/reducers/websocket';
 
 const CACHE_MAX_ENTRY = 1000;
 
@@ -21,8 +21,6 @@ const getKpWebsocketConnection = async () => {
   return kpWs;
 };
 
-const websocketBaseQuery = (url, token) => {};
-
 const websocketApi = createApi({
   reducerPath: 'websocketApi',
   endpoints: (build) => ({
@@ -32,7 +30,6 @@ const websocketApi = createApi({
       }),
       // serializeQueryArgs: ({ queryArgs }) => Object.keys(queryArgs).join(),
       // transformResponse: (response) =>
-      //   coinsAdapter.addMany(coinsAdapter.getInitialState(), response),
       onCacheEntryAdded: async (
         arg,
         {
@@ -45,8 +42,8 @@ const websocketApi = createApi({
         }
       ) => {
         const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/ws/coins/`);
-        url.searchParams.set('exchange_market_1', arg.baseMarket);
-        url.searchParams.set('exchange_market_2', arg.compareMarket);
+        url.searchParams.set('exchange_market_1', arg.baseExchange);
+        url.searchParams.set('exchange_market_2', arg.compareExchange);
         url.searchParams.set('period', arg.period);
         const socket = new WebSocket(url.toString());
 
@@ -67,6 +64,10 @@ const websocketApi = createApi({
                 //   draft[item.base_asset][item.datetime_now] = item;
               });
             });
+            const assets = result.map((asset) => asset.base_asset);
+            const state = getState();
+            if (!isEqual(assets, state.websocket.assets))
+              dispatch(storeAssetsList(assets));
           } catch {
             /* empty */
           }
@@ -184,7 +185,7 @@ const websocketApi = createApi({
             const cache = getCacheEntry();
             const state = getState();
             if (!isEqual(cache.data.coinList, state.websocket.coins))
-              dispatch(storeCoins(cache.data.coinList));
+              dispatch(storeAssetsList(cache.data.coinList));
           } catch {
             /* empty */
           }
@@ -211,4 +212,4 @@ const websocketApi = createApi({
 });
 
 export default websocketApi;
-export const { useGetWsCoinsQuery, useGetKpWebsocketDataQuery } = websocketApi;
+export const { useGetWsCoinsQuery } = websocketApi;

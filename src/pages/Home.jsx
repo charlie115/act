@@ -9,27 +9,25 @@ import { useGetKpWebsocketDataQuery } from 'redux/api/websocket';
 
 import RealTimeCoinsTable from 'components/RealTimeCoinsTable';
 
-import { coinicons } from 'assets/exports';
-
 function Home() {
-  const { data } = useGetKpWebsocketDataQuery();
+  // const { data } = useGetKpWebsocketDataQuery();
 
-  const coinData = useMemo(
-    () =>
-      data?.coinList.map((coin) => ({
-        ...data?.coinRealTimeData?.[coin],
-        icon: coinicons[`${coin}.png`]
-          ? require(`assets/icons/coinicon/${coin}.png`)
-          : null,
-      })),
-    [data?.coinRealTimeData]
-  );
+  // const coinData = useMemo(
+  //   () =>
+  //     data?.coinList.map((coin) => ({
+  //       ...data?.coinRealTimeData?.[coin],
+  //       icon: coinicons[`${coin}.png`]
+  //         ? require(`assets/icons/coinicon/${coin}.png`)
+  //         : null,
+  //     })),
+  //   [data?.coinRealTimeData]
+  // );
 
   return (
     <Box>
       <RealTimeCoinsTable
-        realTimeData={coinData || []}
-        seriesData={data?.coinSeriesData}
+      // realTimeData={coinData || []}
+      // seriesData={data?.coinSeriesData}
       />
     </Box>
   );

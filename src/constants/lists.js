@@ -3,17 +3,23 @@ import i18n from 'configs/i18n';
 import { ReactComponent as BinanceSvg } from 'assets/svg/binance.svg';
 import { ReactComponent as UPbitSvg } from 'assets/svg/upbit.svg';
 
+export const COIN_KLINE_DATA = [
+  { label: 'TP', value: 'tp' },
+  { label: 'LS', value: 'LS' },
+  { label: 'SL', value: 'SL' },
+];
+
 export const DATA_PERIOD_INTERVALS = [
   { getLabel: () => i18n.t('{{value}}m', { value: 1 }), value: '1T' },
-  { getLabel: () => i18n.t('{{value}}m', { value: 3 }), value: '3T' },
+  // { getLabel: () => i18n.t('{{value}}m', { value: 3 }), value: '3T' },
   { getLabel: () => i18n.t('{{value}}m', { value: 5 }), value: '5T' },
   { getLabel: () => i18n.t('{{value}}m', { value: 15 }), value: '15T' },
   { getLabel: () => i18n.t('{{value}}m', { value: 30 }), value: '30T' },
-  { getLabel: () => i18n.t('{{value}}h', { value: 1 }), value: '1h' },
-  { getLabel: () => i18n.t('{{value}}h', { value: 4 }), value: '4h' },
-  { getLabel: () => i18n.t('Day'), value: 'day' },
-  { getLabel: () => i18n.t('Week'), value: 'week' },
-  { getLabel: () => i18n.t('Month'), value: 'month' },
+  { getLabel: () => i18n.t('{{value}}h', { value: 1 }), value: '1H' },
+  { getLabel: () => i18n.t('{{value}}h', { value: 4 }), value: '4H' },
+  { getLabel: () => i18n.t('{{value}}D', { value: 1 }), value: 'day' },
+  { getLabel: () => i18n.t('{{value}}W', { value: 1 }), value: 'week' },
+  { getLabel: () => i18n.t('{{value}}M', { value: 1 }), value: 'month' },
 ];
 
 export const MARKET_EXCHANGES = [
@@ -53,12 +59,6 @@ export const MARKET_EXCHANGES = [
     value: 'BINANCE_COIN_M/USD',
     icon: BinanceSvg,
   },
-];
-
-export const TRADING_PLATFORMS = [
-  { getLabel: () => i18n.t('Binance'), value: 'BINANCE', currency: 'USDT' },
-  { getLabel: () => i18n.t('UPbit'), value: 'UPBIT', currency: 'KRW' },
-  { getLabel: () => i18n.t('KIMP'), value: 'KIMP', currency: 'KRW' },
 ];
 
 export const TRADING_VIEW_TICKER_SYMBOLS = [

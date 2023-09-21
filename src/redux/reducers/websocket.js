@@ -3,16 +3,16 @@ import { createSlice } from '@reduxjs/toolkit';
 export const websocketSlice = createSlice({
   name: 'websocket',
   initialState: {
-    coins: [],
+    assets: [],
   },
   reducers: {
-    storeCoins: (state, { payload }) => {
-      state.coins = payload;
+    storeAssetsList: (state, { payload }) => {
+      state.assets = payload;
     },
   },
   // extraReducers: () => {
   // },
 });
 
-export const { storeCoins } = websocketSlice.actions;
+export const { storeAssetsList } = websocketSlice.actions;
 export default websocketSlice.reducer;
