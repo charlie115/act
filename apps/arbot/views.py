@@ -2,7 +2,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from arbot.models import ArbotNode, ArbotUserConfig
 from arbot.serializers import ArbotNodeSerializer, ArbotUserConfigSerializer
-from lib.views import BaseViewSet
+from lib.views import BaseViewSet, UserOwned1To1ViewSet
 
 
 @extend_schema(tags=["ArbotNode"])
@@ -70,6 +70,6 @@ class ArbotNodeViewSet(BaseViewSet):
         description="Deletes an existing arbot `user configuration`.",
     ),
 )
-class ArbotUserConfigViewSet(BaseViewSet):
+class ArbotUserConfigViewSet(UserOwned1To1ViewSet):
     queryset = ArbotUserConfig.objects.all().order_by("id")
     serializer_class = ArbotUserConfigSerializer

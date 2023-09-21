@@ -1,7 +1,7 @@
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from lib.permissions import IsDjangoAdmin, IsAdminOrIsSelf
-from lib.views import BaseViewSet
+from lib.views import UserOwnedViewSet, UserOwned1To1ViewSet
 from users.models import User, UserFavoriteSymbols, UserProfile
 from users.serializers import (
     UserSerializer,
@@ -40,7 +40,7 @@ from users.serializers import (
         description="Deletes an existing `user`.",
     ),
 )
-class UserViewSet(BaseViewSet):
+class UserViewSet(UserOwnedViewSet):
     queryset = User.objects.all().order_by("id")
     serializer_class = UserSerializer
     lookup_field = "uuid"
@@ -54,19 +54,6 @@ class UserViewSet(BaseViewSet):
             permission_classes = [IsAdminOrIsSelf]
 
         return [permission() for permission in permission_classes]
-
-    def get_queryset(self):
-        if self.action == "list":
-            if IsDjangoAdmin().has_permission(self.request, self):
-                pass
-            else:
-                return (
-                    super(UserViewSet, self)
-                    .get_queryset()
-                    .filter(id=self.request.user.id)
-                )
-
-        return self.queryset
 
 
 @extend_schema(tags=["UserFavoriteSymbol"])
@@ -87,7 +74,7 @@ class UserViewSet(BaseViewSet):
         description="Deletes an existing user `favorite symbol`.",
     ),
 )
-class UserFavoriteSymbolsViewSet(BaseViewSet):
+class UserFavoriteSymbolsViewSet(UserOwnedViewSet):
     queryset = UserFavoriteSymbols.objects.all().order_by("id")
     serializer_class = UserFavoriteSymbolsSerializer
     http_method_names = ["get", "post", "delete"]
@@ -117,7 +104,7 @@ class UserFavoriteSymbolsViewSet(BaseViewSet):
     ),
     destroy=extend_schema(exclude=True),
 )
-class UserProfileViewSet(BaseViewSet):
+class UserProfileViewSet(UserOwned1To1ViewSet):
     queryset = UserProfile.objects.all().order_by("id")
     serializer_class = UserProfileSerializer
     http_method_names = ["get", "put", "patch", "delete"]

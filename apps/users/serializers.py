@@ -10,10 +10,7 @@ class UserFavoriteSymbolsSerializer(
 ):
     class Meta:
         model = UserFavoriteSymbols
-        fields = ("user", "market_name_1", "market_name_2", "base_symbol")
-        extra_kwargs = {
-            "user": {"write_only": True},
-        }
+        fields = ("market_name_1", "market_name_2", "base_symbol")
 
 
 class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
