@@ -18,7 +18,7 @@ export default {
 
   primary: { main: '#007cff', light: '#44b0fd' },
 
-  secondary: { main: '#a8aabc' },
+  secondary: { main: '#90a4ae' },
 
   info: { main: '#00bbff' },
 

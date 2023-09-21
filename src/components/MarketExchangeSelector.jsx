@@ -15,24 +15,24 @@ import { MARKET_EXCHANGES } from 'constants/lists';
 function MarketExchangeSelector({ onChange }) {
   const { i18n, t } = useTranslation();
 
-  const [markets, setMarkets] = useState([]);
+  const [exchanges, setExchanges] = useState([]);
 
-  const [baseMarket, setBaseMarket] = useState(0);
-  const [compareMarket, setCompareMarket] = useState(5);
+  const [baseExchange, setBaseExchange] = useState(0);
+  const [compareExchange, setCompareExchange] = useState(5);
 
   const [baseAnchorEl, setBaseAnchorEl] = useState(null);
   const [compareAnchorEl, setCompareAnchorEl] = useState(null);
 
   useEffect(() => {
-    if (onChange && markets.length > 0)
+    if (onChange && exchanges.length > 0)
       onChange({
-        baseMarket: markets[baseMarket].value,
-        compareMarket: markets[compareMarket].value,
+        baseExchange: exchanges[baseExchange].value,
+        compareExchange: exchanges[compareExchange].value,
       });
-  }, [baseMarket, compareMarket, markets]);
+  }, [baseExchange, compareExchange, exchanges]);
 
   useEffect(() => {
-    setMarkets(
+    setExchanges(
       MARKET_EXCHANGES.map((market, index) => ({
         ...market,
         index,
@@ -57,14 +57,14 @@ function MarketExchangeSelector({ onChange }) {
       }}
     >
       <DropdownMenu
-        options={markets}
-        value={markets[baseMarket]}
+        options={exchanges}
+        value={exchanges[baseExchange]}
         tooltipTitle={t('Base Exchange')}
         onSelectItem={(item) => {
-          setBaseMarket(item.index);
-          if (item.index === compareMarket)
-            setCompareMarket(
-              item.index === markets.length - 1 ? 0 : item.index + 1
+          setBaseExchange(item.index);
+          if (item.index === compareExchange)
+            setCompareExchange(
+              item.index === exchanges.length - 1 ? 0 : item.index + 1
             );
         }}
         buttonStyle={{ justifyContent: 'start', px: 2 }}
@@ -75,8 +75,8 @@ function MarketExchangeSelector({ onChange }) {
         onClick={() => {
           setBaseAnchorEl(null);
           setCompareAnchorEl(null);
-          setBaseMarket(compareMarket);
-          setCompareMarket(baseMarket);
+          setBaseExchange(compareExchange);
+          setCompareExchange(baseExchange);
         }}
         containerStyle={{
           zIndex: baseAnchorEl || compareAnchorEl ? 1500 : null,
@@ -89,10 +89,10 @@ function MarketExchangeSelector({ onChange }) {
         />
       </AnimatedClick>
       <DropdownMenu
-        options={markets}
-        value={markets[compareMarket]}
-        disabledValue={markets[baseMarket]}
-        onSelectItem={(item) => setCompareMarket(item.index)}
+        options={exchanges}
+        value={exchanges[compareExchange]}
+        disabledValue={exchanges[baseExchange]}
+        onSelectItem={(item) => setCompareExchange(item.index)}
         buttonStyle={{ justifyContent: 'start', px: 2 }}
         containerStyle={{ alignSelf: 'stretch', flex: 1.5 }}
       />

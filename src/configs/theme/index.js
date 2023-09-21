@@ -26,5 +26,5 @@ export const darkTheme = createTheme({
 export default createTheme({
   components,
   palette: { ...colors },
-  typography: { fontSize: 12 },
+  typography: { fontSize: 13 },
 });

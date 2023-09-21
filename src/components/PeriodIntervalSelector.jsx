@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -11,36 +11,39 @@ import { styled } from '@mui/material/styles';
 
 import { useTranslation } from 'react-i18next';
 
+import debounce from 'lodash/debounce';
+
 import { DATA_PERIOD_INTERVALS } from 'constants/lists';
 
-const IntervalToggleBtn = styled(ToggleButton)(() => ({
+const ToggleBtn = styled(ToggleButton)(() => ({
   fontSize: 11,
   textTransform: 'none',
 }));
 
-function PeriodIntervalToggle({ value, onChange }) {
+function PeriodIntervalSelector({ defaultValue, onChange }) {
   const { i18n, t } = useTranslation();
 
   const [selectedIdx, setSelectedIdx] = useState(
-    value ? DATA_PERIOD_INTERVALS.findIndex((o) => o.value === value) : null
+    defaultValue
+      ? DATA_PERIOD_INTERVALS.findIndex((o) => o.value === defaultValue)
+      : null
   );
 
   const [intervals, setIntervals] = useState([]);
 
   const [anchorEl, setAnchorEl] = useState(null);
 
-  useEffect(() => {
-    if (value && intervals.length > 0 && onChange)
-      setSelectedIdx(DATA_PERIOD_INTERVALS.findIndex((o) => o.value === value));
-  }, [value]);
+  const debouncedOnChange = useCallback(
+    debounce(onChange, 1000, {
+      leading: true,
+      trailing: true,
+    }),
+    []
+  );
 
   useEffect(() => {
-    if (
-      selectedIdx !== null &&
-      value !== DATA_PERIOD_INTERVALS[selectedIdx].value &&
-      onChange
-    )
-      onChange(DATA_PERIOD_INTERVALS[selectedIdx].value);
+    if (selectedIdx !== null && onChange)
+      debouncedOnChange(DATA_PERIOD_INTERVALS[selectedIdx].value);
   }, [selectedIdx]);
 
   useEffect(() => {
@@ -65,9 +68,9 @@ function PeriodIntervalToggle({ value, onChange }) {
         sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
       >
         {intervals.map((interval, idx) => (
-          <IntervalToggleBtn key={interval.value} value={idx} sx={{ py: 0 }}>
+          <ToggleBtn key={interval.value} value={idx} sx={{ py: 0 }}>
             {interval.label}
-          </IntervalToggleBtn>
+          </ToggleBtn>
         ))}
       </ToggleButtonGroup>
       <Button
@@ -113,4 +116,4 @@ function PeriodIntervalToggle({ value, onChange }) {
   );
 }
 
-export default React.memo(PeriodIntervalToggle);
+export default React.memo(PeriodIntervalSelector);

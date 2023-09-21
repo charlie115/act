@@ -18,8 +18,6 @@ import MenuIcon from '@mui/icons-material/Menu';
 
 import { styled } from '@mui/material/styles';
 
-import { useSelector } from 'react-redux';
-
 import BrandLogo from 'components/BrandLogo';
 import HeaderUserMenu from 'components/HeaderUserMenu';
 import LanguageSelector from 'components/LanguageSelector';
