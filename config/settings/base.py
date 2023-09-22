@@ -97,9 +97,14 @@ MIDDLEWARE = (
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 )
 
+DATABASE_ROUTERS = ("config.dbrouters.DBRouter",)
+
 DATABASES = {
     "default": dj_database_url.config(
         default=env("COMMUNITY_DB_URL"), conn_max_age=600
+    ),
+    "info_core": dj_database_url.config(
+        default=env("INFO_CORE_DB_URL"), conn_max_age=600
     ),
 }
 

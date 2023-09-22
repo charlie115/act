@@ -74,3 +74,37 @@ class ArbotUserConfigSerializer(UserUUIDSerializerMixin, serializers.ModelSerial
         extra_kwargs = {
             "node": {"read_only": True},
         }
+
+
+class TimestampField(serializers.Field):
+    def to_representation(self, value):
+        return round(value.timestamp() * 1000)
+
+
+class ArbotHistoricalCoinDataQueryParamsSerializer(serializers.Serializer):
+    exchange_market_1 = serializers.CharField(required=True)
+    exchange_market_2 = serializers.CharField(required=True)
+    period = serializers.CharField(required=True)
+
+
+class ArbotHistoricalCoinDataSerializer(serializers.Serializer):
+    base_asset = serializers.CharField()
+    datetime_now = TimestampField()
+    tp_open = serializers.FloatField()
+    tp_high = serializers.FloatField()
+    tp_low = serializers.FloatField()
+    tp_close = serializers.FloatField()
+    ls_open = serializers.FloatField()
+    ls_high = serializers.FloatField()
+    ls_low = serializers.FloatField()
+    ls_close = serializers.FloatField()
+    sl_open = serializers.FloatField()
+    sl_high = serializers.FloatField()
+    sl_low = serializers.FloatField()
+    sl_close = serializers.FloatField()
+    dollar = serializers.FloatField()
+    tp = serializers.FloatField()
+    scr = serializers.FloatField()
+    atp24h = serializers.FloatField()
+    converted_tp = serializers.FloatField()
+    closed = serializers.BooleanField()

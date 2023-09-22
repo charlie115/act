@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.db.models.base import ModelBase
 
 
 class ArbotNode(models.Model):
@@ -71,3 +72,46 @@ class ArbotUserConfig(models.Model):
 
     def __str__(self):
         return f"{self.user.username} @ {self.node.name}"
+
+
+def get_historical_coin_data_model(table_name):
+    class InfoCoreHistoricalCoinDataMetaclass(ModelBase):
+        def __new__(cls, name, bases, attrs):
+            model = super(InfoCoreHistoricalCoinDataMetaclass, cls).__new__(
+                cls, name, bases, attrs
+            )
+            model._meta.db_table = table_name
+            return model
+
+    class InfoCoreHistoricalCoinDataModel(models.Model):
+        __metaclass__ = InfoCoreHistoricalCoinDataMetaclass
+
+        # This is an auto-generated Django model module.
+        # You'll have to do the following manually to clean this up:
+        #   * Rearrange models' order
+        #   * Make sure each model has one field with primary_key=True
+        #   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
+        #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
+        # Feel free to rename the models, but don't rename db_table values or field names.
+        base_asset = models.TextField(blank=True, null=True)
+        datetime_now = models.DateTimeField(blank=True, null=True)
+        tp_open = models.FloatField(blank=True, null=True)
+        tp_high = models.FloatField(blank=True, null=True)
+        tp_low = models.FloatField(blank=True, null=True)
+        tp_close = models.FloatField(blank=True, null=True)
+        ls_open = models.FloatField(blank=True, null=True)
+        ls_high = models.FloatField(blank=True, null=True)
+        ls_low = models.FloatField(blank=True, null=True)
+        ls_close = models.FloatField(blank=True, null=True)
+        sl_open = models.FloatField(blank=True, null=True)
+        sl_high = models.FloatField(blank=True, null=True)
+        sl_low = models.FloatField(blank=True, null=True)
+        sl_close = models.FloatField(blank=True, null=True)
+        dollar = models.FloatField(blank=True, null=True)
+        tp = models.FloatField(blank=True, null=True)
+        scr = models.FloatField(blank=True, null=True)
+        atp24h = models.FloatField(blank=True, null=True)
+        converted_tp = models.FloatField(blank=True, null=True)
+        closed = models.BooleanField(blank=True, null=True)
+
+    return InfoCoreHistoricalCoinDataModel
