@@ -18,14 +18,22 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { useTranslation } from 'react-i18next';
 
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
+  addLocalFavoriteSymbol,
+  removeLocalFavoriteSymbol,
+} from 'redux/reducers/home';
+import {
+  useCreateUsersFavoriteSymbolsMutation,
+  useDeleteUsersFavoriteSymbolsMutation,
   useGetUsersFavoriteSymbolsQuery,
-  useUsersFavoriteSymbolsMutation,
 } from 'redux/api/drf';
 import { useGetWsCoinsQuery } from 'redux/api/websocket';
 
 import debounce from 'lodash/debounce';
+import isNumber from 'lodash/isNumber';
+import isUndefined from 'lodash/isUndefined';
+import orderBy from 'lodash/orderBy';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
 import formatShortNumber from 'utils/formatShortNumber';
@@ -36,55 +44,80 @@ import MaterialReactTable from 'components/MaterialReactTable';
 
 import { coinicons } from 'assets/exports';
 
-const LightWeightPriceChart = React.lazy(() =>
-  import('components/charts/LightWeightPriceChart')
-);
-
-// TODO: Remove later
-const USER = 27;
-
 const REALTIME_INTERVAL_KEY = '1T';
 
 const HISTORICAL_DATA = [];
 
 export default function RealTimeCoinsTable() {
+  const dispatch = useDispatch();
+
   const { i18n, t } = useTranslation();
 
   const theme = useTheme();
 
-  const { isAuthorized } = useSelector((state) => state.auth);
+  const { loggedin } = useSelector((state) => state.auth);
 
   const [expanded, setExpanded] = useState({});
 
   const [selectedExchanges, setSelectedExchanges] = useState(null);
-
   // const { data } = useGetWsCoinsQuery(
   //   { ...selectedExchanges, period: selectedInterval },
   //   { skip: !selectedExchanges || selectedInterval === REALTIME_INTERVAL_KEY }
   // );
 
+  const localFavoriteSymbols = useSelector(
+    (state) =>
+      state.home.favoriteSymbols[
+        `${selectedExchanges?.baseExchange}:${selectedExchanges?.compareExchange}`
+      ]
+  );
   const { assets } = useSelector((state) => state.websocket);
 
-  const { data: realTimeData } = useGetWsCoinsQuery(
+  const { data: realTimeData, isLoading } = useGetWsCoinsQuery(
     { ...selectedExchanges, period: REALTIME_INTERVAL_KEY },
     { skip: !selectedExchanges }
   );
 
-  const { data: starred } = useGetUsersFavoriteSymbolsQuery(
-    {},
-    { skip: !selectedExchanges }
+  const { data: favoriteSymbols } = useGetUsersFavoriteSymbolsQuery(
+    {
+      market_name_1: selectedExchanges?.baseExchange,
+      market_name_2: selectedExchanges?.compareExchange,
+    },
+    { skip: !(loggedin && selectedExchanges) }
   );
 
-  console.log('starred: ', starred);
-
-  const [mutateFavoriteSymbols, favoriteSymbolsRes] =
-    useUsersFavoriteSymbolsMutation();
+  const [createFavoriteSymbol, createFavoriteRes] =
+    useCreateUsersFavoriteSymbolsMutation();
+  const [deleteFavoriteSymbol, deleteFavoriteRes] =
+    useDeleteUsersFavoriteSymbolsMutation();
 
   const matchLargeScreen = useMediaQuery('(min-width:600px)');
 
+  const handleAddFavoriteSymbol = useCallback(
+    (symbol) => {
+      const marketExchangeKey = `${selectedExchanges?.baseExchange}:${selectedExchanges?.compareExchange}`;
+      if (loggedin)
+        createFavoriteSymbol({
+          base_symbol: symbol,
+          market_name_1: selectedExchanges?.baseExchange,
+          market_name_2: selectedExchanges?.compareExchange,
+        });
+      else dispatch(addLocalFavoriteSymbol({ marketExchangeKey, symbol }));
+    },
+    [loggedin, selectedExchanges]
+  );
+  const handleRemoveFavoriteSymbol = useCallback(
+    (id) => {
+      const marketExchangeKey = `${selectedExchanges?.baseExchange}:${selectedExchanges?.compareExchange}`;
+      if (loggedin) deleteFavoriteSymbol(id);
+      else dispatch(removeLocalFavoriteSymbol({ marketExchangeKey, id }));
+    },
+    [loggedin, selectedExchanges]
+  );
+
   const handleExpandRow = (newExpanded) => setExpanded(newExpanded);
   const debouncedHandleExpandRow = useCallback(
-    debounce(handleExpandRow, 500, {
+    debounce(handleExpandRow, 100, {
       leading: true,
       trailing: true,
     }),
@@ -92,7 +125,14 @@ export default function RealTimeCoinsTable() {
   );
 
   const renderNameCell = ({ renderedCellValue, row }) => (
-    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+    <Stack
+      direction="row"
+      spacing={1}
+      sx={{ alignItems: 'center' }}
+      onClick={() =>
+        debouncedHandleExpandRow({ [row.id]: !row.getIsExpanded() })
+      }
+    >
       {row.original.icon ? (
         <img loading="lazy" width="15" src={row.original.icon} alt="" />
       ) : (
@@ -123,24 +163,17 @@ export default function RealTimeCoinsTable() {
     />
   );
 
-  const renderStarCell = ({ cell }) =>
-    cell.getValue() ? (
-      <StarIcon fontSize="small" />
+  const renderStarCell = ({ cell, row }) =>
+    !isUndefined(cell.getValue()) ? (
+      <StarIcon
+        fontSize="small"
+        color="accent"
+        onClick={() => handleRemoveFavoriteSymbol(cell.getValue())}
+      />
     ) : (
       <StarOutlineIcon
         fontSize="small"
-        onClick={() => {
-          // if (isAuthorized)
-          // mutateFavoriteSymbols({
-          //   method: isStarred ? 'DELETE' : 'POST',
-          //   body: {
-          //     base_symbol: row.original.name,
-          //     market_name_1: markets?.baseMarket,
-          //     market_name_2: markets?.compareMarket,
-          //     user: USER, // TODO: update when API is updated
-          //   },
-          // });
-        }}
+        onClick={() => handleAddFavoriteSymbol(row.original.name)}
       />
     );
 
@@ -178,36 +211,69 @@ export default function RealTimeCoinsTable() {
     </>
   );
 
+  const sortWithStarred = useCallback((rowA, rowB, columnId) => {
+    if (
+      !isUndefined(rowA.original.favoriteSymbolId) &&
+      isUndefined(rowB.original.favoriteSymbolId)
+    )
+      return -1;
+    if (
+      !isUndefined(rowB.original.favoriteSymbolId) &&
+      isUndefined(rowA.original.favoriteSymbolId)
+    )
+      return 0;
+    if (rowA.original[columnId] > rowB.original[columnId]) return 1;
+    if (rowA.original[columnId] < rowB.original[columnId]) return -1;
+    return 0;
+  }, []);
+
   const tableData = useMemo(
     () =>
-      assets
-        // .sort()
-        ?.map((asset) => ({
-          base_asset: asset,
-          icon: coinicons[`${asset}.png`]
-            ? require(`assets/icons/coinicon/${asset}.png`)
-            : null,
-          ...realTimeData[asset],
-        })) ?? [],
-    [assets, realTimeData]
+      orderBy(
+        assets?.map((asset) => {
+          let favoriteSymbolId;
+          if (loggedin) favoriteSymbolId = favoriteSymbols?.[asset];
+          else {
+            const index = localFavoriteSymbols?.indexOf(asset);
+            favoriteSymbolId = index < 0 ? undefined : index;
+          }
+          return {
+            name: asset,
+            favoriteSymbolId,
+            icon: coinicons[`${asset}.png`]
+              ? require(`assets/icons/coinicon/${asset}.png`)
+              : null,
+            ...realTimeData?.[asset],
+          };
+        }) ?? [],
+        (o) => !isUndefined(o.favoriteSymbolId),
+        'desc'
+      ),
+    [assets, realTimeData, favoriteSymbols, localFavoriteSymbols, loggedin]
   );
 
   const columns = useMemo(
     () => [
       {
-        header: t('Star'),
-        accessorKey: 'isStarred',
+        header: t('Favorite Symbol'),
+        accessorKey: 'favoriteSymbolId',
         enableGlobalFilter: false,
+        // enableSorting: false,
         size: matchLargeScreen ? 10 : 35,
         maxSize: matchLargeScreen ? 10 : 35,
-        // muiTableBodyCellProps: { sx: { pr: 0 } },
-        // muiTableHeadCellProps: { sx: { pointerEvents: 'none', pr: 0 } },
+        muiTableBodyCellProps: { sx: { pl: 1 } },
+        muiTableHeadCellProps: {
+          sx: {
+            pointerEvents: 'none',
+            '& .MuiTableSortLabel-root': { display: 'none' },
+          },
+        },
         Cell: renderStarCell,
         Header: <span />,
       },
       {
         header: t('Name'),
-        accessorKey: 'base_asset',
+        accessorKey: 'name',
         size: 50,
         muiTableBodyCellProps: { sx: { pl: { xs: 0, sm: 2 } } },
         muiTableHeadCellProps: { sx: { pl: { xs: 0, sm: 2 } } },
@@ -229,7 +295,6 @@ export default function RealTimeCoinsTable() {
         enableGlobalFilter: false,
         size: 50,
         Cell: renderPremiumCell,
-        // formatIntlNumber(cell.getValue(), cell.getValue() > 0 ? 2 : 4),
       },
       // {
       //   header: t('Change'),
@@ -262,22 +327,20 @@ export default function RealTimeCoinsTable() {
         header: t('Expand'),
         accessorKey: 'expand',
         enableGlobalFilter: false,
+        enableSorting: false,
         size: matchLargeScreen ? 10 : 35,
         maxSize: matchLargeScreen ? 10 : 35,
         muiTableBodyCellProps: { align: 'right', sx: { px: 0.5 } },
-        muiTableHeadCellProps: {
-          align: 'right',
-          sx: { pointerEvents: 'none', pr: 0 },
-        },
+        muiTableHeadCellProps: { align: 'right' },
         Cell: renderExpandCell,
         Header: <span />,
       },
     ],
-    [i18n.language, selectedExchanges]
+    [i18n.language, loggedin, selectedExchanges]
   );
 
   useEffect(() => {
-    debouncedHandleExpandRow({});
+    setExpanded({});
   }, [selectedExchanges]);
 
   return (
@@ -288,27 +351,38 @@ export default function RealTimeCoinsTable() {
         />
       )}
       <MaterialReactTable
+        defaultColumn={{ sortingFn: 'sortWithStarred' }}
         columns={columns}
         data={tableData}
-        getRowId={(row) => row.base_asset}
+        getRowId={(row) => row.name}
         initialState={{
           columnOrder: columns.map((col) => col.accessorKey),
           columnVisibility: {
-            isStarred: matchLargeScreen,
+            // isStarred: matchLargeScreen,
             // weekhigh: matchLargeScreen,
             // weeklow: matchLargeScreen,
             expand: matchLargeScreen,
-            'mrt-row-expand': false, // matchLargeScreen,
+            'mrt-row-expand': false,
+            // 'mrt-row-select': false,
           },
+          density: 'compact',
           showColumnFilters: false,
         }}
-        state={{ expanded, isLoading: tableData?.length === 0 }}
+        state={{
+          expanded,
+          isLoading: tableData?.length === 0,
+          showProgressBars:
+            createFavoriteRes.isLoading || deleteFavoriteRes.isLoading,
+        }}
+        sortingFns={{ sortWithStarred }}
         renderDetailPanel={({ row }) => (
           <Box>
             <Collapse unmountOnExit in={row.getIsExpanded()}>
               <LightWeightKLineChart
                 coinData={row.original}
                 selectedExchanges={selectedExchanges}
+                onAddFavoriteSymbol={handleAddFavoriteSymbol}
+                onRemoveFavoriteSymbol={handleRemoveFavoriteSymbol}
                 initialData={HISTORICAL_DATA}
               />
             </Collapse>
@@ -341,13 +415,20 @@ export default function RealTimeCoinsTable() {
               e.target.classList.contains('MuiTableCell-root') &&
               !e.target.classList.contains('Mui-TableBodyCell-DetailPanel')
             )
-              debouncedHandleExpandRow({ [row.id]: !expanded[row.id] });
-            // setExpanded({ ...expanded, [row.id]: !expanded[row.id] });
+              // debouncedHandleExpandRow({ [row.id]: !expanded[row.id] });
+              setExpanded({ [row.id]: !expanded[row.id] });
           },
           sx: {
             cursor: 'pointer',
-            ...(row.getIsExpanded()
-              ? { bgcolor: alpha(theme.palette.primary.main, 0.075) }
+            ...(row.getIsExpanded() ||
+            !isUndefined(row.original.favoriteSymbolId)
+              ? {
+                  bgcolor: alpha(
+                    theme.palette[row.getIsExpanded() ? 'primary' : 'secondary']
+                      .main,
+                    0.075
+                  ),
+                }
               : {}),
           },
         })}

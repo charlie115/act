@@ -1,20 +1,30 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-const initialState = { starredCoins: [] };
+import drfApi from 'redux/api/drf';
 
-export const appSlice = createSlice({
+const initialState = { favoriteSymbols: {} };
+
+export const homeSlice = createSlice({
   name: 'home',
   initialState,
   reducers: {
-    changeLanguage: (state, { payload }) => {
-      state.language = payload;
+    addLocalFavoriteSymbol: (state, { payload }) => {
+      if (!state.favoriteSymbols[payload.marketExchangeKey])
+        state.favoriteSymbols[payload.marketExchangeKey] = [];
+      state.favoriteSymbols[payload.marketExchangeKey].push(payload.symbol);
     },
-    toggleTheme: (state, { payload }) => {
-      state.theme = payload;
+    removeLocalFavoriteSymbol: (state, { payload }) => {
+      state.favoriteSymbols?.[payload.marketExchangeKey]?.splice(payload.id, 1);
     },
+  },
+  extraReducers: (builder) => {
+    builder.addMatcher(drfApi.endpoints.authLogin.matchFulfilled, (state) => {
+      state.favoriteSymbols = {};
+    });
   },
 });
 
-export const { changeLanguage, toggleTheme } = appSlice.actions;
+export const { addLocalFavoriteSymbol, removeLocalFavoriteSymbol } =
+  homeSlice.actions;
 
-export default appSlice.reducer;
+export default homeSlice.reducer;

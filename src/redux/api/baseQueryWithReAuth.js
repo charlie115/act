@@ -7,8 +7,9 @@ const mutex = new Mutex();
 export const baseQuery = fetchBaseQuery({
   baseUrl: process.env.REACT_APP_DRF_URL,
   prepareHeaders: (headers, { getState }) => {
-    const { accessToken } = getState().auth;
-    if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+    const { id } = getState().auth;
+    if (id?.accessToken)
+      headers.set('Authorization', `Bearer ${id?.accessToken}`);
 
     return headers;
   },
@@ -23,7 +24,8 @@ export default async (args, api, extraOptions) => {
     if (!mutex.isLocked()) {
       const release = await mutex.acquire();
       try {
-        const { refreshToken: refresh } = api.getState().auth;
+        const { id } = api.getState().auth;
+        const refresh = id?.refreshToken;
         const refreshResult = await baseQuery(
           { url: '/auth/token/refresh/', method: 'POST', body: { refresh } },
           api,

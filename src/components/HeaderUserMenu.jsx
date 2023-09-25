@@ -33,14 +33,14 @@ export default function HeaderUserMenu({ iconStyle }) {
 
   const { t } = useTranslation();
 
-  const { isAuthorized, user } = useSelector((state) => state.auth);
+  const { loggedin, user } = useSelector((state) => state.auth);
 
   const [logout, { isLoading, isSuccess, reset }] = useAuthLogoutMutation();
 
   const [anchorEl, setAnchorEl] = useState(null);
 
   const handleClick = (event) => {
-    if (isAuthorized) setAnchorEl(event.currentTarget);
+    if (loggedin) setAnchorEl(event.currentTarget);
     else navigate('/login');
   };
   const handleClose = () => setAnchorEl(null);

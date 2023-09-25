@@ -34,7 +34,7 @@ export default function Register() {
 
   const { t } = useTranslation();
 
-  const { isAuthorized, user } = useSelector((state) => state.auth);
+  const { loggedin, user } = useSelector((state) => state.auth);
 
   const [register, { isError, isLoading, reset }] =
     useAuthUserRegisterMutation();
@@ -59,7 +59,7 @@ export default function Register() {
     if (isValid) register({ username: data?.username?.toLowerCase() });
   };
 
-  if (isAuthorized) return <Navigate replace to="/" />;
+  if (loggedin) return <Navigate replace to="/" />;
 
   if (!user) return <Navigate replace to="/login" />;
 

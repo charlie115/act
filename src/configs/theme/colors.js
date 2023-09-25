@@ -14,7 +14,7 @@ export default {
 
   black: { light: '#212529', main: '#000000' },
 
-  accent: { main: '#f9f871' },
+  accent: { main: '#fad532' },
 
   primary: { main: '#007cff', light: '#44b0fd' },
 

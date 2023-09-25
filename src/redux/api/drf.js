@@ -6,6 +6,7 @@ const api = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReAuth,
   endpoints: (builder) => ({
+    // MUTATIONS
     authLogin: builder.mutation({
       query: (body) => ({
         url: '/auth/login/',
@@ -26,20 +27,36 @@ const api = createApi({
         body,
       }),
     }),
+    createUsersFavoriteSymbols: builder.mutation({
+      query: (body) => ({
+        url: '/users/favorite-symbols/',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['FavoriteSymbols'],
+    }),
+    deleteUsersFavoriteSymbols: builder.mutation({
+      query: (id) => ({
+        url: `/users/favorite-symbols/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['FavoriteSymbols'],
+    }),
+    // QUERIES
+    authUser: builder.query({
+      query: () => '/auth/user/',
+    }),
     getUsersFavoriteSymbols: builder.query({
       query: (params) => ({
         url: '/users/favorite-symbols/',
         params,
       }),
       providesTags: ['FavoriteSymbols'],
-    }),
-    usersFavoriteSymbols: builder.mutation({
-      query: ({ method, body }) => ({
-        url: '/users/favorite-symbols/',
-        method,
-        body,
-      }),
-      invalidatesTags: ['FavoriteSymbols'],
+      transformResponse: (response) =>
+        response?.results?.reduce(
+          (acc, value) => ({ ...acc, [value.base_symbol]: value.id }),
+          {}
+        ),
     }),
   }),
 });
@@ -49,6 +66,8 @@ export const {
   useAuthLoginMutation,
   useAuthLogoutMutation,
   useAuthUserRegisterMutation,
-  useUsersFavoriteSymbolsMutation,
+  useCreateUsersFavoriteSymbolsMutation,
+  useDeleteUsersFavoriteSymbolsMutation,
+  useAuthUserQuery,
   useGetUsersFavoriteSymbolsQuery,
 } = api;

@@ -19,6 +19,7 @@ import StarOutlineIcon from '@mui/icons-material/StarOutline';
 import { createChart, ColorType, CrosshairMode } from 'lightweight-charts';
 
 import { DateTime } from 'luxon';
+import isUndefined from 'lodash/isUndefined';
 import sortBy from 'lodash/sortBy';
 
 import { useTranslation } from 'react-i18next';
@@ -34,7 +35,13 @@ import PeriodIntervalSelector from 'components/PeriodIntervalSelector';
 const KLINE_DATA_KEY = 'tp';
 const REALTIME_INTERVAL_KEY = '1T';
 
-function LightWeightKLineChart({ coinData, selectedExchanges, initialData }) {
+function LightWeightKLineChart({
+  coinData,
+  selectedExchanges,
+  onAddFavoriteSymbol,
+  onRemoveFavoriteSymbol,
+  initialData,
+}) {
   const theme = useTheme();
   const { i18n, t } = useTranslation();
 
@@ -58,7 +65,7 @@ function LightWeightKLineChart({ coinData, selectedExchanges, initialData }) {
   );
 
   const chartData = useMemo(() => {
-    const value = data?.[coinData.base_asset];
+    const value = data?.[coinData.name];
     if (!value) return null;
     return {
       candlestick: {
@@ -183,7 +190,7 @@ function LightWeightKLineChart({ coinData, selectedExchanges, initialData }) {
 
   useEffect(() => {
     const value = selectedExchanges?.baseExchange;
-    setTitle(`${coinData.base_asset} / ${value?.split('/').pop()}`);
+    setTitle(`${coinData.name} / ${value?.split('/').pop()}`);
   }, [selectedExchanges]);
 
   return (
@@ -196,7 +203,18 @@ function LightWeightKLineChart({ coinData, selectedExchanges, initialData }) {
             sm={3}
             sx={{ display: 'flex', alignItems: 'center' }}
           >
-            {coinData.isStarred ? <StarIcon /> : <StarOutlineIcon />}
+            {!isUndefined(coinData.favoriteSymbolId) ? (
+              <StarIcon
+                color="accent"
+                onClick={() =>
+                  onRemoveFavoriteSymbol(coinData.favoriteSymbolId)
+                }
+              />
+            ) : (
+              <StarOutlineIcon
+                onClick={() => onAddFavoriteSymbol(coinData.name)}
+              />
+            )}
             <Typography sx={{ fontWeight: 700, ml: 2 }}>{title}</Typography>
           </Grid>
           <Grid

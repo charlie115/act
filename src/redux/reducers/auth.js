@@ -3,24 +3,22 @@ import { createSlice } from '@reduxjs/toolkit';
 import drfApi from 'redux/api/drf';
 
 const initialState = {
-  accessToken: null,
-  refreshToken: null,
   user: null,
-  isAuthorized: false,
+  id: null,
+  loggedin: false,
 };
 
 export const authSlice = createSlice({
-  name: 'auth',
   initialState,
+  name: 'auth',
   reducers: {
     logout: (state) => {
-      state.accessToken = null;
-      state.refreshToken = null;
-      state.isAuthorized = false;
+      state.id = null;
+      state.loggedin = false;
       state.user = null;
     },
     newTokenReceived: (state, { payload }) => {
-      state.accessToken = payload.access;
+      state.id.accessToken = payload.access;
     },
   },
   extraReducers: (builder) => {
@@ -28,23 +26,31 @@ export const authSlice = createSlice({
       .addMatcher(
         drfApi.endpoints.authLogin.matchFulfilled,
         (state, { payload }) => {
-          state.accessToken = payload.access;
-          state.refreshToken = payload.refresh;
+          state.id = {
+            accessToken: payload.access,
+            refreshToken: payload.refresh,
+          };
           state.user = payload.user;
-          state.isAuthorized = payload.user.role !== 'visitor';
+          state.loggedin = payload.user.role !== 'visitor';
         }
       )
       .addMatcher(drfApi.endpoints.authLogout.matchFulfilled, (state) => {
-        state.accessToken = null;
-        state.refreshToken = null;
-        state.isAuthorized = false;
+        state.id = null;
+        state.loggedin = false;
         state.user = null;
       })
+      .addMatcher(
+        drfApi.endpoints.authUser.matchFulfilled,
+        (state, { payload }) => {
+          state.user = payload;
+          state.loggedin = payload.role !== 'visitor';
+        }
+      )
       .addMatcher(
         drfApi.endpoints.authUserRegister.matchFulfilled,
         (state, { payload }) => {
           state.user = payload;
-          state.isAuthorized = payload.role !== 'visitor';
+          state.loggedin = payload.role !== 'visitor';
         }
       );
   },

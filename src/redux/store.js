@@ -13,6 +13,7 @@ import {
 } from 'redux-persist';
 
 import { encryptTransform } from 'redux-persist-transform-encrypt';
+import { validate, v4 } from 'uuid';
 
 import { createLogger } from 'redux-logger';
 
@@ -21,15 +22,27 @@ import websocketApi from './api/websocket';
 
 import app from './reducers/app';
 import auth from './reducers/auth';
+import home from './reducers/home';
 import websocket from './reducers/websocket';
 
-const rootPersistConfig = {
-  key: 'root',
+let secretKey;
+const uid = localStorage.getItem('uid');
+if (validate(uid)) secretKey = uid;
+else {
+  localStorage.clear();
+
+  const newUid = v4();
+  localStorage.setItem('uid', newUid);
+  secretKey = newUid;
+}
+
+const authPersistConfig = {
+  key: 'auth',
   storage,
-  whitelist: ['app', 'auth'],
+  whitelist: ['id', 'loggedin'],
   transforms: [
     encryptTransform({
-      secretKey: 'my-super-secret-key',
+      secretKey,
       onError() {
         // Handle the error.
       },
@@ -37,10 +50,23 @@ const rootPersistConfig = {
   ],
 };
 
+const homePersistConfig = {
+  key: 'home',
+  storage,
+  whitelist: ['favoriteSymbols'],
+};
+
+const rootPersistConfig = {
+  key: 'root',
+  storage,
+  whitelist: ['app'],
+};
+
 const reducers = combineReducers({
   app,
-  auth,
   websocket,
+  auth: persistReducer(authPersistConfig, auth),
+  home: persistReducer(homePersistConfig, home),
   [drfApi.reducerPath]: drfApi.reducer,
   [websocketApi.reducerPath]: websocketApi.reducer,
 });

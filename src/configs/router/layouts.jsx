@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
@@ -12,6 +12,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
 
 import { useSelector } from 'react-redux';
+import { useAuthUserQuery } from 'redux/api/drf';
 
 import { useTranslation } from 'react-i18next';
 
@@ -25,11 +26,11 @@ const TVTickerWidget = React.lazy(() =>
 );
 
 export function ProtectedLayout() {
-  const isAuthorized = useSelector((state) => state.auth.isAuthorized);
+  const loggedin = useSelector((state) => state.auth.loggedin);
 
   const location = useLocation();
 
-  if (!isAuthorized)
+  if (!loggedin)
     return <Navigate replace to="/login" state={{ from: location }} />;
 
   return <Outlet />;
@@ -53,6 +54,10 @@ export function MainLayout() {
     () => routes.find((route) => route.path === location.pathname),
     [location.pathname, i18n.language]
   );
+
+  const { loggedin } = useSelector((state) => state.auth);
+
+  useAuthUserQuery({}, { skip: !loggedin });
 
   return (
     <>

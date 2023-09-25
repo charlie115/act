@@ -92,6 +92,7 @@ function MarketExchangeSelector({ onChange }) {
         options={exchanges}
         value={exchanges[compareExchange]}
         disabledValue={exchanges[baseExchange]}
+        tooltipTitle={t('Compare')}
         onSelectItem={(item) => setCompareExchange(item.index)}
         buttonStyle={{ justifyContent: 'start', px: 2 }}
         containerStyle={{ alignSelf: 'stretch', flex: 1.5 }}

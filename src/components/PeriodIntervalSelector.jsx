@@ -58,7 +58,7 @@ function PeriodIntervalSelector({ defaultValue, onChange }) {
   if (intervals.length === 0) return null;
 
   return (
-    <Box sx={{ flex: 0 }}>
+    <Box>
       <ToggleButtonGroup
         exclusive
         value={selectedIdx}
