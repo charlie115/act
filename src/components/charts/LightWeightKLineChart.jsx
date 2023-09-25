@@ -11,6 +11,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
 import StarIcon from '@mui/icons-material/Star';
@@ -193,6 +194,8 @@ function LightWeightKLineChart({
     setTitle(`${coinData.name} / ${value?.split('/').pop()}`);
   }, [selectedExchanges]);
 
+  const isFavorite = !isUndefined(coinData.favoriteSymbolId);
+
   return (
     <Card>
       <Box sx={{ bgcolor: theme.palette.background.paper }}>
@@ -203,18 +206,20 @@ function LightWeightKLineChart({
             sm={3}
             sx={{ display: 'flex', alignItems: 'center' }}
           >
-            {!isUndefined(coinData.favoriteSymbolId) ? (
+            <Tooltip
+              title={
+                isFavorite ? t('Remove from favorites') : t('Add to favorites')
+              }
+            >
               <StarIcon
-                color="accent"
-                onClick={() =>
-                  onRemoveFavoriteSymbol(coinData.favoriteSymbolId)
+                color={isFavorite ? 'accent' : 'secondary'}
+                onClick={(e) =>
+                  isFavorite
+                    ? onRemoveFavoriteSymbol(coinData.favoriteSymbolId)
+                    : onAddFavoriteSymbol(e, coinData.name)
                 }
               />
-            ) : (
-              <StarOutlineIcon
-                onClick={() => onAddFavoriteSymbol(coinData.name)}
-              />
-            )}
+            </Tooltip>
             <Typography sx={{ fontWeight: 700, ml: 2 }}>{title}</Typography>
           </Grid>
           <Grid

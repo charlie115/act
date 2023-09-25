@@ -114,6 +114,7 @@ function DropdownMenu({
                     >
                       {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
                       <ListItemText>{item.label}</ListItemText>
+                      {item.secondaryIcon && item.secondaryIcon}
                     </MenuItem>
                   ))}
                 </MenuList>

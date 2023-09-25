@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react';
 import Stack from '@mui/material/Stack';
 import SvgIcon from '@mui/material/SvgIcon';
 
+import PushPinIcon from '@mui/icons-material/PushPin';
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 
 import { useTranslation } from 'react-i18next';
@@ -41,6 +43,14 @@ function MarketExchangeSelector({ onChange }) {
           <SvgIcon>
             <market.icon />
           </SvgIcon>
+        ),
+        secondaryIcon: (
+          <PushPinIcon
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('e: ', e);
+            }}
+          />
         ),
       }))
     );

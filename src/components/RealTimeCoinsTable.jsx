@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -6,6 +12,7 @@ import Collapse from '@mui/material/Collapse';
 import Grid from '@mui/material/Grid';
 import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
 import BlockIcon from '@mui/icons-material/Block';
@@ -13,7 +20,7 @@ import InsightsIcon from '@mui/icons-material/Insights';
 import StarIcon from '@mui/icons-material/Star';
 import StarOutlineIcon from '@mui/icons-material/StarOutline';
 
-import { alpha, useTheme } from '@mui/material/styles';
+import { alpha, styled, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { useTranslation } from 'react-i18next';
@@ -51,6 +58,8 @@ const HISTORICAL_DATA = [];
 export default function RealTimeCoinsTable() {
   const dispatch = useDispatch();
 
+  const favoriteSymbolRef = useRef();
+
   const { i18n, t } = useTranslation();
 
   const theme = useTheme();
@@ -60,10 +69,6 @@ export default function RealTimeCoinsTable() {
   const [expanded, setExpanded] = useState({});
 
   const [selectedExchanges, setSelectedExchanges] = useState(null);
-  // const { data } = useGetWsCoinsQuery(
-  //   { ...selectedExchanges, period: selectedInterval },
-  //   { skip: !selectedExchanges || selectedInterval === REALTIME_INTERVAL_KEY }
-  // );
 
   const localFavoriteSymbols = useSelector(
     (state) =>
@@ -74,7 +79,7 @@ export default function RealTimeCoinsTable() {
   const { assets } = useSelector((state) => state.websocket);
 
   const { data: realTimeData, isLoading } = useGetWsCoinsQuery(
-    { ...selectedExchanges, period: REALTIME_INTERVAL_KEY },
+    { ...selectedExchanges, period: REALTIME_INTERVAL_KEY, isTableData: true },
     { skip: !selectedExchanges }
   );
 
@@ -94,7 +99,7 @@ export default function RealTimeCoinsTable() {
   const matchLargeScreen = useMediaQuery('(min-width:600px)');
 
   const handleAddFavoriteSymbol = useCallback(
-    (symbol) => {
+    (e, symbol) => {
       const marketExchangeKey = `${selectedExchanges?.baseExchange}:${selectedExchanges?.compareExchange}`;
       if (loggedin)
         createFavoriteSymbol({
@@ -103,6 +108,7 @@ export default function RealTimeCoinsTable() {
           market_name_2: selectedExchanges?.compareExchange,
         });
       else dispatch(addLocalFavoriteSymbol({ marketExchangeKey, symbol }));
+      favoriteSymbolRef.current = symbol;
     },
     [loggedin, selectedExchanges]
   );
@@ -163,19 +169,26 @@ export default function RealTimeCoinsTable() {
     />
   );
 
-  const renderStarCell = ({ cell, row }) =>
-    !isUndefined(cell.getValue()) ? (
-      <StarIcon
-        fontSize="small"
-        color="accent"
-        onClick={() => handleRemoveFavoriteSymbol(cell.getValue())}
-      />
-    ) : (
-      <StarOutlineIcon
-        fontSize="small"
-        onClick={() => handleAddFavoriteSymbol(row.original.name)}
-      />
+  const renderStarCell = ({ cell, row }) => {
+    const isFavorite = !isUndefined(cell.getValue());
+    return (
+      <Tooltip
+        title={isFavorite ? t('Remove from favorites') : t('Add to favorites')}
+      >
+        <StarIcon
+          color={isFavorite ? 'accent' : 'secondary'}
+          onClick={(e) =>
+            isFavorite
+              ? handleRemoveFavoriteSymbol(cell.getValue())
+              : handleAddFavoriteSymbol(e, row.original.name)
+          }
+          sx={{
+            '& :hover': { color: theme.palette.accent.main, opacity: 0.5 },
+          }}
+        />
+      </Tooltip>
     );
+  };
 
   const renderPriceCell = ({ cell, row: { original } }) => (
     <>
@@ -258,7 +271,6 @@ export default function RealTimeCoinsTable() {
         header: t('Favorite Symbol'),
         accessorKey: 'favoriteSymbolId',
         enableGlobalFilter: false,
-        // enableSorting: false,
         size: matchLargeScreen ? 10 : 35,
         maxSize: matchLargeScreen ? 10 : 35,
         muiTableBodyCellProps: { sx: { pl: 1 } },
@@ -340,6 +352,10 @@ export default function RealTimeCoinsTable() {
   );
 
   useEffect(() => {
+    if (createFavoriteRes?.isSuccess) window.scrollTo(0, 0);
+  }, [createFavoriteRes?.isSuccess]);
+
+  useEffect(() => {
     setExpanded({});
   }, [selectedExchanges]);
 
@@ -370,7 +386,7 @@ export default function RealTimeCoinsTable() {
         }}
         state={{
           expanded,
-          isLoading: tableData?.length === 0,
+          isLoading: isLoading || tableData?.length === 0,
           showProgressBars:
             createFavoriteRes.isLoading || deleteFavoriteRes.isLoading,
         }}
