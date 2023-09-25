@@ -10,7 +10,7 @@ class UserFavoriteSymbolsSerializer(
 ):
     class Meta:
         model = UserFavoriteSymbols
-        fields = ("market_name_1", "market_name_2", "base_symbol")
+        fields = ("id", "market_name_1", "market_name_2", "base_symbol")
 
 
 class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):

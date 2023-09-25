@@ -12,6 +12,7 @@ class ArbotNodeSerializer(ArbotNodeValidatorMixin, serializers.ModelSerializer):
     class Meta:
         model = ArbotNode
         fields = (
+            "id",
             "name",
             "domain",
             "port",
@@ -59,6 +60,7 @@ class ArbotUserConfigSerializer(UserUUIDSerializerMixin, serializers.ModelSerial
     class Meta:
         model = ArbotUserConfig
         fields = (
+            "id",
             "node",
             "service_expiry_date",
             "addcir_limit",
