@@ -1,5 +1,6 @@
 from django.db.models import Q
 from rest_framework import routers, viewsets
+from rest_framework.utils.serializer_helpers import ReturnList
 
 from lib.permissions import IsDjangoAdmin, IsACWAdmin, IsUser
 from users.models import User
@@ -7,6 +8,18 @@ from users.models import User
 
 class BaseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsUser | IsDjangoAdmin]
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        final_response = super().finalize_response(request, response, *args, **kwargs)
+
+        if type(final_response.data) in [list, ReturnList]:
+            final_response.data = {
+                "results": super()
+                .finalize_response(request, response, *args, **kwargs)
+                .data
+            }
+
+        return final_response
 
 
 class UserOwnedViewSet(BaseViewSet):

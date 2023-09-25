@@ -1,4 +1,5 @@
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework.pagination import PageNumberPagination
 
 from lib.permissions import IsDjangoAdmin, IsAdminOrIsSelf
 from lib.views import UserOwnedViewSet, UserOwned1To1ViewSet
@@ -42,8 +43,10 @@ from users.serializers import (
 )
 class UserViewSet(UserOwnedViewSet):
     queryset = User.objects.all().order_by("id")
-    serializer_class = UserSerializer
     lookup_field = "uuid"
+    serializer_class = UserSerializer
+    pagination_class = PageNumberPagination
+    PageNumberPagination.page_size = 100
 
     def get_permissions(self):
         permission_classes = self.permission_classes

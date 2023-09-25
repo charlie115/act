@@ -1,16 +1,8 @@
-from django.db import connections
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
-from arbot.models import ArbotNode, ArbotUserConfig, get_historical_coin_data_model
-from arbot.serializers import (
-    ArbotNodeSerializer,
-    ArbotUserConfigSerializer,
-    ArbotHistoricalCoinDataQueryParamsSerializer,
-    ArbotHistoricalCoinDataSerializer,
-)
+from arbot.models import ArbotNode, ArbotUserConfig
+from arbot.serializers import ArbotNodeSerializer, ArbotUserConfigSerializer
 from lib.views import BaseViewSet, UserOwned1To1ViewSet
-
-from rest_framework import exceptions, generics
 
 
 @extend_schema(tags=["ArbotNode"])
@@ -81,32 +73,3 @@ class ArbotNodeViewSet(BaseViewSet):
 class ArbotUserConfigViewSet(UserOwned1To1ViewSet):
     queryset = ArbotUserConfig.objects.all().order_by("id")
     serializer_class = ArbotUserConfigSerializer
-
-
-@extend_schema(operation_id="Arbot historical coin price data")
-class ArbotHistoricalCoinDataView(generics.ListAPIView):
-    serializer_class = ArbotHistoricalCoinDataSerializer
-
-    def get_queryset(self):
-        query_params = ArbotHistoricalCoinDataQueryParamsSerializer(
-            data=self.request.query_params
-        )
-        query_params.is_valid(raise_exception=True)
-        query = query_params.validated_data
-
-        table_name = f"{query['exchange_market_1']}:{query['exchange_market_2']}_{query['period']}_kline"
-
-        self.check_if_table_exists(table_name)
-
-        model = get_historical_coin_data_model(table_name)
-        model._meta.db_table = table_name
-
-        return model.objects.all()
-
-    @staticmethod
-    def check_if_table_exists(table_name):
-        conn = connections["info_core"]
-        tables = conn.introspection.table_names(conn.cursor())
-
-        if table_name not in tables:
-            raise exceptions.ValidationError({"detail": "Bad request."})

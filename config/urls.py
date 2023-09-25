@@ -36,8 +36,10 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("auth/", include("authentication.urls"), name="authentication urls"),
     path("arbot/", include("arbot.urls"), name="arbot urls"),
+    path("infocore/", include("infocore.urls"), name="infocore urls"),
+    path("users/", include("users.urls"), name="users urls"),
+    # docs
     path("docs/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("swagger/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger"),
-    path("users/", include("users.urls"), name="users urls"),
 ]

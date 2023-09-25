@@ -80,6 +80,7 @@ THIRD_PARTY_APPS = (
 LOCAL_APPS = (
     "arbot",
     "authentication",
+    "infocore",
     "users",
 )
 
@@ -97,15 +98,15 @@ MIDDLEWARE = (
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 )
 
-DATABASE_ROUTERS = ("config.dbrouters.DBRouter",)
-
 DATABASES = {
-    "default": dj_database_url.config(
-        default=env("COMMUNITY_DB_URL"), conn_max_age=600
-    ),
-    "info_core": dj_database_url.config(
-        default=env("INFO_CORE_DB_URL"), conn_max_age=600
-    ),
+    "default": dj_database_url.config(default=env("COMMUNITY_DB_URL"), conn_max_age=600)
+}
+
+MONGODB = {
+    "HOST": env("MONGODB_HOST", default="mongodb"),
+    "PORT": env.int("MONGODB_PORT", default=27017),
+    "USERNAME": env("MONGODB_USERNAME", default=""),
+    "PASSWORD": env("MONGODB_PASSWORD", default=""),
 }
 
 CACHES = {
@@ -148,8 +149,6 @@ AUTHENTICATION_BACKENDS = ("django.contrib.auth.backends.ModelBackend",)
 REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
     # or allow read-only access for unauthenticated users.
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": env.int("DJANGO_PAGINATION_LIMIT", 100),
     "DATETIME_FORMAT": "%Y-%m-%dT%H:%M:%S%z",
     "DEFAULT_RENDERER_CLASSES": (
         "rest_framework.renderers.JSONRenderer",
@@ -244,6 +243,10 @@ SPECTACULAR_SETTINGS = {
             {
                 "name": "AUTHORIZATION",
                 "tags": ["Auth"],
+            },
+            {
+                "name": "INFO CORE",
+                "tags": ["Coin"],
             },
             {
                 "name": "USER",

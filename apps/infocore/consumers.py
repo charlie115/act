@@ -46,10 +46,10 @@ class CoinConsumer(AsyncWebsocketConsumer):
         period = query_params.get("period", None)
 
         if exchange_market_1 and exchange_market_2 and period:
-            cache_key = (
+            channel_name = (
                 f"INFO_CORE|{exchange_market_1}:{exchange_market_2}_{period}_now"
             )
-            self._redis_ps.subscribe(**{cache_key: self._callback})
+            self._redis_ps.subscribe(**{channel_name: self._callback})
             self._thread = self._redis_ps.run_in_thread(sleep_time=60, daemon=True)
 
     async def publish(self, message):
