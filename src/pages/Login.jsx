@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useGoogleLogin } from '@react-oauth/google';
 
-import { useAuthLoginMutation } from 'redux/api/drf';
+import { useLoginMutation } from 'redux/api/drfAuth';
 
 import BrandLogo from 'components/BrandLogo';
 
@@ -27,7 +27,7 @@ export default function Login() {
 
   const user = useSelector((state) => state.auth.user);
 
-  const [login, { isError, isLoading, reset }] = useAuthLoginMutation();
+  const [login, { isError, isLoading, reset }] = useLoginMutation();
 
   const googleLogin = useGoogleLogin({
     onSuccess: (response) => login({ access_token: response.access_token }),

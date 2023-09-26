@@ -18,7 +18,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 import { useSelector } from 'react-redux';
-import { useAuthLogoutMutation } from 'redux/api/drf';
+import { useLogoutMutation } from 'redux/api/drfAuth';
 
 import { useTranslation } from 'react-i18next';
 
@@ -35,7 +35,7 @@ export default function HeaderUserMenu({ iconStyle }) {
 
   const { loggedin, user } = useSelector((state) => state.auth);
 
-  const [logout, { isLoading, isSuccess, reset }] = useAuthLogoutMutation();
+  const [logout, { isLoading, isSuccess, reset }] = useLogoutMutation();
 
   const [anchorEl, setAnchorEl] = useState(null);
 

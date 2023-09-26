@@ -1,30 +1,30 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-import drfApi from 'redux/api/drf';
+import drfAuthApi from 'redux/api/drfAuth';
 
-const initialState = { favoriteSymbols: {} };
+const initialState = { favoriteAssets: {} };
 
 export const homeSlice = createSlice({
   name: 'home',
   initialState,
   reducers: {
-    addLocalFavoriteSymbol: (state, { payload }) => {
-      if (!state.favoriteSymbols[payload.marketExchangeKey])
-        state.favoriteSymbols[payload.marketExchangeKey] = [];
-      state.favoriteSymbols[payload.marketExchangeKey].push(payload.symbol);
+    addLocalFavoriteAsset: (state, { payload }) => {
+      if (!state.favoriteAssets[payload.marketKey])
+        state.favoriteAssets[payload.marketKey] = [];
+      state.favoriteAssets[payload.marketKey].push(payload.baseAsset);
     },
-    removeLocalFavoriteSymbol: (state, { payload }) => {
-      state.favoriteSymbols?.[payload.marketExchangeKey]?.splice(payload.id, 1);
+    removeLocalFavoriteAsset: (state, { payload }) => {
+      state.favoriteAssets?.[payload.marketKey]?.splice(payload.id, 1);
     },
   },
   extraReducers: (builder) => {
-    builder.addMatcher(drfApi.endpoints.authLogin.matchFulfilled, (state) => {
-      state.favoriteSymbols = {};
+    builder.addMatcher(drfAuthApi.endpoints.login.matchFulfilled, (state) => {
+      state.favoriteAssets = {};
     });
   },
 });
 
-export const { addLocalFavoriteSymbol, removeLocalFavoriteSymbol } =
+export const { addLocalFavoriteAsset, removeLocalFavoriteAsset } =
   homeSlice.actions;
 
 export default homeSlice.reducer;

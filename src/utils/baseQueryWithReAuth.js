@@ -1,6 +1,9 @@
 import { fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { Mutex } from 'async-mutex';
 
+import qs from 'qs';
+import snakeCase from 'lodash/snakeCase';
+
 // create a new mutex
 const mutex = new Mutex();
 
@@ -13,6 +16,16 @@ export const baseQuery = fetchBaseQuery({
 
     return headers;
   },
+  paramsSerializer: (params) => {
+    const snakeCasedParams = Object.keys(params).reduce(
+      (acc, key) => ({
+        ...acc,
+        [snakeCase(key)]: params[key],
+      }),
+      {}
+    );
+    return qs.stringify(snakeCasedParams, { arrayFormat: 'repeat' });
+  },
 });
 
 export default async (args, api, extraOptions) => {
@@ -20,6 +33,11 @@ export default async (args, api, extraOptions) => {
   await mutex.waitForUnlock();
   let result = await baseQuery(args, api, extraOptions);
   if (result.error && result.error.status === 401) {
+    if (result.error.data?.code === 'user_not_found') {
+      api.dispatch({ type: 'auth/logout' });
+      return result;
+    }
+
     // checking whether the mutex is locked
     if (!mutex.isLocked()) {
       const release = await mutex.acquire();

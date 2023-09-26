@@ -13,23 +13,23 @@ import { useTranslation } from 'react-i18next';
 
 import debounce from 'lodash/debounce';
 
-import { DATA_PERIOD_INTERVALS } from 'constants/lists';
+import { INTERVAL_LIST } from 'constants/lists';
 
 const ToggleBtn = styled(ToggleButton)(() => ({
   fontSize: 11,
   textTransform: 'none',
 }));
 
-function PeriodIntervalSelector({ defaultValue, onChange }) {
+function IntervalSelector({ defaultValue, onChange }) {
   const { i18n, t } = useTranslation();
 
   const [selectedIdx, setSelectedIdx] = useState(
     defaultValue
-      ? DATA_PERIOD_INTERVALS.findIndex((o) => o.value === defaultValue)
+      ? INTERVAL_LIST.findIndex((o) => o.value === defaultValue)
       : null
   );
 
-  const [intervals, setIntervals] = useState([]);
+  const [intervalList, setIntervalList] = useState([]);
 
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -43,19 +43,19 @@ function PeriodIntervalSelector({ defaultValue, onChange }) {
 
   useEffect(() => {
     if (selectedIdx !== null && onChange)
-      debouncedOnChange(DATA_PERIOD_INTERVALS[selectedIdx].value);
+      debouncedOnChange(INTERVAL_LIST[selectedIdx].value);
   }, [selectedIdx]);
 
   useEffect(() => {
-    setIntervals(
-      DATA_PERIOD_INTERVALS.map((interval) => ({
+    setIntervalList(
+      INTERVAL_LIST.map((interval) => ({
         label: interval.getLabel(),
         ...interval,
       }))
     );
   }, [i18n.language]);
 
-  if (intervals.length === 0) return null;
+  if (intervalList.length === 0) return null;
 
   return (
     <Box>
@@ -67,7 +67,7 @@ function PeriodIntervalSelector({ defaultValue, onChange }) {
         size="small"
         sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
       >
-        {intervals.map((interval, idx) => (
+        {intervalList.map((interval, idx) => (
           <ToggleBtn key={interval.value} value={idx} sx={{ py: 0 }}>
             {interval.label}
           </ToggleBtn>
@@ -90,7 +90,9 @@ function PeriodIntervalSelector({ defaultValue, onChange }) {
             selectedIdx !== null && selectedIdx <= 6 ? 'none' : 'uppercase',
         }}
       >
-        {selectedIdx !== null ? intervals[selectedIdx].label : t('Intervals')}
+        {selectedIdx !== null
+          ? intervalList[selectedIdx].label
+          : t('Intervals')}
       </Button>
       <Menu
         anchorEl={anchorEl}
@@ -98,7 +100,7 @@ function PeriodIntervalSelector({ defaultValue, onChange }) {
         onClose={() => setAnchorEl(null)}
         sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
       >
-        {intervals.map((interval, idx) => (
+        {intervalList.map((interval, idx) => (
           <MenuItem
             key={interval.value}
             disabled={selectedIdx === idx}
@@ -116,4 +118,4 @@ function PeriodIntervalSelector({ defaultValue, onChange }) {
   );
 }
 
-export default React.memo(PeriodIntervalSelector);
+export default React.memo(IntervalSelector);

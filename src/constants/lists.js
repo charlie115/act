@@ -9,7 +9,7 @@ export const COIN_KLINE_DATA = [
   { label: 'SL', value: 'SL' },
 ];
 
-export const DATA_PERIOD_INTERVALS = [
+export const INTERVAL_LIST = [
   { getLabel: () => i18n.t('{{value}}m', { value: 1 }), value: '1T' },
   // { getLabel: () => i18n.t('{{value}}m', { value: 3 }), value: '3T' },
   { getLabel: () => i18n.t('{{value}}m', { value: 5 }), value: '5T' },
@@ -22,7 +22,7 @@ export const DATA_PERIOD_INTERVALS = [
   { getLabel: () => i18n.t('{{value}}M', { value: 1 }), value: 'month' },
 ];
 
-export const MARKET_EXCHANGES = [
+export const MARKET_CODE_LIST = [
   { getLabel: () => i18n.t('UPbit'), value: 'UPBIT_SPOT/KRW', icon: UPbitSvg },
   {
     getLabel: () => i18n.t('UPbit (BTC)'),

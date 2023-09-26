@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-import drfApi from 'redux/api/drf';
+import drfAuthApi from 'redux/api/drfAuth';
 
 const initialState = {
   user: null,
@@ -24,7 +24,7 @@ export const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addMatcher(
-        drfApi.endpoints.authLogin.matchFulfilled,
+        drfAuthApi.endpoints.login.matchFulfilled,
         (state, { payload }) => {
           state.id = {
             accessToken: payload.access,
@@ -34,20 +34,20 @@ export const authSlice = createSlice({
           state.loggedin = payload.user.role !== 'visitor';
         }
       )
-      .addMatcher(drfApi.endpoints.authLogout.matchFulfilled, (state) => {
+      .addMatcher(drfAuthApi.endpoints.logout.matchFulfilled, (state) => {
         state.id = null;
         state.loggedin = false;
         state.user = null;
       })
       .addMatcher(
-        drfApi.endpoints.authUser.matchFulfilled,
+        drfAuthApi.endpoints.user.matchFulfilled,
         (state, { payload }) => {
           state.user = payload;
           state.loggedin = payload.role !== 'visitor';
         }
       )
       .addMatcher(
-        drfApi.endpoints.authUserRegister.matchFulfilled,
+        drfAuthApi.endpoints.userRegister.matchFulfilled,
         (state, { payload }) => {
           state.user = payload;
           state.loggedin = payload.role !== 'visitor';

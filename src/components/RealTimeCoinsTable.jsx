@@ -27,15 +27,18 @@ import { useTranslation } from 'react-i18next';
 
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  addLocalFavoriteSymbol,
-  removeLocalFavoriteSymbol,
+  addLocalFavoriteAsset,
+  removeLocalFavoriteAsset,
 } from 'redux/reducers/home';
 import {
-  useCreateUsersFavoriteSymbolsMutation,
-  useDeleteUsersFavoriteSymbolsMutation,
-  useGetUsersFavoriteSymbolsQuery,
-} from 'redux/api/drf';
-import { useGetWsCoinsQuery } from 'redux/api/websocket';
+  useCreateFavoriteAssetsMutation,
+  useDeleteFavoriteAssetsMutation,
+  useGetFavoriteAssetsQuery,
+} from 'redux/api/drfUser';
+import {
+  useGetWsCoinsQuery,
+  useGetRealTimeKlineQuery,
+} from 'redux/api/websocket';
 
 import debounce from 'lodash/debounce';
 import isNumber from 'lodash/isNumber';
@@ -46,7 +49,7 @@ import formatIntlNumber from 'utils/formatIntlNumber';
 import formatShortNumber from 'utils/formatShortNumber';
 
 import LightWeightKLineChart from 'components/charts/LightWeightKLineChart';
-import MarketExchangeSelector from 'components/MarketExchangeSelector';
+import MarketCodeSelector from 'components/MarketCodeSelector';
 import MaterialReactTable from 'components/MaterialReactTable';
 
 import { coinicons } from 'assets/exports';
@@ -58,7 +61,7 @@ const HISTORICAL_DATA = [];
 export default function RealTimeCoinsTable() {
   const dispatch = useDispatch();
 
-  const favoriteSymbolRef = useRef();
+  const favoriteAssetRef = useRef();
 
   const { i18n, t } = useTranslation();
 
@@ -68,57 +71,61 @@ export default function RealTimeCoinsTable() {
 
   const [expanded, setExpanded] = useState({});
 
-  const [selectedExchanges, setSelectedExchanges] = useState(null);
+  const [marketCodes, setMarketCodes] = useState(null);
 
-  const localFavoriteSymbols = useSelector(
+  const localFavoriteAssets = useSelector(
     (state) =>
-      state.home.favoriteSymbols[
-        `${selectedExchanges?.baseExchange}:${selectedExchanges?.compareExchange}`
+      state.home.favoriteAssets[
+        `${marketCodes?.targetMarketCode}:${marketCodes?.originMarketCode}`
       ]
   );
   const { assets } = useSelector((state) => state.websocket);
 
-  const { data: realTimeData, isLoading } = useGetWsCoinsQuery(
-    { ...selectedExchanges, period: REALTIME_INTERVAL_KEY, isTableData: true },
-    { skip: !selectedExchanges }
-  );
+  // const { data: realTimeData, isLoading } = useGetWsCoinsQuery(
+  //   {
+  //     ...marketCodes,
+  //     period: REALTIME_INTERVAL_KEY,
+  //     isTableData: true,
+  //   },
+  //   { skip: !marketCodes }
+  // );
 
-  const { data: favoriteSymbols } = useGetUsersFavoriteSymbolsQuery(
+  const { data: realTimeData, isLoading } = useGetRealTimeKlineQuery(
     {
-      market_name_1: selectedExchanges?.baseExchange,
-      market_name_2: selectedExchanges?.compareExchange,
+      ...marketCodes,
+      interval: REALTIME_INTERVAL_KEY,
+      isTableData: true,
     },
-    { skip: !(loggedin && selectedExchanges) }
+    { skip: !marketCodes }
   );
 
-  const [createFavoriteSymbol, createFavoriteRes] =
-    useCreateUsersFavoriteSymbolsMutation();
-  const [deleteFavoriteSymbol, deleteFavoriteRes] =
-    useDeleteUsersFavoriteSymbolsMutation();
+  const { data: favoriteAssets } = useGetFavoriteAssetsQuery(marketCodes, {
+    skip: !(loggedin && marketCodes),
+  });
+
+  const [createFavoriteAsset, createFavoriteRes] =
+    useCreateFavoriteAssetsMutation();
+  const [deleteFavoriteAsset, deleteFavoriteRes] =
+    useDeleteFavoriteAssetsMutation();
 
   const matchLargeScreen = useMediaQuery('(min-width:600px)');
 
-  const handleAddFavoriteSymbol = useCallback(
-    (e, symbol) => {
-      const marketExchangeKey = `${selectedExchanges?.baseExchange}:${selectedExchanges?.compareExchange}`;
-      if (loggedin)
-        createFavoriteSymbol({
-          base_symbol: symbol,
-          market_name_1: selectedExchanges?.baseExchange,
-          market_name_2: selectedExchanges?.compareExchange,
-        });
-      else dispatch(addLocalFavoriteSymbol({ marketExchangeKey, symbol }));
-      favoriteSymbolRef.current = symbol;
+  const handleAddFavoriteAsset = useCallback(
+    (baseAsset) => {
+      const marketCodeKey = `${marketCodes?.targetMarketCode}:${marketCodes?.originMarketCode}`;
+      if (loggedin) createFavoriteAsset({ baseAsset, ...marketCodes });
+      else dispatch(addLocalFavoriteAsset({ marketCodeKey, baseAsset }));
+      favoriteAssetRef.current = baseAsset;
     },
-    [loggedin, selectedExchanges]
+    [loggedin, marketCodes]
   );
-  const handleRemoveFavoriteSymbol = useCallback(
+  const handleRemoveFavoriteAsset = useCallback(
     (id) => {
-      const marketExchangeKey = `${selectedExchanges?.baseExchange}:${selectedExchanges?.compareExchange}`;
-      if (loggedin) deleteFavoriteSymbol(id);
-      else dispatch(removeLocalFavoriteSymbol({ marketExchangeKey, id }));
+      const marketCodeKey = `${marketCodes?.targetMarketCode}:${marketCodes?.originMarketCode}`;
+      if (loggedin) deleteFavoriteAsset(id);
+      else dispatch(removeLocalFavoriteAsset({ marketCodeKey, id }));
     },
-    [loggedin, selectedExchanges]
+    [loggedin, marketCodes]
   );
 
   const handleExpandRow = (newExpanded) => setExpanded(newExpanded);
@@ -177,10 +184,10 @@ export default function RealTimeCoinsTable() {
       >
         <StarIcon
           color={isFavorite ? 'accent' : 'secondary'}
-          onClick={(e) =>
+          onClick={() =>
             isFavorite
-              ? handleRemoveFavoriteSymbol(cell.getValue())
-              : handleAddFavoriteSymbol(e, row.original.name)
+              ? handleRemoveFavoriteAsset(cell.getValue())
+              : handleAddFavoriteAsset(row.original.name)
           }
           sx={{
             '& :hover': { color: theme.palette.accent.main, opacity: 0.5 },
@@ -226,13 +233,13 @@ export default function RealTimeCoinsTable() {
 
   const sortWithStarred = useCallback((rowA, rowB, columnId) => {
     if (
-      !isUndefined(rowA.original.favoriteSymbolId) &&
-      isUndefined(rowB.original.favoriteSymbolId)
+      !isUndefined(rowA.original.favoriteAssetId) &&
+      isUndefined(rowB.original.favoriteAssetId)
     )
       return -1;
     if (
-      !isUndefined(rowB.original.favoriteSymbolId) &&
-      isUndefined(rowA.original.favoriteSymbolId)
+      !isUndefined(rowB.original.favoriteAssetId) &&
+      isUndefined(rowA.original.favoriteAssetId)
     )
       return 0;
     if (rowA.original[columnId] > rowB.original[columnId]) return 1;
@@ -244,32 +251,32 @@ export default function RealTimeCoinsTable() {
     () =>
       orderBy(
         assets?.map((asset) => {
-          let favoriteSymbolId;
-          if (loggedin) favoriteSymbolId = favoriteSymbols?.[asset];
+          let favoriteAssetId;
+          if (loggedin) favoriteAssetId = favoriteAssets?.[asset];
           else {
-            const index = localFavoriteSymbols?.indexOf(asset);
-            favoriteSymbolId = index < 0 ? undefined : index;
+            const index = localFavoriteAssets?.indexOf(asset);
+            favoriteAssetId = index < 0 ? undefined : index;
           }
           return {
             name: asset,
-            favoriteSymbolId,
+            favoriteAssetId,
             icon: coinicons[`${asset}.png`]
               ? require(`assets/icons/coinicon/${asset}.png`)
               : null,
             ...realTimeData?.[asset],
           };
         }) ?? [],
-        (o) => !isUndefined(o.favoriteSymbolId),
+        (o) => !isUndefined(o.favoriteAssetId),
         'desc'
       ),
-    [assets, realTimeData, favoriteSymbols, localFavoriteSymbols, loggedin]
+    [assets, realTimeData, favoriteAssets, localFavoriteAssets, loggedin]
   );
 
   const columns = useMemo(
     () => [
       {
-        header: t('Favorite Symbol'),
-        accessorKey: 'favoriteSymbolId',
+        header: t('Favorite Asset'),
+        accessorKey: 'favoriteAssetId',
         enableGlobalFilter: false,
         size: matchLargeScreen ? 10 : 35,
         maxSize: matchLargeScreen ? 10 : 35,
@@ -293,14 +300,14 @@ export default function RealTimeCoinsTable() {
         Header: renderNameHeader,
       },
       {
-        header: t('Price'),
+        header: t('Current Price'),
         accessorKey: 'tp',
         enableGlobalFilter: false,
         size: 50,
         Cell: renderPriceCell,
       },
       {
-        header: selectedExchanges?.baseExchange.includes('UPBIT')
+        header: marketCodes?.targetMarketCode.includes('UPBIT')
           ? t('KIMP')
           : t('Premium'),
         accessorKey: 'tp_close',
@@ -348,7 +355,7 @@ export default function RealTimeCoinsTable() {
         Header: <span />,
       },
     ],
-    [i18n.language, loggedin, selectedExchanges]
+    [i18n.language, loggedin, marketCodes]
   );
 
   useEffect(() => {
@@ -357,14 +364,12 @@ export default function RealTimeCoinsTable() {
 
   useEffect(() => {
     setExpanded({});
-  }, [selectedExchanges]);
+  }, [marketCodes]);
 
   return (
     <Box>
       {!matchLargeScreen && (
-        <MarketExchangeSelector
-          onChange={(value) => setSelectedExchanges(value)}
-        />
+        <MarketCodeSelector onChange={(value) => setMarketCodes(value)} />
       )}
       <MaterialReactTable
         defaultColumn={{ sortingFn: 'sortWithStarred' }}
@@ -395,10 +400,10 @@ export default function RealTimeCoinsTable() {
           <Box>
             <Collapse unmountOnExit in={row.getIsExpanded()}>
               <LightWeightKLineChart
-                coinData={row.original}
-                selectedExchanges={selectedExchanges}
-                onAddFavoriteSymbol={handleAddFavoriteSymbol}
-                onRemoveFavoriteSymbol={handleRemoveFavoriteSymbol}
+                baseAsset={row.original}
+                marketCodes={marketCodes}
+                onAddFavoriteAsset={handleAddFavoriteAsset}
+                onRemoveFavoriteAsset={handleRemoveFavoriteAsset}
                 initialData={HISTORICAL_DATA}
               />
             </Collapse>
@@ -407,8 +412,8 @@ export default function RealTimeCoinsTable() {
         renderTopToolbarCustomActions={
           matchLargeScreen
             ? () => (
-                <MarketExchangeSelector
-                  onChange={(value) => setSelectedExchanges(value)}
+                <MarketCodeSelector
+                  onChange={(value) => setMarketCodes(value)}
                 />
               )
             : null
@@ -437,7 +442,7 @@ export default function RealTimeCoinsTable() {
           sx: {
             cursor: 'pointer',
             ...(row.getIsExpanded() ||
-            !isUndefined(row.original.favoriteSymbolId)
+            !isUndefined(row.original.favoriteAssetId)
               ? {
                   bgcolor: alpha(
                     theme.palette[row.getIsExpanded() ? 'primary' : 'secondary']

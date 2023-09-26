@@ -25,7 +25,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { Trans, useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 
-import { useAuthUserRegisterMutation } from 'redux/api/drf';
+import { useUserRegisterMutation } from 'redux/api/drfAuth';
 
 import BrandLogo from 'components/BrandLogo';
 
@@ -36,8 +36,7 @@ export default function Register() {
 
   const { loggedin, user } = useSelector((state) => state.auth);
 
-  const [register, { isError, isLoading, reset }] =
-    useAuthUserRegisterMutation();
+  const [register, { isError, isLoading, reset }] = useUserRegisterMutation();
 
   const { control, handleSubmit, formState } = useForm({
     defaultValues: { username: '' },

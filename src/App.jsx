@@ -16,10 +16,6 @@ import FullScreenLoading from 'components/FullScreenLoading';
 import router from 'configs/router';
 import theme, { darkTheme } from 'configs/theme';
 
-import chartjs from 'configs/chartjs';
-
-chartjs.init();
-
 Settings.defaultZone = 'utc';
 
 function App() {

@@ -18,7 +18,6 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 
 import 'configs/i18n';
-import 'chartjs-adapter-luxon';
 
 import 'animate.css';
 

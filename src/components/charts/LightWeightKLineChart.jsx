@@ -17,30 +17,32 @@ import Typography from '@mui/material/Typography';
 import StarIcon from '@mui/icons-material/Star';
 import StarOutlineIcon from '@mui/icons-material/StarOutline';
 
-import { createChart, ColorType, CrosshairMode } from 'lightweight-charts';
+import {
+  createChart,
+  ColorType,
+  CrosshairMode,
+  LineType,
+} from 'lightweight-charts';
 
 import { DateTime } from 'luxon';
 import isUndefined from 'lodash/isUndefined';
-import sortBy from 'lodash/sortBy';
 
 import { useTranslation } from 'react-i18next';
 import { alpha, useTheme } from '@mui/material/styles';
 
-import { useGetWsCoinsQuery } from 'redux/api/websocket';
+import { useGetRealTimeKlineQuery } from 'redux/api/websocket';
 
-import formatIntlNumber from 'utils/formatIntlNumber';
-
+import IntervalSelector from 'components/IntervalSelector';
 import KLineDataSelector from 'components/KLineDataSelector';
-import PeriodIntervalSelector from 'components/PeriodIntervalSelector';
 
 const KLINE_DATA_KEY = 'tp';
 const REALTIME_INTERVAL_KEY = '1T';
 
 function LightWeightKLineChart({
-  coinData,
-  selectedExchanges,
-  onAddFavoriteSymbol,
-  onRemoveFavoriteSymbol,
+  baseAsset,
+  marketCodes,
+  onAddFavoriteAsset,
+  onRemoveFavoriteAsset,
   initialData,
 }) {
   const theme = useTheme();
@@ -54,19 +56,17 @@ function LightWeightKLineChart({
 
   const [title, setTitle] = useState();
 
-  const [selectedInterval, setSelectedInterval] = useState(
-    REALTIME_INTERVAL_KEY
-  );
+  const [interval, setInterval] = useState(REALTIME_INTERVAL_KEY);
 
   const [selectedKLineData, setSelectedKLineData] = useState(KLINE_DATA_KEY);
 
-  const { data } = useGetWsCoinsQuery(
-    { ...selectedExchanges, period: selectedInterval },
-    { skip: !selectedExchanges }
+  const { data } = useGetRealTimeKlineQuery(
+    { ...marketCodes, interval },
+    { skip: !marketCodes }
   );
 
   const chartData = useMemo(() => {
-    const value = data?.[coinData.name];
+    const value = data?.[baseAsset.name];
     if (!value) return null;
     return {
       candlestick: {
@@ -78,7 +78,7 @@ function LightWeightKLineChart({
       },
       line: { time: value.datetime_now, value: value.tp },
     };
-  }, [data?.[coinData.base_asset], selectedKLineData]);
+  }, [data?.[baseAsset.name], selectedKLineData]);
 
   const onVisibleLogicalRangeChange = useCallback((newLogicalRange) => {
     console.log('newLogicalRange: ', newLogicalRange);
@@ -143,6 +143,7 @@ function LightWeightKLineChart({
       color: theme.palette.accent.main,
       crosshairMarkerVisible: false,
       lastValueVisible: false,
+      lineType: LineType.Curved,
       lineWidth: 1,
       priceFormat: { minMove: 0.01, precision: 2, type: 'price' },
       title: t('Price'),
@@ -170,7 +171,7 @@ function LightWeightKLineChart({
   useEffect(() => {
     candlestickSeriesRef.current.setData(initialData);
     lineSeriesRef.current.setData(initialData);
-  }, [initialData, selectedInterval]);
+  }, [initialData, interval]);
 
   useEffect(() => {
     if (chartData) {
@@ -182,19 +183,19 @@ function LightWeightKLineChart({
   useEffect(() => {
     candlestickSeriesRef?.current.applyOptions({
       title: `${
-        selectedExchanges?.baseExchange.includes('UPBIT')
+        marketCodes?.targetMarketCode.includes('UPBIT')
           ? t('KIMP')
           : t('Premium')
       } (${selectedKLineData.toUpperCase()})`,
     });
-  }, [i18n.language, selectedExchanges, selectedKLineData]);
+  }, [i18n.language, marketCodes, selectedKLineData]);
 
   useEffect(() => {
-    const value = selectedExchanges?.baseExchange;
-    setTitle(`${coinData.name} / ${value?.split('/').pop()}`);
-  }, [selectedExchanges]);
+    const value = marketCodes?.targetMarketCode;
+    setTitle(`${baseAsset.name} / ${value?.split('/').pop()}`);
+  }, [marketCodes]);
 
-  const isFavorite = !isUndefined(coinData.favoriteSymbolId);
+  const isFavorite = !isUndefined(baseAsset.favoriteAssetId);
 
   return (
     <Card>
@@ -213,11 +214,17 @@ function LightWeightKLineChart({
             >
               <StarIcon
                 color={isFavorite ? 'accent' : 'secondary'}
-                onClick={(e) =>
+                onClick={() =>
                   isFavorite
-                    ? onRemoveFavoriteSymbol(coinData.favoriteSymbolId)
-                    : onAddFavoriteSymbol(e, coinData.name)
+                    ? onRemoveFavoriteAsset(baseAsset.favoriteAssetId)
+                    : onAddFavoriteAsset(baseAsset.name)
                 }
+                sx={{
+                  '& :hover': {
+                    color: theme.palette.accent.main,
+                    opacity: 0.5,
+                  },
+                }}
               />
             </Tooltip>
             <Typography sx={{ fontWeight: 700, ml: 2 }}>{title}</Typography>
@@ -228,9 +235,9 @@ function LightWeightKLineChart({
             sm={6}
             sx={{ display: 'flex', justifyContent: 'center' }}
           >
-            <PeriodIntervalSelector
-              defaultValue={selectedInterval}
-              onChange={(value) => setSelectedInterval(value)}
+            <IntervalSelector
+              defaultValue={interval}
+              onChange={(value) => setInterval(value)}
             />
           </Grid>
           <Grid

@@ -12,7 +12,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
 
 import { useSelector } from 'react-redux';
-import { useAuthUserQuery } from 'redux/api/drf';
+import { useUserQuery } from 'redux/api/drfAuth';
 
 import { useTranslation } from 'react-i18next';
 
@@ -57,7 +57,7 @@ export function MainLayout() {
 
   const { loggedin } = useSelector((state) => state.auth);
 
-  useAuthUserQuery({}, { skip: !loggedin });
+  useUserQuery({}, { skip: !loggedin });
 
   return (
     <>
