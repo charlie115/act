@@ -22,7 +22,7 @@ mongodb = pymongo.MongoClient(settings.MONGODB["HOST"], settings.MONGODB["PORT"]
 )
 class KlineDataView(views.APIView, PageNumberPagination):
     permission_classes = []
-    PageNumberPagination.page_size = 200
+    PageNumberPagination.page_size = 100
 
     def get(self, request):
         query_params = KlineDataQueryParamsSerializer(data=request.query_params)
@@ -30,12 +30,12 @@ class KlineDataView(views.APIView, PageNumberPagination):
         query = query_params.validated_data
 
         data = self.get_data(
-            target_market_code=query["target_market_code"].replace("/", "__"),
-            origin_market_code=query["origin_market_code"].replace("/", "__"),
-            base_asset=query["base_asset"],
-            interval=query["interval"],
-            start_time=query["start_time"],
-            end_time=query["end_time"],
+            target_market_code=query.get("target_market_code", "").replace("/", "__"),
+            origin_market_code=query.get("origin_market_code", "").replace("/", "__"),
+            base_asset=query.get("base_asset", ""),
+            interval=query.get("interval", ""),
+            start_time=query.get("start_time", None),
+            end_time=query.get("end_time", None),
         )
 
         return self.get_paginated_response(self.paginate_queryset(data, request))
@@ -49,21 +49,44 @@ class KlineDataView(views.APIView, PageNumberPagination):
         start_time,
         end_time,
     ):
-        db_name = f"{target_market_code}-{origin_market_code}"
-        collection_name = f"{base_asset}_{interval}"
+        database = f"{target_market_code}-{origin_market_code}"
+        collection = f"{base_asset}_{interval}"
 
-        dbs = mongodb.list_database_names()
-        if db_name not in dbs:
+        # Get database
+        databases = mongodb.list_database_names()
+        if database not in databases:
             raise exceptions.ValidationError({"detail": "Invalid market code."})
 
-        db = mongodb.get_database(db_name)
+        db = mongodb.get_database(database)
 
+        # Get collection
         collections = db.list_collection_names()
-        if collection_name not in collections:
+        if collection not in collections:
             raise exceptions.ValidationError({"detail": "Invalid base asset/interval."})
 
-        collection = db.get_collection(collection_name)
+        coll = db.get_collection(collection)
 
-        data = [item for item in collection.find(projection={"_id": False})]
+        # Prepare parameters
+        query_filter = (
+            {
+                "datetime_now": {
+                    "$gte": start_time,
+                    "$lte": end_time,
+                }
+            }
+            if start_time and end_time
+            else {}
+        )
+        projection = {
+            "_id": False,
+        }
 
-        return data
+        # Query collection
+        cursor = coll.find(
+            filter=query_filter,
+            projection=projection,
+        )
+
+        results = [item for item in cursor]
+
+        return results

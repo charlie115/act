@@ -9,11 +9,11 @@ class KlineDataQueryParamsSerializer(serializers.Serializer):
     base_asset = serializers.CharField(required=True)
     interval = serializers.CharField(required=True)
     start_time = serializers.DateTimeField(
-        required=True,
+        required=False,
         input_formats=[DATE_TIME_FORMAT],
     )
     end_time = serializers.DateTimeField(
-        required=True,
+        required=False,
         input_formats=[DATE_TIME_FORMAT],
     )
 
