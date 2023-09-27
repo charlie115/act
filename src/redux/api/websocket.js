@@ -78,15 +78,10 @@ const websocketApi = createApi({
           updateCachedData,
         }
       ) => {
-        // TODO: Change to updated url and params
-        const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/coins/`);
-        url.searchParams.set('exchange_market_1', args.targetMarketCode);
-        url.searchParams.set('exchange_market_2', args.originMarketCode);
-        url.searchParams.set('period', args.interval);
-        // const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/kline/`);
-        // url.searchParams.set('target_market_code', args.targetMarketCode);
-        // url.searchParams.set('origin_market_code', args.originMarketCode);
-        // url.searchParams.set('interval', args.interval);
+        const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/kline/`);
+        url.searchParams.set('target_market_code', args.targetMarketCode);
+        url.searchParams.set('origin_market_code', args.originMarketCode);
+        url.searchParams.set('interval', args.interval);
         const socket = new WebSocket(url.toString());
 
         const onMessage = memoize((event) => {

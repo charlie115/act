@@ -1,7 +1,6 @@
 import drfApi from 'redux/api/drf';
 
-// const FAVORITE_ASSETS_URL = '/users/favorite-assets/';
-const FAVORITE_ASSETS_URL = '/users/favorite-symbols/'; // TODO: Remove once final API is deployed
+const FAVORITE_ASSETS_URL = '/users/favorite-assets/';
 
 const api = drfApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -12,11 +11,6 @@ const api = drfApi.injectEndpoints({
         body: {
           base_asset: args.baseAsset,
           market_codes: [args.targetMarketCode, args.originMarketCode],
-
-          // TODO: Remove once final API is deployed
-          base_symbol: args.baseAsset,
-          market_name_1: args.targetMarketCode,
-          market_name_2: args.originMarketCode,
         },
       }),
       invalidatesTags: ['FavoriteAssets'],
@@ -33,16 +27,12 @@ const api = drfApi.injectEndpoints({
         url: FAVORITE_ASSETS_URL,
         params: {
           market_codes: [args.targetMarketCode, args.originMarketCode],
-
-          // TODO: Remove once final API is deployed
-          market_name_1: args.targetMarketCode,
-          market_name_2: args.originMarketCode,
         },
       }),
       providesTags: ['FavoriteAssets'],
       transformResponse: (response) =>
         response?.results?.reduce(
-          (acc, value) => ({ ...acc, [value.base_symbol]: value.id }),
+          (acc, value) => ({ ...acc, [value.base_asset]: value.id }),
           {}
         ),
     }),

@@ -9,12 +9,12 @@ export const homeSlice = createSlice({
   initialState,
   reducers: {
     addLocalFavoriteAsset: (state, { payload }) => {
-      if (!state.favoriteAssets[payload.marketKey])
-        state.favoriteAssets[payload.marketKey] = [];
-      state.favoriteAssets[payload.marketKey].push(payload.baseAsset);
+      if (!state.favoriteAssets[payload.marketCodeKey])
+        state.favoriteAssets[payload.marketCodeKey] = [];
+      state.favoriteAssets[payload.marketCodeKey].push(payload.baseAsset);
     },
     removeLocalFavoriteAsset: (state, { payload }) => {
-      state.favoriteAssets?.[payload.marketKey]?.splice(payload.id, 1);
+      state.favoriteAssets?.[payload.marketCodeKey]?.splice(payload.id, 1);
     },
   },
   extraReducers: (builder) => {

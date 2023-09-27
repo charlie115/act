@@ -3,23 +3,68 @@ import i18n from 'configs/i18n';
 import { ReactComponent as BinanceSvg } from 'assets/svg/binance.svg';
 import { ReactComponent as UPbitSvg } from 'assets/svg/upbit.svg';
 
-export const COIN_KLINE_DATA = [
+export const KLINE_DATA_TYPE = [
   { label: 'TP', value: 'tp' },
   { label: 'LS', value: 'LS' },
   { label: 'SL', value: 'SL' },
 ];
 
 export const INTERVAL_LIST = [
-  { getLabel: () => i18n.t('{{value}}m', { value: 1 }), value: '1T' },
+  {
+    getLabel: () => i18n.t('{{value}}m', { value: 1 }),
+    value: '1T',
+    quantity: 1,
+    unit: 'minutes',
+  },
   // { getLabel: () => i18n.t('{{value}}m', { value: 3 }), value: '3T' },
-  { getLabel: () => i18n.t('{{value}}m', { value: 5 }), value: '5T' },
-  { getLabel: () => i18n.t('{{value}}m', { value: 15 }), value: '15T' },
-  { getLabel: () => i18n.t('{{value}}m', { value: 30 }), value: '30T' },
-  { getLabel: () => i18n.t('{{value}}h', { value: 1 }), value: '1H' },
-  { getLabel: () => i18n.t('{{value}}h', { value: 4 }), value: '4H' },
-  { getLabel: () => i18n.t('{{value}}D', { value: 1 }), value: 'day' },
-  { getLabel: () => i18n.t('{{value}}W', { value: 1 }), value: 'week' },
-  { getLabel: () => i18n.t('{{value}}M', { value: 1 }), value: 'month' },
+  {
+    getLabel: () => i18n.t('{{value}}m', { value: 5 }),
+    value: '5T',
+    quantity: 5,
+    unit: 'minutes',
+  },
+  {
+    getLabel: () => i18n.t('{{value}}m', { value: 15 }),
+    value: '15T',
+    quantity: 15,
+    unit: 'minutes',
+  },
+  {
+    getLabel: () => i18n.t('{{value}}m', { value: 30 }),
+    value: '30T',
+    quantity: 30,
+    unit: 'minutes',
+  },
+  {
+    getLabel: () => i18n.t('{{value}}h', { value: 1 }),
+    value: '1H',
+    quantity: 1,
+    unit: 'hours',
+  },
+  {
+    getLabel: () => i18n.t('{{value}}h', { value: 4 }),
+    value: '4H',
+    quantity: 4,
+    unit: 'hours',
+  },
+  {
+    getLabel: () => i18n.t('{{value}}D', { value: 1 }),
+    value: '1D',
+    quantity: 1,
+    unit: 'days',
+  },
+  {
+    getLabel: () => i18n.t('{{value}}W', { value: 1 }),
+    value: '1W',
+    quantity: 1,
+    unit: 'weeks',
+  },
+  {
+    getLabel: () => i18n.t('{{value}}M', { value: 1 }),
+    value: '1M',
+    quantity: 1,
+    unit: 'months',
+  },
 ];
 
 export const MARKET_CODE_LIST = [

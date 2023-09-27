@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 
 import debounce from 'lodash/debounce';
 
-import { COIN_KLINE_DATA } from 'constants/lists';
+import { KLINE_DATA_TYPE } from 'constants/lists';
 
 const ToggleBtn = styled(ToggleButton)(() => ({
   fontSize: 11,
@@ -21,12 +21,12 @@ const ToggleBtn = styled(ToggleButton)(() => ({
   textTransform: 'none',
 }));
 
-function KLineDataSelector({ defaultValue, onChange }) {
+function KlineDataSelector({ defaultValue, onChange }) {
   const { i18n, t } = useTranslation();
 
   const [selectedIdx, setSelectedIdx] = useState(
     defaultValue
-      ? COIN_KLINE_DATA.findIndex((o) => o.value === defaultValue)
+      ? KLINE_DATA_TYPE.findIndex((o) => o.value === defaultValue)
       : null
   );
 
@@ -44,11 +44,11 @@ function KLineDataSelector({ defaultValue, onChange }) {
 
   useEffect(() => {
     if (selectedIdx !== null && onChange)
-      debouncedOnChange(COIN_KLINE_DATA[selectedIdx].value);
+      debouncedOnChange(KLINE_DATA_TYPE[selectedIdx].value);
   }, [selectedIdx]);
 
   useEffect(() => {
-    setKLineData(COIN_KLINE_DATA.map((datum) => datum));
+    setKLineData(KLINE_DATA_TYPE.map((datum) => datum));
   }, [i18n.language]);
 
   if (kLineData.length === 0) return null;
@@ -110,4 +110,4 @@ function KLineDataSelector({ defaultValue, onChange }) {
   );
 }
 
-export default React.memo(KLineDataSelector);
+export default React.memo(KlineDataSelector);

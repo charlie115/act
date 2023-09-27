@@ -7,10 +7,7 @@ import React, {
 } from 'react';
 
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
-import Grid from '@mui/material/Grid';
-import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
@@ -18,9 +15,8 @@ import Typography from '@mui/material/Typography';
 import BlockIcon from '@mui/icons-material/Block';
 import InsightsIcon from '@mui/icons-material/Insights';
 import StarIcon from '@mui/icons-material/Star';
-import StarOutlineIcon from '@mui/icons-material/StarOutline';
 
-import { alpha, styled, useTheme } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { useTranslation } from 'react-i18next';
@@ -48,15 +44,11 @@ import orderBy from 'lodash/orderBy';
 import formatIntlNumber from 'utils/formatIntlNumber';
 import formatShortNumber from 'utils/formatShortNumber';
 
-import LightWeightKLineChart from 'components/charts/LightWeightKLineChart';
+import LightWeightKlineChart from 'components/charts/LightWeightKlineChart';
 import MarketCodeSelector from 'components/MarketCodeSelector';
 import MaterialReactTable from 'components/MaterialReactTable';
 
 import { coinicons } from 'assets/exports';
-
-const REALTIME_INTERVAL_KEY = '1T';
-
-const HISTORICAL_DATA = [];
 
 export default function RealTimeCoinsTable() {
   const dispatch = useDispatch();
@@ -93,7 +85,7 @@ export default function RealTimeCoinsTable() {
   const { data: realTimeData, isLoading } = useGetRealTimeKlineQuery(
     {
       ...marketCodes,
-      interval: REALTIME_INTERVAL_KEY,
+      interval: '1T',
       isTableData: true,
     },
     { skip: !marketCodes }
@@ -362,9 +354,10 @@ export default function RealTimeCoinsTable() {
     if (createFavoriteRes?.isSuccess) window.scrollTo(0, 0);
   }, [createFavoriteRes?.isSuccess]);
 
-  useEffect(() => {
-    setExpanded({});
-  }, [marketCodes]);
+  // TODO: Check if this is needed
+  // useEffect(() => {
+  //   setExpanded({});
+  // }, [marketCodes]);
 
   return (
     <Box>
@@ -399,12 +392,11 @@ export default function RealTimeCoinsTable() {
         renderDetailPanel={({ row }) => (
           <Box>
             <Collapse unmountOnExit in={row.getIsExpanded()}>
-              <LightWeightKLineChart
+              <LightWeightKlineChart
                 baseAsset={row.original}
                 marketCodes={marketCodes}
                 onAddFavoriteAsset={handleAddFavoriteAsset}
                 onRemoveFavoriteAsset={handleRemoveFavoriteAsset}
-                initialData={HISTORICAL_DATA}
               />
             </Collapse>
           </Box>
