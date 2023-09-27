@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.sites.models import Site
@@ -7,9 +8,10 @@ from allauth.account.models import EmailAddress
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
 
+from users.mixins import UserFavoriteAssetsValidatorMixin
 from users.models import (
     User,
-    UserFavoriteSymbols,
+    UserFavoriteAssets,
     UserProfile,
     UserManagers,
 )
@@ -148,21 +150,28 @@ class UserManagersAdmin(ModelAdmin):
     ]
 
 
+class UserFavoriteAssetsForm(UserFavoriteAssetsValidatorMixin, forms.ModelForm):
+    pass
+
+
 # TODO: Move to User
-class UserFavoriteSymbolsAdmin(ModelAdmin):
+class UserFavoriteAssetsAdmin(ModelAdmin):
     list_display = [
         "id",
         "user",
-        "market_name_1",
-        "market_name_2",
-        "base_symbol",
+        "base_asset",
+        "market_codes",
     ]
-    search_fields = ["market_name_1", "market_name_2", "base_symbol"]
+    search_fields = [
+        "base_asset",
+        "market_codes",
+    ]
+    form = UserFavoriteAssetsForm
 
 
 admin.site.register(User, CustomUserAdmin)
 admin.site.register(UserManagers, UserManagersAdmin)
-admin.site.register(UserFavoriteSymbols, UserFavoriteSymbolsAdmin)
+admin.site.register(UserFavoriteAssets, UserFavoriteAssetsAdmin)
 
 admin.site.unregister(EmailAddress)
 admin.site.unregister(SocialAccount)

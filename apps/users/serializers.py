@@ -1,16 +1,18 @@
 from rest_framework import serializers
 
 from arbot.serializers import ArbotUserConfigSerializer
-from users.mixins import UserUUIDSerializerMixin
-from users.models import User, UserFavoriteSymbols, UserProfile
+from users.mixins import UserFavoriteAssetsValidatorMixin, UserUUIDSerializerMixin
+from users.models import User, UserFavoriteAssets, UserProfile
 
 
-class UserFavoriteSymbolsSerializer(
-    UserUUIDSerializerMixin, serializers.ModelSerializer
+class UserFavoriteAssetsSerializer(
+    UserUUIDSerializerMixin,
+    UserFavoriteAssetsValidatorMixin,
+    serializers.ModelSerializer,
 ):
     class Meta:
-        model = UserFavoriteSymbols
-        fields = ("id", "market_name_1", "market_name_2", "base_symbol")
+        model = UserFavoriteAssets
+        fields = ("id", "base_asset", "market_codes")
 
 
 class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
@@ -30,7 +32,7 @@ class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
-    favorite_symbols = UserFavoriteSymbolsSerializer(many=True, read_only=True)
+    favorite_assets = UserFavoriteAssetsSerializer(many=True, read_only=True)
     arbot_config = ArbotUserConfigSerializer(read_only=True)
 
     def create(self, validated_data):
@@ -55,7 +57,7 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "is_active",
             "profile",
-            "favorite_symbols",
+            "favorite_assets",
             "arbot_config",
         )
         read_only_fields = ("role", "is_active")

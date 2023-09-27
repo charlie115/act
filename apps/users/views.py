@@ -3,10 +3,10 @@ from rest_framework.pagination import PageNumberPagination
 
 from lib.permissions import IsDjangoAdmin, IsAdminOrIsSelf
 from lib.views import UserOwnedViewSet, UserOwned1To1ViewSet
-from users.models import User, UserFavoriteSymbols, UserProfile
+from users.models import User, UserFavoriteAssets, UserProfile
 from users.serializers import (
     UserSerializer,
-    UserFavoriteSymbolsSerializer,
+    UserFavoriteAssetsSerializer,
     UserProfileSerializer,
 )
 
@@ -59,7 +59,7 @@ class UserViewSet(UserOwnedViewSet):
         return [permission() for permission in permission_classes]
 
 
-@extend_schema(tags=["UserFavoriteSymbol"])
+@extend_schema(tags=["UserFavoriteAssets"])
 @extend_schema_view(
     list=extend_schema(
         operation_id="List user favorite symbols",
@@ -77,9 +77,9 @@ class UserViewSet(UserOwnedViewSet):
         description="Deletes an existing user `favorite symbol`.",
     ),
 )
-class UserFavoriteSymbolsViewSet(UserOwnedViewSet):
-    queryset = UserFavoriteSymbols.objects.all().order_by("id")
-    serializer_class = UserFavoriteSymbolsSerializer
+class UserFavoriteAssetsViewSet(UserOwnedViewSet):
+    queryset = UserFavoriteAssets.objects.all().order_by("id")
+    serializer_class = UserFavoriteAssetsSerializer
     http_method_names = ["get", "post", "delete"]
 
 

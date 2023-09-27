@@ -1,7 +1,7 @@
 from rest_framework import routers
 
 from lib.views import BaseEndpointListView
-from users.views import UserViewSet, UserFavoriteSymbolsViewSet, UserProfileViewSet
+from users.views import UserViewSet, UserFavoriteAssetsViewSet, UserProfileViewSet
 
 
 class UserAPIListView(BaseEndpointListView):
@@ -18,7 +18,7 @@ class DocumentedRouter(routers.DefaultRouter):
 
 router = DocumentedRouter()
 router.register(r"users", UserViewSet)
-router.register(r"favorite-symbols", UserFavoriteSymbolsViewSet)
+router.register(r"favorite-assets", UserFavoriteAssetsViewSet)
 router.register(r"profiles", UserProfileViewSet)
 
 urlpatterns = router.urls

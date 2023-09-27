@@ -5,6 +5,7 @@ from datetime import datetime
 from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
@@ -105,18 +106,23 @@ class UserProfile(models.Model):
         verbose_name_plural = "User profiles"
 
 
-class UserFavoriteSymbols(models.Model):
+class UserFavoriteAssets(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="favorite_symbols",
+        related_name="favorite_assets",
     )
-    market_name_1 = models.CharField(max_length=150)
-    market_name_2 = models.CharField(max_length=150)
-    base_symbol = models.CharField(max_length=10)
+    base_asset = models.CharField(max_length=10)
+    market_codes = ArrayField(models.CharField(max_length=150))
 
     def __str__(self):
-        return f"{self.user.username} ({self.base_symbol})"
+        return f"{self.user.username} ({self.base_asset})"
 
     class Meta:
-        verbose_name_plural = "User favorite symbols"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "market_codes", "base_asset"],
+                name="unique__user__base_asset__market_codes",
+            )
+        ]
+        verbose_name_plural = "User favorite assets"
