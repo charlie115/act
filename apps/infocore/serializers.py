@@ -1,25 +1,32 @@
 from rest_framework import serializers
 
-
-class TimestampField(serializers.Field):
-    def to_representation(self, value):
-        return round(value.timestamp() * 1000)
+from lib.constants import DATE_TIME_FORMAT
 
 
-class InfoCoreHistoricalCoinDataQueryParamsSerializer(serializers.Serializer):
-    exchange_market_1 = serializers.CharField(
-        required=True, help_text="Base exchange market"
+class KlineDataQueryParamsSerializer(serializers.Serializer):
+    target_market_code = serializers.CharField(
+        required=True,
+        help_text="Target market code",
     )
-    exchange_market_2 = serializers.CharField(
-        required=True, help_text="Target exchange market"
+    origin_market_code = serializers.CharField(
+        required=True,
+        help_text="Origin market code",
     )
-    period = serializers.CharField(required=True)
-    coin = serializers.CharField(required=True)
+    base_asset = serializers.CharField(required=True)
+    interval = serializers.CharField(required=True)
+    start_time = serializers.DateTimeField(
+        required=True,
+        input_formats=[DATE_TIME_FORMAT],
+    )
+    end_time = serializers.DateTimeField(
+        required=True,
+        input_formats=[DATE_TIME_FORMAT],
+    )
 
 
-class InfoCoreHistoricalCoinDataSerializer(serializers.Serializer):
+class KlineDataDataSerializer(serializers.Serializer):
     base_asset = serializers.CharField()
-    datetime_now = TimestampField()
+    datetime_now = serializers.DateTimeField()
     tp_open = serializers.FloatField()
     tp_high = serializers.FloatField()
     tp_low = serializers.FloatField()

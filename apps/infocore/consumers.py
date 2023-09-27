@@ -11,7 +11,7 @@ from users.models import User  # noqa: F401
 redis_conn = get_redis_connection("default")
 
 
-class CoinConsumer(AsyncWebsocketConsumer):
+class KlineConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -24,30 +24,29 @@ class CoinConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         # # Authentication
-        # if type(self.scope["user"]) == User:
-        #     await self.accept()
-        # else:
+        # if type(self.scope["user"]) != User:
         #     await self.close()
 
-        await self.accept()
-        await self.send(
-            json.dumps(
-                {
-                    "result": "Connected to AWC websocket!",
-                    "type": "connect",
-                    "status": "OK",
-                }
-            )
-        )
-
         query_params = dict(parse_qsl(self.scope["query_string"].decode()))
-        exchange_market_1 = query_params.get("exchange_market_1", None)
-        exchange_market_2 = query_params.get("exchange_market_2", None)
-        period = query_params.get("period", None)
+        target_market_code = query_params.get("target_market_code", None)
+        origin_market_code = query_params.get("origin_market_code", None)
+        interval = query_params.get("interval", None)
 
-        if exchange_market_1 and exchange_market_2 and period:
+        if target_market_code and origin_market_code and interval:
+            await self.accept()
+
+            await self.send(
+                json.dumps(
+                    {
+                        "result": "Connected to AWC websocket!",
+                        "type": "connect",
+                        "status": "OK",
+                    }
+                )
+            )
+
             channel_name = (
-                f"INFO_CORE|{exchange_market_1}:{exchange_market_2}_{period}_now"
+                f"INFO_CORE|{target_market_code}:{origin_market_code}_{interval}_now"
             )
             self._redis_ps.subscribe(**{channel_name: self._callback})
             self._thread = self._redis_ps.run_in_thread(sleep_time=60, daemon=True)

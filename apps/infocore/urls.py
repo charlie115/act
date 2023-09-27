@@ -2,7 +2,7 @@ from collections import OrderedDict
 from django.urls import path
 from rest_framework import response
 
-from infocore.views import InfoCoreHistoricalCoinDataView
+from infocore.views import KlineDataView
 from lib.views import BaseEndpointListView
 
 
@@ -33,6 +33,8 @@ class InfoCoreAPIListView(BaseEndpointListView):
 urlpatterns = [
     path("", InfoCoreAPIListView.as_view(), name="infocore api list"),
     path(
-        "coins/", InfoCoreHistoricalCoinDataView.as_view(), name="historical coin data"
+        "kline/",
+        KlineDataView.as_view(),
+        name="kline data",
     ),
 ]
