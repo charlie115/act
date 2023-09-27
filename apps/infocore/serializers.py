@@ -4,14 +4,8 @@ from lib.constants import DATE_TIME_FORMAT
 
 
 class KlineDataQueryParamsSerializer(serializers.Serializer):
-    target_market_code = serializers.CharField(
-        required=True,
-        help_text="Target market code",
-    )
-    origin_market_code = serializers.CharField(
-        required=True,
-        help_text="Origin market code",
-    )
+    target_market_code = serializers.CharField(required=True)
+    origin_market_code = serializers.CharField(required=True)
     base_asset = serializers.CharField(required=True)
     interval = serializers.CharField(required=True)
     start_time = serializers.DateTimeField(

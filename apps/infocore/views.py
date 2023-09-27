@@ -13,14 +13,15 @@ mongodb = pymongo.MongoClient(settings.MONGODB["HOST"], settings.MONGODB["PORT"]
 
 @extend_schema_view(
     get=extend_schema(
-        operation_id="Get historical coin price data",
-        description="Returns a list of historical coin price data.",
+        operation_id="Get kline data",
+        description="Returns kline data",
         parameters=[KlineDataQueryParamsSerializer],
         responses={200: KlineDataDataSerializer},
-        tags=["Coin"],
+        tags=["Kline"],
     ),
 )
 class KlineDataView(views.APIView, PageNumberPagination):
+    permission_classes = []
     PageNumberPagination.page_size = 200
 
     def get(self, request):

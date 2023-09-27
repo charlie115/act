@@ -234,6 +234,7 @@ SPECTACULAR_SETTINGS = {
         "lib.permissions.IsDjangoAdmin" or "lib.permissions.IsACWAdmin"
     ],
     "SERVE_INCLUDE_SCHEMA": False,
+    "SORT_OPERATION_PARAMETERS": False,
     "EXTENSIONS_ROOT": {
         "x-tagGroups": [
             {
@@ -246,7 +247,7 @@ SPECTACULAR_SETTINGS = {
             },
             {
                 "name": "INFO CORE",
-                "tags": ["Coin"],
+                "tags": ["Kline"],
             },
             {
                 "name": "USER",
