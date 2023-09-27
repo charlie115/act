@@ -18,6 +18,21 @@ def get_user_from_jwt(token_key):
     return user
 
 
+class RouteNotFoundMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        try:
+            return await self.app(scope, receive, send)
+        except ValueError as err:
+            if "No route found for path" in str(err) and scope["type"] == "websocket":
+                await send({"type": "websocket.close"})
+                # TODO: Log error
+            else:
+                raise err
+
+
 class TokenAuthMiddleware:
     def __init__(self, app):
         self.app = app

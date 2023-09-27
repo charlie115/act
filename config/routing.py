@@ -2,13 +2,15 @@ from channels.routing import URLRouter
 from django.urls import path
 
 from infocore.consumers import KlineConsumer
-from lib.middleware import TokenAuthMiddleware
+from lib.middleware import TokenAuthMiddleware, RouteNotFoundMiddleware
 
 
 websocket_urlpatterns = TokenAuthMiddleware(
-    URLRouter(
-        [
-            path("kline/", KlineConsumer.as_asgi()),
-        ]
+    RouteNotFoundMiddleware(
+        URLRouter(
+            [
+                path("kline/", KlineConsumer.as_asgi()),
+            ]
+        )
     )
 )
