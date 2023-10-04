@@ -23,7 +23,7 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DATABASE_COMMUNITY=${POSTGRES_DATABASE_COMMUNITY}
+      - POSTGRES_DB=${POSTGRES_DATABASE_COMMUNITY}
       - PGDATA=/var/lib/postgresql/data/
     volumes:
       - $HOME/test-community-postgres/data/:/var/lib/postgresql/data/
