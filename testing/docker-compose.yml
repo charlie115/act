@@ -26,7 +26,7 @@ services:
       - POSTGRES_DATABASE_COMMUNITY=${POSTGRES_DATABASE_COMMUNITY}
       - PGDATA=/var/lib/postgresql/data/
     volumes:
-      - $HOME/test-community-postgres/:/var/lib/postgresql/data/
+      - $HOME/test-community-postgres/data/:/var/lib/postgresql/data/
     ports:
       - "25432:5432"
     expose:
@@ -43,8 +43,10 @@ services:
   redis:
     image: redis:7-alpine
     container_name: test-community-redis
+    command: ["redis-server", "/etc/redis/redis.conf"]
     volumes:
-      - $HOME/test-community-redis:/data
+      - $HOME/test-community-redis/data/:/data/
+      - $HOME/test-community-redis/conf/redis.conf:/etc/redis/redis.conf
     ports:
       - "26379:6379"
     expose:
@@ -56,8 +58,12 @@ services:
   mongodb:
     image: mongo:6.0
     container_name: test-community-mongodb
+    command: ["--auth"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
-      - $HOME/test-community-mongodb:/data/db
+      - $HOME/test-community-mongodb/data/:/data/
     ports:
       - "27018:27017"
     expose:
