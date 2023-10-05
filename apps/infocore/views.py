@@ -8,7 +8,12 @@ from rest_framework.pagination import PageNumberPagination
 from infocore.serializers import KlineDataDataSerializer, KlineDataQueryParamsSerializer
 
 
-mongodb = pymongo.MongoClient(settings.MONGODB["HOST"], settings.MONGODB["PORT"])
+mongodb = pymongo.MongoClient(
+    host=settings.MONGODB["HOST"],
+    port=settings.MONGODB["PORT"],
+    username=settings.MONGODB["USERNAME"],
+    password=settings.MONGODB["PASSWORD"],
+)
 
 
 @extend_schema_view(
