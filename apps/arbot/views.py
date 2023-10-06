@@ -1,8 +1,25 @@
+from django_filters import CharFilter, FilterSet
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from arbot.models import ArbotNode, ArbotUserConfig
 from arbot.serializers import ArbotNodeSerializer, ArbotUserConfigSerializer
+from lib.filters import UserUuidFilter
 from lib.views import BaseViewSet, UserOwned1To1ViewSet
+
+
+class ArbotNodeFilter(FilterSet):
+    description__contains = CharFilter(field_name="description", lookup_expr="contains")
+
+    class Meta:
+        model = ArbotNode
+        fields = "__all__"
+
+
+class ArbotUserConfigFilter(UserUuidFilter):
+    class Meta:
+        model = ArbotUserConfig
+        fields = "__all__"
 
 
 @extend_schema(tags=["ArbotNode"])
@@ -38,6 +55,8 @@ from lib.views import BaseViewSet, UserOwned1To1ViewSet
 class ArbotNodeViewSet(BaseViewSet):
     queryset = ArbotNode.objects.all().order_by("id")
     serializer_class = ArbotNodeSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ArbotNodeFilter
 
 
 @extend_schema(tags=["ArbotUserConfig"])
@@ -73,3 +92,5 @@ class ArbotNodeViewSet(BaseViewSet):
 class ArbotUserConfigViewSet(UserOwned1To1ViewSet):
     queryset = ArbotUserConfig.objects.all().order_by("id")
     serializer_class = ArbotUserConfigSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ArbotUserConfigFilter

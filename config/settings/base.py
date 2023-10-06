@@ -72,7 +72,7 @@ THIRD_PARTY_APPS = (
     "rest_framework_simplejwt",
     "dj_rest_auth",
     "dj_rest_auth.registration",
-    # 'django_filters',
+    "django_filters",
     "drf_spectacular",
     "channels",
 )

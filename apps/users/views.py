@@ -1,6 +1,8 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.pagination import PageNumberPagination
 
+from lib.filters import CharArrayFilter, UserUuidFilter
 from lib.permissions import IsDjangoAdmin, IsAdminOrIsSelf
 from lib.views import UserOwnedViewSet, UserOwned1To1ViewSet
 from users.models import User, UserFavoriteAssets, UserProfile
@@ -9,6 +11,20 @@ from users.serializers import (
     UserFavoriteAssetsSerializer,
     UserProfileSerializer,
 )
+
+
+class UserFavoriteAssetsFilter(UserUuidFilter):
+    market_codes = CharArrayFilter(field_name="market_codes", lookup_expr="contains")
+
+    class Meta:
+        model = UserFavoriteAssets
+        fields = ("user", "base_asset", "market_codes")
+
+
+class UserProfileFilter(UserUuidFilter):
+    class Meta:
+        model = UserProfile
+        fields = ("user", "referral", "level", "points")
 
 
 @extend_schema(tags=["User"])
@@ -47,6 +63,17 @@ class UserViewSet(UserOwnedViewSet):
     serializer_class = UserSerializer
     pagination_class = PageNumberPagination
     PageNumberPagination.page_size = 100
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = (
+        "email",
+        "uuid",
+        "username",
+        "first_name",
+        "last_name",
+        "telegram_id",
+        "role",
+        "is_active",
+    )
 
     def get_permissions(self):
         permission_classes = self.permission_classes
@@ -80,6 +107,8 @@ class UserViewSet(UserOwnedViewSet):
 class UserFavoriteAssetsViewSet(UserOwnedViewSet):
     queryset = UserFavoriteAssets.objects.all().order_by("id")
     serializer_class = UserFavoriteAssetsSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = UserFavoriteAssetsFilter
     http_method_names = ["get", "post", "delete"]
 
 
@@ -110,4 +139,6 @@ class UserFavoriteAssetsViewSet(UserOwnedViewSet):
 class UserProfileViewSet(UserOwned1To1ViewSet):
     queryset = UserProfile.objects.all().order_by("id")
     serializer_class = UserProfileSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = UserProfileFilter
     http_method_names = ["get", "put", "patch", "delete"]
