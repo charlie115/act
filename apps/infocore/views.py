@@ -1,8 +1,7 @@
 import pymongo
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import exceptions, views
-from rest_framework.pagination import PageNumberPagination
+from rest_framework import exceptions, response, views
 
 
 from infocore.serializers import KlineDataDataSerializer, KlineDataQueryParamsSerializer
@@ -25,9 +24,9 @@ mongodb = pymongo.MongoClient(
         tags=["Kline"],
     ),
 )
-class KlineDataView(views.APIView, PageNumberPagination):
+class KlineDataView(views.APIView):
     permission_classes = []
-    PageNumberPagination.page_size = 100
+    page_size = 100
 
     def get(self, request):
         query_params = KlineDataQueryParamsSerializer(data=request.query_params)
@@ -43,7 +42,7 @@ class KlineDataView(views.APIView, PageNumberPagination):
             end_time=query.get("end_time", None),
         )
 
-        return self.get_paginated_response(self.paginate_queryset(data, request))
+        return response.Response(data)
 
     def get_data(
         self,
@@ -92,6 +91,14 @@ class KlineDataView(views.APIView, PageNumberPagination):
             projection=projection,
         )
 
+        # If no start_time and end_time, get latest n data
+        if not (start_time and end_time):
+            cursor = cursor.sort("datetime_now", pymongo.DESCENDING).limit(
+                self.page_size
+            )
+
+        # Sort back for display
         results = [item for item in cursor]
+        results = sorted(results, key=lambda item: item["datetime_now"])
 
         return results
