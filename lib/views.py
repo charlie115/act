@@ -38,7 +38,12 @@ class UserOwnedViewSet(BaseViewSet):
         return self.queryset
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        attrs = {}
+
+        if self.queryset.model != User:
+            attrs["user"] = self.request.user
+
+        serializer.save(**attrs)
 
 
 class UserOwned1To1ViewSet(UserOwnedViewSet):
