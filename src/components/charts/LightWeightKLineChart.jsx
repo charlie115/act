@@ -23,13 +23,13 @@ import {
   ColorType,
   CrosshairMode,
   LineType,
+  PriceScaleMode,
 } from 'lightweight-charts';
 
 import { DateTime } from 'luxon';
 
 import debounce from 'lodash/debounce';
 import isUndefined from 'lodash/isUndefined';
-import sortBy from 'lodash/sortBy';
 
 import { usePrevious } from '@uidotdev/usehooks';
 
@@ -39,14 +39,13 @@ import { alpha, useTheme } from '@mui/material/styles';
 import { useGetHistoricalKlineQuery } from 'redux/api/drfKline';
 import { useGetRealTimeKlineQuery } from 'redux/api/websocket';
 
+import formatIntlNumber from 'utils/formatIntlNumber';
+
 import IntervalSelector from 'components/IntervalSelector';
 import KlineDataSelector from 'components/KlineDataSelector';
 
 import { DATE_FORMAT_API_QUERY } from 'constants';
 import { INTERVAL_LIST } from 'constants/lists';
-
-// const KLINE_DATA_KEY = 'tp';
-// const REALTIME_INTERVAL_KEY = '1T,1,minutes';
 
 function LightWeightKlineChart({
   baseAsset,
@@ -71,8 +70,18 @@ function LightWeightKlineChart({
 
   const [klineDataType, setKlineDataType] = useState('tp');
 
+  const [barsInfo, setBarsInfo] = useState(null);
+  const [visibleLogicalRange, setVisibleLogicalRange] = useState(null);
+
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
+
+  const [currentData, setCurrentData] = useState([]);
+
+  const { data } = useGetRealTimeKlineQuery(
+    { ...marketCodes, interval },
+    { skip: !marketCodes }
+  );
 
   const {
     data: initialData,
@@ -96,21 +105,21 @@ function LightWeightKlineChart({
       startTime,
       endTime,
     },
-    { skip: !marketCodes || !(startTime && endTime) }
+    {
+      skip: !marketCodes || !(startTime && endTime),
+    }
   );
-
-  const { data } = useGetRealTimeKlineQuery(
-    { ...marketCodes, interval },
-    { skip: !marketCodes }
+  console.log(
+    '!(startTime && endTime): ',
+    !(startTime && endTime),
+    historicalData
   );
 
   const chartRealTimeData = useMemo(() => {
     const value = data?.[baseAsset.name];
     if (!value) return null;
 
-    const time = DateTime.fromMillis(value.datetime_now)
-      .setZone('local')
-      .toMillis();
+    const time = value.datetime_now;
     return {
       candlestick: {
         time,
@@ -126,10 +135,7 @@ function LightWeightKlineChart({
   const chartHistoricalData = useMemo(() => {
     const candlestick = [];
     const line = [];
-    sortBy(
-      [...(historicalData || []), ...(initialData || [])],
-      'datetime_now'
-    )?.forEach((item) => {
+    [...currentData, ...(initialData || [])].forEach((item) => {
       const time = DateTime.fromISO(item.datetime_now).toMillis();
       candlestick.push({
         time,
@@ -144,38 +150,21 @@ function LightWeightKlineChart({
       });
     });
     return { candlestick, line };
-  }, [historicalData, initialData, klineDataType]);
+  }, [currentData, initialData, klineDataType]);
 
   const onVisibleLogicalRangeChange = (newVisibleLogicalRange) => {
-    const barsInfo = candlestickSeriesRef.current.barsInLogicalRange(
+    const newBarsInfo = candlestickSeriesRef.current.barsInLogicalRange(
       newVisibleLogicalRange
     );
-    if (barsInfo !== null && barsInfo.barsBefore < 0) {
-      console.log('barsInfo: ', barsInfo);
-      const { quantity, unit } = INTERVAL_LIST.find(
-        (o) => o.value === interval
-      );
-      const latestInitial = initialData?.slice(-1);
-      let newEndTime = DateTime.now();
-      if (latestInitial?.datetime_now)
-        newEndTime = DateTime.fromISO(latestInitial?.datetime_now).minus({
-          [unit]: 1,
-        });
-      const newStartTime = newEndTime.minus({
-        [unit]: quantity * Math.abs(Math.round(barsInfo.barsBefore)),
-      });
-      setStartTime(
-        newStartTime.startOf('minute').toFormat(DATE_FORMAT_API_QUERY)
-      );
-      setEndTime(newEndTime.startOf('minute').toFormat(DATE_FORMAT_API_QUERY));
-    }
+    if (newBarsInfo !== null && Math.floor(newBarsInfo.barsBefore) < 0)
+      setBarsInfo(newBarsInfo);
   };
   const debouncedOnVisibleLogicalRangeChange = useCallback(
     debounce(onVisibleLogicalRangeChange, 1000, {
       leading: false,
       trailing: true,
     }),
-    [initialData, interval]
+    [endTime, interval]
   );
 
   const onVisibleTimeRangeChange = useCallback((newTimeRange) => {
@@ -209,6 +198,7 @@ function LightWeightKlineChart({
     });
     chartRef.current.priceScale('right').applyOptions({
       borderColor: alpha(theme.palette.secondary.main, 0.2),
+      // mode: PriceScaleMode.Logarithmic,
     });
     chartRef.current.timeScale().applyOptions({
       barSpacing: 10,
@@ -229,7 +219,12 @@ function LightWeightKlineChart({
       upColor: theme.palette.success.main,
       wickDownColor: theme.palette.error.main,
       wickUpColor: theme.palette.success.main,
-      priceFormat: { minMove: 0.01, precision: 2, type: 'percent' },
+      priceFormat: {
+        minMove: 0.001,
+        type: 'custom',
+        formatter: (price) => `${formatIntlNumber(price, 3)}%`,
+      },
+      // priceFormat: { minMove: 0.00001, precision: 5, type: 'percent' },
       // title: t('Premium'),
     });
     lineSeriesRef.current = chartRef.current.addLineSeries({
@@ -243,10 +238,14 @@ function LightWeightKlineChart({
       title: t('Price'),
     });
 
+    // chartRef.current.timeScale().fitContent(); // TODO: Remove
+
     return () => {
       chartRef.current
         .timeScale()
-        .unsubscribeVisibleLogicalRangeChange(onVisibleLogicalRangeChange);
+        .unsubscribeVisibleLogicalRangeChange(
+          debouncedOnVisibleLogicalRangeChange
+        );
       chartRef.current
         .timeScale()
         .unsubscribeVisibleTimeRangeChange(onVisibleTimeRangeChange);
@@ -255,14 +254,64 @@ function LightWeightKlineChart({
   }, []);
 
   useEffect(() => {
-    // set
+    setCurrentData((state) => [...(historicalData || []), ...state]);
   }, [historicalData]);
+
+  useEffect(() => {
+    chartRef.current.timeScale().scrollToRealTime();
+  }, [interval]);
+
+  useEffect(() => {
+    if (barsInfo) {
+      const { quantity, unit } = INTERVAL_LIST.find(
+        (o) => o.value === interval
+      );
+      const newEndTime = DateTime.fromMillis(barsInfo.from).minus({
+        [unit]: 1,
+      });
+      const newStartTime = newEndTime.minus({
+        [unit]: quantity * Math.abs(Math.floor(barsInfo.barsBefore)), // Math.abs(Math.round(barsInfo.barsBefore)),
+      });
+      setEndTime(newEndTime.toFormat(DATE_FORMAT_API_QUERY));
+      setStartTime(
+        newStartTime.startOf('minute').toFormat(DATE_FORMAT_API_QUERY)
+      );
+    }
+  }, [barsInfo, interval]);
+
+  useEffect(() => {
+    if (
+      barsInfo &&
+      chartHistoricalData?.candlestick.length > 0 &&
+      visibleLogicalRange
+    ) {
+      const { from, to } = visibleLogicalRange;
+      const numberOfVisible = Math.floor(to - from);
+      const coordinate = chartRef.current
+        .timeScale()
+        .timeToCoordinate(
+          DateTime.fromISO(
+            chartHistoricalData?.candlestick[0].datetime_now
+          ).toMillis()
+        );
+      const logical = chartRef.current
+        .timeScale()
+        .coordinateToLogical(coordinate);
+      chartRef.current.timeScale().setVisibleLogicalRange({
+        from: logical,
+        to: logical + numberOfVisible,
+      });
+    }
+  }, [barsInfo, chartHistoricalData, visibleLogicalRange]);
 
   useEffect(() => {
     candlestickSeriesRef.current.setData(chartHistoricalData.candlestick);
     lineSeriesRef.current.setData(chartHistoricalData.line);
-    // chartRef.current.timeScale().fitContent();
-  }, [chartHistoricalData]);
+    if (!visibleLogicalRange)
+      setVisibleLogicalRange(
+        chartRef.current.timeScale().getVisibleLogicalRange()
+      );
+  }, [chartHistoricalData, barsInfo, visibleLogicalRange]);
 
   useEffect(() => {
     if (!isFetchingInitialData && chartRealTimeData) {
@@ -327,6 +376,16 @@ function LightWeightKlineChart({
     });
   }, [theme.palette.mode]);
 
+  const reinitialize = () => {
+    setBarsInfo(null);
+    setStartTime(null);
+    setEndTime(null);
+
+    setCurrentData([]);
+
+    candlestickSeriesRef.current?.setData([]);
+    lineSeriesRef.current?.setData([]);
+  };
   const isFavorite = !isUndefined(baseAsset.favoriteAssetId);
 
   return (
@@ -370,8 +429,8 @@ function LightWeightKlineChart({
             <IntervalSelector
               defaultValue={interval}
               onChange={(value) => {
+                reinitialize();
                 setInterval(value);
-                // setStartTime(DateTime.now());
               }}
             />
           </Grid>

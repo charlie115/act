@@ -16,7 +16,7 @@ import FullScreenLoading from 'components/FullScreenLoading';
 import router from 'configs/router';
 import theme, { darkTheme } from 'configs/theme';
 
-Settings.defaultZone = 'utc';
+// Settings.defaultZone = 'utc';
 
 function App() {
   const { i18n } = useTranslation();

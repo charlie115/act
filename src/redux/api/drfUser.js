@@ -26,7 +26,7 @@ const api = drfApi.injectEndpoints({
       query: (args) => ({
         url: FAVORITE_ASSETS_URL,
         params: {
-          market_codes: [args.targetMarketCode, args.originMarketCode],
+          market_codes: `${args.targetMarketCode},${args.originMarketCode}`,
         },
       }),
       providesTags: ['FavoriteAssets'],

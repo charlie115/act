@@ -7,7 +7,7 @@ const api = drfApi.injectEndpoints({
         url: '/infocore/kline/',
         params,
       }),
-      transformResponse: (response) => response?.results,
+      transformResponse: (response) => response,
     }),
   }),
 });
