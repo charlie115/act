@@ -1,10 +1,12 @@
 /* eslint-disable prefer-template */
-import i18n from "configs/i18n";
+import i18n from 'configs/i18n';
 
-export default (number, decimals = 2) =>
+export default (number, minimumFractionDigits = 2, maximumFractionDigits = 2) =>
   number
-    ? i18n.t("intlNumber", {
+    ? i18n.t('intlNumber', {
         value: number, // Number(Math.round(number + 'e' + 5) + 'e-5'),
-        minimumFractionDigits: decimals,
+        minimumFractionDigits,
+        maximumFractionDigits,
+        // maximumFractionDigits: decimals,
       })
     : number;

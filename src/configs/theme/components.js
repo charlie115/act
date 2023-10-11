@@ -31,7 +31,8 @@ export default {
   MuiToggleButton: {
     styleOverrides: {
       root: ({ ownerState, theme }) => ({
-        color: theme.palette[ownerState.color].main,
+        color:
+          theme.palette[ownerState.color]?.main || theme.palette.grey['700'],
         '&:disabled': {
           borderColor: theme.palette.grey['700'],
           color: theme.palette.grey['700'],

@@ -8,23 +8,14 @@ import React, {
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
 import Grid from '@mui/material/Grid';
 import LinearProgress from '@mui/material/LinearProgress';
-import Paper from '@mui/material/Paper';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
 import StarIcon from '@mui/icons-material/Star';
-import StarOutlineIcon from '@mui/icons-material/StarOutline';
 
-import {
-  createChart,
-  ColorType,
-  CrosshairMode,
-  LineType,
-  PriceScaleMode,
-} from 'lightweight-charts';
+import { createChart, CrosshairMode, LineType } from 'lightweight-charts';
 
 import { DateTime } from 'luxon';
 
@@ -47,9 +38,13 @@ import KlineDataSelector from 'components/KlineDataSelector';
 import { DATE_FORMAT_API_QUERY } from 'constants';
 import { INTERVAL_LIST } from 'constants/lists';
 
+const CHART_HEIGHT = 300;
+
 function LightWeightKlineChart({
   baseAsset,
   marketCodes,
+  isKimpExchange,
+  isTetherPriceView,
   onAddFavoriteAsset,
   onRemoveFavoriteAsset,
 }) {
@@ -109,17 +104,24 @@ function LightWeightKlineChart({
       skip: !marketCodes || !(startTime && endTime),
     }
   );
-  console.log(
-    '!(startTime && endTime): ',
-    !(startTime && endTime),
-    historicalData
-  );
 
   const chartRealTimeData = useMemo(() => {
     const value = data?.[baseAsset.name];
     if (!value) return null;
 
     const time = value.datetime_now;
+
+    if (isKimpExchange && isTetherPriceView)
+      return {
+        candlestick: {
+          time,
+          open: value.dollar * (1 + value[`${klineDataType}_open`] * 0.01),
+          high: value.dollar * (1 + value[`${klineDataType}_high`] * 0.01),
+          low: value.dollar * (1 + value[`${klineDataType}_low`] * 0.01),
+          close: value.dollar * (1 + value[`${klineDataType}_close`] * 0.01),
+        },
+        line: { time, value: value.tp },
+      };
     return {
       candlestick: {
         time,
@@ -130,27 +132,36 @@ function LightWeightKlineChart({
       },
       line: { time, value: value.tp },
     };
-  }, [data?.[baseAsset.name], klineDataType]);
+  }, [data?.[baseAsset.name], isTetherPriceView, klineDataType]);
 
   const chartHistoricalData = useMemo(() => {
     const candlestick = [];
     const line = [];
     [...currentData, ...(initialData || [])].forEach((item) => {
       const time = DateTime.fromISO(item.datetime_now).toMillis();
-      candlestick.push({
-        time,
-        open: item[`${klineDataType}_open`],
-        high: item[`${klineDataType}_high`],
-        low: item[`${klineDataType}_low`],
-        close: item[`${klineDataType}_close`],
-      });
+      if (isKimpExchange && isTetherPriceView)
+        candlestick.push({
+          time,
+          open: item.dollar * (1 + item[`${klineDataType}_open`] * 0.01),
+          high: item.dollar * (1 + item[`${klineDataType}_high`] * 0.01),
+          low: item.dollar * (1 + item[`${klineDataType}_low`] * 0.01),
+          close: item.dollar * (1 + item[`${klineDataType}_close`] * 0.01),
+        });
+      else
+        candlestick.push({
+          time,
+          open: item[`${klineDataType}_open`],
+          high: item[`${klineDataType}_high`],
+          low: item[`${klineDataType}_low`],
+          close: item[`${klineDataType}_close`],
+        });
       line.push({
         time,
         value: item.tp,
       });
     });
     return { candlestick, line };
-  }, [currentData, initialData, klineDataType]);
+  }, [currentData, initialData, isTetherPriceView, klineDataType]);
 
   const onVisibleLogicalRangeChange = (newVisibleLogicalRange) => {
     const newBarsInfo = candlestickSeriesRef.current.barsInLogicalRange(
@@ -173,7 +184,19 @@ function LightWeightKlineChart({
     //   chartRef.current.timeScale().fitContent();
   }, []);
 
+  const reinitialize = () => {
+    setBarsInfo(null);
+    setStartTime(null);
+    setEndTime(null);
+
+    setCurrentData([]);
+
+    candlestickSeriesRef.current?.setData([]);
+    lineSeriesRef.current?.setData([]);
+  };
+
   useEffect(() => {
+    if (chartRef.current) chartRef.current.remove();
     chartRef.current = createChart(chartContainerRef.current, {
       leftPriceScale: { visible: true },
       rightPriceScale: { visible: true },
@@ -191,7 +214,7 @@ function LightWeightKlineChart({
       },
       crosshair: { mode: CrosshairMode.Normal },
       width: chartContainerRef.current.clientWidth,
-      height: 300,
+      height: CHART_HEIGHT,
     });
     chartRef.current.priceScale('left').applyOptions({
       borderColor: alpha(theme.palette.secondary.main, 0.2),
@@ -203,6 +226,7 @@ function LightWeightKlineChart({
     chartRef.current.timeScale().applyOptions({
       barSpacing: 10,
       borderColor: alpha(theme.palette.secondary.main, 0.2),
+      fixRightEdge: true,
       rightOffset: 2,
       tickMarkFormatter: (time) => DateTime.fromMillis(time).toFormat('HH:mm'),
     });
@@ -222,7 +246,8 @@ function LightWeightKlineChart({
       priceFormat: {
         minMove: 0.001,
         type: 'custom',
-        formatter: (price) => `${formatIntlNumber(price, 3)}%`,
+        formatter: (price) =>
+          `${formatIntlNumber(price, 1, isTetherPriceView ? 1 : 3)}%`,
       },
       // priceFormat: { minMove: 0.00001, precision: 5, type: 'percent' },
       // title: t('Premium'),
@@ -238,8 +263,6 @@ function LightWeightKlineChart({
       title: t('Price'),
     });
 
-    // chartRef.current.timeScale().fitContent(); // TODO: Remove
-
     return () => {
       chartRef.current
         .timeScale()
@@ -251,7 +274,7 @@ function LightWeightKlineChart({
         .unsubscribeVisibleTimeRangeChange(onVisibleTimeRangeChange);
       clearTimeout(refetchTimeoutRef.current);
     };
-  }, []);
+  }, [marketCodes, isTetherPriceView, i18n.language]);
 
   useEffect(() => {
     setCurrentData((state) => [...(historicalData || []), ...state]);
@@ -341,17 +364,8 @@ function LightWeightKlineChart({
   }, [interval, klineDataType, marketCodes]);
 
   useEffect(() => {
-    // candlestickSeriesRef?.current.applyOptions({
-    //   title: `${
-    //     marketCodes?.targetMarketCode.includes('UPBIT')
-    //       ? t('KIMP')
-    //       : t('Premium')
-    //   } (${klineDataType.toUpperCase()})`,
-    // });
-    // chartRef.current.timeScale().applyOptions({
-    //   rightOffset: marketCodes?.targetMarketCode.includes('UPBIT') ? 10 : 15,
-    // });
-  }, [i18n.language, marketCodes, klineDataType]);
+    reinitialize();
+  }, [marketCodes, i18n.language]);
 
   useEffect(() => {
     const value = marketCodes?.targetMarketCode;
@@ -376,16 +390,6 @@ function LightWeightKlineChart({
     });
   }, [theme.palette.mode]);
 
-  const reinitialize = () => {
-    setBarsInfo(null);
-    setStartTime(null);
-    setEndTime(null);
-
-    setCurrentData([]);
-
-    candlestickSeriesRef.current?.setData([]);
-    lineSeriesRef.current?.setData([]);
-  };
   const isFavorite = !isUndefined(baseAsset.favoriteAssetId);
 
   return (
@@ -405,11 +409,12 @@ function LightWeightKlineChart({
             >
               <StarIcon
                 color={isFavorite ? 'accent' : 'secondary'}
-                onClick={() =>
-                  isFavorite
-                    ? onRemoveFavoriteAsset(baseAsset.favoriteAssetId)
-                    : onAddFavoriteAsset(baseAsset.name)
-                }
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isFavorite)
+                    onRemoveFavoriteAsset(baseAsset.favoriteAssetId);
+                  else onAddFavoriteAsset(baseAsset.name);
+                }}
                 sx={{
                   '& :hover': {
                     color: theme.palette.accent.main,
@@ -442,6 +447,8 @@ function LightWeightKlineChart({
           >
             <KlineDataSelector
               defaultValue={klineDataType}
+              isKimpExchange={isKimpExchange}
+              isTetherPriceView={isTetherPriceView}
               onChange={(value) => setKlineDataType(value)}
             />
           </Grid>

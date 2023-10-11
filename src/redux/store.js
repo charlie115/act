@@ -53,7 +53,7 @@ const authPersistConfig = {
 const homePersistConfig = {
   key: 'home',
   storage,
-  whitelist: ['favoriteAssets'],
+  whitelist: ['favoriteAssets', 'priceView'],
 };
 
 const rootPersistConfig = {

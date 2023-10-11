@@ -7,8 +7,11 @@ import React, {
 } from 'react';
 
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
 import Stack from '@mui/material/Stack';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
@@ -25,16 +28,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   addLocalFavoriteAsset,
   removeLocalFavoriteAsset,
+  togglePriceView,
 } from 'redux/reducers/home';
 import {
   useCreateFavoriteAssetsMutation,
   useDeleteFavoriteAssetsMutation,
   useGetFavoriteAssetsQuery,
 } from 'redux/api/drfUser';
-import {
-  useGetWsCoinsQuery,
-  useGetRealTimeKlineQuery,
-} from 'redux/api/websocket';
+import { useGetRealTimeKlineQuery } from 'redux/api/websocket';
 
 import debounce from 'lodash/debounce';
 import isNumber from 'lodash/isNumber';
@@ -43,6 +44,7 @@ import orderBy from 'lodash/orderBy';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
 import formatShortNumber from 'utils/formatShortNumber';
+import isKoreanMarket from 'utils/isKoreanMarket';
 
 import LightWeightKlineChart from 'components/charts/LightWeightKlineChart';
 import MarketCodeSelector from 'components/MarketCodeSelector';
@@ -71,7 +73,20 @@ export default function RealTimeCoinsTable() {
         `${marketCodes?.targetMarketCode}:${marketCodes?.originMarketCode}`
       ]
   );
+  const isTetherPriceView = useSelector(
+    (state) => state.home.priceView === 'tether'
+  );
   const { assets } = useSelector((state) => state.websocket);
+
+  const isKimpExchange =
+    isKoreanMarket(marketCodes?.targetMarketCode) &&
+    !isKoreanMarket(marketCodes?.originMarketCode);
+
+  // const isKimpPriceView = priceView === 'kimp';
+  // const isKimp =
+  //   isKoreanMarket(marketCodes?.targetMarketCode) &&
+  //   !isKoreanMarket(marketCodes?.originMarketCode) &&
+  //   priceView === 'kimp';
 
   // const { data: realTimeData, isLoading } = useGetWsCoinsQuery(
   //   {
@@ -176,11 +191,11 @@ export default function RealTimeCoinsTable() {
       >
         <StarIcon
           color={isFavorite ? 'accent' : 'secondary'}
-          onClick={() =>
-            isFavorite
-              ? handleRemoveFavoriteAsset(cell.getValue())
-              : handleAddFavoriteAsset(row.original.name)
-          }
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isFavorite) handleRemoveFavoriteAsset(cell.getValue());
+            else handleAddFavoriteAsset(row.original.name);
+          }}
           sx={{
             '& :hover': { color: theme.palette.accent.main, opacity: 0.5 },
           }}
@@ -217,9 +232,37 @@ export default function RealTimeCoinsTable() {
   const renderPremiumCell = ({ cell }) => (
     <>
       <Typography sx={{ display: 'inline', fontSize: 17, fontWeight: 700 }}>
-        {formatIntlNumber(cell.getValue(), 3)}
+        {formatIntlNumber(cell.getValue(), 2, 3)}
       </Typography>{' '}
       <small>%</small>
+    </>
+  );
+
+  const renderTetherCell = ({ cell, row: { original } }) => (
+    <Typography sx={{ display: 'inline', fontSize: 17, fontWeight: 700 }}>
+      {formatIntlNumber(original.dollar * (1 + cell.getValue() * 0.01), 1, 1)}
+    </Typography>
+  );
+
+  const renderSpreadCell = ({ cell }) => (
+    <>
+      {/* TODO: Check if color is ok  */}
+      {/* <Box
+        sx={
+          {
+            // color: `${cell.getValue() < 0 ? 'error' : 'success'}.main`,
+            // fontWeight: 700,
+          }
+        }
+      > */}
+      {cell.getValue() > 0 ? '+' : ''}
+      {formatIntlNumber(cell.getValue(), 2, 2)}{' '}
+      <Typography
+        sx={{ color: 'secondary.main', display: 'inline', fontSize: 12 }}
+      >
+        %p
+      </Typography>
+      {/* </Box> */}
     </>
   );
 
@@ -249,13 +292,15 @@ export default function RealTimeCoinsTable() {
             const index = localFavoriteAssets?.indexOf(asset);
             favoriteAssetId = index < 0 ? undefined : index;
           }
+          const assetData = realTimeData?.[asset];
           return {
             name: asset,
             favoriteAssetId,
             icon: coinicons[`${asset}.png`]
               ? require(`assets/icons/coinicon/${asset}.png`)
               : null,
-            ...realTimeData?.[asset],
+            spread: assetData ? assetData.SL_close - assetData.LS_close : '',
+            ...assetData,
           };
         }) ?? [],
         (o) => !isUndefined(o.favoriteAssetId),
@@ -298,22 +343,40 @@ export default function RealTimeCoinsTable() {
         size: 50,
         Cell: renderPriceCell,
       },
-      {
-        header: marketCodes?.targetMarketCode.includes('UPBIT')
-          ? t('KIMP')
-          : t('Premium'),
-        accessorKey: 'tp_close',
-        enableGlobalFilter: false,
-        size: 50,
-        Cell: renderPremiumCell,
-      },
       // {
-      //   header: t('Change'),
-      //   accessorKey: 'change',
+      //   header: isMarketKorean(marketCodes?.targetMarketCode)
+      //     ? t('KIMP')
+      //     : t('Premium'),
+      //   accessorKey: 'tp_close',
       //   enableGlobalFilter: false,
       //   size: 50,
-      //   Cell: ({ cell }) => formatIntlNumber(cell.getValue(), 4),
+      //   Cell: renderPremiumCell,
       // },
+      {
+        header: isKimpExchange
+          ? [isTetherPriceView ? t('Enter Tether') : t('Enter KIMP')]
+          : t('LS Premium'),
+        accessorKey: 'LS_close',
+        enableGlobalFilter: false,
+        size: 50,
+        Cell: isTetherPriceView ? renderTetherCell : renderPremiumCell,
+      },
+      {
+        header: isKimpExchange
+          ? [isTetherPriceView ? t('Exit Tether') : t('Exit KIMP')]
+          : t('SL Premium'),
+        accessorKey: 'SL_close',
+        enableGlobalFilter: false,
+        size: 50,
+        Cell: isTetherPriceView ? renderTetherCell : renderPremiumCell,
+      },
+      {
+        header: t('Spread'),
+        accessorKey: 'spread',
+        enableGlobalFilter: false,
+        size: 50,
+        Cell: renderSpreadCell,
+      },
       // {
       //   header: t('52-Week High'),
       //   accessorKey: 'weekhigh',
@@ -347,7 +410,7 @@ export default function RealTimeCoinsTable() {
         Header: <span />,
       },
     ],
-    [i18n.language, loggedin, marketCodes]
+    [i18n.language, loggedin, marketCodes, isTetherPriceView]
   );
 
   useEffect(() => {
@@ -364,6 +427,25 @@ export default function RealTimeCoinsTable() {
       {!matchLargeScreen && (
         <MarketCodeSelector onChange={(value) => setMarketCodes(value)} />
       )}
+      {isKoreanMarket(marketCodes?.targetMarketCode) &&
+        !isKoreanMarket(marketCodes?.originMarketCode) && (
+          <Box sx={{ mx: 1 }}>
+            <ToggleButton
+              // color={isKimpPriceView ? 'secondary' : 'info'}
+              // color="info"
+              size="small"
+              selected={isTetherPriceView}
+              value=""
+              onChange={() =>
+                dispatch(togglePriceView(isTetherPriceView ? 'kimp' : 'tether'))
+              }
+              sx={{ border: 0, px: 1, py: 0.5 }}
+            >
+              {t('View Tether conversion')}
+              {/* {isKimpPriceView ? t('View Tether conversion') : t('View KIMP')} */}
+            </ToggleButton>
+          </Box>
+        )}
       <MaterialReactTable
         defaultColumn={{ sortingFn: 'sortWithStarred' }}
         columns={columns}
@@ -395,6 +477,8 @@ export default function RealTimeCoinsTable() {
               <LightWeightKlineChart
                 baseAsset={row.original}
                 marketCodes={marketCodes}
+                isKimpExchange={isKimpExchange}
+                isTetherPriceView={isTetherPriceView}
                 onAddFavoriteAsset={handleAddFavoriteAsset}
                 onRemoveFavoriteAsset={handleRemoveFavoriteAsset}
               />
@@ -424,10 +508,7 @@ export default function RealTimeCoinsTable() {
         }}
         muiTableBodyRowProps={({ row }) => ({
           onClick: (e) => {
-            if (
-              e.target.classList.contains('MuiTableCell-root') &&
-              !e.target.classList.contains('Mui-TableBodyCell-DetailPanel')
-            )
+            if (!e.target.classList.contains('Mui-TableBodyCell-DetailPanel'))
               // debouncedHandleExpandRow({ [row.id]: !expanded[row.id] });
               setExpanded({ [row.id]: !expanded[row.id] });
           },

@@ -4,9 +4,24 @@ import { ReactComponent as BinanceSvg } from 'assets/svg/binance.svg';
 import { ReactComponent as UPbitSvg } from 'assets/svg/upbit.svg';
 
 export const KLINE_DATA_TYPE = [
-  { label: 'TP', value: 'tp' },
-  { label: 'LS', value: 'LS' },
-  { label: 'SL', value: 'SL' },
+  {
+    getKimpLabel: () => i18n.t('KIMP'),
+    getTetherLabel: () => i18n.t('Tether'),
+    label: 'TP',
+    value: 'tp',
+  },
+  {
+    getKimpLabel: () => i18n.t('Enter KIMP'),
+    getTetherLabel: () => i18n.t('Enter Tether'),
+    label: 'LS',
+    value: 'LS',
+  },
+  {
+    getKimpLabel: () => i18n.t('Exit KIMP'),
+    getTetherLabel: () => i18n.t('Exit Tether'),
+    label: 'SL',
+    value: 'SL',
+  },
 ];
 
 export const INTERVAL_LIST = [

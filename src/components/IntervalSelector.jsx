@@ -62,7 +62,10 @@ function IntervalSelector({ defaultValue, onChange }) {
       <ToggleButtonGroup
         exclusive
         value={selectedIdx}
-        onChange={(e, newIdx) => setSelectedIdx(newIdx)}
+        onChange={(e, newIdx) => {
+          e.stopPropagation();
+          setSelectedIdx(newIdx);
+        }}
         color="secondary"
         size="small"
         sx={{ display: { xs: 'none', sm: 'inline-flex' } }}

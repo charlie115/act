@@ -31,6 +31,7 @@ module.exports = {
         packageDir: __dirname,
       },
     ],
+    'import/no-unresolved': ['error', { caseSensitive: false }],
     'no-param-reassign': 'off',
     'no-unused-vars': [
       'warn',

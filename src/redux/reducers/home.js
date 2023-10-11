@@ -2,7 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 
 import drfAuthApi from 'redux/api/drfAuth';
 
-const initialState = { favoriteAssets: {} };
+const initialState = { favoriteAssets: {}, priceView: 'kimp' };
 
 export const homeSlice = createSlice({
   name: 'home',
@@ -16,6 +16,9 @@ export const homeSlice = createSlice({
     removeLocalFavoriteAsset: (state, { payload }) => {
       state.favoriteAssets?.[payload.marketCodeKey]?.splice(payload.id, 1);
     },
+    togglePriceView: (state, { payload }) => {
+      state.priceView = payload;
+    },
   },
   extraReducers: (builder) => {
     builder.addMatcher(drfAuthApi.endpoints.login.matchFulfilled, (state) => {
@@ -24,7 +27,10 @@ export const homeSlice = createSlice({
   },
 });
 
-export const { addLocalFavoriteAsset, removeLocalFavoriteAsset } =
-  homeSlice.actions;
+export const {
+  addLocalFavoriteAsset,
+  removeLocalFavoriteAsset,
+  togglePriceView,
+} = homeSlice.actions;
 
 export default homeSlice.reducer;

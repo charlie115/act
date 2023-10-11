@@ -21,7 +21,12 @@ const ToggleBtn = styled(ToggleButton)(() => ({
   textTransform: 'none',
 }));
 
-function KlineDataSelector({ defaultValue, onChange }) {
+function KlineDataSelector({
+  defaultValue,
+  isKimpExchange,
+  isTetherPriceView,
+  onChange,
+}) {
   const { i18n, t } = useTranslation();
 
   const [selectedIdx, setSelectedIdx] = useState(
@@ -48,17 +53,27 @@ function KlineDataSelector({ defaultValue, onChange }) {
   }, [selectedIdx]);
 
   useEffect(() => {
-    setKLineData(KLINE_DATA_TYPE.map((datum) => datum));
-  }, [i18n.language]);
+    setKLineData(
+      KLINE_DATA_TYPE.map((datum) => ({
+        ...datum,
+        label: isKimpExchange
+          ? [isTetherPriceView ? datum.getTetherLabel() : datum.getKimpLabel()]
+          : datum.label,
+      }))
+    );
+  }, [i18n.language, isKimpExchange, isTetherPriceView]);
 
   if (kLineData.length === 0) return null;
 
   return (
-    <Box sx={{ flex: 0 }}>
+    <Box>
       <ToggleButtonGroup
         exclusive
         value={selectedIdx}
-        onChange={(e, newIdx) => setSelectedIdx(newIdx)}
+        onChange={(e, newIdx) => {
+          e.stopPropagation();
+          setSelectedIdx(newIdx);
+        }}
         color="secondary"
         size="small"
         sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
