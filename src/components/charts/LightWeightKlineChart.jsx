@@ -247,7 +247,9 @@ function LightWeightKlineChart({
         minMove: 0.001,
         type: 'custom',
         formatter: (price) =>
-          `${formatIntlNumber(price, 1, isTetherPriceView ? 1 : 3)}%`,
+          `${formatIntlNumber(price, 1, isTetherPriceView ? 1 : 3)} ${
+            isTetherPriceView ? t('KRW') : '%'
+          }`,
       },
       // priceFormat: { minMove: 0.00001, precision: 5, type: 'percent' },
       // title: t('Premium'),
@@ -274,7 +276,7 @@ function LightWeightKlineChart({
         .unsubscribeVisibleTimeRangeChange(onVisibleTimeRangeChange);
       clearTimeout(refetchTimeoutRef.current);
     };
-  }, [marketCodes, isTetherPriceView, i18n.language]);
+  }, [marketCodes, interval, isTetherPriceView, i18n.language]);
 
   useEffect(() => {
     setCurrentData((state) => [...(historicalData || []), ...state]);
@@ -365,7 +367,7 @@ function LightWeightKlineChart({
 
   useEffect(() => {
     reinitialize();
-  }, [marketCodes, i18n.language]);
+  }, [marketCodes]);
 
   useEffect(() => {
     const value = marketCodes?.targetMarketCode;
@@ -393,7 +395,7 @@ function LightWeightKlineChart({
   const isFavorite = !isUndefined(baseAsset.favoriteAssetId);
 
   return (
-    <Card>
+    <Card onClick={(e) => e.stopPropagation()}>
       <Box sx={{ bgcolor: theme.palette.background.paper }}>
         <Grid container sx={{ p: 1 }}>
           <Grid
@@ -453,7 +455,11 @@ function LightWeightKlineChart({
             />
           </Grid>
         </Grid>
-        <Box ref={chartContainerRef} sx={{ pt: 2 }}>
+        <Box
+          ref={chartContainerRef}
+          sx={{ pt: 2 }}
+          onClick={(e) => e.stopPropagation()}
+        >
           {isLoadingInitialData && <LinearProgress />}
         </Box>
       </Box>
