@@ -1,17 +1,15 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-
 import isEqual from 'lodash/isEqual';
 import memoize from 'lodash/memoize';
 import uniq from 'lodash/uniq';
 
 import { DateTime } from 'luxon';
 
+import websocketApi from 'redux/api/websocket';
 import { storeAssetsList } from 'redux/reducers/websocket';
 
 import { DATE_FORMAT_API_QUERY } from 'constants';
 
-const websocketApi = createApi({
-  reducerPath: 'websocketApi',
+const api = websocketApi.injectEndpoints({
   endpoints: (build) => ({
     getRealTimeKline: build.query({
       queryFn: () => ({ data: {} }),
@@ -82,5 +80,5 @@ const websocketApi = createApi({
   }),
 });
 
-export default websocketApi;
-export const { useGetWsCoinsQuery, useGetRealTimeKlineQuery } = websocketApi;
+export default api;
+export const { useGetRealTimeKlineQuery } = api;

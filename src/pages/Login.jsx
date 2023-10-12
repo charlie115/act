@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useGoogleLogin } from '@react-oauth/google';
 
-import { useLoginMutation } from 'redux/api/drfAuth';
+import { useLoginMutation } from 'redux/api/drf/auth';
 
 import BrandLogo from 'components/BrandLogo';
 

@@ -12,7 +12,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
 
 import { useSelector } from 'react-redux';
-import { useUserQuery } from 'redux/api/drfAuth';
+import { useUserQuery } from 'redux/api/drf/auth';
 
 import { useTranslation } from 'react-i18next';
 

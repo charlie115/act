@@ -21,14 +21,15 @@ import { DateTime } from 'luxon';
 
 import debounce from 'lodash/debounce';
 import isUndefined from 'lodash/isUndefined';
+import uniqBy from 'lodash/uniqBy';
 
 import { usePrevious } from '@uidotdev/usehooks';
 
 import { useTranslation } from 'react-i18next';
 import { alpha, useTheme } from '@mui/material/styles';
 
-import { useGetHistoricalKlineQuery } from 'redux/api/drfKline';
-import { useGetRealTimeKlineQuery } from 'redux/api/websocket';
+import { useGetHistoricalKlineQuery } from 'redux/api/drf/kline';
+import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
 
@@ -66,7 +67,6 @@ function LightWeightKlineChart({
   const [klineDataType, setKlineDataType] = useState('tp');
 
   const [barsInfo, setBarsInfo] = useState(null);
-  const [visibleLogicalRange, setVisibleLogicalRange] = useState(null);
 
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
@@ -92,18 +92,19 @@ function LightWeightKlineChart({
     },
     { skip: !marketCodes }
   );
-  const { data: historicalData } = useGetHistoricalKlineQuery(
-    {
-      ...marketCodes,
-      interval,
-      baseAsset: baseAsset?.name,
-      startTime,
-      endTime,
-    },
-    {
-      skip: !marketCodes || !(startTime && endTime),
-    }
-  );
+  const { data: historicalData, isFetching: isFetchingHistoricalData } =
+    useGetHistoricalKlineQuery(
+      {
+        ...marketCodes,
+        interval,
+        baseAsset: baseAsset?.name,
+        startTime,
+        endTime,
+      },
+      {
+        skip: !marketCodes || !(startTime && endTime),
+      }
+    );
 
   const chartRealTimeData = useMemo(() => {
     const value = data?.[baseAsset.name];
@@ -171,18 +172,12 @@ function LightWeightKlineChart({
       setBarsInfo(newBarsInfo);
   };
   const debouncedOnVisibleLogicalRangeChange = useCallback(
-    debounce(onVisibleLogicalRangeChange, 1000, {
+    debounce(onVisibleLogicalRangeChange, 500, {
       leading: false,
       trailing: true,
     }),
     [endTime, interval]
   );
-
-  const onVisibleTimeRangeChange = useCallback((newTimeRange) => {
-    // console.log('newTimeRange: ', newTimeRange);
-    // if (newTimeRange.from !== newTimeRange.to)
-    //   chartRef.current.timeScale().fitContent();
-  }, []);
 
   const reinitialize = () => {
     setBarsInfo(null);
@@ -233,9 +228,6 @@ function LightWeightKlineChart({
     chartRef.current
       .timeScale()
       .subscribeVisibleLogicalRangeChange(debouncedOnVisibleLogicalRangeChange);
-    chartRef.current
-      .timeScale()
-      .subscribeVisibleTimeRangeChange(onVisibleTimeRangeChange);
 
     candlestickSeriesRef.current = chartRef.current.addCandlestickSeries({
       priceScaleId: 'right',
@@ -271,15 +263,18 @@ function LightWeightKlineChart({
         .unsubscribeVisibleLogicalRangeChange(
           debouncedOnVisibleLogicalRangeChange
         );
-      chartRef.current
-        .timeScale()
-        .unsubscribeVisibleTimeRangeChange(onVisibleTimeRangeChange);
       clearTimeout(refetchTimeoutRef.current);
     };
   }, [marketCodes, interval, isTetherPriceView, i18n.language]);
 
   useEffect(() => {
-    setCurrentData((state) => [...(historicalData || []), ...state]);
+    setCurrentData((state) =>
+      uniqBy([...(historicalData || []), ...state], 'datetime_now')
+    );
+    if (historicalData?.length === 0) {
+      chartRef.current.timeScale().fitContent();
+      setBarsInfo(null);
+    }
   }, [historicalData]);
 
   useEffect(() => {
@@ -287,7 +282,7 @@ function LightWeightKlineChart({
   }, [interval]);
 
   useEffect(() => {
-    if (barsInfo) {
+    if (!isFetchingHistoricalData && barsInfo) {
       const { quantity, unit } = INTERVAL_LIST.find(
         (o) => o.value === interval
       );
@@ -295,48 +290,19 @@ function LightWeightKlineChart({
         [unit]: 1,
       });
       const newStartTime = newEndTime.minus({
-        [unit]: quantity * Math.abs(Math.floor(barsInfo.barsBefore)), // Math.abs(Math.round(barsInfo.barsBefore)),
+        [unit]: quantity * Math.abs(Math.floor(barsInfo.barsBefore)) * 50,
       });
       setEndTime(newEndTime.toFormat(DATE_FORMAT_API_QUERY));
       setStartTime(
         newStartTime.startOf('minute').toFormat(DATE_FORMAT_API_QUERY)
       );
     }
-  }, [barsInfo, interval]);
-
-  useEffect(() => {
-    if (
-      barsInfo &&
-      chartHistoricalData?.candlestick.length > 0 &&
-      visibleLogicalRange
-    ) {
-      const { from, to } = visibleLogicalRange;
-      const numberOfVisible = Math.floor(to - from);
-      const coordinate = chartRef.current
-        .timeScale()
-        .timeToCoordinate(
-          DateTime.fromISO(
-            chartHistoricalData?.candlestick[0].datetime_now
-          ).toMillis()
-        );
-      const logical = chartRef.current
-        .timeScale()
-        .coordinateToLogical(coordinate);
-      chartRef.current.timeScale().setVisibleLogicalRange({
-        from: logical,
-        to: logical + numberOfVisible,
-      });
-    }
-  }, [barsInfo, chartHistoricalData, visibleLogicalRange]);
+  }, [barsInfo, interval, isFetchingHistoricalData]);
 
   useEffect(() => {
     candlestickSeriesRef.current.setData(chartHistoricalData.candlestick);
     lineSeriesRef.current.setData(chartHistoricalData.line);
-    if (!visibleLogicalRange)
-      setVisibleLogicalRange(
-        chartRef.current.timeScale().getVisibleLogicalRange()
-      );
-  }, [chartHistoricalData, barsInfo, visibleLogicalRange]);
+  }, [chartHistoricalData, barsInfo]);
 
   useEffect(() => {
     if (!isFetchingInitialData && chartRealTimeData) {
@@ -367,9 +333,6 @@ function LightWeightKlineChart({
 
   useEffect(() => {
     reinitialize();
-  }, [marketCodes]);
-
-  useEffect(() => {
     const value = marketCodes?.targetMarketCode;
     setTitle(`${baseAsset.name} / ${value?.split('/').pop()}`);
   }, [marketCodes]);
@@ -455,13 +418,14 @@ function LightWeightKlineChart({
             />
           </Grid>
         </Grid>
+        {(isLoadingInitialData || isFetchingHistoricalData) && (
+          <LinearProgress />
+        )}
         <Box
           ref={chartContainerRef}
           sx={{ pt: 2 }}
           onClick={(e) => e.stopPropagation()}
-        >
-          {isLoadingInitialData && <LinearProgress />}
-        </Box>
+        />
       </Box>
     </Card>
   );

@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-import drfAuthApi from 'redux/api/drfAuth';
+import drfAuthApi from 'redux/api/drf/auth';
 
 const initialState = {
   user: null,

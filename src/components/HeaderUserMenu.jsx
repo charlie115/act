@@ -18,7 +18,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 import { useSelector } from 'react-redux';
-import { useLogoutMutation } from 'redux/api/drfAuth';
+import { useLogoutMutation } from 'redux/api/drf/auth';
 
 import { useTranslation } from 'react-i18next';
 

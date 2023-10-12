@@ -25,7 +25,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { Trans, useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 
-import { useUserRegisterMutation } from 'redux/api/drfAuth';
+import { useUserRegisterMutation } from 'redux/api/drf/auth';
 
 import BrandLogo from 'components/BrandLogo';
 

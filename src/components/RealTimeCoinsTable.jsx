@@ -34,8 +34,8 @@ import {
   useCreateFavoriteAssetsMutation,
   useDeleteFavoriteAssetsMutation,
   useGetFavoriteAssetsQuery,
-} from 'redux/api/drfUser';
-import { useGetRealTimeKlineQuery } from 'redux/api/websocket';
+} from 'redux/api/drf/user';
+import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
 
 import debounce from 'lodash/debounce';
 import isNumber from 'lodash/isNumber';
