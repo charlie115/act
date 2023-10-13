@@ -80,6 +80,7 @@ THIRD_PARTY_APPS = (
 LOCAL_APPS = (
     "arbot",
     "authentication",
+    "chat",
     "infocore",
     "users",
 )
@@ -117,6 +118,19 @@ CACHES = {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
     }
+}
+
+MONGO_CHAT_DB = "ACW_USER_CHAT"
+
+REDIS_CHAT_BLOCKLIST_KEY = "acw:user:blocklist"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [env("REDIS_DB_URL", default="redis://localhost:6379")],
+        },
+    },
 }
 
 # Default primary key field type
@@ -238,20 +252,24 @@ SPECTACULAR_SETTINGS = {
     "EXTENSIONS_ROOT": {
         "x-tagGroups": [
             {
-                "name": "ARBOT",
-                "tags": ["ArbotNode", "ArbotUserConfig"],
-            },
-            {
                 "name": "AUTHORIZATION",
                 "tags": ["Auth"],
+            },
+            {
+                "name": "USER",
+                "tags": ["User", "UserProfile", "UserBlocklist", "UserFavoriteAssets"],
+            },
+            {
+                "name": "ARBOT",
+                "tags": ["ArbotNode", "ArbotUserConfig"],
             },
             {
                 "name": "INFO CORE",
                 "tags": ["Kline"],
             },
             {
-                "name": "USER",
-                "tags": ["User", "UserProfile", "UserFavoriteSymbol"],
+                "name": "CHAT",
+                "tags": ["PastChatMessages"],
             },
         ],
     },

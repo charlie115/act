@@ -11,6 +11,7 @@ from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from users.mixins import UserFavoriteAssetsValidatorMixin
 from users.models import (
     User,
+    UserBlocklist,
     UserFavoriteAssets,
     UserProfile,
     UserManagers,
@@ -169,6 +170,24 @@ class UserFavoriteAssetsAdmin(ModelAdmin):
     form = UserFavoriteAssetsForm
 
 
+class UserBlocklistAdmin(ModelAdmin):
+    list_display = [
+        "id",
+        "target_email",
+        "target_ip",
+        "datetime",
+    ]
+    search_fields = [
+        "target_email",
+        "target_ip",
+        "datetime",
+    ]
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+admin.site.register(UserBlocklist, UserBlocklistAdmin)
 admin.site.register(User, CustomUserAdmin)
 admin.site.register(UserManagers, UserManagersAdmin)
 admin.site.register(UserFavoriteAssets, UserFavoriteAssetsAdmin)

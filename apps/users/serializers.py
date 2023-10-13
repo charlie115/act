@@ -1,8 +1,9 @@
 from rest_framework import serializers
 
 from arbot.serializers import ArbotUserConfigSerializer
+from lib.datetime import DATE_TIME_FORMAT
 from users.mixins import UserFavoriteAssetsValidatorMixin, UserUUIDSerializerMixin
-from users.models import User, UserFavoriteAssets, UserProfile
+from users.models import User, UserBlocklist, UserFavoriteAssets, UserProfile
 
 
 class UserFavoriteAssetsSerializer(
@@ -68,3 +69,11 @@ class UserSerializer(serializers.ModelSerializer):
                 "style": {"input_type": "password", "placeholder": "Password"},
             },
         }
+
+
+class UserBlocklistSerializer(serializers.ModelSerializer):
+    datetime = serializers.DateTimeField(required=False, format=DATE_TIME_FORMAT)
+
+    class Meta:
+        model = UserBlocklist
+        fields = ("id", "target_email", "target_ip", "datetime")

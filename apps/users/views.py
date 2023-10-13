@@ -4,12 +4,18 @@ from rest_framework.pagination import PageNumberPagination
 
 from lib.filters import CharArrayFilter, UserUuidFilter
 from lib.permissions import IsDjangoAdmin, IsAdminOrIsSelf
-from lib.views import UserOwnedViewSet, UserOwned1To1ViewSet
-from users.models import User, UserFavoriteAssets, UserProfile
+from lib.views import BaseViewSet, UserOwnedViewSet, UserOwned1To1ViewSet
+from users.models import (
+    User,
+    UserBlocklist,
+    UserFavoriteAssets,
+    UserProfile,
+)
 from users.serializers import (
     UserSerializer,
     UserFavoriteAssetsSerializer,
     UserProfileSerializer,
+    UserBlocklistSerializer,
 )
 
 
@@ -142,3 +148,28 @@ class UserProfileViewSet(UserOwned1To1ViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = UserProfileFilter
     http_method_names = ["get", "put", "patch", "delete"]
+
+
+@extend_schema(tags=["UserBlocklist"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List blocked users",
+        description="Returns a list of all blocked users.",
+    ),
+    create=extend_schema(
+        operation_id="Add a new user to block",
+        description="Adds a new user to block.",
+    ),
+    retrieve=extend_schema(exclude=True),
+    update=extend_schema(exclude=True),
+    partial_update=extend_schema(exclude=True),
+    destroy=extend_schema(
+        operation_id="Delete a blocked user",
+        description="Deletes a blocked user.",
+    ),
+)
+class UserBlocklistViewSet(BaseViewSet):
+    queryset = UserBlocklist.objects.all().order_by("id")
+    serializer_class = UserBlocklistSerializer
+    filter_backends = [DjangoFilterBackend]
+    http_method_names = ["get", "post", "delete"]

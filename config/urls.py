@@ -36,6 +36,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("auth/", include("authentication.urls"), name="authentication urls"),
     path("arbot/", include("arbot.urls"), name="arbot urls"),
+    path("chat/", include("chat.urls"), name="chat urls"),
     path("infocore/", include("infocore.urls"), name="infocore urls"),
     path("users/", include("users.urls"), name="users urls"),
     # docs
