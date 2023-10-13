@@ -17,4 +17,4 @@ REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] += [  # noqa: F405
     "rest_framework.authentication.SessionAuthentication"
 ]
 
-SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(days=1)  # noqa: F405
+SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(days=5)  # noqa: F405

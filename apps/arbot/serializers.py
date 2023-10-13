@@ -4,7 +4,7 @@ from rest_framework import exceptions, serializers
 
 from arbot.mixins import ArbotNodeValidatorMixin
 from arbot.models import ArbotNode, ArbotUserConfig
-from lib.constants import ONE_DAY_IN_SECONDS
+from lib.datetime import ONE_DAY_IN_SECONDS
 from users.mixins import UserUUIDSerializerMixin
 
 

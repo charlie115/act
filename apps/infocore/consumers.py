@@ -8,7 +8,8 @@ from urllib.parse import parse_qsl
 
 from users.models import User  # noqa: F401
 
-redis_conn = get_redis_connection("default")
+
+REDIS_CLI = get_redis_connection("default")
 
 
 class KlineConsumer(AsyncWebsocketConsumer):
@@ -16,7 +17,7 @@ class KlineConsumer(AsyncWebsocketConsumer):
         super().__init__(*args, **kwargs)
 
         self._thread = None
-        self._redis_ps = redis_conn.pubsub(ignore_subscribe_messages=True)
+        self._redis_ps = REDIS_CLI.pubsub(ignore_subscribe_messages=True)
 
     def __del__(self, *args, **kwargs):
         # Cleanup

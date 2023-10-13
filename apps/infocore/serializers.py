@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from lib.constants import DATE_TIME_FORMAT
+from lib.datetime import DATE_TIME_FORMAT
 
 
 class KlineDataQueryParamsSerializer(serializers.Serializer):

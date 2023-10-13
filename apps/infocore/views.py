@@ -1,13 +1,12 @@
-import pymongo
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import exceptions, response, views
-
+from pymongo import MongoClient, DESCENDING
 
 from infocore.serializers import KlineDataDataSerializer, KlineDataQueryParamsSerializer
 
 
-mongodb = pymongo.MongoClient(
+MONGODB_CLI = MongoClient(
     host=settings.MONGODB["HOST"],
     port=settings.MONGODB["PORT"],
     username=settings.MONGODB["USERNAME"],
@@ -26,7 +25,7 @@ mongodb = pymongo.MongoClient(
 )
 class KlineDataView(views.APIView):
     permission_classes = []
-    page_size = 100
+    page_size = 200
 
     def get(self, request):
         query_params = KlineDataQueryParamsSerializer(data=request.query_params)
@@ -53,15 +52,18 @@ class KlineDataView(views.APIView):
         start_time,
         end_time,
     ):
+        start_time = start_time.replace(tzinfo=None) if start_time else start_time
+        end_time = end_time.replace(tzinfo=None) if end_time else end_time
+
         database = f"{target_market_code}-{origin_market_code}"
         collection = f"{base_asset}_{interval}"
 
         # Get database
-        databases = mongodb.list_database_names()
+        databases = MONGODB_CLI.list_database_names()
         if database not in databases:
             raise exceptions.ValidationError({"detail": "Invalid market code."})
 
-        db = mongodb.get_database(database)
+        db = MONGODB_CLI.get_database(database)
 
         # Get collection
         collections = db.list_collection_names()
@@ -93,12 +95,15 @@ class KlineDataView(views.APIView):
 
         # If no start_time and end_time, get latest n data
         if not (start_time and end_time):
-            cursor = cursor.sort("datetime_now", pymongo.DESCENDING).limit(
-                self.page_size
-            )
+            cursor = cursor.sort("datetime_now", DESCENDING).limit(self.page_size)
 
         # Sort back for display
-        results = [item for item in cursor]
+        results = [
+            {
+                key: value for key, value in item.items() if key != "record_count"
+            }  # FIXME: Debugging
+            for item in cursor
+        ]
         results = sorted(results, key=lambda item: item["datetime_now"])
 
         return results
