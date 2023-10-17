@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django_redis import get_redis_connection
 from pymongo import MongoClient
 
-from lib.datetime import SEOUL_TIMEZONE, DATE_FORMAT_NUM
+from lib.datetime import SEOUL_TIMEZONE, DATE_FORMAT_NUM, DATE_TIME_FORMAT
 
 
 REDIS_CLI = get_redis_connection("default")
@@ -27,7 +27,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             header[0].decode(): header[1].decode() for header in self.scope["headers"]
         }
 
-        self.ip = self.headers["host"].split(":")[0]
+        self.ip = self.headers.get(
+            "x-forwarded-for", self.headers["host"].split(":")[0]
+        )
         self.ip_blocklist = []
         self.email_blocklist = []
 
@@ -63,6 +65,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             await self.save_chat(chat, collection=now_kst.strftime(DATE_FORMAT_NUM))
 
+            chat["datetime"] = chat["datetime"].strftime(DATE_TIME_FORMAT)
             await self.channel_layer.group_send(self.group_name, chat)
 
     async def chatbox_message(self, event):
