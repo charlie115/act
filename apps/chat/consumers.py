@@ -7,9 +7,8 @@ from django.conf import settings
 from django.core.cache import cache
 from django_redis import get_redis_connection
 from pymongo import MongoClient
-from pytz import timezone
 
-from lib.datetime import ASIA_SEOUL_TZ, DATE_TIME_FORMAT, DATE_FORMAT_NUM
+from lib.datetime import SEOUL_TIMEZONE, DATE_FORMAT_NUM
 
 
 REDIS_CLI = get_redis_connection("default")
@@ -41,25 +40,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
 
         if "username" in data and "message" in data:
-            now_kst = datetime.now(tz=timezone(ASIA_SEOUL_TZ))
+            # Mongodb collection is in KST to be easier for devs viewing the db
+            now_kst = datetime.now(tz=SEOUL_TIMEZONE)
 
             chat = {
                 "type": "chatbox_message",
-                "email": data["email"],
-                "username": data["username"],
-                "message": data["message"],
+                "email": data.get("email", None),
+                "username": data.get("username"),
+                "message": data.get("message"),
                 "ip": self.ip,
-                "datetime": now_kst.strftime(DATE_TIME_FORMAT),
+                "datetime": now_kst,
                 "status": "OK",
             }
 
-            await self.save_chat(chat, collection=now_kst.strftime(DATE_FORMAT_NUM))
-
             await self.get_blocklist()
 
-            if data["email"] in self.email_blocklist or self.ip in self.ip_blocklist:
-                chat["message"] = None
+            if (
+                data.get("email", None) in self.email_blocklist
+                or self.ip in self.ip_blocklist
+            ):
                 chat["status"] = "BLOCKED"
+
+            await self.save_chat(chat, collection=now_kst.strftime(DATE_FORMAT_NUM))
 
             await self.channel_layer.group_send(self.group_name, chat)
 
@@ -88,5 +90,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_blocklist(self):
         blocklist = cache.get("acw:user:blocklist")
-        self.email_blocklist = list(blocklist.values_list("target_email", flat=True))
+        self.email_blocklist = [
+            email
+            for email in blocklist.values_list("target_email", flat=True)
+            if bool(email)
+        ]
         self.ip_blocklist = list(blocklist.values_list("target_ip", flat=True))

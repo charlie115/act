@@ -2,6 +2,7 @@ from django.conf import settings
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import exceptions, response, views
 from pymongo import MongoClient, DESCENDING
+from pytz import timezone
 
 from infocore.serializers import KlineDataDataSerializer, KlineDataQueryParamsSerializer
 
@@ -39,6 +40,7 @@ class KlineDataView(views.APIView):
             interval=query.get("interval", ""),
             start_time=query.get("start_time", None),
             end_time=query.get("end_time", None),
+            tz=query.get("tz"),
         )
 
         return response.Response(data)
@@ -51,9 +53,11 @@ class KlineDataView(views.APIView):
         interval,
         start_time,
         end_time,
+        tz,
     ):
-        start_time = start_time.replace(tzinfo=None) if start_time else start_time
-        end_time = end_time.replace(tzinfo=None) if end_time else end_time
+        if start_time and end_time:
+            start_time = timezone(tz).localize(start_time.replace(tzinfo=None))
+            end_time = timezone(tz).localize(end_time.replace(tzinfo=None))
 
         database = f"{target_market_code}-{origin_market_code}"
         collection = f"{base_asset}_{interval}"

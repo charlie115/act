@@ -1,13 +1,15 @@
 from datetime import timedelta
-from dateutil.parser import parse as parse_datestr
+from pytz import timezone
 
 
 KST = "KST"
-ASIA_SEOUL_TZ = "Asia/Seoul"
+TZ_ASIA_SEOUL = "Asia/Seoul"
+SEOUL_TIMEZONE = timezone(TZ_ASIA_SEOUL)
 
 DATE_FORMAT_NUM = "%Y%m%d"
 DATE_FORMAT = "%Y-%m-%d"
 DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
+DATE_TIME_TZ_FORMAT = "%Y-%m-%dT%H:%M:%S%Z"
 ONE_DAY_IN_SECONDS = 86400
 
 
@@ -19,8 +21,8 @@ def create_list_of_dates(start_time, end_time, strformat=DATE_FORMAT):
     :return: list of dates
     """
 
-    start_date = parse_datestr(start_time).replace(hour=0)
-    end_date = parse_datestr(end_time).replace(hour=23)
+    start_date = start_time.replace(hour=0)
+    end_date = end_time.replace(hour=23)
 
     period_length = (end_date - start_date).days
 

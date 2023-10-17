@@ -4,7 +4,7 @@ from collections import OrderedDict
 from django.urls import path
 from rest_framework import response
 
-from chat.views import PastChatMessagesView, chatbox  # TODO: Remove me
+from chat.views import PastChatMessagesView, RandomUsernameView, chatbox
 from lib.views import BaseEndpointListView
 
 
@@ -34,11 +34,8 @@ class ChatAPIListView(BaseEndpointListView):
 
 urlpatterns = [
     path("", ChatAPIListView.as_view(), name="chat api list"),
-    path(
-        "past/",
-        PastChatMessagesView.as_view(),
-        name="past chat messages",
-    ),
+    path("username/", RandomUsernameView.as_view(), name="random username"),
+    path("past/", PastChatMessagesView.as_view(), name="past chat messages"),
 ]
 
 if os.environ["DJANGO_SETTINGS_MODULE"] == "config.settings.dev":

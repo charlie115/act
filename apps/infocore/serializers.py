@@ -1,6 +1,7 @@
 from rest_framework import serializers
+from pytz import all_timezones
 
-from lib.datetime import DATE_TIME_FORMAT
+from lib.datetime import TZ_ASIA_SEOUL, DATE_TIME_FORMAT
 
 
 class KlineDataQueryParamsSerializer(serializers.Serializer):
@@ -16,6 +17,7 @@ class KlineDataQueryParamsSerializer(serializers.Serializer):
         required=False,
         input_formats=[DATE_TIME_FORMAT],
     )
+    tz = serializers.ChoiceField(choices=all_timezones, default=TZ_ASIA_SEOUL)
 
 
 class KlineDataDataSerializer(serializers.Serializer):

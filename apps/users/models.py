@@ -129,7 +129,7 @@ class UserFavoriteAssets(models.Model):
 
 
 class UserBlocklist(models.Model):
-    target_email = models.EmailField(_("email address"), unique=True, blank=True)
+    target_email = models.EmailField(_("email address"), null=True, blank=True)
     target_ip = models.CharField(max_length=200)
     datetime = models.DateTimeField(default=now)
 
@@ -137,10 +137,4 @@ class UserBlocklist(models.Model):
         return self.target_email
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["target_email", "target_ip"],
-                name="unique__target_email__target_ip",
-            )
-        ]
         verbose_name_plural = "User blocklist"

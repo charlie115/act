@@ -269,7 +269,7 @@ SPECTACULAR_SETTINGS = {
             },
             {
                 "name": "CHAT",
-                "tags": ["PastChatMessages"],
+                "tags": ["PastChatMessages", "RandomUsername"],
             },
         ],
     },
