@@ -56,8 +56,8 @@ const api = websocketApi.injectEndpoints({
             if (args.isTableData) {
               const assets = uniq(result.map((asset) => asset.base_asset));
               const state = getState();
-              // if (!isEqual(assets, state.websocket.assets))
-              //   dispatch(storeAssetsList(assets));
+              if (assets.length > 0 && !isEqual(assets, state.websocket.assets))
+                dispatch(storeAssetsList(assets));
             }
           } catch {
             /* empty */

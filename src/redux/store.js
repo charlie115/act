@@ -87,5 +87,9 @@ export default configureStore({
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
         ignoredPaths: ['websocketApi.queries'],
       },
-    }).concat(drfApi.middleware, websocketApi.middleware, loggerMiddleware),
+    }).concat(
+      drfApi.middleware,
+      websocketApi.middleware
+      // loggerMiddleware
+    ),
 });

@@ -38,7 +38,7 @@ import {
 import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
 
 import debounce from 'lodash/debounce';
-import isNumber from 'lodash/isNumber';
+import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
 import orderBy from 'lodash/orderBy';
 
@@ -97,11 +97,7 @@ export default function RealTimeCoinsTable() {
   //   { skip: !marketCodes }
   // );
 
-  const {
-    data: realTimeData,
-    isLoading,
-    requestId,
-  } = useGetRealTimeKlineQuery(
+  const { data: realTimeData, isLoading } = useGetRealTimeKlineQuery(
     {
       ...marketCodes,
       interval: '1T',
@@ -109,7 +105,7 @@ export default function RealTimeCoinsTable() {
     },
     { skip: !marketCodes }
   );
-  // console.log('rest: ', requestId);
+  console.log('isLoading: ', isLoading);
 
   const { data: favoriteAssets } = useGetFavoriteAssetsQuery(marketCodes, {
     skip: !(loggedin && marketCodes),
@@ -289,29 +285,33 @@ export default function RealTimeCoinsTable() {
 
   const tableData = useMemo(
     () =>
-      orderBy(
-        assets?.map((asset) => {
-          let favoriteAssetId;
-          if (loggedin) favoriteAssetId = favoriteAssets?.[asset];
-          else {
-            const index = localFavoriteAssets?.indexOf(asset);
-            favoriteAssetId = index < 0 ? undefined : index;
-          }
-          const assetData = realTimeData?.[asset];
-          return {
-            name: asset,
-            favoriteAssetId,
-            icon: coinicons[`${asset}.png`]
-              ? require(`assets/icons/coinicon/${asset}.png`)
-              : null,
-            spread: assetData ? assetData.SL_close - assetData.LS_close : '',
-            ...assetData,
-          };
-        }) ?? [],
-        (o) => !isUndefined(o.favoriteAssetId),
-        'desc'
-      ),
-    [assets, realTimeData, favoriteAssets, localFavoriteAssets, loggedin]
+      isEmpty(realTimeData)
+        ? assets.map((asset) => ({ name: asset }))
+        : orderBy(
+            Object.values(realTimeData ?? {})?.map((assetData) => {
+              const asset = assetData.base_asset;
+              let favoriteAssetId;
+              if (loggedin) favoriteAssetId = favoriteAssets?.[asset];
+              else {
+                const index = localFavoriteAssets?.indexOf(asset);
+                favoriteAssetId = index < 0 ? undefined : index;
+              }
+              return {
+                name: asset,
+                favoriteAssetId,
+                icon: coinicons[`${asset}.png`]
+                  ? require(`assets/icons/coinicon/${asset}.png`)
+                  : null,
+                spread: assetData
+                  ? assetData.SL_close - assetData.LS_close
+                  : '',
+                ...assetData,
+              };
+            }) ?? [],
+            (o) => !isUndefined(o.favoriteAssetId),
+            'desc'
+          ),
+    [realTimeData, favoriteAssets, localFavoriteAssets, loggedin]
   );
 
   const columns = useMemo(
@@ -472,9 +472,11 @@ export default function RealTimeCoinsTable() {
         }}
         state={{
           expanded,
-          isLoading: isLoading || tableData?.length === 0,
+          isLoading: tableData?.length === 0,
           showProgressBars:
-            createFavoriteRes.isLoading || deleteFavoriteRes.isLoading,
+            isLoading ||
+            createFavoriteRes.isLoading ||
+            deleteFavoriteRes.isLoading,
         }}
         sortingFns={{ sortWithStarred }}
         renderDetailPanel={({ row }) => (
