@@ -1,20 +1,50 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 
 import Box from '@mui/material/Box';
+import ClickAwayListener from '@mui/material/ClickAwayListener';
 import IconButton from '@mui/material/IconButton';
 import InputBase from '@mui/material/InputBase';
+import Popover from '@mui/material/Popover';
+import Popper from '@mui/material/Popper';
 import Stack from '@mui/material/Stack';
 
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import SendIcon from '@mui/icons-material/Send';
 
+import data from '@emoji-mart/data';
+import Picker from '@emoji-mart/react';
+
 import { alpha, styled, useTheme } from '@mui/material/styles';
 
 import { useTranslation } from 'react-i18next';
+import { useSelector } from 'react-redux';
+
+import { useSendMessageMutation } from 'redux/api/websocket/chat';
 
 // import { Controller, useForm, useWatch } from 'react-hook-form';
 
-function ChatInput() {
+function ChatInput({ user }) {
+  const inputRef = useRef();
+
+  const [sendMessage] = useSendMessageMutation();
+
+  const [emojiPickerAnchorEl, setEmojiPickerAnchorEl] = useState(null);
+
+  const [message, setMessage] = useState('');
+
+  const theme = useSelector((state) => state.app.theme);
+
+  const onSubmit = () => {
+    if (/\S/.test(message)) {
+      sendMessage({
+        username: user?.username,
+        email: user?.email,
+        message,
+      });
+      setMessage('');
+    }
+  };
+
   return (
     <Stack
       direction="row"
@@ -23,13 +53,66 @@ function ChatInput() {
       <InputContainer
         sx={{ flex: 1, maxHeight: 120, overflowY: 'auto', px: 2 }}
       >
-        <InputBase autoFocus fullWidth multiline size="large" />
+        <InputBase
+          autoFocus
+          fullWidth
+          multiline
+          size="large"
+          value={message}
+          onChange={(e) => {
+            if (e.target.value !== '\n') setMessage(e.target.value);
+            setEmojiPickerAnchorEl(null);
+          }}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') onSubmit();
+          }}
+          inputProps={{ ref: inputRef }}
+        />
       </InputContainer>
       <Stack direction="row" spacing={0}>
-        <IconButton color="secondary" size="small">
-          <EmojiEmotionsIcon />
-        </IconButton>
-        <IconButton color="secondary" size="small">
+        <ClickAwayListener onClickAway={() => setEmojiPickerAnchorEl(null)}>
+          <Box>
+            <IconButton
+              id="emoji-popover"
+              color="info"
+              size="small"
+              onClick={(e) =>
+                setEmojiPickerAnchorEl(
+                  emojiPickerAnchorEl ? null : e.currentTarget
+                )
+              }
+            >
+              <EmojiEmotionsIcon />
+            </IconButton>
+            <Popper
+              id={emojiPickerAnchorEl ? 'emoji-popover' : undefined}
+              open={!!emojiPickerAnchorEl}
+              anchorEl={emojiPickerAnchorEl}
+              onClose={() => setEmojiPickerAnchorEl(null)}
+              sx={{ zIndex: 1800 }}
+            >
+              <Picker
+                data={data}
+                onEmojiSelect={(val) => {
+                  const { selectionStart, selectionEnd } = inputRef.current;
+                  const text =
+                    message.slice(0, selectionStart) +
+                    val.native +
+                    message.slice(selectionEnd);
+                  setMessage(text);
+                  inputRef.current.focus();
+                }}
+                previewConfig={{ showPreview: false }}
+              />
+            </Popper>
+          </Box>
+        </ClickAwayListener>
+        <IconButton
+          color="info"
+          size="small"
+          disabled={!/\S/.test(message)}
+          onClick={onSubmit}
+        >
           <SendIcon />
         </IconButton>
       </Stack>

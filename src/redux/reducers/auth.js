@@ -1,11 +1,13 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 import drfAuthApi from 'redux/api/drf/auth';
+import drfChatApi from 'redux/api/drf/chat';
 
 const initialState = {
   user: null,
   id: null,
   loggedin: false,
+  nickname: null,
 };
 
 export const authSlice = createSlice({
@@ -51,6 +53,12 @@ export const authSlice = createSlice({
         (state, { payload }) => {
           state.user = payload;
           state.loggedin = payload.role !== 'visitor';
+        }
+      )
+      .addMatcher(
+        drfChatApi.endpoints.getRandomUsername.matchFulfilled,
+        (state, { payload }) => {
+          state.nickname = payload;
         }
       );
   },

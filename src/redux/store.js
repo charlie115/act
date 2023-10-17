@@ -39,7 +39,7 @@ else {
 const authPersistConfig = {
   key: 'auth',
   storage,
-  whitelist: ['id', 'loggedin'],
+  whitelist: ['id', 'loggedin', 'nickname'],
   transforms: [
     encryptTransform({
       secretKey,

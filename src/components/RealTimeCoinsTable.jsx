@@ -97,7 +97,11 @@ export default function RealTimeCoinsTable() {
   //   { skip: !marketCodes }
   // );
 
-  const { data: realTimeData, isLoading } = useGetRealTimeKlineQuery(
+  const {
+    data: realTimeData,
+    isLoading,
+    requestId,
+  } = useGetRealTimeKlineQuery(
     {
       ...marketCodes,
       interval: '1T',
@@ -105,6 +109,7 @@ export default function RealTimeCoinsTable() {
     },
     { skip: !marketCodes }
   );
+  // console.log('rest: ', requestId);
 
   const { data: favoriteAssets } = useGetFavoriteAssetsQuery(marketCodes, {
     skip: !(loggedin && marketCodes),
@@ -463,6 +468,7 @@ export default function RealTimeCoinsTable() {
           },
           density: 'compact',
           showColumnFilters: false,
+          sorting: [{ id: 'atp24h', desc: true }],
         }}
         state={{
           expanded,

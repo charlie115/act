@@ -29,6 +29,10 @@ const api = websocketApi.injectEndpoints({
         url.searchParams.set('interval', args.interval);
         const socket = new WebSocket(url.toString());
 
+        socket.onclose = () => {
+          console.log('kline ws disconnected');
+        };
+
         const onMessage = memoize((event) => {
           const message = JSON.parse(event.data);
           try {
@@ -52,8 +56,8 @@ const api = websocketApi.injectEndpoints({
             if (args.isTableData) {
               const assets = uniq(result.map((asset) => asset.base_asset));
               const state = getState();
-              if (!isEqual(assets, state.websocket.assets))
-                dispatch(storeAssetsList(assets));
+              // if (!isEqual(assets, state.websocket.assets))
+              //   dispatch(storeAssetsList(assets));
             }
           } catch {
             /* empty */

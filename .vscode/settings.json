@@ -1,5 +1,12 @@
 {
-  "cSpell.words": ["coinicons", "datetime", "Kimp", "loggedin", "tradingview"],
+  "cSpell.words": [
+    "coinicons",
+    "datetime",
+    "Kimp",
+    "linkify",
+    "loggedin",
+    "tradingview"
+  ],
   "files.exclude": {
     "**/.git": true,
     "**/.svn": true,

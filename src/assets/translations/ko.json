@@ -81,6 +81,7 @@
   "Welcome, <2>{{firstName}} {{lastName}}</2>!": "안녕하세요, <2>{{lastName}} {{firstName}}</2>님!",
   "You have been logged out!": "",
   "intlNumber": "{{value, number}}",
+  "userFullName": "{{lastName}}{{firstName}}",
   "{{value}}D": "",
   "{{value}}M": "",
   "{{value}}W": "",

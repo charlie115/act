@@ -1,89 +1,188 @@
-import React, { useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import Avatar from '@mui/material/Avatar';
+import Backdrop from '@mui/material/Backdrop';
 import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 import Divider from '@mui/material/Divider';
 import Fab from '@mui/material/Fab';
 import Fade from '@mui/material/Fade';
 import IconButton from '@mui/material/IconButton';
+import LinearProgress from '@mui/material/LinearProgress';
 import Popper from '@mui/material/Popper';
+import SpeedDial from '@mui/material/SpeedDial';
+import SpeedDialAction from '@mui/material/SpeedDialAction';
+import SpeedDialIcon from '@mui/material/SpeedDialIcon';
 import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 
 import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+
+import PhoneIcon from '@mui/icons-material/Phone';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import PersonPinIcon from '@mui/icons-material/PersonPin';
+import PhoneMissedIcon from '@mui/icons-material/PhoneMissed';
+import FileCopyIcon from '@mui/icons-material/FileCopyOutlined';
+import SaveIcon from '@mui/icons-material/Save';
+import PrintIcon from '@mui/icons-material/Print';
+import ShareIcon from '@mui/icons-material/Share';
 
 import { blue } from '@mui/material/colors';
-import { styled } from '@mui/material/styles';
+import { alpha, styled } from '@mui/material/styles';
 
 import { useTranslation } from 'react-i18next';
 
+import { useSelector } from 'react-redux';
+
+import { DateTime } from 'luxon';
+
+import {
+  useGetPastMessagesQuery,
+  useGetRandomUsernameQuery,
+} from 'redux/api/drf/chat';
+import { useGetMessagesQuery } from 'redux/api/websocket/chat';
+
 import useRefWithCallback from 'hooks/useRefWithCallback';
+
+import { DATE_FORMAT_API_QUERY } from 'constants';
 
 import ChatInput from './ChatInput';
 import ChatMessage from './ChatMessage';
 
-const MESSAGES = [
-  {
-    id: 0,
-    timestamp: '11:51 pm',
-    message: 'Hi',
-    senderName: 'Entyne',
-    isOwnMessage: false,
-  },
-  {
-    id: 1,
-    timestamp: '11:51 pm',
-    message: 'Hello',
-    isOwnMessage: true,
-  },
-  {
-    id: 2,
-    timestamp: '11:51 pm',
-    message:
-      'The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.',
-    isOwnMessage: true,
-  },
-  {
-    id: 3,
-    timestamp: '11:51 pm',
-    message:
-      'The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.',
-    isOwnMessage: false,
-  },
-];
-
 export default function ChatWidget() {
+  const messagesContainerRef = useRef();
+  const topPlaceholderRef = useRef();
+
   const { t } = useTranslation();
+
+  const { loggedin, user, nickname } = useSelector((state) => state.auth);
 
   const [anchorEl, setAnchorEl] = useState(null);
 
   const [hovered, setHovered] = useState(false);
   const [open, setOpen] = useState(false);
 
-  const { refCallback } = useRefWithCallback((node) => node.scrollIntoView());
+  const [badgeCount, setBadgeCount] = useState(0);
+
+  const [visibleMessages, setVisibleMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState(null);
+  const [newMessages, setNewMessages] = useState([]);
+
+  const [isAutoScroll, setIsAutoScroll] = useState(true);
+
+  const [startTime, setStartTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
+
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
+  const { refCallback: lastVisibleMessagePlaceholderRef } = useRefWithCallback(
+    (node) => {
+      if (isAutoScroll) {
+        setTimeout(() => {
+          node.scrollIntoView(false);
+          window.scrollBy(0, -10);
+        }, 0);
+      }
+    },
+    [isAutoScroll]
+  );
+
+  const { data: pastMessages, isFetching: isPastMessagesFetching } =
+    useGetPastMessagesQuery({
+      startTime,
+      endTime,
+    });
+  const { data } = useGetMessagesQuery();
+
+  useGetRandomUsernameQuery({}, { skip: loggedin || nickname });
+
+  const renderMessages = useMemo(
+    () => [...(visibleMessages || []), ...(newMessages || [])],
+    [visibleMessages, newMessages]
+  );
+
+  useEffect(() => {
+    if (newMessage) {
+      if (!open || !isAutoScroll) {
+        setNewMessages((state) => {
+          const [lastItem] = state.slice(-1);
+          if (lastItem?.id !== newMessage?.id) return [...state, newMessage];
+          return state;
+        });
+        setNewMessage(null);
+      } else {
+        setNewMessage(null);
+        setNewMessages([]);
+        setVisibleMessages((state) => [...state, ...newMessages, newMessage]);
+        // bottomPlaceholderRef.current.scrollIntoView();
+      }
+    }
+  }, [open, isAutoScroll, newMessage, newMessages]);
+
+  useEffect(() => {
+    if (data?.message) setNewMessage(data?.message);
+  }, [data]);
+
+  useEffect(() => {
+    setBadgeCount(newMessages.length);
+  }, [newMessages]);
+
+  useEffect(() => {
+    if (pastMessages?.length > 0)
+      setVisibleMessages((state) => [...(pastMessages || []), ...state]);
+  }, [pastMessages]);
 
   return (
     <>
-      <Box sx={{ position: 'fixed', bottom: 0, right: 0, p: 2, zIndex: 10 }}>
-        <Fab
-          color="primary"
-          variant={hovered || open ? 'extended' : 'circular'}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-          onClick={(event) => {
-            setAnchorEl(event.currentTarget);
-            setOpen((state) => !state);
-          }}
+      <Box
+        onMouseLeave={() => setHovered(false)}
+        sx={{
+          position: 'fixed',
+          bottom: 0,
+          right: 0,
+          p: 1,
+          zIndex: 10,
+        }}
+      >
+        <Badge
+          badgeContent={!open ? badgeCount : 0}
+          color="error"
+          overlap="circular"
+          anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+          sx={{ '& .MuiBadge-badge': { zIndex: 1051 } }}
         >
-          <ChatIcon fontSize="large" />
-          {(hovered || open) && (
-            <Typography sx={{ fontWeight: 700, ml: 1 }}>{t('Chat')}</Typography>
-          )}
-        </Fab>
+          <Fab
+            color="primary"
+            variant={hovered || open ? 'extended' : 'circular'}
+            // variant="circular"
+            onMouseEnter={() => setHovered(true)}
+            onClick={(event) => {
+              setAnchorEl(event.currentTarget);
+              setOpen((state) => !state);
+            }}
+          >
+            <ChatIcon fontSize="large" />
+            {(hovered || open) && (
+              <Typography sx={{ fontWeight: 700, ml: 1 }}>
+                {t('Chat')}
+              </Typography>
+            )}
+          </Fab>
+        </Badge>
       </Box>
       <Popper
         transition
@@ -107,8 +206,11 @@ export default function ChatWidget() {
                     variant="dot"
                   >
                     <Avatar
-                      alt="Ernestine Lariosa"
-                      src="/static/images/avatar/1.jpg"
+                      alt={t('userFullName', {
+                        firstName: user?.first_name,
+                        lastName: user?.last_name,
+                      })}
+                      src={user?.profile?.picture}
                       sx={{ bgcolor: blue[400] }}
                     />
                   </OnlineBadge>
@@ -125,24 +227,109 @@ export default function ChatWidget() {
                     <CloseIcon />
                   </IconButton>
                 }
-                title="Ernestine Lariosa"
+                // title={t('userFullName', {
+                //   firstName: user?.first_name,
+                //   lastName: user?.last_name,
+                // })}
+                title={`@${user?.username || nickname}`}
                 subheader="Online"
+                titleTypographyProps={{
+                  sx: { fontStyle: 'italic', fontWeight: 700 },
+                }}
               />
               <Box sx={{ height: 72 }} />
+              {isPastMessagesFetching && <LinearProgress color="info" />}
               <Stack sx={{ height: 428, justifyContent: 'space-between' }}>
-                <Box sx={{ maxHeight: 383, p: 2, overflowY: 'auto' }}>
-                  {MESSAGES.map((item, idx) => (
-                    <Box
-                      ref={idx === MESSAGES.length - 1 ? refCallback : null}
-                      key={item.id}
-                    >
-                      <ChatMessage {...item} />
+                <Box
+                  ref={messagesContainerRef}
+                  sx={{ maxHeight: 383, p: 2, overflowY: 'auto' }}
+                  onScroll={(e) => {
+                    const { clientHeight, scrollHeight, scrollTop } = e.target;
+                    const total = scrollTop + clientHeight;
+                    if (total <= clientHeight) {
+                      const [firstMessage] = renderMessages;
+                      const newEndTime = firstMessage
+                        ? DateTime.fromISO(firstMessage.datetime).minus({
+                            second: 1,
+                          })
+                        : DateTime.now();
+                      setStartTime(
+                        newEndTime
+                          .minus({ hours: 2 })
+                          .toFormat(DATE_FORMAT_API_QUERY)
+                      );
+                      setEndTime(newEndTime.toFormat(DATE_FORMAT_API_QUERY));
+                    } else if (total >= scrollHeight) {
+                      // scrolled to bottom
+                    }
+                    if (scrollHeight - total > 1000 && isAutoScroll)
+                      setIsAutoScroll(false);
+                    else if (scrollHeight - total <= 1000 && !isAutoScroll)
+                      setIsAutoScroll(true);
+                  }}
+                >
+                  <Box ref={topPlaceholderRef} />
+                  {renderMessages.map((item, idx) => (
+                    <Box key={item.id}>
+                      <ChatMessage
+                        {...item}
+                        isNewMessage={
+                          !!newMessages.find((o) => o.id === item.id)
+                        }
+                        isOwnMessage={
+                          item.username === (user?.username ?? nickname)
+                        }
+                        onIsSeen={() => {
+                          const messageSeen = newMessages.find(
+                            (o) => o.id === item.id
+                          );
+                          if (messageSeen) {
+                            setVisibleMessages((state) => [
+                              ...state,
+                              messageSeen,
+                            ]);
+                            setNewMessages((state) =>
+                              state.filter((o) => o.id !== messageSeen.id)
+                            );
+                          }
+                        }}
+                      />
+                      <Box
+                        ref={
+                          idx === renderMessages.length - 1 - badgeCount
+                            ? lastVisibleMessagePlaceholderRef
+                            : null
+                        }
+                        sx={{ scrollMarginBottom: '2em' }}
+                      />
                     </Box>
                   ))}
                 </Box>
-                <Box>
+                <Box sx={{ position: 'relative' }}>
+                  {badgeCount > 0 && (
+                    <IconButton
+                      onClick={() => {
+                        setVisibleMessages((state) => [
+                          ...state,
+                          ...newMessages,
+                        ]);
+                        setNewMessages([]);
+                        setIsAutoScroll(true);
+                      }}
+                      sx={{
+                        bgcolor: alpha('#000', 0.1),
+                        position: 'absolute',
+                        top: -50,
+                        right: 15,
+                      }}
+                    >
+                      <Badge badgeContent={badgeCount} color="info">
+                        <ExpandMoreIcon fontSize="large" />
+                      </Badge>
+                    </IconButton>
+                  )}
                   <Divider />
-                  <ChatInput />
+                  <ChatInput user={user ?? { username: nickname }} />
                 </Box>
               </Stack>
             </Card>
