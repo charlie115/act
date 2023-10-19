@@ -1,15 +1,17 @@
 from datetime import timedelta
-from pytz import timezone
+from pytz import timezone, utc
 
 
+UTC = "UTC"
 KST = "KST"
-TZ_ASIA_SEOUL = "Asia/Seoul"
-SEOUL_TIMEZONE = timezone(TZ_ASIA_SEOUL)
+ASIA_SEOUL = "Asia/Seoul"
+TZ_UTC = utc
+TZ_ASIA_SEOUL = timezone(ASIA_SEOUL)
 
 DATE_FORMAT_NUM = "%Y%m%d"
 DATE_FORMAT = "%Y-%m-%d"
 DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
-DATE_TIME_TZ_FORMAT = "%Y-%m-%dT%H:%M:%S%Z"
+DATE_TIME_TZ_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 ONE_DAY_IN_SECONDS = 86400
 
 

@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django_redis import get_redis_connection
 from pymongo import MongoClient
 
-from lib.datetime import SEOUL_TIMEZONE, DATE_FORMAT_NUM, DATE_TIME_FORMAT
+from lib.datetime import DATE_FORMAT_NUM, TZ_ASIA_SEOUL, TZ_UTC
 
 
 REDIS_CLI = get_redis_connection("default")
@@ -28,7 +28,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         }
 
         self.ip = self.headers.get(
-            "x-forwarded-for", self.headers["host"].split(":")[0]
+            "x-real-ip",
+            self.headers.get("x-forwarded-for", self.headers["host"].split(":")[0]),
         )
         self.ip_blocklist = []
         self.email_blocklist = []
@@ -42,8 +43,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
 
         if "username" in data and "message" in data:
-            # Mongodb collection is in KST to be easier for devs viewing the db
-            now_kst = datetime.now(tz=SEOUL_TIMEZONE)
+            now = datetime.now(TZ_UTC)
 
             chat = {
                 "type": "chatbox_message",
@@ -51,7 +51,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 "username": data.get("username"),
                 "message": data.get("message"),
                 "ip": self.ip,
-                "datetime": now_kst,
+                "datetime": now,
                 "status": "OK",
             }
 
@@ -63,9 +63,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             ):
                 chat["status"] = "BLOCKED"
 
-            await self.save_chat(chat, collection=now_kst.strftime(DATE_FORMAT_NUM))
+            # Mongodb collection is in KST to be easier for devs viewing the db
+            await self.save_chat(
+                chat,
+                collection=now.astimezone(TZ_ASIA_SEOUL).strftime(DATE_FORMAT_NUM),
+            )
 
-            chat["datetime"] = chat["datetime"].strftime(DATE_TIME_FORMAT)
+            chat["datetime"] = chat["datetime"].isoformat()
             await self.channel_layer.group_send(self.group_name, chat)
 
     async def chatbox_message(self, event):
@@ -75,6 +79,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "message": event["message"],
                     "username": event["username"],
                     "datetime": event["datetime"],
+                    "status": event["status"],
                 }
             )
         )

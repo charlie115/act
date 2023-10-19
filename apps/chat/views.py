@@ -1,19 +1,18 @@
-from datetime import datetime
 from django.conf import settings
 from django.shortcuts import render
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from pymongo import MongoClient, DESCENDING
+from pymongo import MongoClient
 from pytz import timezone
 from rest_framework import response, views
+from rest_framework.pagination import PageNumberPagination
 
 from chat.serializers import (
     PastChatMessagesSerializer,
     PastChatMessagesQueryParamsSerializer,
 )
 from lib.datetime import (
-    SEOUL_TIMEZONE,
+    TZ_ASIA_SEOUL,
     DATE_FORMAT_NUM,
-    DATE_TIME_FORMAT,
     create_list_of_dates,
 )
 from lib.utils import get_client_ip, generate_username
@@ -69,7 +68,7 @@ def chatbox(request):
         tags=["PastChatMessages"],
     ),
 )
-class PastChatMessagesView(views.APIView):
+class PastChatMessagesView(views.APIView, PageNumberPagination):
     permission_classes = []
     page_size = 100
 
@@ -86,7 +85,7 @@ class PastChatMessagesView(views.APIView):
             tz=query.get("tz"),
         )
 
-        return response.Response(data)
+        return self.get_paginated_response(self.paginate_queryset(data, request))
 
     def get_chat_messages(self, start_time, end_time, tz):
         blocklist = UserBlocklist.objects.all()
@@ -104,58 +103,46 @@ class PastChatMessagesView(views.APIView):
 
             # Convert to KST since db collection is in KST (it's easier for devs to view the db)
             collections = create_list_of_dates(
-                start_time.astimezone(tz=SEOUL_TIMEZONE),
-                end_time.astimezone(tz=SEOUL_TIMEZONE),
+                start_time.astimezone(TZ_ASIA_SEOUL),
+                end_time.astimezone(TZ_ASIA_SEOUL),
                 DATE_FORMAT_NUM,
             )
         else:
-            collections = [
-                datetime.now(tz=SEOUL_TIMEZONE).strftime(DATE_FORMAT_NUM),
-            ]
+            collections = sorted(self.chat_db.list_collection_names())[-2:]
+
+        # Prepare parameters
+        query_filter = {
+            "email": {"$nin": email_blocklist},
+            "ip": {"$nin": ip_blocklist},
+        }
+        if start_time and end_time:
+            query_filter["datetime"] = {
+                "$gte": start_time,
+                "$lte": end_time,
+            }
+        projection = {
+            "_id": False,
+        }
 
         all_results = []
         for collection in collections:
-            coll = self.chat_db.get_collection(collection)
-
-            # Prepare parameters
-            query_filter = {
-                "email": {"$nin": email_blocklist},
-                "ip": {"$nin": ip_blocklist},
-            }
-            if start_time and end_time:
-                query_filter["datetime"] = {
-                    "$gte": start_time,
-                    "$lte": end_time,
-                }
-            projection = {
-                "_id": False,
-            }
-
             # Query collection
-            cursor = coll.find(
+            cursor = self.chat_db[collection].find(
                 filter=query_filter,
                 projection=projection,
             )
 
-            # If no start_time and end_time, get latest n data
-            if not (start_time and end_time):
-                cursor = cursor.sort("datetime", DESCENDING).limit(self.page_size)
-
-            # Sort back for display
+            # Serialize
             results = [
-                {
-                    "email": item["email"],
-                    "username": item["username"],
-                    "message": item["message"],
-                    "datetime": item["datetime"]
-                    .astimezone(tz=timezone(tz))
-                    .strftime(DATE_TIME_FORMAT),
-                }
+                PastChatMessagesSerializer(item, context={"tz": tz}).data
                 for item in cursor
             ]
             all_results.extend(results)
 
-        all_results = sorted(all_results, key=lambda item: item["datetime"])
+        # Sort whole list
+        all_results = sorted(
+            all_results, key=lambda item: item["datetime"], reverse=True
+        )
 
         return all_results
 
