@@ -1,9 +1,6 @@
-import React, { Fragment, useEffect, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 
-import Alert from '@mui/material/Alert';
-import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
-import Fade from '@mui/material/Fade';
 import IconButton from '@mui/material/IconButton';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
@@ -11,8 +8,11 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
 import BlockIcon from '@mui/icons-material/Block';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 import { alpha, styled } from '@mui/material/styles';
+
+import { useTranslation } from 'react-i18next';
 
 import { DateTime } from 'luxon';
 import linkify from 'linkify-it';
@@ -24,10 +24,24 @@ import stringToColor from 'utils/stringToColor';
 
 import { REGEX } from 'constants';
 
+const TOOLTIP_POPPER_OPTIONS = {
+  disablePortal: true,
+  popperOptions: {
+    positionFixed: true,
+    modifiers: {
+      preventOverflow: {
+        enabled: true,
+        boundariesElement: 'window',
+      },
+    },
+  },
+};
+
 export default function ChatMessage({
   isNewMessage,
   isOwnMessage,
   message,
+  status,
   username,
   datetime,
   onBlockUser,
@@ -39,6 +53,8 @@ export default function ChatMessage({
     threshold: 1,
     trackVisibility: true,
   });
+
+  const { t } = useTranslation();
 
   const [elements, setElements] = useState([]);
 
@@ -112,14 +128,6 @@ export default function ChatMessage({
       spacing={1}
       sx={{ alignItems: 'flex-start', mb: 2 }}
     >
-      {/* {!isOwnMessage && (
-        <Avatar
-          alt={username}
-          src="/static/images/avatar/1.jpg"
-          sx={{ height: 32, width: 32 }}
-        />
-      )} */}
-
       <Box>
         {!isOwnMessage && (
           <>
@@ -152,35 +160,39 @@ export default function ChatMessage({
             </IconButton>
           </>
         )}
-        <Tooltip
-          title={DateTime.fromISO(datetime).toFormat('HH:mm')}
-          placement={isOwnMessage ? 'left-start' : 'right-start'}
-          PopperProps={{
-            disablePortal: true,
-            popperOptions: {
-              positionFixed: true,
-              modifiers: {
-                preventOverflow: {
-                  enabled: true,
-                  boundariesElement: 'window',
-                },
-              },
-            },
-          }}
-        >
-          <MessageBox
-            isOwnMessage={isOwnMessage}
-            className={
-              prevIsNewMessage && !isNewMessage
-                ? 'animate__animated animate__pulse'
-                : null
-            }
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+          {status === 'blocked' && (
+            <Tooltip
+              title={t('Message not sent')}
+              placement="left-start"
+              PopperProps={TOOLTIP_POPPER_OPTIONS}
+            >
+              <InfoOutlinedIcon
+                color="error"
+                sx={{ cursor: 'pointer', fontSize: 14, opacity: 0.75 }}
+              />
+            </Tooltip>
+          )}
+          <Tooltip
+            title={DateTime.fromISO(datetime).toFormat('HH:mm')}
+            placement={isOwnMessage ? 'left-start' : 'right-start'}
+            PopperProps={TOOLTIP_POPPER_OPTIONS}
           >
-            {elements.map((el) => (
-              <Fragment key={el.id}>{el.element}</Fragment>
-            ))}
-          </MessageBox>
-        </Tooltip>
+            <MessageBox
+              isBlocked={status === 'blocked'}
+              isOwnMessage={isOwnMessage}
+              className={
+                prevIsNewMessage && !isNewMessage
+                  ? 'animate__animated animate__pulse'
+                  : null
+              }
+            >
+              {elements.map((el) => (
+                <Fragment key={el.id}>{el.element}</Fragment>
+              ))}
+            </MessageBox>
+          </Tooltip>
+        </Stack>
         <Box ref={ref} />
       </Box>
     </Stack>
@@ -188,8 +200,8 @@ export default function ChatMessage({
 }
 
 const MessageBox = styled(Box, {
-  shouldForwardProp: (prop) => prop !== 'isOwnMessage',
-})(({ isOwnMessage, theme }) => {
+  shouldForwardProp: (prop) => prop !== 'isBlocked' && prop !== 'isOwnMessage',
+})(({ isBlocked, isOwnMessage, theme }) => {
   const isDark = theme.palette.mode === 'dark';
 
   let backgroundColor = isOwnMessage
@@ -207,6 +219,7 @@ const MessageBox = styled(Box, {
     maxWidth: 220,
     padding: 8,
     borderRadius: 8,
+    opacity: isBlocked ? 0.5 : 1,
   };
 });
 

@@ -2,7 +2,6 @@ import React, { useRef, useState } from 'react';
 
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
-import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Menu from '@mui/material/Menu';

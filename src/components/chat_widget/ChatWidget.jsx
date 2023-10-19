@@ -1,51 +1,25 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
-import Backdrop from '@mui/material/Backdrop';
 import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import Fab from '@mui/material/Fab';
 import Fade from '@mui/material/Fade';
 import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import Link from '@mui/material/Link';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
 import Popper from '@mui/material/Popper';
-import SpeedDial from '@mui/material/SpeedDial';
-import SpeedDialAction from '@mui/material/SpeedDialAction';
-import SpeedDialIcon from '@mui/material/SpeedDialIcon';
 import Stack from '@mui/material/Stack';
-import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 
 import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-
-import PhoneIcon from '@mui/icons-material/Phone';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import PersonPinIcon from '@mui/icons-material/PersonPin';
-import PhoneMissedIcon from '@mui/icons-material/PhoneMissed';
-import FileCopyIcon from '@mui/icons-material/FileCopyOutlined';
-import SaveIcon from '@mui/icons-material/Save';
-import PrintIcon from '@mui/icons-material/Print';
-import ShareIcon from '@mui/icons-material/Share';
 
 import { blue } from '@mui/material/colors';
 import { alpha, styled } from '@mui/material/styles';
@@ -84,6 +58,8 @@ export default function ChatWidget({ isVisible }) {
   const { blocklist, enableNotification, nickname } = useSelector(
     (state) => state.chat
   );
+
+  const chatUsername = user?.username ?? nickname;
 
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -128,7 +104,9 @@ export default function ChatWidget({ isVisible }) {
   const renderMessages = useMemo(
     () =>
       [...(visibleMessages || []), ...(newMessages || [])].filter(
-        (item) => !blocklist.includes(item.username)
+        (item) =>
+          !(item.username !== chatUsername && item.status === 'blocked') &&
+          !blocklist.includes(item.username)
       ),
     [visibleMessages, newMessages, blocklist]
   );
@@ -152,7 +130,11 @@ export default function ChatWidget({ isVisible }) {
   }, [open, isAutoScroll, newMessage, newMessages]);
 
   useEffect(() => {
-    if (data?.message) setNewMessage(data?.message);
+    if (data?.message) {
+      const { message } = data;
+      if (!(message.username !== chatUsername && message.status === 'blocked'))
+        setNewMessage(data?.message);
+    }
   }, [data]);
 
   useEffect(() => {
@@ -203,7 +185,6 @@ export default function ChatWidget({ isVisible }) {
           <Fab
             color="primary"
             variant={hovered || open ? 'extended' : 'circular'}
-            // variant="circular"
             onMouseEnter={() => setHovered(true)}
             onClick={(event) => {
               setAnchorEl(event.currentTarget);
@@ -274,7 +255,7 @@ export default function ChatWidget({ isVisible }) {
                 //   firstName: user?.first_name,
                 //   lastName: user?.last_name,
                 // })}
-                title={`@${user?.username ?? nickname}`}
+                title={`@${chatUsername}`}
                 subheader="Online"
                 titleTypographyProps={{
                   sx: { fontStyle: 'italic', fontWeight: 700 },
@@ -333,9 +314,7 @@ export default function ChatWidget({ isVisible }) {
                         isNewMessage={
                           !!newMessages.find((o) => o.id === item.id)
                         }
-                        isOwnMessage={
-                          item.username === (user?.username ?? nickname)
-                        }
+                        isOwnMessage={item.username === chatUsername}
                         onBlockUser={(blockedUsername) =>
                           setBlockedUser(blockedUsername)
                         }

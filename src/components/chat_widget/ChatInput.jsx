@@ -4,7 +4,6 @@ import Box from '@mui/material/Box';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
 import IconButton from '@mui/material/IconButton';
 import InputBase from '@mui/material/InputBase';
-import Popover from '@mui/material/Popover';
 import Popper from '@mui/material/Popper';
 import Stack from '@mui/material/Stack';
 
@@ -14,9 +13,8 @@ import SendIcon from '@mui/icons-material/Send';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 
-import { alpha, styled, useTheme } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 
-import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 
 import { useSendMessageMutation } from 'redux/api/websocket/chat';

@@ -54,7 +54,7 @@ const authPersistConfig = {
 const chatPersistConfig = {
   key: 'chat',
   storage,
-  whitelist: ['blocklist', 'nickname'],
+  whitelist: ['blocklist', 'enableNotification', 'nickname'],
 };
 
 const homePersistConfig = {

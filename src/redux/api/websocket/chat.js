@@ -36,10 +36,6 @@ const api = websocketApi.injectEndpoints({
                 ...message,
                 id: DateTime.now().toMillis(),
               };
-              // currentCacheData.messages.push({
-              //   ...message,
-              //   id: DateTime.now().toMillis(),
-              // });
             });
           } catch {
             /* empty */
@@ -48,11 +44,7 @@ const api = websocketApi.injectEndpoints({
 
         try {
           await cacheDataLoaded;
-          socket.addEventListener(
-            'message',
-            onMessage
-            // throttle(onMessage, 1000, { leading: true })
-          );
+          socket.addEventListener('message', onMessage);
         } catch {
           // no-op in case `cacheEntryRemoved` resolves before `cacheDataLoaded`,
           // in which case `cacheDataLoaded` will throw
