@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 
+import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
 import Backdrop from '@mui/material/Backdrop';
 import Badge from '@mui/material/Badge';
@@ -13,11 +14,16 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import Fab from '@mui/material/Fab';
 import Fade from '@mui/material/Fade';
 import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
+import Link from '@mui/material/Link';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import Popper from '@mui/material/Popper';
 import SpeedDial from '@mui/material/SpeedDial';
 import SpeedDialAction from '@mui/material/SpeedDialAction';
@@ -30,6 +36,7 @@ import Typography from '@mui/material/Typography';
 import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 import PhoneIcon from '@mui/icons-material/Phone';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -43,9 +50,10 @@ import ShareIcon from '@mui/icons-material/Share';
 import { blue } from '@mui/material/colors';
 import { alpha, styled } from '@mui/material/styles';
 
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { blockUser, unblockUser } from 'redux/reducers/chat';
 
 import { DateTime } from 'luxon';
 
@@ -60,21 +68,28 @@ import useRefWithCallback from 'hooks/useRefWithCallback';
 import { DATE_FORMAT_API_QUERY } from 'constants';
 
 import ChatInput from './ChatInput';
+import ChatMenu from './ChatMenu';
 import ChatMessage from './ChatMessage';
 
-export default function ChatWidget() {
+export default function ChatWidget({ isVisible }) {
+  const dispatch = useDispatch();
+
+  const blockUserTimeoutRef = useRef();
+
   const messagesContainerRef = useRef();
-  const topPlaceholderRef = useRef();
 
   const { t } = useTranslation();
 
-  const { loggedin, user, nickname } = useSelector((state) => state.auth);
+  const { loggedin, user } = useSelector((state) => state.auth);
+  const { blocklist, enableNotification, nickname } = useSelector(
+    (state) => state.chat
+  );
 
   const [anchorEl, setAnchorEl] = useState(null);
 
+  const [display, setDisplay] = useState('block');
   const [hovered, setHovered] = useState(false);
   const [open, setOpen] = useState(false);
-
   const [badgeCount, setBadgeCount] = useState(0);
 
   const [visibleMessages, setVisibleMessages] = useState([]);
@@ -86,20 +101,20 @@ export default function ChatWidget() {
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const [blockedUser, setBlockedUser] = useState(null);
 
-  const { refCallback: lastVisibleMessagePlaceholderRef } = useRefWithCallback(
-    (node) => {
-      if (isAutoScroll) {
-        setTimeout(() => {
-          node.scrollIntoView(false);
-          window.scrollBy(0, -10);
-        }, 0);
-      }
-    },
-    [isAutoScroll]
-  );
+  const { refCallback: lastVisibleMessagePlaceholderRef, ref } =
+    useRefWithCallback(
+      (node) => {
+        if (isAutoScroll) {
+          setTimeout(() => {
+            node.scrollIntoView(false);
+            window.scrollBy(0, -10);
+          }, 0);
+        }
+      },
+      [isAutoScroll]
+    );
 
   const { data: pastMessages, isFetching: isPastMessagesFetching } =
     useGetPastMessagesQuery({
@@ -111,8 +126,11 @@ export default function ChatWidget() {
   useGetRandomUsernameQuery({}, { skip: loggedin || nickname });
 
   const renderMessages = useMemo(
-    () => [...(visibleMessages || []), ...(newMessages || [])],
-    [visibleMessages, newMessages]
+    () =>
+      [...(visibleMessages || []), ...(newMessages || [])].filter(
+        (item) => !blocklist.includes(item.username)
+      ),
+    [visibleMessages, newMessages, blocklist]
   );
 
   useEffect(() => {
@@ -146,11 +164,27 @@ export default function ChatWidget() {
       setVisibleMessages((state) => [...(pastMessages || []), ...state]);
   }, [pastMessages]);
 
+  useEffect(() => {
+    if (blockedUser) {
+      dispatch(blockUser(blockedUser));
+      clearTimeout(blockUserTimeoutRef.current);
+    }
+  }, [blockedUser]);
+
+  useEffect(() => {
+    if (!isVisible) {
+      setAnchorEl(null);
+      setOpen(false);
+      setDisplay('none');
+    } else setDisplay('block');
+  }, [isVisible]);
+
   return (
     <>
       <Box
         onMouseLeave={() => setHovered(false)}
         sx={{
+          display,
           position: 'fixed',
           bottom: 0,
           right: 0,
@@ -162,6 +196,7 @@ export default function ChatWidget() {
           badgeContent={!open ? badgeCount : 0}
           color="error"
           overlap="circular"
+          invisible={!enableNotification}
           anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
           sx={{ '& .MuiBadge-badge': { zIndex: 1051 } }}
         >
@@ -190,13 +225,18 @@ export default function ChatWidget() {
         anchorEl={anchorEl}
         placement="top-end"
         popperOptions={{ strategy: 'fixed' }}
-        sx={{ zIndex: 1800 }}
       >
         {({ TransitionProps }) => (
           <Fade {...TransitionProps} unmountOnExit={false} timeout={350}>
             <Card
               raised
-              sx={{ mb: 1, height: 500, width: 350, position: 'relative' }}
+              sx={{
+                display,
+                mb: 1,
+                height: 500,
+                width: 350,
+                position: 'relative',
+              }}
             >
               <Header
                 avatar={
@@ -216,22 +256,25 @@ export default function ChatWidget() {
                   </OnlineBadge>
                 }
                 action={
-                  <IconButton
-                    aria-label="close-chat"
-                    color="white"
-                    onClick={() => {
-                      setAnchorEl(null);
-                      setOpen(false);
-                    }}
-                  >
-                    <CloseIcon />
-                  </IconButton>
+                  <Stack direction="row">
+                    <ChatMenu />
+                    <IconButton
+                      aria-label="close-chat"
+                      color="white"
+                      onClick={() => {
+                        setAnchorEl(null);
+                        setOpen(false);
+                      }}
+                    >
+                      <CloseIcon />
+                    </IconButton>
+                  </Stack>
                 }
                 // title={t('userFullName', {
                 //   firstName: user?.first_name,
                 //   lastName: user?.last_name,
                 // })}
-                title={`@${user?.username || nickname}`}
+                title={`@${user?.username ?? nickname}`}
                 subheader="Online"
                 titleTypographyProps={{
                   sx: { fontStyle: 'italic', fontWeight: 700 },
@@ -247,18 +290,7 @@ export default function ChatWidget() {
                     const { clientHeight, scrollHeight, scrollTop } = e.target;
                     const total = scrollTop + clientHeight;
                     if (total <= clientHeight) {
-                      const [firstMessage] = renderMessages;
-                      const newEndTime = firstMessage
-                        ? DateTime.fromISO(firstMessage.datetime).minus({
-                            second: 1,
-                          })
-                        : DateTime.now();
-                      setStartTime(
-                        newEndTime
-                          .minus({ hours: 2 })
-                          .toFormat(DATE_FORMAT_API_QUERY)
-                      );
-                      setEndTime(newEndTime.toFormat(DATE_FORMAT_API_QUERY));
+                      // scrolled to top
                     } else if (total >= scrollHeight) {
                       // scrolled to bottom
                     }
@@ -268,7 +300,32 @@ export default function ChatWidget() {
                       setIsAutoScroll(true);
                   }}
                 >
-                  <Box ref={topPlaceholderRef} />
+                  {ref.current && (
+                    <Box sx={{ textAlign: 'center', mb: 2, mt: 0 }}>
+                      <LoadMoreLink
+                        href="#"
+                        underline="hover"
+                        onClick={() => {
+                          const [firstMessage] = renderMessages;
+                          const newEndTime = firstMessage
+                            ? DateTime.fromISO(firstMessage.datetime).minus({
+                                second: 1,
+                              })
+                            : DateTime.now();
+                          setStartTime(
+                            newEndTime
+                              .minus({ hours: 2 })
+                              .toFormat(DATE_FORMAT_API_QUERY)
+                          );
+                          setEndTime(
+                            newEndTime.toFormat(DATE_FORMAT_API_QUERY)
+                          );
+                        }}
+                      >
+                        {t('Load more messages')}...
+                      </LoadMoreLink>
+                    </Box>
+                  )}
                   {renderMessages.map((item, idx) => (
                     <Box key={item.id}>
                       <ChatMessage
@@ -278,6 +335,9 @@ export default function ChatWidget() {
                         }
                         isOwnMessage={
                           item.username === (user?.username ?? nickname)
+                        }
+                        onBlockUser={(blockedUsername) =>
+                          setBlockedUser(blockedUsername)
                         }
                         onIsSeen={() => {
                           const messageSeen = newMessages.find(
@@ -328,6 +388,50 @@ export default function ChatWidget() {
                       </Badge>
                     </IconButton>
                   )}
+                  <Fade
+                    unmountOnExit
+                    in={blockedUser === blocklist?.slice(-1)?.[0]} // Write the needed condition here to make it appear
+                    timeout={{ enter: 1000, exit: 1000 }} // Edit these two values to change the duration of transition when the element is getting appeared and disappeard
+                    addEndListener={() => {
+                      blockUserTimeoutRef.current = setTimeout(() => {
+                        setBlockedUser(null);
+                      }, 6000);
+                    }}
+                  >
+                    <Box>
+                      {blockedUser && (
+                        <Alert
+                          icon={false}
+                          severity="success"
+                          variant="standard"
+                          action={
+                            <Button
+                              color="inherit"
+                              size="small"
+                              onClick={() => {
+                                dispatch(unblockUser(blockedUser));
+                                setBlockedUser(null);
+                                clearTimeout(blockUserTimeoutRef.current);
+                              }}
+                            >
+                              {t('Undo')}
+                            </Button>
+                          }
+                          sx={{ alignItems: 'center' }}
+                        >
+                          <Trans>
+                            You have blocked{' '}
+                            <span
+                              style={{ fontStyle: 'italic', fontWeight: 700 }}
+                            >
+                              @{{ user: blockedUser }}
+                            </span>
+                            . Their messages will be automatically hidden.
+                          </Trans>
+                        </Alert>
+                      )}
+                    </Box>
+                  </Fade>
                   <Divider />
                   <ChatInput user={user ?? { username: nickname }} />
                 </Box>
@@ -350,6 +454,12 @@ const Header = styled(CardHeader)(({ theme }) => ({
   borderTopRightRadius: 4,
   color: theme.palette.light.main,
   '& .MuiCardHeader-subheader': { color: theme.palette.light.main },
+}));
+
+const LoadMoreLink = styled(Link)(() => ({
+  fontSize: 12,
+  fontStyle: 'italic',
+  fontWeight: 700,
 }));
 
 const OnlineBadge = styled(Badge)(({ theme }) => ({

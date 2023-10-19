@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
@@ -116,7 +116,7 @@ export function MainLayout() {
             </Grid>
           </Grid>
         </Box>
-        <ChatWidget />
+        <ChatWidget isVisible={currentRoute.displayChat} />
       </Box>
     </>
   );

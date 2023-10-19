@@ -105,7 +105,6 @@ export default function RealTimeCoinsTable() {
     },
     { skip: !marketCodes }
   );
-  console.log('isLoading: ', isLoading);
 
   const { data: favoriteAssets } = useGetFavoriteAssetsQuery(marketCodes, {
     skip: !(loggedin && marketCodes),

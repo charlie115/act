@@ -4,3 +4,9 @@ export const DATE_FORMAT_BY_UNIT = {
   minutes: 'HH:mm',
   hours: 'HH:mm',
 };
+
+export const REGEX = {
+  chatMention: /\B@([\w_]+)/,
+  // eslint-disable-next-line no-control-regex
+  ctrlCharactersRegex: /[\u0000-\u001F\u007F-\u009F\u2000-\u200D\uFEFF]/gim,
+};

@@ -1,8 +1,4 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-
-import isEqual from 'lodash/isEqual';
 import memoize from 'lodash/memoize';
-import uniq from 'lodash/uniq';
 
 import { DateTime } from 'luxon';
 

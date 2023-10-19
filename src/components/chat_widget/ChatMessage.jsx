@@ -1,13 +1,18 @@
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 
+import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
+import Fade from '@mui/material/Fade';
+import IconButton from '@mui/material/IconButton';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
-import { styled } from '@mui/material/styles';
+import BlockIcon from '@mui/icons-material/Block';
+
+import { alpha, styled } from '@mui/material/styles';
 
 import { DateTime } from 'luxon';
 import linkify from 'linkify-it';
@@ -17,9 +22,7 @@ import { usePrevious } from '@uidotdev/usehooks';
 
 import stringToColor from 'utils/stringToColor';
 
-const ctrlCharactersRegex =
-  // eslint-disable-next-line no-control-regex
-  /[\u0000-\u001F\u007F-\u009F\u2000-\u200D\uFEFF]/gim;
+import { REGEX } from 'constants';
 
 export default function ChatMessage({
   isNewMessage,
@@ -27,6 +30,7 @@ export default function ChatMessage({
   message,
   username,
   datetime,
+  onBlockUser,
   onIsSeen,
 }) {
   const { ref, inView, entry } = useInView({
@@ -41,7 +45,24 @@ export default function ChatMessage({
   const prevIsNewMessage = usePrevious(isNewMessage);
 
   useEffect(() => {
-    const matches = linkify().match(message);
+    const matches = linkify()
+      .add('@', {
+        validate: (text, pos, self) => {
+          const tail = text.slice(pos);
+          if (!self.re.twitter) {
+            self.re.twitter = new RegExp(
+              `^([a-zA-Z0-9_]){1,15}(?!_)(?=$|${self.re.src_ZPCc})`
+            );
+          }
+          if (self.re.twitter.test(tail)) {
+            if (pos >= 2 && tail[pos - 2] === '@') return false;
+            return tail.match(self.re.twitter)[0].length;
+          }
+          return 0;
+        },
+      })
+      .match(message);
+
     if (matches?.length > 0) {
       const newElements = [];
       let currIndex = 0;
@@ -50,7 +71,7 @@ export default function ChatMessage({
         const textBeforeUrl = message.slice(currIndex, index);
         const url = message
           .slice(index, lastIndex)
-          .replace(ctrlCharactersRegex, '');
+          .replace(REGEX.ctrlCharactersRegex, '');
         newElements.push({
           element: textBeforeUrl,
           id: `${idx}-text`,
@@ -58,10 +79,10 @@ export default function ChatMessage({
         newElements.push({
           element: (
             <MessageUrl
-              href={url}
+              {...(match.schema === '@'
+                ? { sx: { fontStyle: 'italic', pointerEvents: 'none' } }
+                : { href: url, rel: 'noopener', target: '_blank' })}
               color={isOwnMessage ? 'accent' : 'primary'}
-              rel="noopener"
-              target="_blank"
               underline="hover"
             >
               {url}
@@ -101,17 +122,35 @@ export default function ChatMessage({
 
       <Box>
         {!isOwnMessage && (
-          <Typography sx={{ color: 'secondary.main', fontSize: 11, mb: 0.25 }}>
-            <span
-              style={{
-                color: stringToColor(username),
-                fontSize: 15,
+          <>
+            <Typography
+              sx={{
+                display: 'inline',
+                color: 'secondary.main',
+                fontSize: 11,
+                mb: 0.25,
               }}
             >
-              &#9679;
-            </span>
-            @{username}
-          </Typography>
+              <span
+                style={{
+                  color: stringToColor(username),
+                  fontSize: 15,
+                }}
+              >
+                &#9679;
+              </span>
+              @{username}
+            </Typography>
+            <IconButton
+              aria-label="block-user"
+              color="secondary"
+              size="small"
+              onClick={() => onBlockUser(username)}
+              sx={{ display: 'inline', ml: 1, p: 0.25 }}
+            >
+              <BlockIcon sx={{ fontSize: 12 }} />
+            </IconButton>
+          </>
         )}
         <Tooltip
           title={DateTime.fromISO(datetime).toFormat('HH:mm')}
@@ -127,7 +166,6 @@ export default function ChatMessage({
                 },
               },
             },
-            sx: { zIndex: 1800 },
           }}
         >
           <MessageBox
@@ -172,7 +210,7 @@ const MessageBox = styled(Box, {
   };
 });
 
-const MessageUrl = styled(Link)(() => ({
+const MessageUrl = styled(Link)(({ theme, color }) => ({
   overflowWrap: 'break-word',
   wordWrap: 'break-word',
 
@@ -184,7 +222,5 @@ const MessageUrl = styled(Link)(() => ({
   WebkitHyphens: 'auto',
   hyphens: 'auto',
 
-  ':visited': {
-    // color: alpha(theme.palette.info.main, 0.8),
-  },
+  ':visited': { color: alpha(theme.palette[color].main, 0.8) },
 }));

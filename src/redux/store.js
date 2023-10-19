@@ -22,6 +22,7 @@ import websocketApi from './api/websocket';
 
 import app from './reducers/app';
 import auth from './reducers/auth';
+import chat from './reducers/chat';
 import home from './reducers/home';
 import websocket from './reducers/websocket';
 
@@ -39,7 +40,7 @@ else {
 const authPersistConfig = {
   key: 'auth',
   storage,
-  whitelist: ['id', 'loggedin', 'nickname'],
+  whitelist: ['id', 'loggedin'],
   transforms: [
     encryptTransform({
       secretKey,
@@ -48,6 +49,12 @@ const authPersistConfig = {
       },
     }),
   ],
+};
+
+const chatPersistConfig = {
+  key: 'chat',
+  storage,
+  whitelist: ['blocklist', 'nickname'],
 };
 
 const homePersistConfig = {
@@ -66,6 +73,7 @@ const reducers = combineReducers({
   app,
   websocket,
   auth: persistReducer(authPersistConfig, auth),
+  chat: persistReducer(chatPersistConfig, chat),
   home: persistReducer(homePersistConfig, home),
   [drfApi.reducerPath]: drfApi.reducer,
   [websocketApi.reducerPath]: websocketApi.reducer,
@@ -90,6 +98,6 @@ export default configureStore({
     }).concat(
       drfApi.middleware,
       websocketApi.middleware
-      // loggerMiddleware
+      // loggerMiddleware // TODO: Remove for production
     ),
 });

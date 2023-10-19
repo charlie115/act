@@ -16,7 +16,7 @@ export default {
             : alpha(theme.palette[ownerState.color].main, 0.15),
         color:
           theme.palette.mode === 'dark'
-            ? theme.palette[ownerState.color].main
+            ? theme.palette[ownerState.color]?.main || ownerState.color
             : theme.palette.grey['700'],
         fontWeight: 700,
         '&:disabled': {
@@ -28,6 +28,9 @@ export default {
       // root: { minWidth: 'max-content', whiteSpace: 'nowrap' },
     },
   },
+  MuiDialog: { styleOverrides: { root: { zIndex: 1800 } } },
+  MuiMenu: { styleOverrides: { root: { zIndex: 1800 } } },
+  MuiPopper: { styleOverrides: { root: { zIndex: 1800 } } },
   MuiToggleButton: {
     styleOverrides: {
       root: ({ ownerState, theme }) => ({

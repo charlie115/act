@@ -21,8 +21,6 @@ import { useSelector } from 'react-redux';
 
 import { useSendMessageMutation } from 'redux/api/websocket/chat';
 
-// import { Controller, useForm, useWatch } from 'react-hook-form';
-
 function ChatInput({ user }) {
   const inputRef = useRef();
 
@@ -89,10 +87,10 @@ function ChatInput({ user }) {
               open={!!emojiPickerAnchorEl}
               anchorEl={emojiPickerAnchorEl}
               onClose={() => setEmojiPickerAnchorEl(null)}
-              sx={{ zIndex: 1800 }}
             >
               <Picker
                 data={data}
+                theme={theme}
                 onEmojiSelect={(val) => {
                   const { selectionStart, selectionEnd } = inputRef.current;
                   const text =
