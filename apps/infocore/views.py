@@ -1,10 +1,15 @@
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import exceptions, response, views
-from pymongo import MongoClient, DESCENDING
+from pymongo import MongoClient, ASCENDING, DESCENDING
 from pytz import timezone
 
-from infocore.serializers import KlineDataDataSerializer, KlineDataQueryParamsSerializer
+from infocore.serializers import (
+    FundingRateDataSerializer,
+    FundingRateDataQueryParamsSerializer,
+    KlineDataSerializer,
+    KlineDataQueryParamsSerializer,
+)
 
 
 MONGODB_CLI = MongoClient(
@@ -20,7 +25,7 @@ MONGODB_CLI = MongoClient(
         operation_id="Get kline data",
         description="Returns kline data",
         parameters=[KlineDataQueryParamsSerializer],
-        responses={200: KlineDataDataSerializer},
+        responses={200: KlineDataSerializer},
         tags=["Kline"],
     ),
 )
@@ -101,13 +106,114 @@ class KlineDataView(views.APIView):
         if not (start_time and end_time):
             cursor = cursor.sort("datetime_now", DESCENDING).limit(self.page_size)
 
-        # Sort back for display
+        # Serialize and sort back for display
+        results = sorted(
+            [KlineDataSerializer(item, context={"tz": tz}).data for item in cursor],
+            key=lambda item: item["datetime_now"],
+        )
+
+        return results
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Get funding rate data",
+        description="Returns funding rate data",
+        parameters=[FundingRateDataQueryParamsSerializer],
+        responses={200: FundingRateDataSerializer},
+        tags=["FundingRate"],
+    ),
+)
+class FundingRateDataView(views.APIView):
+    permission_classes = []
+    page_size = 200
+
+    def get(self, request):
+        query_params = FundingRateDataQueryParamsSerializer(data=request.query_params)
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        data = self.get_data(
+            market_code=query.get("market_code", ""),
+            base_assets=query.get("base_assets", ""),
+            tz=query.get("tz"),
+        )
+
+        return response.Response(data)
+
+    def get_data(self, market_code, base_assets, tz):
+        market_code, quote_asset = market_code.split("/")
+
+        database = f"{market_code.split('_')[0]}_fundingrate"
+        collection = "_".join(market_code.split("_")[1:])
+
+        # Get database
+        databases = MONGODB_CLI.list_database_names()
+        if database not in databases:
+            raise exceptions.ValidationError({"detail": "Invalid market code."})
+
+        db = MONGODB_CLI.get_database(database)
+
+        # Get collection
+        collections = db.list_collection_names()
+        if collection not in collections:
+            raise exceptions.ValidationError({"detail": "Invalid market code."})
+
+        coll = db.get_collection(collection)
+
+        latest_dates = coll.aggregate(
+            [
+                {
+                    "$match": {
+                        "base_asset": {"$in": base_assets} if base_assets else {},
+                        "quote_asset": quote_asset,
+                    }
+                },
+                {"$sort": {"datetime_now": ASCENDING}},
+                {
+                    "$group": {
+                        "_id": "$base_asset",
+                        "datetime_now": {"$last": "$datetime_now"},
+                    }
+                },
+            ]
+        )
+        latest_dates = {item["_id"]: item["datetime_now"] for item in latest_dates}
+
+        # Prepare parameters
+        and_cond = list()
+        for base_asset, datetime_now in latest_dates.items():
+            query = {
+                "$and": [
+                    {
+                        "base_asset": base_asset,
+                        "quote_asset": quote_asset,
+                        "perpetual": True,
+                        "datetime_now": {"$eq": datetime_now},
+                    }
+                ]
+            }
+            and_cond.append(query)
+
+        if not and_cond:
+            raise exceptions.ValidationError()
+
+        query_filter = {
+            "$or": and_cond,
+        }
+        projection = {
+            "_id": False,
+        }
+
+        # Query collection
+        cursor = coll.find(
+            filter=query_filter,
+            projection=projection,
+        )
+
+        # Serialize
         results = [
-            {
-                key: value for key, value in item.items() if key != "record_count"
-            }  # FIXME: Debugging
-            for item in cursor
+            FundingRateDataSerializer(item, context={"tz": tz}).data for item in cursor
         ]
-        results = sorted(results, key=lambda item: item["datetime_now"])
 
         return results

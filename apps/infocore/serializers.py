@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from pytz import all_timezones
+from pytz import all_timezones, timezone
 
-from lib.datetime import TZ_ASIA_SEOUL, DATE_TIME_FORMAT
+from lib.datetime import DATE_TIME_FORMAT, DATE_TIME_TZ_FORMAT, UTC, TZ_UTC
+from lib.fields import CharacterSeparatedField, FloatOrNoneField
 
 
 class KlineDataQueryParamsSerializer(serializers.Serializer):
@@ -17,27 +18,67 @@ class KlineDataQueryParamsSerializer(serializers.Serializer):
         required=False,
         input_formats=[DATE_TIME_FORMAT],
     )
-    tz = serializers.ChoiceField(choices=all_timezones, default=TZ_ASIA_SEOUL)
+    tz = serializers.ChoiceField(choices=all_timezones, default=UTC)
 
 
-class KlineDataDataSerializer(serializers.Serializer):
+class KlineDataSerializer(serializers.Serializer):
     base_asset = serializers.CharField()
     datetime_now = serializers.DateTimeField()
-    tp_open = serializers.FloatField()
-    tp_high = serializers.FloatField()
-    tp_low = serializers.FloatField()
-    tp_close = serializers.FloatField()
-    LS_open = serializers.FloatField()
-    LS_high = serializers.FloatField()
-    LS_low = serializers.FloatField()
-    LS_close = serializers.FloatField()
-    SL_open = serializers.FloatField()
-    SL_high = serializers.FloatField()
-    SL_low = serializers.FloatField()
-    SL_close = serializers.FloatField()
-    dollar = serializers.FloatField()
-    tp = serializers.FloatField()
-    scr = serializers.FloatField()
-    atp24h = serializers.FloatField()
-    converted_tp = serializers.FloatField()
+    tp_open = FloatOrNoneField()
+    tp_high = FloatOrNoneField()
+    tp_low = FloatOrNoneField()
+    tp_close = FloatOrNoneField()
+    LS_open = FloatOrNoneField()
+    LS_high = FloatOrNoneField()
+    LS_low = FloatOrNoneField()
+    LS_close = FloatOrNoneField()
+    SL_open = FloatOrNoneField()
+    SL_high = FloatOrNoneField()
+    SL_low = FloatOrNoneField()
+    SL_close = FloatOrNoneField()
+    dollar = FloatOrNoneField(required=False)
+    tp = FloatOrNoneField()
+    scr = FloatOrNoneField()
+    atp24h = FloatOrNoneField()
+    converted_tp = FloatOrNoneField()
     closed = serializers.BooleanField()
+    record_count = serializers.IntegerField(required=False)
+
+    def to_representation(self, instance):
+        instance["datetime_now"] = instance["datetime_now"].astimezone(
+            timezone(self.context["tz"])
+        )
+        data = super().to_representation(instance)
+        data["datetime_now"] = instance["datetime_now"].strftime(DATE_TIME_TZ_FORMAT)
+        return data
+
+
+class FundingRateDataQueryParamsSerializer(serializers.Serializer):
+    market_code = serializers.CharField(required=True)
+    base_assets = CharacterSeparatedField(required=False, empty=True)
+    tz = serializers.ChoiceField(choices=all_timezones, default=UTC)
+
+
+class FundingRateDataSerializer(serializers.Serializer):
+    symbol = serializers.CharField()
+    funding_rate = FloatOrNoneField()
+    funding_time = serializers.DateTimeField(default_timezone=TZ_UTC)
+    base_asset = serializers.CharField()
+    quote_asset = serializers.CharField()
+    perpetual = serializers.BooleanField()
+    datetime_now = serializers.DateTimeField(default_timezone=TZ_UTC)
+
+    def to_representation(self, instance):
+        instance["funding_time"] = instance["funding_time"].astimezone(
+            timezone(self.context["tz"])
+        )
+        instance["datetime_now"] = instance["datetime_now"].astimezone(
+            timezone(self.context["tz"])
+        )
+
+        data = super().to_representation(instance)
+
+        data["funding_time"] = instance["funding_time"].strftime(DATE_TIME_TZ_FORMAT)
+        data["datetime_now"] = instance["datetime_now"].strftime(DATE_TIME_TZ_FORMAT)
+
+        return data

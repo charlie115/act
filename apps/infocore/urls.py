@@ -2,7 +2,7 @@ from collections import OrderedDict
 from django.urls import path
 from rest_framework import response
 
-from infocore.views import KlineDataView
+from infocore.views import FundingRateDataView, KlineDataView
 from lib.views import BaseEndpointListView
 
 
@@ -36,5 +36,10 @@ urlpatterns = [
         "kline/",
         KlineDataView.as_view(),
         name="kline data",
+    ),
+    path(
+        "funding-rate/",
+        FundingRateDataView.as_view(),
+        name="funding rate data",
     ),
 ]
