@@ -173,12 +173,12 @@ class UserFavoriteAssetsAdmin(ModelAdmin):
 class UserBlocklistAdmin(ModelAdmin):
     list_display = [
         "id",
-        "target_email",
+        "target_username",
         "target_ip",
         "datetime",
     ]
     search_fields = [
-        "target_email",
+        "target_username",
         "target_ip",
         "datetime",
     ]

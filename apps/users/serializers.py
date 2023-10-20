@@ -76,4 +76,4 @@ class UserBlocklistSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserBlocklist
-        fields = ("id", "target_email", "target_ip", "datetime")
+        fields = ("id", "target_username", "target_ip", "datetime")

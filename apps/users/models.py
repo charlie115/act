@@ -129,12 +129,12 @@ class UserFavoriteAssets(models.Model):
 
 
 class UserBlocklist(models.Model):
-    target_email = models.EmailField(_("email address"), null=True, blank=True)
+    target_username = models.CharField(_("username"), max_length=100)
     target_ip = models.CharField(max_length=200)
     datetime = models.DateTimeField(default=now)
 
     def __str__(self):
-        return self.target_email
+        return self.target_username
 
     class Meta:
         verbose_name_plural = "User blocklist"

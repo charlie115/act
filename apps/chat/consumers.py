@@ -32,7 +32,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.headers.get("x-forwarded-for", self.headers["host"].split(":")[0]),
         )
         self.ip_blocklist = []
-        self.email_blocklist = []
+        self.username_blocklist = []
 
         self.group_name = "chat"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -58,8 +58,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.get_blocklist()
 
             if (
-                data.get("email", None) in self.email_blocklist
-                or self.ip in self.ip_blocklist
+                data.get("username", None) in self.username_blocklist
+                and self.ip in self.ip_blocklist
             ):
                 chat["status"] = "BLOCKED"
 
@@ -98,9 +98,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_blocklist(self):
         blocklist = cache.get("acw:user:blocklist")
-        self.email_blocklist = [
-            email
-            for email in blocklist.values_list("target_email", flat=True)
-            if bool(email)
+        self.username_blocklist = [
+            username
+            for username in blocklist.values_list("target_username", flat=True)
+            if bool(username)
         ]
         self.ip_blocklist = list(blocklist.values_list("target_ip", flat=True))

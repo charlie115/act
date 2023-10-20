@@ -265,7 +265,7 @@ SPECTACULAR_SETTINGS = {
             },
             {
                 "name": "INFO CORE",
-                "tags": ["Kline"],
+                "tags": ["Kline", "FundingRate"],
             },
             {
                 "name": "CHAT",

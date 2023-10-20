@@ -89,10 +89,10 @@ class PastChatMessagesView(views.APIView, PageNumberPagination):
 
     def get_chat_messages(self, start_time, end_time, tz):
         blocklist = UserBlocklist.objects.all()
-        email_blocklist = [
-            email
-            for email in blocklist.values_list("target_email", flat=True)
-            if bool(email)
+        username_blocklist = [
+            username
+            for username in blocklist.values_list("target_username", flat=True)
+            if bool(username)
         ]
         ip_blocklist = list(blocklist.values_list("target_ip", flat=True))
 
@@ -112,7 +112,7 @@ class PastChatMessagesView(views.APIView, PageNumberPagination):
 
         # Prepare parameters
         query_filter = {
-            "email": {"$nin": email_blocklist},
+            "username": {"$nin": username_blocklist},
             "ip": {"$nin": ip_blocklist},
         }
         if start_time and end_time:
