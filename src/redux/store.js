@@ -24,7 +24,6 @@ import app from './reducers/app';
 import auth from './reducers/auth';
 import chat from './reducers/chat';
 import home from './reducers/home';
-import websocket from './reducers/websocket';
 
 let secretKey;
 const uid = localStorage.getItem('uid');
@@ -60,7 +59,7 @@ const chatPersistConfig = {
 const homePersistConfig = {
   key: 'home',
   storage,
-  whitelist: ['favoriteAssets', 'priceView'],
+  whitelist: ['bookmarkedMarketCodePairs', 'favoriteAssets', 'priceView'],
 };
 
 const rootPersistConfig = {
@@ -71,7 +70,6 @@ const rootPersistConfig = {
 
 const reducers = combineReducers({
   app,
-  websocket,
   auth: persistReducer(authPersistConfig, auth),
   chat: persistReducer(chatPersistConfig, chat),
   home: persistReducer(homePersistConfig, home),
@@ -97,7 +95,7 @@ export default configureStore({
       },
     }).concat(
       drfApi.middleware,
-      websocketApi.middleware
-      // loggerMiddleware // TODO: Remove for production
+      websocketApi.middleware,
+      loggerMiddleware // TODO: Remove for production
     ),
 });

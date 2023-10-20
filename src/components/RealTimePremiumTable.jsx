@@ -7,11 +7,10 @@ import React, {
 } from 'react';
 
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
 import Stack from '@mui/material/Stack';
+import SvgIcon from '@mui/material/SvgIcon';
 import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
@@ -19,10 +18,7 @@ import BlockIcon from '@mui/icons-material/Block';
 import InsightsIcon from '@mui/icons-material/Insights';
 import StarIcon from '@mui/icons-material/Star';
 
-import { alpha, useTheme } from '@mui/material/styles';
-import useMediaQuery from '@mui/material/useMediaQuery';
-
-import { useTranslation } from 'react-i18next';
+import { alpha } from '@mui/material/styles';
 
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -30,12 +26,17 @@ import {
   removeLocalFavoriteAsset,
   togglePriceView,
 } from 'redux/reducers/home';
+import { useGetFundingRateQuery } from 'redux/api/drf/infocore';
 import {
   useCreateFavoriteAssetsMutation,
   useDeleteFavoriteAssetsMutation,
   useGetFavoriteAssetsQuery,
 } from 'redux/api/drf/user';
 import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
+
+import { Trans } from 'react-i18next';
+
+import { DateTime } from 'luxon';
 
 import debounce from 'lodash/debounce';
 import isEmpty from 'lodash/isEmpty';
@@ -52,16 +53,21 @@ import MaterialReactTable from 'components/MaterialReactTable';
 
 import { coinicons } from 'assets/exports';
 
-export default function RealTimeCoinsTable() {
+import { MARKET_CODE_LIST } from 'constants/lists';
+
+export default function RealTimePremiumTable({
+  t,
+  language,
+  loggedin,
+  theme,
+  timezone,
+  matchLargeScreen,
+}) {
   const dispatch = useDispatch();
 
   const favoriteAssetRef = useRef();
 
-  const { i18n, t } = useTranslation();
-
-  const theme = useTheme();
-
-  const { loggedin } = useSelector((state) => state.auth);
+  const [assets, setAssets] = useState([]);
 
   const [expanded, setExpanded] = useState({});
 
@@ -76,26 +82,10 @@ export default function RealTimeCoinsTable() {
   const isTetherPriceView = useSelector(
     (state) => state.home.priceView === 'tether'
   );
-  const { assets } = useSelector((state) => state.websocket);
 
   const isKimpExchange =
     isKoreanMarket(marketCodes?.targetMarketCode) &&
     !isKoreanMarket(marketCodes?.originMarketCode);
-
-  // const isKimpPriceView = priceView === 'kimp';
-  // const isKimp =
-  //   isKoreanMarket(marketCodes?.targetMarketCode) &&
-  //   !isKoreanMarket(marketCodes?.originMarketCode) &&
-  //   priceView === 'kimp';
-
-  // const { data: realTimeData, isLoading } = useGetWsCoinsQuery(
-  //   {
-  //     ...marketCodes,
-  //     period: REALTIME_INTERVAL_KEY,
-  //     isTableData: true,
-  //   },
-  //   { skip: !marketCodes }
-  // );
 
   const { data: realTimeData, isLoading } = useGetRealTimeKlineQuery(
     {
@@ -106,16 +96,46 @@ export default function RealTimeCoinsTable() {
     { skip: !marketCodes }
   );
 
+  const realTimeDataList = useMemo(
+    () => orderBy(Object.values(realTimeData ?? {}), 'atp24h', 'desc'),
+    [realTimeData]
+  );
+
   const { data: favoriteAssets } = useGetFavoriteAssetsQuery(marketCodes, {
     skip: !(loggedin && marketCodes),
   });
+
+  const { data: targetFundingRate } = useGetFundingRateQuery(
+    {
+      baseAssets: realTimeDataList.map((o) => o.base_asset).join(),
+      marketCode: marketCodes?.targetMarketCode,
+    },
+    {
+      pollingInterval: 1000 * 60,
+      skip:
+        !marketCodes ||
+        marketCodes?.targetMarketCode.includes('SPOT') ||
+        realTimeDataList.length === 0,
+    }
+  );
+  const { data: originFundingRate } = useGetFundingRateQuery(
+    {
+      baseAssets: realTimeDataList.map((o) => o.base_asset).join(),
+      marketCode: marketCodes?.originMarketCode,
+    },
+    {
+      pollingInterval: 1000 * 60,
+      skip:
+        !marketCodes ||
+        marketCodes?.originMarketCode.includes('SPOT') ||
+        realTimeDataList.length === 0,
+    }
+  );
 
   const [createFavoriteAsset, createFavoriteRes] =
     useCreateFavoriteAssetsMutation();
   const [deleteFavoriteAsset, deleteFavoriteRes] =
     useDeleteFavoriteAssetsMutation();
-
-  const matchLargeScreen = useMediaQuery('(min-width:600px)');
 
   const handleAddFavoriteAsset = useCallback(
     (baseAsset) => {
@@ -204,67 +224,128 @@ export default function RealTimeCoinsTable() {
     );
   };
 
-  const renderPriceCell = ({ cell, row: { original } }) => (
-    <>
-      {formatIntlNumber(cell.getValue(), cell.getValue() > 0 ? 0 : 4)}
-      <Box
-        component="small"
-        sx={{
-          color: original.scr > 0 ? 'success.main' : 'error.main',
-          display: 'inline',
-          fontSize: 12,
-          fontWeight: 700,
-          ml: 1,
-        }}
-      >
-        {original.scr > 0 ? '+' : ''}
-        {original.scr?.toFixed(2)}%
-      </Box>
-      <Typography sx={{ color: 'secondary.main' }}>
-        {formatIntlNumber(
-          original.converted_tp,
-          original.converted_tp > 0 ? 0 : 4
-        )}
-      </Typography>
-    </>
-  );
+  const renderPriceCell = ({ cell, row: { original } }) =>
+    isUndefined(cell.getValue()) ? (
+      '...'
+    ) : (
+      <>
+        {formatIntlNumber(cell.getValue(), cell.getValue() > 0 ? 0 : 4)}
+        <Box
+          component="small"
+          sx={{
+            color: original.scr > 0 ? 'success.main' : 'error.main',
+            display: 'inline',
+            fontSize: 12,
+            fontWeight: 700,
+            ml: 1,
+          }}
+        >
+          {original.scr > 0 ? '+' : ''}
+          {original.scr?.toFixed(2)}%
+        </Box>
+        <Typography sx={{ color: 'secondary.main' }}>
+          {formatIntlNumber(
+            original.converted_tp,
+            original.converted_tp > 0 ? 0 : 4
+          )}
+        </Typography>
+      </>
+    );
 
-  const renderPremiumCell = ({ cell }) => (
-    <>
+  const renderPremiumCell = ({ cell }) =>
+    isUndefined(cell.getValue()) ? (
+      '...'
+    ) : (
+      <>
+        <Typography sx={{ display: 'inline', fontSize: 17, fontWeight: 700 }}>
+          {formatIntlNumber(cell.getValue(), 2, 3)}
+        </Typography>{' '}
+        <small>%</small>
+      </>
+    );
+
+  const renderTetherCell = ({ cell, row: { original } }) =>
+    isUndefined(cell.getValue()) ? (
+      '...'
+    ) : (
       <Typography sx={{ display: 'inline', fontSize: 17, fontWeight: 700 }}>
-        {formatIntlNumber(cell.getValue(), 2, 3)}
-      </Typography>{' '}
-      <small>%</small>
-    </>
-  );
-
-  const renderTetherCell = ({ cell, row: { original } }) => (
-    <Typography sx={{ display: 'inline', fontSize: 17, fontWeight: 700 }}>
-      {formatIntlNumber(original.dollar * (1 + cell.getValue() * 0.01), 1, 1)}
-    </Typography>
-  );
-
-  const renderSpreadCell = ({ cell }) => (
-    <>
-      {/* TODO: Check if color is ok  */}
-      {/* <Box
-        sx={
-          {
-            // color: `${cell.getValue() < 0 ? 'error' : 'success'}.main`,
-            // fontWeight: 700,
-          }
-        }
-      > */}
-      {cell.getValue() > 0 ? '+' : ''}
-      {formatIntlNumber(cell.getValue(), 2, 2)}{' '}
-      <Typography
-        sx={{ color: 'secondary.main', display: 'inline', fontSize: 12 }}
-      >
-        %p
+        {formatIntlNumber(original.dollar * (1 + cell.getValue() * 0.01), 1, 1)}
       </Typography>
-      {/* </Box> */}
-    </>
-  );
+    );
+
+  const renderSpreadCell = ({ cell }) =>
+    isUndefined(cell.getValue()) ? (
+      '...'
+    ) : (
+      <>
+        {cell.getValue() > 0 ? '+' : ''}
+        {formatIntlNumber(cell.getValue(), 2, 2)}{' '}
+        <Box component="span" sx={{ color: 'secondary.main', fontSize: 12 }}>
+          %p
+        </Box>
+      </>
+    );
+
+  const renderFundingRateHeader = ({ column }) => {
+    const marketCode = MARKET_CODE_LIST.find(
+      (o) =>
+        o.value ===
+        (column.id === 'targetFundingRate'
+          ? marketCodes?.targetMarketCode
+          : marketCodes?.originMarketCode)
+    );
+    if (!marketCode) return column.columnDef.header;
+    return (
+      <Tooltip title={marketCode.getLabel()} placement="bottom-end">
+        <Stack direction="row" sx={{ alignItems: 'center' }}>
+          <SvgIcon sx={{ fontSize: 12 }}>
+            <marketCode.icon />
+          </SvgIcon>
+          <Box component="span" sx={{ ml: 1 }}>
+            {column.columnDef.header}
+          </Box>
+        </Stack>
+      </Tooltip>
+    );
+  };
+
+  const renderFundingRateCell = ({ cell, column, row }) => {
+    if (isUndefined(cell.getValue())) return '...';
+    const fundingRate =
+      column.id === 'targetFundingRate'
+        ? row.original.targetFR
+        : row.original.originFR;
+    const dateTimeNow = fundingRate?.datetime_now
+      ? DateTime.fromISO(fundingRate.datetime_now)
+      : null;
+    const fundingTime = fundingRate?.funding_time
+      ? DateTime.fromISO(fundingRate.funding_time)
+      : null;
+    const diff =
+      dateTimeNow && fundingTime
+        ? fundingTime
+            .diff(dateTimeNow, ['hours', 'minutes', 'seconds'])
+            .toObject()
+        : null;
+    return (
+      <>
+        {formatIntlNumber(cell.getValue(), 1, 3)} <small>%</small>
+        {diff && (
+          <Box
+            sx={{ color: 'secondary.main', fontSize: 14, fontStyle: 'italic' }}
+          >
+            <Trans>
+              <strong>{{ hours: diff.hours }}</strong>
+              <small>h</small> <strong>{{ minutes: diff.minutes }}</strong>
+              <small>m</small>{' '}
+              <strong>{{ seconds: diff.seconds.toFixed(0) }}</strong>
+              <small>s</small> <strong>left</strong>
+            </Trans>
+          </Box>
+        )}
+      </>
+    );
+  };
 
   const sortWithStarred = useCallback((rowA, rowB, columnId) => {
     if (
@@ -284,10 +365,10 @@ export default function RealTimeCoinsTable() {
 
   const tableData = useMemo(
     () =>
-      isEmpty(realTimeData)
+      isEmpty(realTimeDataList)
         ? assets.map((asset) => ({ name: asset }))
         : orderBy(
-            Object.values(realTimeData ?? {})?.map((assetData) => {
+            realTimeDataList?.map((assetData) => {
               const asset = assetData.base_asset;
               let favoriteAssetId;
               if (loggedin) favoriteAssetId = favoriteAssets?.[asset];
@@ -295,6 +376,9 @@ export default function RealTimeCoinsTable() {
                 const index = localFavoriteAssets?.indexOf(asset);
                 favoriteAssetId = index < 0 ? undefined : index;
               }
+
+              const targetFR = targetFundingRate?.[asset];
+              const originFR = originFundingRate?.[asset];
               return {
                 name: asset,
                 favoriteAssetId,
@@ -304,13 +388,32 @@ export default function RealTimeCoinsTable() {
                 spread: assetData
                   ? assetData.SL_close - assetData.LS_close
                   : '',
+                ...(targetFR
+                  ? {
+                      targetFundingRate: targetFR.funding_rate * 100,
+                      targetFR,
+                    }
+                  : {}),
+                ...(originFR
+                  ? {
+                      originFundingRate: originFR.funding_rate * 100,
+                      originFR,
+                    }
+                  : {}),
                 ...assetData,
               };
             }) ?? [],
             (o) => !isUndefined(o.favoriteAssetId),
             'desc'
           ),
-    [realTimeData, favoriteAssets, localFavoriteAssets, loggedin]
+    [
+      realTimeDataList,
+      targetFundingRate,
+      originFundingRate,
+      favoriteAssets,
+      localFavoriteAssets,
+      loggedin,
+    ]
   );
 
   const columns = useMemo(
@@ -347,15 +450,6 @@ export default function RealTimeCoinsTable() {
         size: 50,
         Cell: renderPriceCell,
       },
-      // {
-      //   header: isMarketKorean(marketCodes?.targetMarketCode)
-      //     ? t('KIMP')
-      //     : t('Premium'),
-      //   accessorKey: 'tp_close',
-      //   enableGlobalFilter: false,
-      //   size: 50,
-      //   Cell: renderPremiumCell,
-      // },
       {
         header: isKimpExchange
           ? [isTetherPriceView ? t('Enter Tether') : t('Enter KIMP')]
@@ -381,25 +475,31 @@ export default function RealTimeCoinsTable() {
         size: 50,
         Cell: renderSpreadCell,
       },
-      // {
-      //   header: t('52-Week High'),
-      //   accessorKey: 'weekhigh',
-      //   enableGlobalFilter: false,
-      //   size: 50,
-      // },
-      // {
-      //   header: t('52-Week Low'),
-      //   accessorKey: 'weeklow',
-      //   enableGlobalFilter: false,
-      //   size: 50,
-      //   Cell: ({ cell }) => formatIntlNumber(cell.getValue(), 4),
-      // },
+      {
+        header: t('Funding Rate'),
+        accessorKey: 'targetFundingRate',
+        enableGlobalFilter: false,
+        size: 60,
+        Header: renderFundingRateHeader,
+        Cell: renderFundingRateCell,
+      },
+      {
+        header: t('Funding Rate'),
+        accessorKey: 'originFundingRate',
+        enableGlobalFilter: false,
+        size: 60,
+        Header: renderFundingRateHeader,
+        Cell: renderFundingRateCell,
+      },
       {
         header: t('Volume (24h)'),
         accessorKey: 'atp24h',
         enableGlobalFilter: false,
         size: 50,
-        Cell: ({ cell }) => formatShortNumber(cell.getValue(), 2),
+        Cell: ({ cell }) =>
+          isUndefined(cell.getValue())
+            ? '...'
+            : formatShortNumber(cell.getValue(), 2),
       },
       {
         header: t('Expand'),
@@ -414,17 +514,21 @@ export default function RealTimeCoinsTable() {
         Header: <span />,
       },
     ],
-    [i18n.language, loggedin, marketCodes, isTetherPriceView]
+    [language, loggedin, marketCodes, isTetherPriceView]
   );
 
   useEffect(() => {
     if (createFavoriteRes?.isSuccess) window.scrollTo(0, 0);
   }, [createFavoriteRes?.isSuccess]);
 
-  // TODO: Check if this is needed
-  // useEffect(() => {
-  //   setExpanded({});
-  // }, [marketCodes]);
+  useEffect(() => {
+    if (realTimeDataList.length > 0)
+      setAssets(realTimeDataList.map((item) => item.base_asset));
+  }, [realTimeDataList]);
+
+  useEffect(() => {
+    setExpanded({});
+  }, [marketCodes]);
 
   return (
     <Box>
@@ -433,10 +537,8 @@ export default function RealTimeCoinsTable() {
       )}
       {isKoreanMarket(marketCodes?.targetMarketCode) &&
         !isKoreanMarket(marketCodes?.originMarketCode) && (
-          <Box sx={{ mx: 1 }}>
+          <Box sx={{ mb: 1, mx: 1 }}>
             <ToggleButton
-              // color={isKimpPriceView ? 'secondary' : 'info'}
-              // color="info"
               size="small"
               selected={isTetherPriceView}
               value=""
@@ -446,7 +548,6 @@ export default function RealTimeCoinsTable() {
               sx={{ border: 0, px: 1, py: 0.5 }}
             >
               {t('View Tether conversion')}
-              {/* {isKimpPriceView ? t('View Tether conversion') : t('View KIMP')} */}
             </ToggleButton>
           </Box>
         )}
@@ -461,13 +562,15 @@ export default function RealTimeCoinsTable() {
             // isStarred: matchLargeScreen,
             // weekhigh: matchLargeScreen,
             // weeklow: matchLargeScreen,
+            originFundingRate: !marketCodes?.originMarketCode.includes('SPOT'),
+            targetFundingRate: !marketCodes?.targetMarketCode.includes('SPOT'),
             expand: matchLargeScreen,
             'mrt-row-expand': false,
             // 'mrt-row-select': false,
           },
           density: 'compact',
           showColumnFilters: false,
-          sorting: [{ id: 'atp24h', desc: true }],
+          // sorting: [{ id: 'atp24h', desc: true }],
         }}
         state={{
           expanded,
@@ -488,6 +591,7 @@ export default function RealTimeCoinsTable() {
                 isTetherPriceView={isTetherPriceView}
                 onAddFavoriteAsset={handleAddFavoriteAsset}
                 onRemoveFavoriteAsset={handleRemoveFavoriteAsset}
+                timezone={timezone}
               />
             </Collapse>
           </Box>

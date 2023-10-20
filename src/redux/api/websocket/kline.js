@@ -1,11 +1,9 @@
 import isEqual from 'lodash/isEqual';
 import memoize from 'lodash/memoize';
-import uniq from 'lodash/uniq';
 
 import { DateTime } from 'luxon';
 
 import websocketApi from 'redux/api/websocket';
-import { storeAssetsList } from 'redux/reducers/websocket';
 
 import { DATE_FORMAT_API_QUERY } from 'constants';
 
@@ -15,13 +13,7 @@ const api = websocketApi.injectEndpoints({
       queryFn: () => ({ data: {} }),
       onCacheEntryAdded: async (
         args,
-        {
-          cacheDataLoaded,
-          cacheEntryRemoved,
-          dispatch,
-          getState,
-          updateCachedData,
-        }
+        { cacheDataLoaded, cacheEntryRemoved, updateCachedData }
       ) => {
         const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/kline/`);
         url.searchParams.set('target_market_code', args.targetMarketCode);
@@ -43,9 +35,9 @@ const api = websocketApi.injectEndpoints({
             const result = JSON.parse(message.result);
             updateCachedData((draft) => {
               result.forEach((item) => {
-                const dateTimeString = DateTime.fromMillis(item.datetime_now, {
-                  zone: 'utc',
-                }).toFormat(DATE_FORMAT_API_QUERY);
+                const dateTimeString = DateTime.fromMillis(
+                  item.datetime_now
+                ).toFormat(DATE_FORMAT_API_QUERY);
                 item.datetime_now = DateTime.fromISO(dateTimeString).toMillis();
 
                 if (!(item.base_asset in draft)) draft[item.base_asset] = {};
@@ -53,12 +45,6 @@ const api = websocketApi.injectEndpoints({
                   draft[item.base_asset] = item;
               });
             });
-            if (args.isTableData) {
-              const assets = uniq(result.map((asset) => asset.base_asset));
-              const state = getState();
-              if (assets.length > 0 && !isEqual(assets, state.websocket.assets))
-                dispatch(storeAssetsList(assets));
-            }
           } catch {
             /* empty */
           }

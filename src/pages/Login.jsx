@@ -35,7 +35,7 @@ export default function Login() {
 
   if (user)
     return (
-      <Navigate replace to={user?.role === 'visitor' ? '/register' : '/'} />
+      <Navigate replace to={user.role === 'visitor' ? '/register' : '/'} />
     );
 
   return (

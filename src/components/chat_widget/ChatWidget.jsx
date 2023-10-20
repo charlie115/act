@@ -29,8 +29,6 @@ import { Trans, useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { blockUser, unblockUser } from 'redux/reducers/chat';
 
-import { DateTime } from 'luxon';
-
 import {
   useGetPastMessagesQuery,
   useGetRandomUsernameQuery,
@@ -38,8 +36,6 @@ import {
 import { useGetMessagesQuery } from 'redux/api/websocket/chat';
 
 import useRefWithCallback from 'hooks/useRefWithCallback';
-
-import { DATE_FORMAT_API_QUERY } from 'constants';
 
 import ChatInput from './ChatInput';
 import ChatMenu from './ChatMenu';
@@ -54,12 +50,14 @@ export default function ChatWidget({ isVisible }) {
 
   const { t } = useTranslation();
 
+  const { timezone } = useSelector((state) => state.app);
   const { loggedin, user } = useSelector((state) => state.auth);
   const { blocklist, enableNotification, nickname } = useSelector(
     (state) => state.chat
   );
 
-  const chatUsername = user?.username ?? nickname;
+  const chatUsername =
+    user && user.role !== 'visitor' ? user.username : nickname;
 
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -74,8 +72,7 @@ export default function ChatWidget({ isVisible }) {
 
   const [isAutoScroll, setIsAutoScroll] = useState(true);
 
-  const [startTime, setStartTime] = useState(null);
-  const [endTime, setEndTime] = useState(null);
+  const [pastMessagesPage, setPastMessagesPage] = useState(1);
 
   const [blockedUser, setBlockedUser] = useState(null);
 
@@ -92,14 +89,22 @@ export default function ChatWidget({ isVisible }) {
       [isAutoScroll]
     );
 
-  const { data: pastMessages, isFetching: isPastMessagesFetching } =
-    useGetPastMessagesQuery({
-      startTime,
-      endTime,
-    });
+  const {
+    data: pastMessages,
+    error: pastMessagesError,
+    isError: isPastMessagesError,
+    isFetching: isPastMessagesFetching,
+    isSuccess: isPastMessagesSuccess,
+  } = useGetPastMessagesQuery(
+    { page: pastMessagesPage, tz: timezone },
+    { skip: pastMessagesPage === null }
+  );
   const { data } = useGetMessagesQuery();
 
-  useGetRandomUsernameQuery({}, { skip: loggedin || nickname });
+  useGetRandomUsernameQuery(
+    {},
+    { skip: (loggedin && user?.role !== 'visitor') || nickname }
+  );
 
   const renderMessages = useMemo(
     () =>
@@ -145,6 +150,14 @@ export default function ChatWidget({ isVisible }) {
     if (pastMessages?.length > 0)
       setVisibleMessages((state) => [...(pastMessages || []), ...state]);
   }, [pastMessages]);
+
+  useEffect(() => {
+    if (
+      isPastMessagesError &&
+      pastMessagesError?.data?.detail === 'Invalid page.'
+    )
+      setPastMessagesPage(null);
+  }, [pastMessagesError, isPastMessagesError]);
 
   useEffect(() => {
     if (blockedUser) {
@@ -283,28 +296,18 @@ export default function ChatWidget({ isVisible }) {
                 >
                   {ref.current && (
                     <Box sx={{ textAlign: 'center', mb: 2, mt: 0 }}>
-                      <LoadMoreLink
-                        href="#"
-                        underline="hover"
-                        onClick={() => {
-                          const [firstMessage] = renderMessages;
-                          const newEndTime = firstMessage
-                            ? DateTime.fromISO(firstMessage.datetime).minus({
-                                second: 1,
-                              })
-                            : DateTime.now();
-                          setStartTime(
-                            newEndTime
-                              .minus({ hours: 2 })
-                              .toFormat(DATE_FORMAT_API_QUERY)
-                          );
-                          setEndTime(
-                            newEndTime.toFormat(DATE_FORMAT_API_QUERY)
-                          );
-                        }}
-                      >
-                        {t('Load more messages')}...
-                      </LoadMoreLink>
+                      {isPastMessagesSuccess && pastMessagesPage !== null && (
+                        <LoadMoreLink
+                          disabled={isPastMessagesFetching}
+                          href="#"
+                          underline="hover"
+                          onClick={() =>
+                            setPastMessagesPage(pastMessagesPage + 1)
+                          }
+                        >
+                          {t('Load more messages')}...
+                        </LoadMoreLink>
+                      )}
                     </Box>
                   )}
                   {renderMessages.map((item, idx) => (

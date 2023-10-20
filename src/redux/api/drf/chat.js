@@ -2,6 +2,8 @@ import drfApi from 'redux/api/drf';
 
 import { DateTime } from 'luxon';
 
+import sortBy from 'lodash/sortBy';
+
 const api = drfApi.injectEndpoints({
   endpoints: (builder) => ({
     getPastMessages: builder.query({
@@ -10,7 +12,7 @@ const api = drfApi.injectEndpoints({
         params,
       }),
       transformResponse: (response) =>
-        response?.map((item, idx) => ({
+        sortBy(response?.results || [], 'datetime')?.map((item, idx) => ({
           ...item,
           id: `past-${idx}-${DateTime.now().toMillis()}`,
         })),

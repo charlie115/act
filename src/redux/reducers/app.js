@@ -3,6 +3,7 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
   language: 'ko',
   theme: 'dark',
+  timezone: 'Asia/Seoul',
 };
 
 export const appSlice = createSlice({
@@ -12,12 +13,15 @@ export const appSlice = createSlice({
     changeLanguage: (state, { payload }) => {
       state.language = payload;
     },
+    setTimezone: (state, { payload }) => {
+      state.timezone = payload;
+    },
     toggleTheme: (state, { payload }) => {
       state.theme = payload;
     },
   },
 });
 
-export const { changeLanguage, toggleTheme } = appSlice.actions;
+export const { changeLanguage, setTimezone, toggleTheme } = appSlice.actions;
 
 export default appSlice.reducer;

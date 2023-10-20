@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import { RouterProvider } from 'react-router-dom';
 
@@ -6,24 +6,31 @@ import { alpha, ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import GlobalStyles from '@mui/material/GlobalStyles';
 
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { setTimezone } from 'redux/reducers/app';
+
 import { useTranslation } from 'react-i18next';
 
-import { Settings } from 'luxon';
+import { DateTime, Settings } from 'luxon';
 
 import FullScreenLoading from 'components/FullScreenLoading';
 
 import router from 'configs/router';
 import theme, { darkTheme } from 'configs/theme';
 
-// Settings.defaultZone = 'utc';
-
 function App() {
+  const dispatch = useDispatch();
+
   const { i18n } = useTranslation();
 
   const appTheme = useSelector((state) => state.app.theme);
 
   const currentTheme = appTheme === 'light' ? theme : darkTheme;
+
+  useEffect(() => {
+    Settings.defaultZone = DateTime.local().zoneName;
+    dispatch(setTimezone(Settings.defaultZone.zoneName));
+  }, []);
 
   if (!i18n.isInitialized) return null;
 

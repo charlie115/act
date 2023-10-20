@@ -28,7 +28,7 @@ import { usePrevious } from '@uidotdev/usehooks';
 import { useTranslation } from 'react-i18next';
 import { alpha, useTheme } from '@mui/material/styles';
 
-import { useGetHistoricalKlineQuery } from 'redux/api/drf/kline';
+import { useGetHistoricalKlineQuery } from 'redux/api/drf/infocore';
 import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
@@ -48,6 +48,7 @@ function LightWeightKlineChart({
   isTetherPriceView,
   onAddFavoriteAsset,
   onRemoveFavoriteAsset,
+  timezone,
 }) {
   const theme = useTheme();
   const { i18n, t } = useTranslation();
@@ -89,6 +90,7 @@ function LightWeightKlineChart({
       ...marketCodes,
       interval,
       baseAsset: baseAsset?.name,
+      tz: timezone,
     },
     { skip: !marketCodes }
   );
@@ -97,9 +99,10 @@ function LightWeightKlineChart({
       {
         ...marketCodes,
         interval,
-        baseAsset: baseAsset?.name,
         startTime,
         endTime,
+        baseAsset: baseAsset?.name,
+        tz: timezone,
       },
       {
         skip: !marketCodes || !(startTime && endTime),
