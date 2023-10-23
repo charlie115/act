@@ -20,7 +20,7 @@ const ToggleBtn = styled(ToggleButton)(() => ({
   textTransform: 'none',
 }));
 
-function IntervalSelector({ defaultValue, onChange }) {
+function IntervalSelector({ defaultValue, disabled, onChange }) {
   const { i18n, t } = useTranslation();
 
   const [selectedIdx, setSelectedIdx] = useState(
@@ -61,6 +61,7 @@ function IntervalSelector({ defaultValue, onChange }) {
     <Box>
       <ToggleButtonGroup
         exclusive
+        disabled={disabled}
         value={selectedIdx}
         onChange={(e, newIdx) => {
           e.stopPropagation();
@@ -77,6 +78,7 @@ function IntervalSelector({ defaultValue, onChange }) {
         ))}
       </ToggleButtonGroup>
       <Button
+        disabled={disabled}
         color="secondary"
         size="small"
         variant="outlined"

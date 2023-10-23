@@ -88,11 +88,7 @@ export default function RealTimePremiumTable({
     !isKoreanMarket(marketCodes?.originMarketCode);
 
   const { data: realTimeData, isLoading } = useGetRealTimeKlineQuery(
-    {
-      ...marketCodes,
-      interval: '1T',
-      isTableData: true,
-    },
+    { ...marketCodes, interval: '1T' },
     { skip: !marketCodes }
   );
 
@@ -164,6 +160,23 @@ export default function RealTimePremiumTable({
     []
   );
 
+  const renderNameHeader = ({ column }) => (
+    <Stack
+      direction="row"
+      spacing={1}
+      sx={{
+        alignItems: 'center',
+        color: column.getIsSorted()
+          ? theme.palette.text.main
+          : theme.palette.grey[theme.palette.mode === 'dark' ? '100' : '700'],
+        fontSize: '0.725em',
+      }}
+    >
+      <Box sx={{ width: '15px' }} />
+      {column.columnDef.header}
+    </Stack>
+  );
+
   const renderNameCell = ({ renderedCellValue, row }) => (
     <Stack
       direction="row"
@@ -178,16 +191,7 @@ export default function RealTimePremiumTable({
       ) : (
         <BlockIcon color="secondary" sx={{ fontSize: 15 }} />
       )}
-      <Box component="span" sx={{ fontSize: 16 }}>
-        {renderedCellValue}
-      </Box>
-    </Stack>
-  );
-
-  const renderNameHeader = ({ column }) => (
-    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-      <Box sx={{ width: '15px' }} />
-      {column.columnDef.header}
+      <Box>{renderedCellValue}</Box>
     </Stack>
   );
 
@@ -234,8 +238,6 @@ export default function RealTimePremiumTable({
           component="small"
           sx={{
             color: original.scr > 0 ? 'success.main' : 'error.main',
-            display: 'inline',
-            fontSize: 12,
             fontWeight: 700,
             ml: 1,
           }}
@@ -243,12 +245,14 @@ export default function RealTimePremiumTable({
           {original.scr > 0 ? '+' : ''}
           {original.scr?.toFixed(2)}%
         </Box>
-        <Typography sx={{ color: 'secondary.main' }}>
-          {formatIntlNumber(
-            original.converted_tp,
-            original.converted_tp > 0 ? 0 : 4
-          )}
-        </Typography>
+        <Box>
+          <Box component="small" sx={{ color: 'secondary.main' }}>
+            {formatIntlNumber(
+              original.converted_tp,
+              original.converted_tp > 0 ? 0 : 4
+            )}
+          </Box>
+        </Box>
       </>
     );
 
@@ -257,9 +261,9 @@ export default function RealTimePremiumTable({
       '...'
     ) : (
       <>
-        <Typography sx={{ display: 'inline', fontSize: 17, fontWeight: 700 }}>
+        <Box component="span" sx={{ fontWeight: 700 }}>
           {formatIntlNumber(cell.getValue(), 2, 3)}
-        </Typography>{' '}
+        </Box>{' '}
         <small>%</small>
       </>
     );
@@ -268,9 +272,9 @@ export default function RealTimePremiumTable({
     isUndefined(cell.getValue()) ? (
       '...'
     ) : (
-      <Typography sx={{ display: 'inline', fontSize: 17, fontWeight: 700 }}>
+      <Box component="span" sx={{ fontWeight: 700 }}>
         {formatIntlNumber(original.dollar * (1 + cell.getValue() * 0.01), 1, 1)}
-      </Typography>
+      </Box>
     );
 
   const renderSpreadCell = ({ cell }) =>
@@ -280,7 +284,7 @@ export default function RealTimePremiumTable({
       <>
         {cell.getValue() > 0 ? '+' : ''}
         {formatIntlNumber(cell.getValue(), 2, 2)}{' '}
-        <Box component="span" sx={{ color: 'secondary.main', fontSize: 12 }}>
+        <Box component="small" sx={{ color: 'secondary.main' }}>
           %p
         </Box>
       </>
@@ -297,13 +301,11 @@ export default function RealTimePremiumTable({
     if (!marketCode) return column.columnDef.header;
     return (
       <Tooltip title={marketCode.getLabel()} placement="bottom-end">
-        <Stack direction="row" sx={{ alignItems: 'center' }}>
-          <SvgIcon sx={{ fontSize: 12 }}>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+          <SvgIcon sx={{ fontSize: 11 }}>
             <marketCode.icon />
           </SvgIcon>
-          <Box component="span" sx={{ ml: 1 }}>
-            {column.columnDef.header}
-          </Box>
+          <Box component="span">{column.columnDef.header}</Box>
         </Stack>
       </Tooltip>
     );
@@ -331,9 +333,7 @@ export default function RealTimePremiumTable({
       <>
         {formatIntlNumber(cell.getValue(), 1, 3)} <small>%</small>
         {diff && (
-          <Box
-            sx={{ color: 'secondary.main', fontSize: 14, fontStyle: 'italic' }}
-          >
+          <Box sx={{ color: 'secondary.main', fontStyle: 'italic' }}>
             <Trans>
               <strong>{{ hours: diff.hours }}</strong>
               <small>h</small> <strong>{{ minutes: diff.minutes }}</strong>
@@ -447,7 +447,8 @@ export default function RealTimePremiumTable({
         header: t('Current Price'),
         accessorKey: 'tp',
         enableGlobalFilter: false,
-        size: 50,
+        size: 60,
+        muiTableBodyCellProps: { sx: { fontSize: '0.85rem' } },
         Cell: renderPriceCell,
       },
       {
@@ -472,7 +473,8 @@ export default function RealTimePremiumTable({
         header: t('Spread'),
         accessorKey: 'spread',
         enableGlobalFilter: false,
-        size: 50,
+        size: 40,
+        muiTableBodyCellProps: { sx: { fontSize: '0.85rem' } },
         Cell: renderSpreadCell,
       },
       {
@@ -495,7 +497,7 @@ export default function RealTimePremiumTable({
         header: t('Volume (24h)'),
         accessorKey: 'atp24h',
         enableGlobalFilter: false,
-        size: 50,
+        size: 40,
         Cell: ({ cell }) =>
           isUndefined(cell.getValue())
             ? '...'
@@ -514,7 +516,7 @@ export default function RealTimePremiumTable({
         Header: <span />,
       },
     ],
-    [language, loggedin, marketCodes, isTetherPriceView]
+    [language, loggedin, marketCodes, isTetherPriceView, theme]
   );
 
   useEffect(() => {
@@ -559,12 +561,12 @@ export default function RealTimePremiumTable({
         initialState={{
           columnOrder: columns.map((col) => col.accessorKey),
           columnVisibility: {
-            // isStarred: matchLargeScreen,
-            // weekhigh: matchLargeScreen,
-            // weeklow: matchLargeScreen,
             originFundingRate: !marketCodes?.originMarketCode.includes('SPOT'),
             targetFundingRate: !marketCodes?.targetMarketCode.includes('SPOT'),
+            spread: matchLargeScreen,
+            favoriteAssetId: matchLargeScreen,
             expand: matchLargeScreen,
+            atp24h: matchLargeScreen,
             'mrt-row-expand': false,
             // 'mrt-row-select': false,
           },
@@ -583,7 +585,7 @@ export default function RealTimePremiumTable({
         sortingFns={{ sortWithStarred }}
         renderDetailPanel={({ row }) => (
           <Box>
-            <Collapse unmountOnExit in={row.getIsExpanded()}>
+            {row.getIsExpanded() && (
               <LightWeightKlineChart
                 baseAsset={row.original}
                 marketCodes={marketCodes}
@@ -593,7 +595,7 @@ export default function RealTimePremiumTable({
                 onRemoveFavoriteAsset={handleRemoveFavoriteAsset}
                 timezone={timezone}
               />
-            </Collapse>
+            )}
           </Box>
         )}
         renderTopToolbarCustomActions={
@@ -613,10 +615,7 @@ export default function RealTimePremiumTable({
           },
         }}
         muiTableHeadCellProps={{ align: 'left' }}
-        muiTableBodyCellProps={{
-          align: 'left',
-          sx: { fontSize: 16 },
-        }}
+        muiTableBodyCellProps={{ align: 'left' }}
         muiTableBodyRowProps={({ row }) => ({
           onClick: (e) => {
             if (!e.target.classList.contains('Mui-TableBodyCell-DetailPanel'))

@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import ListSubheader from '@mui/material/ListSubheader';
@@ -45,6 +46,7 @@ function MarketCodeSelector({ onChange }) {
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const [bookmarkedPairs, setBookmarkedPairs] = useState([]);
   const [isBookmarked, setIsBookmarked] = useState(false);
 
   const bookmarkedMarketCodePairs = useSelector(
@@ -91,6 +93,12 @@ function MarketCodeSelector({ onChange }) {
       (pair) => pair[0] === targetMarketCode && pair[1] === originMarketCode
     );
     setIsBookmarked(!!selectedPair);
+    setBookmarkedPairs(
+      bookmarkedMarketCodePairs.filter(
+        (pair) =>
+          !(pair[0] === targetMarketCode && pair[1] === originMarketCode)
+      )
+    );
   }, [bookmarkedMarketCodePairs, targetMarketCode, originMarketCode]);
 
   return (
@@ -185,45 +193,41 @@ function MarketCodeSelector({ onChange }) {
               )}
             </IconButton>
           }
-          sx={{ ':hover': { backgroundColor: 'unset' } }}
+          sx={{ bgcolor: 'primary.main' }}
         >
-          <ListItemText>{marketCodeList[targetMarketCode]?.label}</ListItemText>
+          {marketCodeList[targetMarketCode]?.label}
           <SyncAltIcon color="secondary" fontSize="small" sx={{ mx: 1 }} />
-          <ListItemText>{marketCodeList[originMarketCode]?.label}</ListItemText>
+          {marketCodeList[originMarketCode]?.label}
         </ListItem>
         <Divider />
         <MenuItem disabled>{t('Bookmarked Pairs')}</MenuItem>
-        {bookmarkedMarketCodePairs
-          .filter(
-            (pair) =>
-              !(pair[0] === targetMarketCode && pair[1] === originMarketCode)
-          )
-          .map((pair) => (
-            <ListItem
-              key={pair.join()}
-              secondaryAction={
-                <IconButton
-                  edge="end"
-                  aria-label="bookmark"
-                  onClick={() =>
-                    dispatch(
-                      toggleBookmarkMarketCodePair([
-                        targetMarketCode,
-                        originMarketCode,
-                      ])
-                    )
-                  }
-                >
-                  <BookmarkRemoveIcon color="accent" />
-                </IconButton>
-              }
-              sx={{ ':hover': { backgroundColor: 'unset' } }}
-            >
-              <ListItemText>{marketCodeList[pair[0]]?.label}</ListItemText>
-              <SyncAltIcon color="secondary" fontSize="small" sx={{ mx: 1 }} />
-              <ListItemText>{marketCodeList[pair[1]]?.label}</ListItemText>
-            </ListItem>
-          ))}
+        {bookmarkedPairs.map((pair) => (
+          <ListItem
+            key={pair.join()}
+            onClick={() => {
+              setTargetMarketCode(pair[0]);
+              setOriginMarketCode(pair[1]);
+              handleMenuClose();
+            }}
+            secondaryAction={
+              <IconButton
+                edge="end"
+                aria-label="bookmark"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dispatch(toggleBookmarkMarketCodePair([pair[0], pair[1]]));
+                }}
+              >
+                <BookmarkRemoveIcon color="accent" />
+              </IconButton>
+            }
+            sx={{ cursor: 'pointer', ':hover': { bgcolor: 'primary.main' } }}
+          >
+            {marketCodeList[pair[0]]?.label}
+            <SyncAltIcon color="secondary" fontSize="small" sx={{ mx: 1 }} />
+            {marketCodeList[pair[1]]?.label}
+          </ListItem>
+        ))}
       </Menu>
     </Stack>
   );

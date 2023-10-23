@@ -31,6 +31,9 @@ export default {
   MuiDialog: { styleOverrides: { root: { zIndex: 1800 } } },
   MuiMenu: { styleOverrides: { root: { zIndex: 1800 } } },
   MuiPopper: { styleOverrides: { root: { zIndex: 1800 } } },
+  MuiTableSortLabel: {
+    styleOverrides: { root: { width: '2.75ch !important' } },
+  },
   MuiToggleButton: {
     styleOverrides: {
       root: ({ ownerState, theme }) => ({

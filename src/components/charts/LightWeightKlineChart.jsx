@@ -9,10 +9,12 @@ import React, {
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid';
+import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import StarIcon from '@mui/icons-material/Star';
 
 import { createChart, CrosshairMode, LineType } from 'lightweight-charts';
@@ -21,6 +23,7 @@ import { DateTime } from 'luxon';
 
 import debounce from 'lodash/debounce';
 import isUndefined from 'lodash/isUndefined';
+import orderBy from 'lodash/orderBy';
 import uniqBy from 'lodash/uniqBy';
 
 import { usePrevious } from '@uidotdev/usehooks';
@@ -39,7 +42,7 @@ import KlineDataSelector from 'components/KlineDataSelector';
 import { DATE_FORMAT_API_QUERY } from 'constants';
 import { INTERVAL_LIST } from 'constants/lists';
 
-const CHART_HEIGHT = 300;
+const CHART_HEIGHT = 250;
 
 function LightWeightKlineChart({
   baseAsset,
@@ -63,7 +66,7 @@ function LightWeightKlineChart({
 
   const [title, setTitle] = useState();
 
-  const [interval, setInterval] = useState('1T');
+  const [klineInterval, setKlineInterval] = useState('1T');
 
   const [klineDataType, setKlineDataType] = useState('tp');
 
@@ -72,10 +75,8 @@ function LightWeightKlineChart({
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
 
-  const [currentData, setCurrentData] = useState([]);
-
   const { data } = useGetRealTimeKlineQuery(
-    { ...marketCodes, interval },
+    { ...marketCodes, interval: klineInterval },
     { skip: !marketCodes }
   );
 
@@ -88,26 +89,32 @@ function LightWeightKlineChart({
   } = useGetHistoricalKlineQuery(
     {
       ...marketCodes,
-      interval,
+      interval: klineInterval,
       baseAsset: baseAsset?.name,
       tz: timezone,
     },
     { skip: !marketCodes }
   );
-  const { data: historicalData, isFetching: isFetchingHistoricalData } =
-    useGetHistoricalKlineQuery(
-      {
-        ...marketCodes,
-        interval,
-        startTime,
-        endTime,
-        baseAsset: baseAsset?.name,
-        tz: timezone,
-      },
-      {
-        skip: !marketCodes || !(startTime && endTime),
-      }
-    );
+  const {
+    data: historicalData,
+    isFetching: isFetchingHistoricalData,
+    isSuccess: isSuccessHistoricalData,
+  } = useGetHistoricalKlineQuery(
+    {
+      ...marketCodes,
+      startTime,
+      endTime,
+      interval: klineInterval,
+      baseAsset: baseAsset?.name,
+      tz: timezone,
+    },
+    {
+      skip: !marketCodes || !(startTime && endTime) || barsInfo?.barsBefore > 0,
+    }
+  );
+
+  const [currentData, setCurrentData] = useState([]);
+  const [preloadedData, setPreloadedData] = useState(initialData ?? []);
 
   const chartRealTimeData = useMemo(() => {
     const value = data?.[baseAsset.name];
@@ -115,25 +122,24 @@ function LightWeightKlineChart({
 
     const time = value.datetime_now;
 
+    const open = value[`${klineDataType}_open`] || 0;
+    const high = value[`${klineDataType}_high`] || 0;
+    const low = value[`${klineDataType}_low`] || 0;
+    const close = value[`${klineDataType}_close`] || 0;
+
     if (isKimpExchange && isTetherPriceView)
       return {
         candlestick: {
           time,
-          open: value.dollar * (1 + value[`${klineDataType}_open`] * 0.01),
-          high: value.dollar * (1 + value[`${klineDataType}_high`] * 0.01),
-          low: value.dollar * (1 + value[`${klineDataType}_low`] * 0.01),
-          close: value.dollar * (1 + value[`${klineDataType}_close`] * 0.01),
+          open: value.dollar * (1 + open * 0.01),
+          high: value.dollar * (1 + high * 0.01),
+          low: value.dollar * (1 + low * 0.01),
+          close: value.dollar * (1 + close * 0.01),
         },
         line: { time, value: value.tp },
       };
     return {
-      candlestick: {
-        time,
-        open: value[`${klineDataType}_open`],
-        high: value[`${klineDataType}_high`],
-        low: value[`${klineDataType}_low`],
-        close: value[`${klineDataType}_close`],
-      },
+      candlestick: { time, open, high, low, close },
       line: { time, value: value.tp },
     };
   }, [data?.[baseAsset.name], isTetherPriceView, klineDataType]);
@@ -141,45 +147,43 @@ function LightWeightKlineChart({
   const chartHistoricalData = useMemo(() => {
     const candlestick = [];
     const line = [];
-    [...currentData, ...(initialData || [])].forEach((item) => {
+    [...currentData, ...(preloadedData || [])].forEach((item) => {
       const time = DateTime.fromISO(item.datetime_now).toMillis();
+      const open = item[`${klineDataType}_open`] || 0;
+      const high = item[`${klineDataType}_high`] || 0;
+      const low = item[`${klineDataType}_low`] || 0;
+      const close = item[`${klineDataType}_close`] || 0;
       if (isKimpExchange && isTetherPriceView)
         candlestick.push({
           time,
-          open: item.dollar * (1 + item[`${klineDataType}_open`] * 0.01),
-          high: item.dollar * (1 + item[`${klineDataType}_high`] * 0.01),
-          low: item.dollar * (1 + item[`${klineDataType}_low`] * 0.01),
-          close: item.dollar * (1 + item[`${klineDataType}_close`] * 0.01),
+          open: item.dollar * (1 + open * 0.01),
+          high: item.dollar * (1 + high * 0.01),
+          low: item.dollar * (1 + low * 0.01),
+          close: item.dollar * (1 + close * 0.01),
         });
-      else
-        candlestick.push({
-          time,
-          open: item[`${klineDataType}_open`],
-          high: item[`${klineDataType}_high`],
-          low: item[`${klineDataType}_low`],
-          close: item[`${klineDataType}_close`],
-        });
+      else candlestick.push({ time, open, high, low, close });
       line.push({
         time,
         value: item.tp,
       });
     });
     return { candlestick, line };
-  }, [currentData, initialData, isTetherPriceView, klineDataType]);
+  }, [currentData, preloadedData, isTetherPriceView, klineDataType]);
 
   const onVisibleLogicalRangeChange = (newVisibleLogicalRange) => {
     const newBarsInfo = candlestickSeriesRef.current.barsInLogicalRange(
       newVisibleLogicalRange
     );
-    if (newBarsInfo !== null && Math.floor(newBarsInfo.barsBefore) < 0)
-      setBarsInfo(newBarsInfo);
+    if (newBarsInfo && Math.floor(newBarsInfo.barsAfter) === 0)
+      setBarsInfo(null);
+    else setBarsInfo(newBarsInfo);
   };
   const debouncedOnVisibleLogicalRangeChange = useCallback(
     debounce(onVisibleLogicalRangeChange, 500, {
       leading: false,
       trailing: true,
     }),
-    [endTime, interval]
+    []
   );
 
   const reinitialize = () => {
@@ -188,6 +192,7 @@ function LightWeightKlineChart({
     setEndTime(null);
 
     setCurrentData([]);
+    setPreloadedData([]);
 
     candlestickSeriesRef.current?.setData([]);
     lineSeriesRef.current?.setData([]);
@@ -254,6 +259,7 @@ function LightWeightKlineChart({
       color: theme.palette.primary.main,
       crosshairMarkerVisible: false,
       // lastValueVisible: false,
+      // lastPriceAnimation: LastPriceAnimationMode.OnDataUpdate,
       lineType: LineType.Curved,
       lineWidth: 1,
       priceFormat: { minMove: 0.01, precision: 2, type: 'price' },
@@ -268,39 +274,57 @@ function LightWeightKlineChart({
         );
       clearTimeout(refetchTimeoutRef.current);
     };
-  }, [marketCodes, interval, isTetherPriceView, i18n.language]);
+  }, [marketCodes, klineInterval, isTetherPriceView, i18n.language]);
 
   useEffect(() => {
     setCurrentData((state) =>
-      uniqBy([...(historicalData || []), ...state], 'datetime_now')
+      orderBy(
+        uniqBy([...(historicalData || []), ...state], 'datetime_now'),
+        'datetime_now',
+        'asc'
+      )
     );
-    if (historicalData?.length === 0) {
+    if (isSuccessHistoricalData && historicalData?.length === 0) {
       chartRef.current.timeScale().fitContent();
       setBarsInfo(null);
     }
-  }, [historicalData]);
+  }, [historicalData, isSuccessHistoricalData]);
+
+  useEffect(() => {
+    setPreloadedData(initialData);
+  }, [initialData]);
 
   useEffect(() => {
     chartRef.current.timeScale().scrollToRealTime();
-  }, [interval]);
+  }, [klineInterval]);
 
+  const prevBarsInfo = usePrevious(barsInfo);
   useEffect(() => {
-    if (!isFetchingHistoricalData && barsInfo) {
-      const { quantity, unit } = INTERVAL_LIST.find(
-        (o) => o.value === interval
-      );
-      const newEndTime = DateTime.fromMillis(barsInfo.from).minus({
-        [unit]: 1,
-      });
-      const newStartTime = newEndTime.minus({
-        [unit]: quantity * Math.abs(Math.floor(barsInfo.barsBefore)) * 50,
-      });
-      setEndTime(newEndTime.toFormat(DATE_FORMAT_API_QUERY));
-      setStartTime(
-        newStartTime.startOf('minute').toFormat(DATE_FORMAT_API_QUERY)
-      );
+    if (
+      !isFetchingHistoricalData &&
+      barsInfo &&
+      Math.floor(barsInfo.barsBefore) < 0
+    ) {
+      const diff = prevBarsInfo
+        ? Math.floor(prevBarsInfo.barsBefore) - Math.floor(barsInfo.barsBefore)
+        : 0;
+      if (!prevBarsInfo || Math.abs(diff) > 10) {
+        const { quantity, unit } = INTERVAL_LIST.find(
+          (o) => o.value === klineInterval
+        );
+        const newEndTime = DateTime.fromMillis(barsInfo.from).minus({
+          [unit]: 1,
+        });
+        const newStartTime = newEndTime.minus({
+          [unit]: quantity * Math.abs(Math.floor(barsInfo.barsBefore)) * 50,
+        });
+        setEndTime(newEndTime.toFormat(DATE_FORMAT_API_QUERY));
+        setStartTime(
+          newStartTime.startOf('minute').toFormat(DATE_FORMAT_API_QUERY)
+        );
+      }
     }
-  }, [barsInfo, interval, isFetchingHistoricalData]);
+  }, [barsInfo, klineInterval, isFetchingHistoricalData]);
 
   useEffect(() => {
     candlestickSeriesRef.current.setData(chartHistoricalData.candlestick);
@@ -308,11 +332,15 @@ function LightWeightKlineChart({
   }, [chartHistoricalData, barsInfo]);
 
   useEffect(() => {
-    if (!isFetchingInitialData && chartRealTimeData) {
+    if (
+      !isFetchingInitialData &&
+      !isFetchingHistoricalData &&
+      chartRealTimeData
+    ) {
       candlestickSeriesRef.current.update(chartRealTimeData.candlestick);
       lineSeriesRef.current.update(chartRealTimeData.line);
     }
-  }, [chartRealTimeData, isFetchingInitialData]);
+  }, [chartRealTimeData, isFetchingHistoricalData, isFetchingInitialData]);
 
   const prevTimestamp = usePrevious(data?.[baseAsset.name]?.datetime_now);
   useEffect(() => {
@@ -332,12 +360,12 @@ function LightWeightKlineChart({
 
   useEffect(() => {
     if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
-  }, [interval, klineDataType, marketCodes]);
+  }, [klineInterval, klineDataType, marketCodes]);
 
   useEffect(() => {
-    reinitialize();
     const value = marketCodes?.targetMarketCode;
     setTitle(`${baseAsset.name} / ${value?.split('/').pop()}`);
+    if (marketCodes) setKlineInterval('1T');
   }, [marketCodes]);
 
   useEffect(() => {
@@ -400,10 +428,11 @@ function LightWeightKlineChart({
             sx={{ display: 'flex', justifyContent: 'center' }}
           >
             <IntervalSelector
-              defaultValue={interval}
+              defaultValue={klineInterval}
+              disabled={isFetchingInitialData || isFetchingHistoricalData}
               onChange={(value) => {
                 reinitialize();
-                setInterval(value);
+                setKlineInterval(value);
               }}
             />
           </Grid>
@@ -426,12 +455,40 @@ function LightWeightKlineChart({
         )}
         <Box
           ref={chartContainerRef}
-          sx={{ pt: 2 }}
+          sx={{ position: 'relative', pt: 2 }}
           onClick={(e) => e.stopPropagation()}
-        />
+        >
+          {barsInfo?.barsAfter > 100 && (
+            <IconButton
+              color="dark"
+              size="small"
+              onClick={() => {
+                chartRef.current.timeScale().scrollToPosition(0, true);
+                setBarsInfo(null);
+                setTimeout(
+                  () =>
+                    chartRef.current
+                      .timeScale()
+                      .applyOptions({ rightOffset: 2, fixRightEdge: true }),
+                  0
+                );
+              }}
+              sx={{
+                bgcolor: 'accent.main',
+                position: 'absolute',
+                bottom: 10,
+                right: 10,
+                zIndex: 3,
+                ':hover': { bgcolor: 'accent.main', opacity: 0.7 },
+              }}
+            >
+              <ArrowForwardIosIcon />
+            </IconButton>
+          )}
+        </Box>
       </Box>
     </Card>
   );
 }
 
-export default React.memo(LightWeightKlineChart);
+export default LightWeightKlineChart;

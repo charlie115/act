@@ -95,7 +95,7 @@ export default configureStore({
       },
     }).concat(
       drfApi.middleware,
-      websocketApi.middleware,
-      loggerMiddleware // TODO: Remove for production
+      websocketApi.middleware
+      // loggerMiddleware // TODO: Remove for production
     ),
 });
