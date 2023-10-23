@@ -22,7 +22,7 @@ const DEFAULT_PROPS = {
   enableColumnFilters: false,
   enableColumnOrdering: false,
   enableColumnResizing: false,
-  enableExpanding: false,
+  enableExpanding: true,
   enableGlobalFilter: true,
   enablePagination: false,
   enableStickyHeader: false,
@@ -41,6 +41,7 @@ const DEFAULT_PROPS = {
 export default function MRTable({
   columns,
   data,
+  state,
   renderDetailPanel,
   renderTopToolbarCustomActions,
   ...props
@@ -91,6 +92,7 @@ export default function MRTable({
         tableInstanceRef={ref}
         columns={cols}
         data={rows}
+        state={state}
         localization={localization}
         positionGlobalFilter={matchLargeScreen ? 'right' : 'left'}
         renderToolbarInternalActions={({ table }) => (

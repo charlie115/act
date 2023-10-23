@@ -26,7 +26,7 @@ import isUndefined from 'lodash/isUndefined';
 import orderBy from 'lodash/orderBy';
 import uniqBy from 'lodash/uniqBy';
 
-import { usePrevious } from '@uidotdev/usehooks';
+import { usePrevious, useVisibilityChange } from '@uidotdev/usehooks';
 
 import { useTranslation } from 'react-i18next';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -53,6 +53,8 @@ function LightWeightKlineChart({
   onRemoveFavoriteAsset,
   timezone,
 }) {
+  const isFocused = useVisibilityChange();
+
   const theme = useTheme();
   const { i18n, t } = useTranslation();
 
@@ -75,9 +77,13 @@ function LightWeightKlineChart({
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
 
+  const [currentData, setCurrentData] = useState([]);
+  const [loadedHistoricalData, setLoadedHistoricalData] = useState([]);
+  const [preloadedData, setPreloadedData] = useState([]);
+
   const { data } = useGetRealTimeKlineQuery(
-    { ...marketCodes, interval: klineInterval },
-    { skip: !marketCodes }
+    { ...marketCodes, interval: klineInterval, component: 'kline-chart' },
+    { skip: !marketCodes || !isFocused }
   );
 
   const {
@@ -113,9 +119,6 @@ function LightWeightKlineChart({
     }
   );
 
-  const [currentData, setCurrentData] = useState([]);
-  const [preloadedData, setPreloadedData] = useState(initialData ?? []);
-
   const chartRealTimeData = useMemo(() => {
     const value = data?.[baseAsset.name];
     if (!value) return null;
@@ -147,7 +150,7 @@ function LightWeightKlineChart({
   const chartHistoricalData = useMemo(() => {
     const candlestick = [];
     const line = [];
-    [...currentData, ...(preloadedData || [])].forEach((item) => {
+    currentData?.forEach((item) => {
       const time = DateTime.fromISO(item.datetime_now).toMillis();
       const open = item[`${klineDataType}_open`] || 0;
       const high = item[`${klineDataType}_high`] || 0;
@@ -168,7 +171,7 @@ function LightWeightKlineChart({
       });
     });
     return { candlestick, line };
-  }, [currentData, preloadedData, isTetherPriceView, klineDataType]);
+  }, [currentData, isTetherPriceView, klineDataType]);
 
   const onVisibleLogicalRangeChange = (newVisibleLogicalRange) => {
     const newBarsInfo = candlestickSeriesRef.current.barsInLogicalRange(
@@ -192,6 +195,7 @@ function LightWeightKlineChart({
     setEndTime(null);
 
     setCurrentData([]);
+    setLoadedHistoricalData([]);
     setPreloadedData([]);
 
     candlestickSeriesRef.current?.setData([]);
@@ -277,22 +281,28 @@ function LightWeightKlineChart({
   }, [marketCodes, klineInterval, isTetherPriceView, i18n.language]);
 
   useEffect(() => {
-    setCurrentData((state) =>
-      orderBy(
-        uniqBy([...(historicalData || []), ...state], 'datetime_now'),
-        'datetime_now',
-        'asc'
-      )
-    );
+    setLoadedHistoricalData((state) => [...(historicalData || []), ...state]);
     if (isSuccessHistoricalData && historicalData?.length === 0) {
       chartRef.current.timeScale().fitContent();
       setBarsInfo(null);
+      setStartTime(null);
+      setEndTime(null);
     }
   }, [historicalData, isSuccessHistoricalData]);
 
   useEffect(() => {
-    setPreloadedData(initialData);
+    setPreloadedData(initialData || []);
   }, [initialData]);
+
+  useEffect(() => {
+    setCurrentData(
+      orderBy(
+        uniqBy([...loadedHistoricalData, ...preloadedData], 'datetime_now'),
+        (o) => DateTime.fromISO(o.datetime_now).toMillis(),
+        'asc'
+      )
+    );
+  }, [loadedHistoricalData, preloadedData]);
 
   useEffect(() => {
     chartRef.current.timeScale().scrollToRealTime();
@@ -450,9 +460,9 @@ function LightWeightKlineChart({
             />
           </Grid>
         </Grid>
-        {(isLoadingInitialData || isFetchingHistoricalData) && (
-          <LinearProgress />
-        )}
+        {(isLoadingInitialData ||
+          (isFetchingInitialData && preloadedData.length === 0) ||
+          isFetchingHistoricalData) && <LinearProgress />}
         <Box
           ref={chartContainerRef}
           sx={{ position: 'relative', pt: 2 }}

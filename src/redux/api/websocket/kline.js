@@ -4,16 +4,21 @@ import memoize from 'lodash/memoize';
 import { DateTime } from 'luxon';
 
 import websocketApi from 'redux/api/websocket';
+import {
+  websocketConnected,
+  websocketDisconnected,
+} from 'redux/reducers/websocket';
 
 import { DATE_FORMAT_API_QUERY } from 'constants';
 
 const api = websocketApi.injectEndpoints({
   endpoints: (build) => ({
     getRealTimeKline: build.query({
+      keepUnusedDataFor: 5,
       queryFn: () => ({ data: {} }),
       onCacheEntryAdded: async (
         args,
-        { cacheDataLoaded, cacheEntryRemoved, updateCachedData }
+        { dispatch, cacheDataLoaded, cacheEntryRemoved, updateCachedData }
       ) => {
         const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/kline/`);
         url.searchParams.set('target_market_code', args.targetMarketCode);
@@ -21,17 +26,14 @@ const api = websocketApi.injectEndpoints({
         url.searchParams.set('interval', args.interval);
         const socket = new WebSocket(url.toString());
 
-        socket.onclose = () => {
-          console.log('kline ws disconnected');
-        };
+        const onOpen = () => dispatch(websocketConnected('kline'));
+        const onClose = () => dispatch(websocketDisconnected('kline'));
 
         const onMessage = memoize((event) => {
           const message = JSON.parse(event.data);
           try {
-            if (message.type === 'connect') {
-              console.log('dispatch connected');
-              return;
-            }
+            if (message.type === 'connect') return;
+
             const result = JSON.parse(message.result);
             updateCachedData((draft) => {
               result.forEach((item) => {
@@ -52,11 +54,9 @@ const api = websocketApi.injectEndpoints({
 
         try {
           await cacheDataLoaded;
-          socket.addEventListener(
-            'message',
-            onMessage
-            // throttle(onMessage, 1000, { leading: true })
-          );
+          socket.addEventListener('message', onMessage);
+          socket.addEventListener('open', onOpen);
+          socket.addEventListener('close', onClose);
         } catch {
           // no-op in case `cacheEntryRemoved` resolves before `cacheDataLoaded`,
           // in which case `cacheDataLoaded` will throw
@@ -64,6 +64,8 @@ const api = websocketApi.injectEndpoints({
         await cacheEntryRemoved;
 
         socket.removeEventListener('message', onMessage);
+        socket.removeEventListener('open', onOpen);
+        socket.removeEventListener('close', onClose);
         socket.close();
       },
     }),

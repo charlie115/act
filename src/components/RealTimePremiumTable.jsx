@@ -7,12 +7,10 @@ import React, {
 } from 'react';
 
 import Box from '@mui/material/Box';
-import Collapse from '@mui/material/Collapse';
 import Stack from '@mui/material/Stack';
 import SvgIcon from '@mui/material/SvgIcon';
 import ToggleButton from '@mui/material/ToggleButton';
 import Tooltip from '@mui/material/Tooltip';
-import Typography from '@mui/material/Typography';
 
 import BlockIcon from '@mui/icons-material/Block';
 import InsightsIcon from '@mui/icons-material/Insights';
@@ -40,10 +38,11 @@ import { Trans } from 'react-i18next';
 
 import { DateTime } from 'luxon';
 
-import debounce from 'lodash/debounce';
 import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
 import orderBy from 'lodash/orderBy';
+
+import { useVisibilityChange } from '@uidotdev/usehooks';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
 import formatShortNumber from 'utils/formatShortNumber';
@@ -65,6 +64,8 @@ export default function RealTimePremiumTable({
   timezone,
   matchLargeScreen,
 }) {
+  const isFocused = useVisibilityChange();
+
   const dispatch = useDispatch();
 
   const favoriteAssetRef = useRef();
@@ -91,7 +92,7 @@ export default function RealTimePremiumTable({
 
   const { data: realTimeData, isLoading } = useGetRealTimeKlineQuery(
     { ...marketCodes, interval: '1T' },
-    { skip: !marketCodes }
+    { skip: !marketCodes || !isFocused }
   );
 
   const realTimeDataList = useMemo(
@@ -105,7 +106,7 @@ export default function RealTimePremiumTable({
 
   const { data: targetFundingRate } = useGetFundingRateQuery(
     {
-      baseAssets: realTimeDataList.map((o) => o.base_asset).join(),
+      baseAsset: realTimeDataList.map((o) => o.base_asset).join(),
       marketCode: marketCodes?.targetMarketCode,
     },
     {
@@ -118,7 +119,7 @@ export default function RealTimePremiumTable({
   );
   const { data: originFundingRate } = useGetFundingRateQuery(
     {
-      baseAssets: realTimeDataList.map((o) => o.base_asset).join(),
+      baseAsset: realTimeDataList.map((o) => o.base_asset).join(),
       marketCode: marketCodes?.originMarketCode,
     },
     {
@@ -153,15 +154,6 @@ export default function RealTimePremiumTable({
     [loggedin, marketCodes]
   );
 
-  const handleExpandRow = (newExpanded) => setExpanded(newExpanded);
-  const debouncedHandleExpandRow = useCallback(
-    debounce(handleExpandRow, 100, {
-      leading: true,
-      trailing: true,
-    }),
-    []
-  );
-
   const renderNameHeader = ({ column }) => (
     <Stack
       direction="row"
@@ -180,14 +172,7 @@ export default function RealTimePremiumTable({
   );
 
   const renderNameCell = ({ renderedCellValue, row }) => (
-    <Stack
-      direction="row"
-      spacing={1}
-      sx={{ alignItems: 'center' }}
-      onClick={() =>
-        debouncedHandleExpandRow({ [row.id]: !row.getIsExpanded() })
-      }
-    >
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
       {row.original.icon ? (
         <img loading="lazy" width="15" src={row.original.icon} alt="" />
       ) : (
@@ -198,15 +183,7 @@ export default function RealTimePremiumTable({
   );
 
   const renderExpandCell = ({ row }) => (
-    <InsightsIcon
-      onClick={() =>
-        debouncedHandleExpandRow({
-          [row.id]: !row.getIsExpanded(),
-        })
-      }
-      color={row.getIsExpanded() ? 'info' : ''}
-      fontSize="small"
-    />
+    <InsightsIcon color={row.getIsExpanded() ? 'info' : ''} fontSize="small" />
   );
 
   const renderStarCell = ({ cell, row }) => {
@@ -593,7 +570,7 @@ export default function RealTimePremiumTable({
         sortingFns={{ sortWithStarred }}
         renderDetailPanel={({ row }) => (
           <Box>
-            {row.getIsExpanded() && (
+            {expanded[row.id] && (
               <LightWeightKlineChart
                 baseAsset={row.original}
                 marketCodes={marketCodes}
@@ -627,8 +604,9 @@ export default function RealTimePremiumTable({
         muiTableBodyRowProps={({ row }) => ({
           onClick: (e) => {
             if (!e.target.classList.contains('Mui-TableBodyCell-DetailPanel'))
-              // debouncedHandleExpandRow({ [row.id]: !expanded[row.id] });
-              setExpanded({ [row.id]: !expanded[row.id] });
+              setExpanded({
+                [row.id]: !expanded[row.id],
+              });
           },
           sx: {
             cursor: 'pointer',
