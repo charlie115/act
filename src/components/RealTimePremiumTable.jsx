@@ -20,6 +20,8 @@ import StarIcon from '@mui/icons-material/Star';
 
 import { alpha } from '@mui/material/styles';
 
+import Countdown from 'react-countdown';
+
 import { useDispatch, useSelector } from 'react-redux';
 import {
   addLocalFavoriteAsset,
@@ -334,13 +336,19 @@ export default function RealTimePremiumTable({
         {formatIntlNumber(cell.getValue(), 1, 3)} <small>%</small>
         {diff && (
           <Box sx={{ color: 'secondary.main', fontStyle: 'italic' }}>
-            <Trans>
-              <strong>{{ hours: diff.hours }}</strong>
-              <small>h</small> <strong>{{ minutes: diff.minutes }}</strong>
-              <small>m</small>{' '}
-              <strong>{{ seconds: diff.seconds.toFixed(0) }}</strong>
-              <small>s</small> <strong>left</strong>
-            </Trans>
+            <Countdown
+              date={DateTime.fromISO(fundingRate.funding_time).toJSDate()}
+              renderer={({ hours, minutes, seconds }) => (
+                <Trans>
+                  <strong>{{ hours }}</strong>
+                  <small>h</small>{' '}
+                  <strong>{{ minutes: `${minutes}`.padStart(2, '0') }}</strong>
+                  <small>m</small>{' '}
+                  <strong>{{ seconds: `${seconds}`.padStart(2, '0') }}</strong>
+                  <small>s</small> <strong>left</strong>
+                </Trans>
+              )}
+            />
           </Box>
         )}
       </>
