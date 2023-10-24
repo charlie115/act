@@ -91,8 +91,6 @@ function IntervalSelector({ defaultValue, disabled, onChange }) {
           fontSize: 11,
           px: 0.5,
           py: 0,
-          textTransform:
-            selectedIdx !== null && selectedIdx <= 6 ? 'none' : 'uppercase',
         }}
       >
         {selectedIdx !== null

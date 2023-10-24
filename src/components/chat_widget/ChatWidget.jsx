@@ -29,6 +29,8 @@ import { Trans, useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { blockUser, unblockUser } from 'redux/reducers/chat';
 
+import { useVisibilityChange } from '@uidotdev/usehooks';
+
 import {
   useGetPastMessagesQuery,
   useGetRandomUsernameQuery,
@@ -42,6 +44,8 @@ import ChatMenu from './ChatMenu';
 import ChatMessage from './ChatMessage';
 
 export default function ChatWidget({ isVisible }) {
+  const isFocused = useVisibilityChange();
+
   const dispatch = useDispatch();
 
   const blockUserTimeoutRef = useRef();
@@ -61,6 +65,7 @@ export default function ChatWidget({ isVisible }) {
 
   const [anchorEl, setAnchorEl] = useState(null);
 
+  const [active, setActive] = useState(true);
   const [display, setDisplay] = useState('block');
   const [hovered, setHovered] = useState(false);
   const [open, setOpen] = useState(false);
@@ -71,7 +76,6 @@ export default function ChatWidget({ isVisible }) {
   const [newMessages, setNewMessages] = useState([]);
 
   const [isAutoScroll, setIsAutoScroll] = useState(true);
-
   const [pastMessagesPage, setPastMessagesPage] = useState(1);
 
   const [blockedUser, setBlockedUser] = useState(null);
@@ -97,9 +101,9 @@ export default function ChatWidget({ isVisible }) {
     isSuccess: isPastMessagesSuccess,
   } = useGetPastMessagesQuery(
     { page: pastMessagesPage, tz: timezone },
-    { skip: pastMessagesPage === null }
+    { skip: pastMessagesPage === null || !active }
   );
-  const { data } = useGetMessagesQuery();
+  const { data } = useGetMessagesQuery({}, { skip: !active });
 
   useGetRandomUsernameQuery(
     {},
@@ -173,6 +177,19 @@ export default function ChatWidget({ isVisible }) {
       setDisplay('none');
     } else setDisplay('block');
   }, [isVisible]);
+
+  useEffect(() => {
+    let timeout;
+    if (!isFocused) {
+      timeout = setTimeout(() => {
+        setActive(false);
+      }, 300000);
+    } else if (!active) setActive(true);
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [isFocused]);
 
   return (
     <>

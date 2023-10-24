@@ -1,8 +1,8 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  chat: { online: false },
-  kline: { online: false },
+  chat: { active: false },
+  kline: { active: false },
 };
 
 export const websocketSlice = createSlice({
@@ -10,10 +10,10 @@ export const websocketSlice = createSlice({
   initialState,
   reducers: {
     websocketConnected: (state, { payload }) => {
-      state[payload].online = true;
+      state[payload].active = true;
     },
     websocketDisconnected: (state, { payload }) => {
-      state[payload].online = false;
+      state[payload].active = false;
     },
   },
 });

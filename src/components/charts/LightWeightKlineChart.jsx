@@ -308,6 +308,15 @@ function LightWeightKlineChart({
     chartRef.current.timeScale().scrollToRealTime();
   }, [klineInterval]);
 
+  const prevIsFocused = usePrevious(isFocused);
+  useEffect(() => {
+    if (prevIsFocused !== null) {
+      if (!prevIsFocused && isFocused) {
+        refetchInitialData();
+      }
+    }
+  }, [isFocused]);
+
   const prevBarsInfo = usePrevious(barsInfo);
   useEffect(() => {
     if (

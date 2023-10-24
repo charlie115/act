@@ -6,8 +6,6 @@ import Box from '@mui/material/Box';
 
 import ArbitrageTable from 'components/ArbitrageTable';
 
-import { coinicons } from 'assets/exports';
-
 export default function Arbitrage() {
   const location = useLocation();
 

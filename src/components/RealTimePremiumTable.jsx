@@ -26,10 +26,14 @@ import {
   removeLocalFavoriteAsset,
   togglePriceView,
 } from 'redux/reducers/home';
-import { useGetFundingRateQuery } from 'redux/api/drf/infocore';
 import {
-  useCreateFavoriteAssetsMutation,
-  useDeleteFavoriteAssetsMutation,
+  useGetAssetsQuery,
+  useGetFundingRateQuery,
+  usePostAssetMutation,
+} from 'redux/api/drf/infocore';
+import {
+  useCreateFavoriteAssetMutation,
+  useDeleteFavoriteAssetMutation,
   useGetFavoriteAssetsQuery,
 } from 'redux/api/drf/user';
 import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
@@ -39,6 +43,7 @@ import { Trans } from 'react-i18next';
 import { DateTime } from 'luxon';
 
 import isEmpty from 'lodash/isEmpty';
+import isEqual from 'lodash/isEqual';
 import isUndefined from 'lodash/isUndefined';
 import orderBy from 'lodash/orderBy';
 
@@ -51,8 +56,6 @@ import isKoreanMarket from 'utils/isKoreanMarket';
 import LightWeightKlineChart from 'components/charts/LightWeightKlineChart';
 import MarketCodeSelector from 'components/MarketCodeSelector';
 import MaterialReactTable from 'components/MaterialReactTable';
-
-import { coinicons } from 'assets/exports';
 
 import { MARKET_CODE_LIST } from 'constants/lists';
 
@@ -100,6 +103,9 @@ export default function RealTimePremiumTable({
     [realTimeData]
   );
 
+  const { data: assetsData } = useGetAssetsQuery();
+  const [postAsset] = usePostAssetMutation();
+
   const { data: favoriteAssets } = useGetFavoriteAssetsQuery(marketCodes, {
     skip: !(loggedin && marketCodes),
   });
@@ -132,9 +138,9 @@ export default function RealTimePremiumTable({
   );
 
   const [createFavoriteAsset, createFavoriteRes] =
-    useCreateFavoriteAssetsMutation();
+    useCreateFavoriteAssetMutation();
   const [deleteFavoriteAsset, deleteFavoriteRes] =
-    useDeleteFavoriteAssetsMutation();
+    useDeleteFavoriteAssetMutation();
 
   const handleAddFavoriteAsset = useCallback(
     (baseAsset) => {
@@ -351,7 +357,19 @@ export default function RealTimePremiumTable({
   const tableData = useMemo(
     () =>
       isEmpty(realTimeDataList)
-        ? assets.map((asset) => ({ name: asset }))
+        ? assets.map((asset) => {
+            let favoriteAssetId;
+            if (loggedin) favoriteAssetId = favoriteAssets?.[asset];
+            else {
+              const index = localFavoriteAssets?.indexOf(asset);
+              favoriteAssetId = index < 0 ? undefined : index;
+            }
+            return {
+              name: asset,
+              favoriteAssetId,
+              icon: assetsData?.[asset]?.icon,
+            };
+          })
         : orderBy(
             realTimeDataList?.map((assetData) => {
               const asset = assetData.base_asset;
@@ -361,15 +379,12 @@ export default function RealTimePremiumTable({
                 const index = localFavoriteAssets?.indexOf(asset);
                 favoriteAssetId = index < 0 ? undefined : index;
               }
-
               const targetFR = targetFundingRate?.[asset];
               const originFR = originFundingRate?.[asset];
               return {
                 name: asset,
                 favoriteAssetId,
-                icon: coinicons[`${asset}.png`]
-                  ? require(`assets/icons/coinicon/${asset}.png`)
-                  : null,
+                icon: assetsData?.[asset]?.icon,
                 spread: assetData
                   ? assetData.SL_close - assetData.LS_close
                   : '',
@@ -395,6 +410,7 @@ export default function RealTimePremiumTable({
       realTimeDataList,
       targetFundingRate,
       originFundingRate,
+      assetsData,
       favoriteAssets,
       localFavoriteAssets,
       loggedin,
@@ -509,13 +525,25 @@ export default function RealTimePremiumTable({
   }, [createFavoriteRes?.isSuccess]);
 
   useEffect(() => {
-    if (realTimeDataList.length > 0)
-      setAssets(realTimeDataList.map((item) => item.base_asset));
+    if (realTimeDataList.length > 0) {
+      const realTimeAssets = realTimeDataList.map((item) => item.base_asset);
+      if (!isEqual(assets, realTimeAssets)) setAssets(realTimeAssets);
+    }
+    // setAssets(realTimeDataList.map((item) => item.base_asset));
   }, [realTimeDataList]);
 
   useEffect(() => {
     setExpanded({});
   }, [marketCodes]);
+
+  useEffect(() => {
+    assets.forEach((asset) => {
+      if (!assetsData?.[asset]?.icon) {
+        console.log('asset: ', asset);
+        postAsset({ symbol: asset });
+      }
+    });
+  }, [assets, assetsData]);
 
   return (
     <Box>

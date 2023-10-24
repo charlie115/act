@@ -89,15 +89,17 @@ const loggerMiddleware = createLogger({
 export default configureStore({
   reducer: persistedReducer,
   devTools: process.env.NODE_ENV !== 'production',
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
+  middleware: (getDefaultMiddleware) => {
+    const middleware = getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
         ignoredPaths: ['websocketApi.queries'],
       },
-    }).concat(
-      drfApi.middleware,
-      websocketApi.middleware,
-      loggerMiddleware // TODO: Remove for production
-    ),
+    }).concat(drfApi.middleware, websocketApi.middleware);
+
+    if (process.env.NODE_ENV === 'development')
+      return middleware.concat(loggerMiddleware);
+
+    return middleware;
+  },
 });

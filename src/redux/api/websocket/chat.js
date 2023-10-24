@@ -9,21 +9,24 @@ import {
 } from 'redux/reducers/websocket';
 
 const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/chat/`);
-const socket = new WebSocket(url.toString());
+let ws;
 
-const connected = new Promise((resolve) => {
-  resolve();
-});
+const getConnection = async () => {
+  if (!ws || ws.readyState === WebSocket.CLOSED)
+    ws = new WebSocket(url.toString());
+  return ws;
+};
 
 const api = websocketApi.injectEndpoints({
   endpoints: (build) => ({
     getMessages: build.query({
+      keepUnusedDataFor: 300,
       queryFn: () => ({ data: { message: null } }),
       onCacheEntryAdded: async (
         args,
         { dispatch, cacheDataLoaded, cacheEntryRemoved, updateCachedData }
       ) => {
-        await connected;
+        const socket = await getConnection();
 
         const onOpen = () => dispatch(websocketConnected('chat'));
         const onClose = () => dispatch(websocketDisconnected('chat'));
@@ -53,15 +56,17 @@ const api = websocketApi.injectEndpoints({
         }
         await cacheEntryRemoved;
 
+        socket.close();
         socket.removeEventListener('message', onMessage);
         socket.removeEventListener('open', onOpen);
-        socket.removeEventListener('close', onClose);
-        socket.close();
+        setTimeout(() => {
+          socket.removeEventListener('close', onClose);
+        }, 35000);
       },
     }),
     sendMessage: build.mutation({
       queryFn: async ({ username, message, email }) => {
-        await connected;
+        const socket = await getConnection();
         socket.send(JSON.stringify({ username, message, email }));
         return { username, message, email };
       },

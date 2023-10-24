@@ -2,6 +2,21 @@ import drfApi from 'redux/api/drf';
 
 const api = drfApi.injectEndpoints({
   endpoints: (builder) => ({
+    getAssets: builder.query({
+      query: (params) => ({
+        url: '/infocore/assets/',
+        params,
+      }),
+      providesTags: ['Assets'],
+      transformResponse: (response) =>
+        response?.results?.reduce(
+          (acc, value) => ({
+            ...acc,
+            [value.symbol]: { ...value },
+          }),
+          {}
+        ),
+    }),
     getFundingRate: builder.query({
       query: (params) => ({
         url: '/infocore/funding-rate/',
@@ -23,8 +38,21 @@ const api = drfApi.injectEndpoints({
       }),
       transformResponse: (response) => response,
     }),
+    postAsset: builder.mutation({
+      query: (body) => ({
+        url: '/infocore/assets/',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Assets'],
+    }),
   }),
 });
 
 export default api;
-export const { useGetFundingRateQuery, useGetHistoricalKlineQuery } = api;
+export const {
+  useGetAssetsQuery,
+  useGetFundingRateQuery,
+  useGetHistoricalKlineQuery,
+  usePostAssetMutation,
+} = api;

@@ -4,7 +4,7 @@ const FAVORITE_ASSETS_URL = '/users/favorite-assets/';
 
 const api = drfApi.injectEndpoints({
   endpoints: (builder) => ({
-    createFavoriteAssets: builder.mutation({
+    createFavoriteAsset: builder.mutation({
       query: (args) => ({
         url: FAVORITE_ASSETS_URL,
         method: 'POST',
@@ -15,7 +15,7 @@ const api = drfApi.injectEndpoints({
       }),
       invalidatesTags: ['FavoriteAssets'],
     }),
-    deleteFavoriteAssets: builder.mutation({
+    deleteFavoriteAsset: builder.mutation({
       query: (id) => ({
         url: `${FAVORITE_ASSETS_URL}${id}/`,
         method: 'DELETE',
@@ -41,7 +41,7 @@ const api = drfApi.injectEndpoints({
 
 export default api;
 export const {
-  useCreateFavoriteAssetsMutation,
-  useDeleteFavoriteAssetsMutation,
+  useCreateFavoriteAssetMutation,
+  useDeleteFavoriteAssetMutation,
   useGetFavoriteAssetsQuery,
 } = api;

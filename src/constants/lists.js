@@ -68,18 +68,6 @@ export const INTERVAL_LIST = [
     quantity: 1,
     unit: 'days',
   },
-  {
-    getLabel: () => i18n.t('{{value}}W', { value: 1 }),
-    value: '1W',
-    quantity: 1,
-    unit: 'weeks',
-  },
-  {
-    getLabel: () => i18n.t('{{value}}M', { value: 1 }),
-    value: '1M',
-    quantity: 1,
-    unit: 'months',
-  },
 ];
 
 export const MARKET_CODE_LIST = [

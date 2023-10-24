@@ -4,10 +4,6 @@ import memoize from 'lodash/memoize';
 import { DateTime } from 'luxon';
 
 import websocketApi from 'redux/api/websocket';
-import {
-  websocketConnected,
-  websocketDisconnected,
-} from 'redux/reducers/websocket';
 
 import { DATE_FORMAT_API_QUERY } from 'constants';
 
@@ -18,16 +14,13 @@ const api = websocketApi.injectEndpoints({
       queryFn: () => ({ data: {} }),
       onCacheEntryAdded: async (
         args,
-        { dispatch, cacheDataLoaded, cacheEntryRemoved, updateCachedData }
+        { cacheDataLoaded, cacheEntryRemoved, updateCachedData }
       ) => {
         const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/kline/`);
         url.searchParams.set('target_market_code', args.targetMarketCode);
         url.searchParams.set('origin_market_code', args.originMarketCode);
         url.searchParams.set('interval', args.interval);
         const socket = new WebSocket(url.toString());
-
-        const onOpen = () => dispatch(websocketConnected('kline'));
-        const onClose = () => dispatch(websocketDisconnected('kline'));
 
         const onMessage = memoize((event) => {
           const message = JSON.parse(event.data);
@@ -55,18 +48,14 @@ const api = websocketApi.injectEndpoints({
         try {
           await cacheDataLoaded;
           socket.addEventListener('message', onMessage);
-          socket.addEventListener('open', onOpen);
-          socket.addEventListener('close', onClose);
         } catch {
           // no-op in case `cacheEntryRemoved` resolves before `cacheDataLoaded`,
           // in which case `cacheDataLoaded` will throw
         }
         await cacheEntryRemoved;
 
-        socket.removeEventListener('message', onMessage);
-        socket.removeEventListener('open', onOpen);
-        socket.removeEventListener('close', onClose);
         socket.close();
+        socket.removeEventListener('message', onMessage);
       },
     }),
   }),
