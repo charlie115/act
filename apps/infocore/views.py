@@ -1,15 +1,21 @@
 from django.conf import settings
+from django_filters import FilterSet
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import exceptions, response, views
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pytz import timezone
 
+from infocore.models import Asset
 from infocore.serializers import (
+    AssetSerializer,
     FundingRateDataSerializer,
     FundingRateDataQueryParamsSerializer,
     KlineDataSerializer,
     KlineDataQueryParamsSerializer,
 )
+from lib.filters import CharArrayFilter
+from lib.views import BaseViewSet
 
 
 MONGODB_CLI = MongoClient(
@@ -18,6 +24,38 @@ MONGODB_CLI = MongoClient(
     username=settings.MONGODB["USERNAME"],
     password=settings.MONGODB["PASSWORD"],
 )
+
+
+class AssetFilter(FilterSet):
+    symbol = CharArrayFilter(field_name="symbol", lookup_expr="in")
+
+    class Meta:
+        model = Asset
+        fields = ("symbol",)
+
+
+@extend_schema(tags=["Asset"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List assets",
+        description="Returns a list of assets",
+    ),
+    create=extend_schema(
+        operation_id="Add a new asset",
+        description="Adds a new asset.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve an asset",
+        description="Retrieve details of an existing asset.",
+    ),
+)
+class AssetViewSet(BaseViewSet):
+    queryset = Asset.objects.all().order_by("symbol")
+    serializer_class = AssetSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = AssetFilter
+    http_method_names = ["get", "post"]
+    permission_classes = []
 
 
 @extend_schema_view(
@@ -135,7 +173,7 @@ class FundingRateDataView(views.APIView):
 
         data = self.get_data(
             market_code=query.get("market_code", ""),
-            base_assets=query.get("base_assets", ""),
+            base_assets=query.get("base_asset", ""),
             tz=query.get("tz"),
         )
 

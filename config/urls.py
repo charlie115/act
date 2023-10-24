@@ -3,6 +3,7 @@ import os
 
 from django.apps import apps
 from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import (
@@ -44,3 +45,6 @@ urlpatterns = [
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("swagger/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger"),
 ]
+
+if os.environ["DJANGO_SETTINGS_MODULE"] == "config.settings.dev":
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

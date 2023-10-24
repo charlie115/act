@@ -1,8 +1,8 @@
 from collections import OrderedDict
 from django.urls import path
-from rest_framework import response
+from rest_framework import response, routers
 
-from infocore.views import FundingRateDataView, KlineDataView
+from infocore.views import AssetViewSet, FundingRateDataView, KlineDataView
 from lib.views import BaseEndpointListView
 
 
@@ -30,6 +30,10 @@ class InfoCoreAPIListView(BaseEndpointListView):
         return response.Response(api_list)
 
 
+router = routers.DefaultRouter()
+router.register(r"assets", AssetViewSet)
+
+
 urlpatterns = [
     path("", InfoCoreAPIListView.as_view(), name="infocore api list"),
     path(
@@ -43,3 +47,4 @@ urlpatterns = [
         name="funding rate data",
     ),
 ]
+urlpatterns.extend(router.urls)

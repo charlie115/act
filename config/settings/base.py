@@ -265,7 +265,7 @@ SPECTACULAR_SETTINGS = {
             },
             {
                 "name": "INFO CORE",
-                "tags": ["Kline", "FundingRate"],
+                "tags": ["Asset", "Kline", "FundingRate"],
             },
             {
                 "name": "CHAT",
@@ -344,3 +344,9 @@ UNFOLD = {
     #     lambda request: static("js/script.js"),
     # ],
 }
+
+
+# CoinMarketCap
+COINMARKETCAP_API_KEY = env("COINMARKETCAP_API_KEY")
+COINMARKETCAP_API_URL = "https://pro-api.coinmarketcap.com/v2"
+COINMARKETCAP_CRYPTO_INFO_API = f"{COINMARKETCAP_API_URL}/cryptocurrency/info"

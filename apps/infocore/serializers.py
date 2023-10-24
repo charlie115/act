@@ -1,8 +1,26 @@
 from rest_framework import serializers
 from pytz import all_timezones, timezone
 
+from infocore.mixins import AssetMixin
+from infocore.models import Asset
 from lib.datetime import DATE_TIME_FORMAT, DATE_TIME_TZ_FORMAT, UTC, TZ_UTC
 from lib.fields import CharacterSeparatedField, FloatOrNoneField
+
+
+class AssetSerializer(AssetMixin, serializers.ModelSerializer):
+    def create(self, validated_data):
+        asset_info = self.pull_asset_info(validated_data["symbol"])
+
+        validated_data["icon"] = self.get_icon_image(asset_info)
+
+        return super().create(validated_data)
+
+    class Meta:
+        model = Asset
+        fields = ("id", "symbol", "icon")
+        extra_kwargs = {
+            "icon": {"read_only": True},
+        }
 
 
 class KlineDataQueryParamsSerializer(serializers.Serializer):
@@ -55,7 +73,7 @@ class KlineDataSerializer(serializers.Serializer):
 
 class FundingRateDataQueryParamsSerializer(serializers.Serializer):
     market_code = serializers.CharField(required=True)
-    base_assets = CharacterSeparatedField(required=False, empty=True)
+    base_asset = CharacterSeparatedField(required=False, empty=True)
     tz = serializers.ChoiceField(choices=all_timezones, default=UTC)
 
 
