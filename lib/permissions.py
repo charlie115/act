@@ -1,4 +1,4 @@
-from rest_framework.permissions import BasePermission, IsAdminUser
+from rest_framework.permissions import BasePermission, IsAdminUser, IsAuthenticated
 
 from users.models import User
 
@@ -31,6 +31,11 @@ class IsVisitor(IsSuperuser):
         )
 
         return superuser_permission or visitor_permission
+
+
+class IsAuthenticatedOwner(IsAuthenticated):
+    def has_object_permission(self, request, view, obj):
+        return obj.id == request.user if type(obj) is User else obj.user == request.user
 
 
 class IsUser(IsSuperuser):
