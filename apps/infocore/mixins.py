@@ -1,6 +1,6 @@
 import json
 import requests
-
+from django_rq import job
 from django.conf import settings
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from io import BytesIO
@@ -8,6 +8,7 @@ from PIL import Image
 
 
 class AssetMixin(object):
+    @job
     def pull_asset_info(self, symbol):
         """Get asset information from CoinMarketCap
 

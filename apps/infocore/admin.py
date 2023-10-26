@@ -1,11 +1,17 @@
+from django.apps import apps
 from django.contrib import admin
 from django.utils.safestring import mark_safe
 from django.utils.timezone import now
-
+from django_rq.admin import QueueAdmin
+from django_rq.models import Queue
 from unfold.admin import ModelAdmin
 
 from infocore.mixins import AssetMixin
 from infocore.models import Asset
+
+
+class CustomQueueAdmin(QueueAdmin, ModelAdmin):
+    pass
 
 
 class AssetAdmin(AssetMixin, ModelAdmin):
@@ -69,4 +75,9 @@ class AssetAdmin(AssetMixin, ModelAdmin):
         return False
 
 
+admin.site.unregister(Queue)
+
 admin.site.register(Asset, AssetAdmin)
+admin.site.register(Queue, CustomQueueAdmin)
+
+apps.get_app_config("django_rq").verbose_name = "Redis Queue"

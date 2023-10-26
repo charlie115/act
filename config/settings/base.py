@@ -73,6 +73,7 @@ THIRD_PARTY_APPS = (
     "dj_rest_auth",
     "dj_rest_auth.registration",
     "django_filters",
+    "django_rq",
     "drf_spectacular",
     "channels",
 )
@@ -110,6 +111,8 @@ MONGODB = {
     "PASSWORD": env("MONGODB_PASSWORD", default=""),
 }
 
+MONGO_CHAT_DB = "ACW_USER_CHAT"
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -120,9 +123,13 @@ CACHES = {
     }
 }
 
-MONGO_CHAT_DB = "ACW_USER_CHAT"
+RQ_QUEUES = {
+    "default": {
+        "USE_REDIS_CACHE": "default",
+    },
+}
 
-REDIS_CHAT_BLOCKLIST_KEY = "acw:user:blocklist"
+RQ_SHOW_ADMIN_LINK = True
 
 CHANNEL_LAYERS = {
     "default": {
@@ -132,6 +139,8 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+REDIS_CHAT_BLOCKLIST_KEY = "acw:user:blocklist"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
