@@ -1,6 +1,7 @@
 from django.conf import settings
 from django_filters import FilterSet
 from django_filters.rest_framework import DjangoFilterBackend
+from django_redis import get_redis_connection
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import exceptions, response, views
 from pymongo import MongoClient, ASCENDING, DESCENDING
@@ -24,6 +25,7 @@ MONGODB_CLI = MongoClient(
     username=settings.MONGODB["USERNAME"],
     password=settings.MONGODB["PASSWORD"],
 )
+REDIS_CLI = get_redis_connection("default")
 
 
 class AssetFilter(FilterSet):
@@ -56,6 +58,38 @@ class AssetViewSet(BaseViewSet):
     filterset_class = AssetFilter
     http_method_names = ["get", "post"]
     permission_classes = []
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Get market codes",
+        description="Returns list of market codes",
+        tags=["MarketCodes"],
+    ),
+)
+class MarketCodesView(views.APIView):
+    permission_classes = []
+    page_size = 200
+
+    def get(self, request):
+        channels = REDIS_CLI.pubsub_channels()
+
+        market_codes = {}
+        for channel in channels:
+            channel = channel.decode()
+
+            if channel.startswith("INFO_CORE|") and channel.endswith("_1T_kline"):
+                channel = channel.replace("INFO_CORE|", "").replace("_1T_kline", "")
+
+                target_market, origin_market = channel.split(":")
+                if target_market in market_codes:
+                    market_codes[target_market].append(origin_market)
+                else:
+                    market_codes[target_market] = [origin_market]
+
+        data = {key: sorted(market_codes[key]) for key in sorted(market_codes.keys())}
+
+        return response.Response(data)
 
 
 @extend_schema_view(

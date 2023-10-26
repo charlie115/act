@@ -274,7 +274,7 @@ SPECTACULAR_SETTINGS = {
             },
             {
                 "name": "INFO CORE",
-                "tags": ["Asset", "Kline", "FundingRate"],
+                "tags": ["Asset", "MarketCodes", "Kline", "FundingRate"],
             },
             {
                 "name": "CHAT",
