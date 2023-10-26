@@ -3,7 +3,6 @@ import React from 'react';
 import Box from '@mui/material/Box';
 
 import { useTheme } from '@mui/material/styles';
-import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
@@ -15,20 +14,18 @@ function Home() {
 
   const theme = useTheme();
 
-  const matchLargeScreen = useMediaQuery('(min-width:600px)');
-
   const { timezone } = useSelector((state) => state.app);
-  const { loggedin } = useSelector((state) => state.auth);
+  const { loggedin, user } = useSelector((state) => state.auth);
 
   return (
-    <Box>
+    <Box sx={{ overflowX: 'hidden' }}>
       <RealTimePremiumTable
         t={t}
         language={i18n.language}
         loggedin={loggedin}
         theme={theme}
         timezone={timezone}
-        matchLargeScreen={matchLargeScreen}
+        user={user}
       />
     </Box>
   );

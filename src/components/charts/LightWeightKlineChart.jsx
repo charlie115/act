@@ -17,6 +17,9 @@ import Typography from '@mui/material/Typography';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import StarIcon from '@mui/icons-material/Star';
 
+import { alpha, useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+
 import { createChart, CrosshairMode, LineType } from 'lightweight-charts';
 
 import { DateTime } from 'luxon';
@@ -29,12 +32,12 @@ import uniqBy from 'lodash/uniqBy';
 import { usePrevious, useVisibilityChange } from '@uidotdev/usehooks';
 
 import { useTranslation } from 'react-i18next';
-import { alpha, useTheme } from '@mui/material/styles';
 
 import { useGetHistoricalKlineQuery } from 'redux/api/drf/infocore';
 import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
+import formatShortNumber from 'utils/formatShortNumber';
 
 import IntervalSelector from 'components/IntervalSelector';
 import KlineDataSelector from 'components/KlineDataSelector';
@@ -65,6 +68,8 @@ function LightWeightKlineChart({
   const lineSeriesRef = useRef();
 
   const refetchTimeoutRef = useRef();
+
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [title, setTitle] = useState();
 
@@ -251,11 +256,9 @@ function LightWeightKlineChart({
         minMove: 0.001,
         type: 'custom',
         formatter: (price) =>
-          `${formatIntlNumber(price, 1, isTetherPriceView ? 1 : 3)} ${
-            isTetherPriceView ? t('KRW') : '%'
-          }`,
+          `${formatIntlNumber(price)} ${isTetherPriceView ? t('KRW') : '%'}`,
       },
-      // priceFormat: { minMove: 0.00001, precision: 5, type: 'percent' },
+      // priceFormat: { minMove: 0.00001 precision: 5, type: 'percent' },
       // title: t('Premium'),
     });
     lineSeriesRef.current = chartRef.current.addLineSeries({
@@ -266,7 +269,11 @@ function LightWeightKlineChart({
       // lastPriceAnimation: LastPriceAnimationMode.OnDataUpdate,
       lineType: LineType.Curved,
       lineWidth: 1,
-      priceFormat: { minMove: 0.01, precision: 2, type: 'price' },
+      priceFormat: {
+        minMove: 0.001,
+        type: 'custom',
+        formatter: (price) => formatIntlNumber(price, 2, 1),
+      },
       title: t('Price'),
     });
 
@@ -404,6 +411,22 @@ function LightWeightKlineChart({
       },
     });
   }, [theme.palette.mode]);
+
+  useEffect(() => {
+    chartRef.current.applyOptions({
+      layout: { fontSize: isMobile ? 8 : 11 },
+    });
+    lineSeriesRef.current.applyOptions({
+      priceFormat: {
+        minMove: 0.001,
+        type: 'custom',
+        formatter: (price) =>
+          isMobile
+            ? formatShortNumber(price, 2)
+            : formatIntlNumber(price, 2, 1),
+      },
+    });
+  }, [isMobile, i18n.language]);
 
   const isFavorite = !isUndefined(baseAsset.favoriteAssetId);
 

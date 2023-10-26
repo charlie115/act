@@ -76,10 +76,10 @@ function KlineDataSelector({
         }}
         color="secondary"
         size="small"
-        sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+        sx={{ display: { xs: 'none', md: 'inline-flex' } }}
       >
         {kLineData.map((item, idx) => (
-          <ToggleBtn key={item.value} value={idx} sx={{ py: 0 }}>
+          <ToggleBtn key={item.value} value={idx} sx={{ px: 1, py: 0 }}>
             {item.label}
           </ToggleBtn>
         ))}
@@ -93,7 +93,7 @@ function KlineDataSelector({
           setAnchorEl(e.currentTarget);
         }}
         sx={{
-          display: { xs: 'inline-flex', sm: 'none' },
+          display: { xs: 'inline-flex', md: 'none' },
           fontSize: 11,
           px: 0.5,
           py: 0,
@@ -105,7 +105,7 @@ function KlineDataSelector({
         anchorEl={anchorEl}
         open={!!anchorEl}
         onClose={() => setAnchorEl(null)}
-        sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
+        sx={{ display: { xs: 'inline-flex', md: 'none' } }}
       >
         {kLineData.map((interval, idx) => (
           <MenuItem

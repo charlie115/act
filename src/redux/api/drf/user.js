@@ -23,11 +23,9 @@ const api = drfApi.injectEndpoints({
       invalidatesTags: ['FavoriteAssets'],
     }),
     getFavoriteAssets: builder.query({
-      query: (args) => ({
+      query: (params) => ({
         url: FAVORITE_ASSETS_URL,
-        params: {
-          market_codes: `${args.targetMarketCode},${args.originMarketCode}`,
-        },
+        params,
       }),
       providesTags: ['FavoriteAssets'],
       transformResponse: (response) =>

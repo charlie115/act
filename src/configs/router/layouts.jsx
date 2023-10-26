@@ -71,10 +71,10 @@ export function MainLayout() {
             <TVTickerWidget isVisible={currentRoute.displayTicker} />
           </React.Suspense>
           <Grid container ref={currentRoute.ref} spacing={1}>
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} lg={2}>
               <Box
                 component={Paper}
-                sx={{ p: 1, textAlign: 'center', minHeight: 120 }}
+                sx={{ p: 1, textAlign: 'center', minHeight: '21vh' }}
               >
                 AD???
               </Box>
@@ -82,8 +82,8 @@ export function MainLayout() {
             <Grid
               item
               xs={12}
-              md={8}
-              sx={{ display: 'flex', minHeight: window.innerHeight - 100 }}
+              lg={8}
+              sx={{ display: 'flex', minHeight: '45vh' }}
             >
               <Box
                 component={Paper}
@@ -91,6 +91,7 @@ export function MainLayout() {
                   display: 'flex',
                   flex: 1,
                   p: 1,
+                  overflowX: 'hidden',
                 }}
               >
                 <SwitchTransition>
@@ -106,10 +107,10 @@ export function MainLayout() {
                 </SwitchTransition>
               </Box>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} lg={2}>
               <Box
                 component={Paper}
-                sx={{ p: 1, textAlign: 'center', minHeight: 120 }}
+                sx={{ p: 1, textAlign: 'center', minHeight: '21vh' }}
               >
                 AD???
               </Box>

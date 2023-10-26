@@ -21,10 +21,30 @@ export const darkTheme = createTheme({
     mode: 'dark',
   },
   typography: { fontSize: 12 },
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 640,
+      md: 700,
+      lg: 1024,
+      xl: 1200,
+      xxl: 1500,
+    },
+  },
 });
 
 export default createTheme({
   components,
   palette: { ...colors },
   typography: { fontSize: 12 },
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 640,
+      md: 700,
+      lg: 1024,
+      xl: 1200,
+      xxl: 1500,
+    },
+  },
 });

@@ -97,8 +97,7 @@ export default function ArbitrageTable({ data }) {
         accessorKey: 'price',
         enableGlobalFilter: false,
         size: 50,
-        Cell: ({ cell }) =>
-          formatIntlNumber(cell.getValue(), cell.getValue() > 0 ? 2 : 4),
+        Cell: ({ cell }) => formatIntlNumber(cell.getValue(), 4),
       },
       {
         header: t('Gap'),

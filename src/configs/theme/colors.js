@@ -1,6 +1,6 @@
 export default {
   background: {
-    default: '#f0f2f5',
+    default: '#f7fbfc',
     paper: '#fff',
   },
 

@@ -12,8 +12,6 @@ import { PersistGate } from 'redux-persist/integration/react';
 
 import store from 'redux/store';
 
-import { setupListeners } from '@reduxjs/toolkit/query';
-
 import FullScreenLoading from 'components/FullScreenLoading';
 
 import App from './App';
@@ -24,8 +22,6 @@ import 'configs/i18n';
 import 'animate.css';
 
 const persistor = persistStore(store);
-
-// setupListeners(store.dispatch);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

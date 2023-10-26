@@ -84,7 +84,10 @@ export default function Header() {
               {pages.main?.map((page) => (
                 <MenuItem
                   key={page.name}
-                  onClick={() => navigate(page.path)}
+                  onClick={() => {
+                    navigate(page.path);
+                    setMenuAnchorEl(null);
+                  }}
                   selected={page.path === location.pathname}
                 >
                   <Typography textAlign="center">{page.getTitle()}</Typography>

@@ -12,6 +12,7 @@ import Paper from '@mui/material/Paper';
 import Popper from '@mui/material/Popper';
 import Tooltip from '@mui/material/Tooltip';
 
+import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { usePrevious } from '@uidotdev/usehooks';
@@ -26,6 +27,8 @@ function DropdownMenu({
   containerStyle,
 }) {
   const anchorRef = useRef();
+
+  const theme = useTheme();
 
   const [open, setOpen] = useState(false);
 
@@ -55,7 +58,7 @@ function DropdownMenu({
     if (prevOpen === true && open === false) anchorRef.current.focus();
   }, [open]);
 
-  const matchLargeScreen = useMediaQuery('(min-width:600px)');
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   return (
     <Box sx={{ ...containerStyle }}>
@@ -66,13 +69,27 @@ function DropdownMenu({
           aria-controls={open ? 'dropdown-menu' : undefined}
           aria-expanded={open ? 'true' : undefined}
           aria-haspopup="true"
-          size="large"
+          size={isMobile ? 'medium' : 'large'}
           variant="outlined"
           startIcon={value?.icon}
           onClick={handleToggle}
           sx={{
             alignSelf: 'stretch',
-            fontSize: matchLargeScreen ? null : 10,
+            fontSize: {
+              xs: '0.5rem',
+              sm: '0.65rem',
+              md: '0.5rem',
+              lg: '0.85rem',
+            },
+            height: '100%',
+            '& .MuiButton-startIcon>*:nth-of-type(1)': {
+              fontSize: {
+                xs: '0.65rem',
+                sm: '0.75rem',
+                md: '0.65rem',
+                lg: '0.95rem',
+              },
+            },
             ...buttonStyle,
           }}
         >

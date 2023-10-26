@@ -14,11 +14,10 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 
 import { useDispatch, useSelector } from 'react-redux';
-import { toggleBookmarkMarketCodePair } from 'redux/reducers/home';
-
-import { DateTime } from 'luxon';
-
-import { useVisibilityChange } from '@uidotdev/usehooks';
+import {
+  selectBookmarkMarketCodePair,
+  toggleBookmarkMarketCodePair,
+} from 'redux/reducers/home';
 
 import { useTranslation } from 'react-i18next';
 
@@ -32,9 +31,13 @@ function MarketCodeSelector({ onChange }) {
 
   const { i18n, t } = useTranslation();
 
+  const { selected, list } = useSelector(
+    (state) => state.home.bookmarkedMarketCodePairs
+  );
+
   const [marketCodeList, setMarketCodeList] = useState([]);
-  const [targetMarketCode, setTargetMarketCode] = useState(0);
-  const [originMarketCode, setOriginMarketCode] = useState(5);
+  const [targetMarketCode, setTargetMarketCode] = useState(selected?.[0] ?? 0);
+  const [originMarketCode, setOriginMarketCode] = useState(selected?.[1] ?? 5);
   const [targetAnchorEl, setTargetAnchorEl] = useState(null);
   const [originAnchorEl, setOriginAnchorEl] = useState(null);
 
@@ -43,10 +46,6 @@ function MarketCodeSelector({ onChange }) {
 
   const [bookmarkedPairs, setBookmarkedPairs] = useState([]);
   const [isBookmarked, setIsBookmarked] = useState(false);
-
-  const bookmarkedMarketCodePairs = useSelector(
-    (state) => state.home.bookmarkedMarketCodePairs
-  );
 
   const handleMenuClose = () => {
     setMenuOpen(false);
@@ -68,50 +67,43 @@ function MarketCodeSelector({ onChange }) {
         index,
         label: market.getLabel(),
         icon: (
-          <SvgIcon>
+          <SvgIcon sx={{}}>
             <market.icon />
           </SvgIcon>
         ),
-        // secondaryIcon: (
-        //   <PushPinIcon
-        //     onClick={(e) => {
-        //       e.stopPropagation();
-        //     }}
-        //   />
-        // ),
       }))
     );
   }, [i18n.language]);
 
   useEffect(() => {
-    const selectedPair = bookmarkedMarketCodePairs.find(
+    const selectedPair = list?.find(
       (pair) => pair[0] === targetMarketCode && pair[1] === originMarketCode
     );
     setIsBookmarked(!!selectedPair);
     setBookmarkedPairs(
-      bookmarkedMarketCodePairs.filter(
+      list?.filter(
         (pair) =>
           !(pair[0] === targetMarketCode && pair[1] === originMarketCode)
-      )
+      ) || []
     );
-  }, [bookmarkedMarketCodePairs, targetMarketCode, originMarketCode]);
+  }, [list, targetMarketCode, originMarketCode]);
 
   return (
     <Stack
       direction="row"
-      spacing={1}
-      sx={{
-        alignItems: 'center',
-        flex: 0.9,
-        mb: { xs: 3, md: 0 },
-      }}
+      spacing={{ xs: 0.25, sm: 1 }}
+      sx={{ alignItems: 'center', flex: 0.9, mb: { xs: 0.5, md: 0 } }}
     >
       <MoreVertIcon
         onClick={(event) => {
           setMenuAnchorEl(event.currentTarget);
           setMenuOpen((state) => !state);
         }}
-        sx={{ cursor: 'pointer', ':hover': { opacity: 0.7 } }}
+        sx={{
+          cursor: 'pointer',
+          fontSize: '0.9rem',
+          ':hover': { opacity: 0.7 },
+        }}
       />
       <DropdownMenu
         options={marketCodeList}
@@ -195,13 +187,16 @@ function MarketCodeSelector({ onChange }) {
           {marketCodeList[originMarketCode]?.label}
         </ListItem>
         <Divider />
-        <MenuItem disabled>{t('Bookmarked Pairs')}</MenuItem>
+        {bookmarkedPairs.length > 0 && (
+          <MenuItem disabled>{t('Bookmarked Pairs')}</MenuItem>
+        )}
         {bookmarkedPairs.map((pair) => (
           <ListItem
             key={pair.join()}
             onClick={() => {
               setTargetMarketCode(pair[0]);
               setOriginMarketCode(pair[1]);
+              dispatch(selectBookmarkMarketCodePair(pair));
               handleMenuClose();
             }}
             secondaryAction={
