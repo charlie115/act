@@ -47,27 +47,23 @@ export default function Header() {
 
   return (
     <AppBar position="sticky" sx={{ bgcolor: 'dark.light' }}>
-      <Container maxWidth="xl">
+      <Container maxWidth="xxl">
         <Toolbar disableGutters>
-          <BrandLogo
-            onClick={() => navigate('/')}
-            iconProps={{ color: 'white' }}
-            sx={{ display: { xs: 'none', md: 'flex' } }}
-          />
           <Box
             sx={{
               alignItems: 'center',
-              flexGrow: 1,
               display: { xs: 'flex', md: 'none' },
+              mr: 1,
             }}
           >
             <IconButton
-              size="large"
               aria-label="header-menu"
               aria-controls="header-menu"
               aria-haspopup="true"
-              onClick={(e) => setMenuAnchorEl(e.currentTarget)}
               color="white"
+              size="large"
+              onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+              sx={{ p: 0 }}
             >
               <MenuIcon />
             </IconButton>
@@ -90,16 +86,18 @@ export default function Header() {
                   }}
                   selected={page.path === location.pathname}
                 >
-                  <Typography textAlign="center">{page.getTitle()}</Typography>
+                  <Typography textAlign="center" sx={{ fontWeight: 700 }}>
+                    {page.getTitle()}
+                  </Typography>
                 </MenuItem>
               ))}
             </Menu>
-            <BrandLogo
-              onClick={() => navigate('/')}
-              iconProps={{ color: 'white' }}
-              sx={{ display: { xs: 'flex', md: 'none' } }}
-            />
           </Box>
+          <BrandLogo
+            onClick={() => navigate('/')}
+            iconProps={{ color: 'white' }}
+            sx={{ flexGrow: { xs: 1, md: 0 } }}
+          />
           <Box sx={{ flexGrow: 1, ml: 3, display: { xs: 'none', md: 'flex' } }}>
             {pages.main?.map((page) => (
               <MenuButton
@@ -114,34 +112,13 @@ export default function Header() {
           </Box>
           <Stack
             direction="row"
-            spacing={2}
-            sx={{ display: { xs: 'none', sm: 'flex' } }}
+            spacing={{ xs: 1, sm: 2 }}
+            sx={{ alignItems: 'center' }}
           >
             <LanguageSelector />
             <ThemeSelector />
             <HeaderUserMenu />
-            {/* <IconButton onClick={handleUserClick} sx={{ p: 0 }}>
-              <Avatar
-                src={user?.profile?.picture}
-                alt={`${user?.first_name} ${user?.last_name}`}
-                sx={{ bgcolor: user ? 'primary.main' : null }}
-              />
-            </IconButton> */}
           </Stack>
-
-          <HeaderUserMenu
-            iconStyle={{ display: { xs: 'block', sm: 'none' } }}
-          />
-          {/* <IconButton
-            onClick={handleUserClick}
-            sx={{ display: { xs: 'block', sm: 'none' }, p: 0 }}
-          >
-            <Avatar
-              src={user?.profile?.picture}
-              alt={`${user?.first_name} ${user?.last_name}`}
-              sx={{ bgcolor: user ? 'primary.main' : null }}
-            />
-          </IconButton> */}
         </Toolbar>
       </Container>
     </AppBar>

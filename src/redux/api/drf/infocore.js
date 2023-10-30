@@ -38,6 +38,10 @@ const api = drfApi.injectEndpoints({
       }),
       transformResponse: (response) => response,
     }),
+    getMarketCodes: builder.query({
+      keepUnusedDataFor: 5,
+      query: () => '/infocore/market-codes/',
+    }),
     postAsset: builder.mutation({
       query: (body) => ({
         url: '/infocore/assets/',
@@ -54,5 +58,6 @@ export const {
   useGetAssetsQuery,
   useGetFundingRateQuery,
   useGetHistoricalKlineQuery,
+  useGetMarketCodesQuery,
   usePostAssetMutation,
 } = api;

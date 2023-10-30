@@ -30,6 +30,15 @@ const DEFAULT_PROPS = {
   initialState: { showGlobalFilter: true },
   muiTableProps: { sx: { tableLayout: 'fixed' } },
   muiTableBodyCellProps: { sx: { px: { xs: 0, sm: 0.5 } } },
+  muiTopToolbarProps: {
+    sx: {
+      '& .MuiBox-root': {
+        alignItems: 'flex-end',
+        mb: { xs: 0.5, md: 0.25 },
+        px: { xs: 0, sm: 0.5 },
+      },
+    },
+  },
   positionExpandColumn: 'last',
 };
 
@@ -72,11 +81,6 @@ export default function MRTable({
 
   const tableProps = useMemo(() => {
     const propsObj = {};
-    const muiTopToolbarProps = {
-      sx: {
-        '& .MuiBox-root': { alignItems: 'flex-end', mb: { xs: 0.5, md: 0 } },
-      },
-    };
     Object.keys(merge(DEFAULT_PROPS, props)).forEach((prop) => {
       if (props[prop]) {
         if (isObject(props[prop]))
@@ -84,7 +88,6 @@ export default function MRTable({
         else propsObj[prop] = props[prop];
       } else propsObj[prop] = DEFAULT_PROPS[prop];
     });
-    propsObj.muiTopToolbarProps = muiTopToolbarProps;
     return propsObj;
   }, [isSmallScreen, props]);
 
@@ -96,7 +99,7 @@ export default function MRTable({
         data={rows}
         state={state}
         localization={localization}
-        positionToolbarDropZone="none"
+        // positionToolbarDropZone="none"
         positionGlobalFilter="right"
         renderToolbarInternalActions={({ table }) => (
           <>

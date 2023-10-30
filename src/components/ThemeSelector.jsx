@@ -39,6 +39,14 @@ export default function ThemeSelector() {
       checked={theme === 'dark'}
       isChecked={theme === 'dark'}
       onChange={onChange}
+      sx={{
+        width: { xs: 46, sm: 62 },
+        height: { xs: 25, sm: 34 },
+        '& .MuiSwitch-thumb': {
+          width: { xs: 22, sm: 32 },
+          height: { xs: 22, sm: 32 },
+        },
+      }}
     />
   );
 }
@@ -46,8 +54,6 @@ export default function ThemeSelector() {
 const ThemeToggle = styled(Switch, {
   shouldForwardProp: (prop) => prop !== 'isChecked',
 })(({ isChecked, theme }) => ({
-  width: 62,
-  height: 34,
   padding: 7,
   '& .MuiSwitch-switchBase': {
     margin: 1,
@@ -67,10 +73,8 @@ const ThemeToggle = styled(Switch, {
   },
   '& .MuiSwitch-thumb': {
     backgroundColor: isChecked
-      ? theme.palette.dark.light
+      ? theme.palette.background.default
       : 'theme.palette.white.main',
-    width: 32,
-    height: 32,
     '&:before': {
       content: "''",
       position: 'absolute',

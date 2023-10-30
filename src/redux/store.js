@@ -60,7 +60,7 @@ const chatPersistConfig = {
 const homePersistConfig = {
   key: 'home',
   storage,
-  whitelist: ['bookmarkedMarketCodePairs', 'favoriteAssets', 'priceView'],
+  whitelist: ['bookmarkedMarketCodes', 'favoriteAssets', 'priceView'],
 };
 
 const rootPersistConfig = {
@@ -97,8 +97,8 @@ export default configureStore({
       },
     }).concat(drfApi.middleware, websocketApi.middleware);
 
-    if (process.env.NODE_ENV === 'development')
-      return middleware.concat(loggerMiddleware);
+    // if (process.env.NODE_ENV === 'development')
+    //   return middleware.concat(loggerMiddleware);
 
     return middleware;
   },

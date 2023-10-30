@@ -432,7 +432,7 @@ function LightWeightKlineChart({
 
   return (
     <Card onClick={(e) => e.stopPropagation()}>
-      <Box sx={{ bgcolor: theme.palette.background.paper }}>
+      <Box sx={{ bgcolor: 'background.paper' }}>
         <Grid container sx={{ p: 1 }}>
           <Grid
             item

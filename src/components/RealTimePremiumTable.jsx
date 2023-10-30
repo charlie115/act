@@ -46,6 +46,7 @@ import { DateTime } from 'luxon';
 
 import isEmpty from 'lodash/isEmpty';
 import isEqual from 'lodash/isEqual';
+import isFunction from 'lodash/isFunction';
 import isUndefined from 'lodash/isUndefined';
 import orderBy from 'lodash/orderBy';
 
@@ -56,7 +57,7 @@ import formatShortNumber from 'utils/formatShortNumber';
 import isKoreanMarket from 'utils/isKoreanMarket';
 
 import LightWeightKlineChart from 'components/charts/LightWeightKlineChart';
-import MarketCodeSelector from 'components/MarketCodeSelector';
+import MarketCodeMenu from 'components/MarketCodeMenu';
 import MaterialReactTable from 'components/MaterialReactTable';
 
 import { MARKET_CODE_LIST } from 'constants/lists';
@@ -67,7 +68,6 @@ export default function RealTimePremiumTable({
   loggedin,
   theme,
   timezone,
-  user,
 }) {
   const isFocused = useVisibilityChange();
 
@@ -77,6 +77,7 @@ export default function RealTimePremiumTable({
 
   const [assets, setAssets] = useState([]);
 
+  const [columnVisibility, setColumnVisibility] = useState({});
   const [expanded, setExpanded] = useState({});
 
   const [marketCodes, setMarketCodes] = useState(null);
@@ -605,6 +606,15 @@ export default function RealTimePremiumTable({
   }, [marketCodes]);
 
   useEffect(() => {
+    setColumnVisibility({
+      chart: !isMobile,
+      spread: !isMobile,
+      favoriteAssetId: !isMobile,
+      'mrt-row-expand': false,
+    });
+  }, [isMobile]);
+
+  useEffect(() => {
     assets.forEach((asset) => {
       if (!assetsData?.[asset]?.icon) {
         postAsset({ symbol: asset });
@@ -613,14 +623,24 @@ export default function RealTimePremiumTable({
   }, [assets, assetsData]);
 
   const renderTetherToggle = () =>
-    isKoreanMarket(marketCodes?.targetMarketCode) &&
-    !isKoreanMarket(marketCodes?.originMarketCode) && (
+    marketCodes ? (
       <FormGroup
         row
         sx={{
+          pointerEvents:
+            isKoreanMarket(marketCodes?.targetMarketCode) &&
+            !isKoreanMarket(marketCodes?.originMarketCode)
+              ? undefined
+              : 'none',
           width: { xs: 200, sm: 'auto' },
           mb: { xs: 0.5, sm: 2, md: 1, lg: 0 },
         }}
+        className={`animate__animated animate__${
+          isKoreanMarket(marketCodes?.targetMarketCode) &&
+          !isKoreanMarket(marketCodes?.originMarketCode)
+            ? 'zoomIn'
+            : 'zoomOut'
+        }`}
       >
         <FormControlLabel
           checked={isTetherPriceView}
@@ -645,34 +665,26 @@ export default function RealTimePremiumTable({
               },
             },
           }}
+          sx={{ ml: { xs: 0.5, sm: 1 } }}
         />
       </FormGroup>
-    );
+    ) : null;
 
   return (
     <Box>
-      {!isMobile && renderTetherToggle()}
-      {isMobile && (
-        <MarketCodeSelector onChange={(value) => setMarketCodes(value)} />
-      )}
       <MaterialReactTable
         defaultColumn={{ sortingFn: 'sortWithStarred' }}
         columns={columns}
         data={tableData}
         getRowId={(row) => row.name}
         initialState={{
-          columnVisibility: {
-            chart: !isMobile,
-            spread: !isMobile,
-            favoriteAssetId: !isMobile,
-            'mrt-row-expand': false,
-          },
+          columnVisibility,
           columnOrder: columns.map((col) => col.accessorKey),
           density: 'compact',
           showColumnFilters: false,
-          // sorting: [{ id: 'atp24h', desc: true }],
         }}
         state={{
+          columnVisibility,
           expanded,
           isLoading: !ready,
           showProgressBars:
@@ -681,6 +693,23 @@ export default function RealTimePremiumTable({
             deleteFavoriteRes.isLoading,
         }}
         sortingFns={{ sortWithStarred }}
+        onColumnVisibilityChange={(getNewColumnVisibility) => {
+          if (getNewColumnVisibility)
+            if (isFunction(getNewColumnVisibility))
+              setColumnVisibility((state) => ({
+                ...state,
+                ...getNewColumnVisibility(),
+                chart: !isMobile,
+                favoriteAssetId: !isMobile,
+              }));
+            else
+              setColumnVisibility((state) => ({
+                ...state,
+                ...getNewColumnVisibility,
+                chart: !isMobile,
+                favoriteAssetId: !isMobile,
+              }));
+        }}
         renderDetailPanel={({ row }) => (
           <Box>
             {expanded[row.id] && (
@@ -696,15 +725,12 @@ export default function RealTimePremiumTable({
             )}
           </Box>
         )}
-        renderTopToolbarCustomActions={
-          isMobile
-            ? renderTetherToggle
-            : () => (
-                <MarketCodeSelector
-                  onChange={(value) => setMarketCodes(value)}
-                />
-              )
-        }
+        renderTopToolbarCustomActions={() => (
+          <Stack direction="column" spacing={0.25}>
+            {renderTetherToggle()}
+            <MarketCodeMenu onChange={(value) => setMarketCodes(value)} />
+          </Stack>
+        )}
         muiTableDetailPanelProps={{ sx: { p: 0 } }}
         muiSearchTextFieldProps={{
           inputProps: {

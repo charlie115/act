@@ -36,7 +36,6 @@ export default function BrandLogo({
         cursor: onClick ? 'pointer' : null,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
         ...sx,
       }}
     >

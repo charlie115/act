@@ -244,8 +244,8 @@ export default function ChatWidget({ isVisible }) {
               sx={{
                 display,
                 mb: 1,
-                height: 500,
-                width: 350,
+                height: { xs: 400, sm: 500 },
+                width: { xs: 280, sm: 350 },
                 position: 'relative',
               }}
             >

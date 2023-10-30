@@ -43,14 +43,13 @@ export default function LanguageSelector(props) {
   return (
     <Select
       id="language-selector"
-      // label="Language"
       value={language}
       onChange={handleChange}
       color="secondary"
       variant="standard"
       sx={{
         color: 'light.main',
-        fontSize: 12,
+        fontSize: { xs: 10, md: 12 },
         fontWeight: 700,
         '::after': { display: 'none' },
         '::before': { display: 'none' },
