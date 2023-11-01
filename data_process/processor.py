@@ -21,7 +21,7 @@ matplotlib.use('Agg')
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
-from etc.db_handler.create_schema_tables import InitDBClient
+from kp_info_loader.etc.db_handler.postgres_client import InitDBClient
 from loggers.logger import KimpBotLogger
 
 

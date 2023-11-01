@@ -1,16 +1,9 @@
 module.exports = {
   apps : [{
-    name: 'kp_trade_v2_django',
-    script: 'kimp_bot_main.py',
+    name: 'info_core',
+    script: 'kp_info_loader_main.py',
     interpreter: 'python3.9',
-    args: "-r true",
-    restart_delay: 3000,
-  },
-  {
-    name: 'kp_trade_v2',
-    script: 'kimp_bot_main.py',
-    interpreter: 'python3.9',
-    args: "-p 2",
+    args: "-p 5",
     restart_delay: 3000,
   },
   ],

@@ -53,9 +53,41 @@ class InitOkxAdaptor:
         self.retry_term_sec = 0.2
         self.retry_count_limit = 2
         self.okx_plug_logger.info(f"okx_plug_logger started.")
-        self.instrument_info = self.get_instrument_info()
+        # self.instrument_info = self.get_swap_instrument_info()
 
-    def get_instrument_info(self):
+    def spot_all_tickers(self):
+        spot_tickers_df = pd.DataFrame(self.pub_client.MarketAPI.get_tickers(instType="SPOT")['data']).drop(columns=['instType'])
+        spot_tickers_df['base_asset'] = spot_tickers_df['instId'].apply(lambda x: x.split('-')[0])
+        spot_tickers_df['quote_asset'] = spot_tickers_df['instId'].apply(lambda x: x.split('-')[1])
+        spot_tickers_df.loc[:, 'last':'sodUtc0'] = spot_tickers_df.loc[:, 'last':'sodUtc0'].apply(pd.to_numeric)
+        spot_tickers_df = spot_tickers_df.rename(columns={"last": "lastPrice"})
+        spot_tickers_df['volume_usdt'] = spot_tickers_df.apply\
+            (lambda x: x['volCcy24h'] if x['quote_asset'] == "USDT" else x['volCcy24h'] * spot_tickers_df[spot_tickers_df['instId']==f"{x['quote_asset']}-USDT"]['lastPrice'].iloc[0], axis=1)
+        return spot_tickers_df
+
+    def usd_m_all_tickers(self):
+        usd_m_tickers_df = pd.DataFrame(okx_adaptor.pub_client.MarketAPI.get_tickers(instType="SWAP")['data']).drop(columns=['instType'])
+        usd_m_tickers_df['base_asset'] = usd_m_tickers_df['instId'].apply(lambda x: x.split('-')[0])
+        usd_m_tickers_df['quote_asset'] = usd_m_tickers_df['instId'].apply(lambda x: x.split('-')[1])
+        usd_m_tickers_df.loc[:, 'last':'sodUtc0'] = usd_m_tickers_df.loc[:, 'last':'sodUtc0'].apply(pd.to_numeric)
+        usd_m_tickers_df = usd_m_tickers_df.rename(columns={"last": "lastPrice"})
+        usd_m_tickers_df['volume_usdt'] = usd_m_tickers_df['lastPrice'] * usd_m_tickers_df['volCcy24h']
+        usd_m_tickers_df = usd_m_tickers_df[usd_m_tickers_df['quote_asset'] == "USDT"]
+        usd_m_tickers_df = usd_m_tickers_df.reset_index(drop=True)
+        return usd_m_tickers_df
+
+    def coin_m_all_tickers(self):
+        coin_m_tickers_df = pd.DataFrame(okx_adaptor.pub_client.MarketAPI.get_tickers(instType="SWAP")['data']).drop(columns=['instType'])
+        coin_m_tickers_df['base_asset'] = coin_m_tickers_df['instId'].apply(lambda x: x.split('-')[0])
+        coin_m_tickers_df['quote_asset'] = coin_m_tickers_df['instId'].apply(lambda x: x.split('-')[1])
+        coin_m_tickers_df.loc[:, 'last':'sodUtc0'] = coin_m_tickers_df.loc[:, 'last':'sodUtc0'].apply(pd.to_numeric)
+        coin_m_tickers_df = coin_m_tickers_df.rename(columns={"last": "lastPrice"})
+        coin_m_tickers_df['volume_usdt'] = coin_m_tickers_df['lastPrice'] * coin_m_tickers_df['volCcy24h']
+        coin_m_tickers_df = coin_m_tickers_df[coin_m_tickers_df['quote_asset'] == "USD"]
+        coin_m_tickers_df = coin_m_tickers_df.reset_index(drop=True)
+        return coin_m_tickers_df
+
+    def get_swap_instrument_info(self):
         result = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='SWAP')['data'])[['instId','ctVal','lever','maxMktSz','minSz','state','tickSz']]
         result.loc[:, 'maxMktSz'] = result['maxMktSz'].astype(float)
         result['minQty'] = result['ctVal'].astype(float) * result['minSz'].astype(float)
@@ -132,7 +164,7 @@ class InitOkxAdaptor:
         else:
             return_dict['res'] = trade_balance
 
-    # okx_future ordre functions
+    # okx_future order functions
     def okx_change_position_mode(self, user_okx_access_key, user_okx_secret_key, passphrase):
         okx_client = self.load_user_client(user_okx_access_key, user_okx_secret_key, passphrase)
         res = okx_client.AccountAPI.set_position_mode('net_mode')['data'][0]
@@ -354,46 +386,6 @@ class InitOkxAdaptor:
                 return_dict['state'] = 'ERROR'
             return_dict['res'] = merged_position_dict
         return merged_position_dict
-
-    # def binance_get_futures_account(self, user_binance_access_key, user_binance_secret_key, return_dict=None):
-    #     bi_client = self.load_user_client(user_binance_access_key, user_binance_secret_key)
-    #     if return_dict is None:
-    #         res = bi_client.futures_account()
-    #         res_df = pd.DataFrame(res['assets'])
-    #         res_df.loc[:, 'walletBalance':'updateTime'] = res_df.loc[:, 'walletBalance':'updateTime'].astype(float)
-    #         return res_df
-    #     else:
-    #         try:
-    #             res = bi_client.futures_account()
-    #             res_df = pd.DataFrame(res['assets'])
-    #             res_df.loc[:, 'walletBalance':'updateTime'] = res_df.loc[:, 'walletBalance':'updateTime'].astype(float)
-    #             return_dict['res'] = res_df
-    #             return_dict['state'] = 'OK'
-    #         except Exception as e:
-    #             self.binance_plug_logger.error(f"binance_get_futures_account|{traceback.format_exc()}")
-    #             return_dict['res'] = e
-    #             return_dict['state'] = 'ERROR'
-
-    # def binance_usdm_fundingrate(self):
-    #     bi_client = self.pub_bi_client
-    #     binance_fund = pd.DataFrame(bi_client.futures_mark_price())[['symbol','lastFundingRate','nextFundingTime']]
-    #     binance_fund = binance_fund.rename(columns={'symbol':'binance', 'lastFundingRate':'binance_fundingrate', 'nextFundingTime':'fundingtime'})
-    #     binance_fund.iloc[:,-1] = binance_fund.iloc[:,-1].apply(lambda x: datetime.datetime.fromtimestamp(x/1000))
-    #     binance_fund['symbol'] = binance_fund['binance'].apply(lambda x: x.replace('USDT',''))
-    #     first_column = binance_fund.pop('symbol')
-    #     binance_fund.insert(0, 'symbol', first_column)
-    #     binance_fund = binance_fund[~binance_fund['binance'].str.contains(r'\d')].reset_index(drop=True)
-    #     binance_fund = binance_fund.rename(columns={'binance':'full_symbol', 'binance_fundingrate':'fundingrate'})
-    #     binance_fund['last_updated_time'] = datetime.datetime.now()
-    #     binance_fund['exchange'] = 'binance'
-    #     return binance_fund
-
-    # def binance_get_futures_exchange_info(self):
-    #     bi_client = self.pub_bi_client
-    #     futures_exchange_info_df = pd.DataFrame(bi_client.futures_exchange_info()['symbols'])
-    #     futures_exchange_info_df.loc[:, 'filters'] = futures_exchange_info_df['filters'].apply(lambda x: x[2]['maxQty'])
-    #     futures_exchange_info_df = futures_exchange_info_df.rename(columns={'filters':'MarketOrder_maxQty'})
-    #     return futures_exchange_info_df
 
     # 여기서부터
     # OKX Fetching candles

@@ -1,9 +1,10 @@
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Manager, Event
 from threading import Thread
 import pandas as pd
 import traceback
 import websocket
 import json
+import datetime
 import time
 # set directory to upper directory
 import os
@@ -25,12 +26,15 @@ class UpbitWebsocket:
         self.proc_n = proc_n
         self.before_upbit_symbols_list = self.get_upbit_symbol_list()
         self.sliced_upbit_symbols_list = list_slice(self.get_upbit_symbol_list(), self.proc_n)
-        # self.upbit_ticker_proc_list = []
-        # self.upbit_orderbook_proc_list = []
+        self.stop_restart_webscoket = False
+        self.price_proc_event_list = []
         self.websocket_proc_dict = {}
+        self.websocket_symbol_dict = {}
         self._start_websocket()
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
+        self.monitor_websocket_last_update_thread = Thread(target=self.monitor_websocket_last_update, daemon=True)
+        self.monitor_websocket_last_update_thread.start()
         self.ticker_column_name_dict = {
             'ty': 'type', # ticker
             'cd': 'code', # ex) KRW-BTC
@@ -84,12 +88,15 @@ class UpbitWebsocket:
     def __del__(self):
         self.terminate_websocket()
 
-    def upbit_websocket(self, upbit_result_dict, data):
+    def upbit_websocket(self, upbit_result_dict, data, error_event):
         def on_message(ws, message):
+            if error_event.is_set():
+                ws.close()
+                raise Exception("upbit_websocket|error_event is set. closing websocket..")
             message_dict = json.loads(message)
             # if message_dict['cd'] == 'KRW-BCH':                                                         # test
             #     print(message_dict['tp'], datetime.datetime.fromtimestamp(message_dict['tms']/1000))    # test
-            upbit_result_dict[message_dict['cd']] = message_dict
+            upbit_result_dict[message_dict['cd']] = {**message_dict, "last_update": datetime.datetime.now()}
 
         def on_error(ws, error):
             # print(f'upbit_websocket on_error executed!')
@@ -117,52 +124,82 @@ class UpbitWebsocket:
     def _start_websocket(self):
         def handle_price_procs():
             while True:
-                for i in range(self.proc_n):
-                    upbit_ticker_data = [{"ticket":"kp_info_loader"},{"type":"ticker","codes":self.sliced_upbit_symbols_list[i]}, {"format":"SIMPLE"}]
-                    upbit_orderbook_data = [{"ticket":"kp_info_loader"},{"type":"orderbook","codes":[x+'.1' for x in self.sliced_upbit_symbols_list[i]]}, {"format":"SIMPLE"}]
+                try:
+                    if self.stop_restart_webscoket is False:
+                        for i in range(self.proc_n):
+                            ticker_start_proc = False
+                            ticker_restarted = False
+                            if f"{i+1}th_ticker_proc" in self.websocket_proc_dict.keys() and not self.websocket_proc_dict[f"{i+1}th_ticker_proc"].is_alive():
+                                ticker_start_proc = True
+                                ticker_restarted = True
+                                self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
+                                self.websocket_logger.info(f"upbit_orderbook_ticker_websocket|{i+1}th upbit_ticker_proc terminated.")
+                            elif f"{i+1}th_ticker_proc" not in self.websocket_proc_dict.keys():
+                                ticker_start_proc = True
+                                self.websocket_logger.info(f"{i+1}th Upbit ticker websocket does not exist. starting..")
+                                self.websocket_logger.info(f"upbit_orderbook_ticker_websocket|{i+1}th upbit_ticker_proc started.")
+                            if ticker_start_proc is True:
+                                error_event = Event()
+                                self.price_proc_event_list.append(error_event)
+                                self.websocket_symbol_dict[f"{i+1}th_ticker_symbol"] = self.sliced_upbit_symbols_list[i]
+                                upbit_ticker_data = [{"ticket":"kp_info_loader"},{"type":"ticker","codes":self.sliced_upbit_symbols_list[i]}, {"format":"SIMPLE"}]
+                                upbit_ticker_proc = Process(target=self.upbit_websocket, args=(self.upbit_ticker_dict, upbit_ticker_data, error_event), daemon=True)
+                                self.websocket_proc_dict[f"{i+1}th_ticker_proc"] = upbit_ticker_proc
+                                upbit_ticker_proc.start()
+                                if ticker_restarted:
+                                    content = f"restarted {i+1}th Upbit ticker websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_ticker_proc'].is_alive()}"
+                                    self.websocket_logger.info(f"upbit_orderbook_ticker_websocket|{content}")
+                                    self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'upbit ticker websocket restart', content, code=None, sent_switch=0, send_counts=1, remark=None)
 
-                    if f"{i+1}th_ticker_proc" in self.websocket_proc_dict.keys() and not self.websocket_proc_dict[f"{i+1}th_ticker_proc"].is_alive():
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
-                        self.websocket_logger.info(f"upbit_orderbook_ticker_websocket|{i+1}th upbit_ticker_proc terminated.")
-                        upbit_ticker_proc = Process(target=self.upbit_websocket, args=(self.upbit_ticker_dict, upbit_ticker_data), daemon=True)
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"] = upbit_ticker_proc
-                        upbit_ticker_proc.start()
-                        content = f"restarted {i+1}th Upbit ticker websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_ticker_proc'].is_alive()}"
-                        self.websocket_logger.info(f"upbit_orderbook_ticker_websocket|{content}")
-                        self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'upbit ticker websocket restart', content, code=None, sent_switch=0, send_counts=1, remark=None)
-                    elif f"{i+1}th_ticker_proc" not in self.websocket_proc_dict.keys():
-                        self.websocket_logger.info(f"{i+1}th Upbit ticker websocket does not exist. starting..")
-                        upbit_ticker_proc = Process(target=self.upbit_websocket, args=(self.upbit_ticker_dict, upbit_ticker_data), daemon=True)
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"] = upbit_ticker_proc
-                        upbit_ticker_proc.start()
-                        self.websocket_logger.info(f"upbit_orderbook_ticker_websocket|{i+1}th upbit_ticker_proc started.")
-                    time.sleep(0.25)
-                    if f"{i+1}th_orderbook_proc" in self.websocket_proc_dict.keys() and not self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].is_alive():
-                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
-                        self.websocket_logger.info(f"upbit_orderbook_ticker_websocket|{i+1}th upbit_orderbook_proc terminated.")
-                        upbit_orderbook_proc = Process(target=self.upbit_websocket, args=(self.upbit_orderbook_dict, upbit_orderbook_data), daemon=True)
-                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"] = upbit_orderbook_proc
-                        upbit_orderbook_proc.start()
-                        content = f"restarted {i+1}th Upbit orderbook websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_orderbook_proc'].is_alive()}"
-                        self.websocket_logger.info(f"upbit_orderbook_ticker_websocket|{content}")
-                        self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'upbit orderbook websocket restart', content, code=None, sent_switch=0, send_counts=1, remark=None)
-                    elif f"{i+1}th_orderbook_proc" not in self.websocket_proc_dict.keys():
-                        self.websocket_logger.info(f"{i+1}th Upbit orderbook websocket does not exist. starting..")
-                        upbit_orderbook_proc = Process(target=self.upbit_websocket, args=(self.upbit_orderbook_dict, upbit_orderbook_data), daemon=True)
-                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"] = upbit_orderbook_proc
-                        upbit_orderbook_proc.start()
-                        self.websocket_logger.info(f"upbit_orderbook_ticker_websocket|{i+1}th upbit_orderbook_proc started.")
-                    time.sleep(0.35)
+                            time.sleep(0.5)
+                            orderbook_start_proc = False
+                            orderbook_restarted = False
+                            if f"{i+1}th_orderbook_proc" in self.websocket_proc_dict.keys() and not self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].is_alive():
+                                orderbook_start_proc = True
+                                orderbook_restarted = True
+                                self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
+                                self.websocket_logger.info(f"upbit_orderbook_ticker_websocket|{i+1}th upbit_orderbook_proc terminated.")
+                            elif f"{i+1}th_orderbook_proc" not in self.websocket_proc_dict.keys():
+                                orderbook_start_proc = True
+                                self.websocket_logger.info(f"{i+1}th Upbit orderbook websocket does not exist. starting..")
+                                self.websocket_logger.info(f"upbit_orderbook_ticker_websocket|{i+1}th upbit_orderbook_proc started.")
+                            if orderbook_start_proc is True:
+                                error_event = Event()
+                                self.price_proc_event_list.append(error_event)
+                                self.websocket_symbol_dict[f"{i+1}th_orderbook_symbol"] = self.sliced_upbit_symbols_list[i]
+                                upbit_orderbook_data = [{"ticket":"kp_info_loader"},{"type":"orderbook","codes":[x+'.1' for x in self.sliced_upbit_symbols_list[i]]}, {"format":"SIMPLE"}]
+                                upbit_orderbook_proc = Process(target=self.upbit_websocket, args=(self.upbit_orderbook_dict, upbit_orderbook_data, error_event), daemon=True)
+                                self.websocket_proc_dict[f"{i+1}th_orderbook_proc"] = upbit_orderbook_proc
+                                upbit_orderbook_proc.start()
+                                if orderbook_restarted:
+                                    content = f"restarted {i+1}th Upbit orderbook websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_orderbook_proc'].is_alive()}"
+                                    self.websocket_logger.info(f"upbit_orderbook_ticker_websocket|{content}")
+                                    self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'upbit orderbook websocket restart', content, code=None, sent_switch=0, send_counts=1, remark=None)
+                            time.sleep(0.5)
+                except Exception as e:
+                    content = f"handle_price_procs|{traceback.format_exc()}"
+                    self.websocket_logger.error(content)
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                    time.sleep(1)
                 time.sleep(0.5)
         self.handle_price_procs_thread = Thread(target=handle_price_procs, daemon=True)
         self.handle_price_procs_thread.start()
 
     def terminate_websocket(self):
-        self.sliced_upbit_symbols_list = list_slice(self.get_upbit_symbol_list(), self.proc_n)
-        for name, each_proc in self.websocket_proc_dict.items():
-            each_proc.terminate()
-            self.websocket_logger.info(f"terminated {name}.")
-        self.websocket_logger.info("[UPBIT SPOT]all upbit_ticker_proc and upbit_orderbook_proc terminated.")
+        # self.sliced_upbit_symbols_list = list_slice(self.get_upbit_symbol_list(), self.proc_n)
+        # for name, each_proc in self.websocket_proc_dict.items():
+        #     self.websocket_logger.info(f"Before termination of {name} process, alive status: {each_proc.is_alive()}")
+        #     each_proc.terminate()
+        #     self.websocket_logger.info(f"terminated {name}")
+        # self.websocket_logger.info("[UPBIT SPOT]all upbit_ticker_proc and upbit_orderbook_proc terminated.")
+        self.stop_restart_webscoket = True
+        time.sleep(0.5)
+        for each_event in self.price_proc_event_list:
+            each_event.set()
+        self.websocket_logger.info(f"[UPBIT SPOT]all websockets' event has been set")
+        self.price_proc_event_list = []
+        time.sleep(1)
+        self.stop_restart_webscoket = False
     
     def check_status(self, print_result=False, include_text=False):
         if len(self.websocket_proc_dict) == 0:
@@ -183,7 +220,7 @@ class UpbitWebsocket:
             if include_text:
                 return (proc_status, print_text)
             return proc_status
-        
+
     def monitor_shared_symbol_change(self, loop_time_secs=60):
         self.websocket_logger.info("[UPBIT SPOT]started monitor_shared_symbol_change..")
         while True:
@@ -199,6 +236,16 @@ class UpbitWebsocket:
                     content = f"monitor_shared_symbol_change|[UPBIT SPOT]SPOT shared symbol changed. deleted: {deleted_spot_shared_symbol}, added: {added_spot_shared_symbol}"
                     self.websocket_logger.info(content)
                     self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_shared_symbol_change', content, code=None, sent_switch=0, send_counts=1, remark=None)
+                    for each_spot_shared_symbol in deleted_spot_shared_symbol:
+                        # remove deleted symbol from upbit_ticker_dict and upbit_orderbook_dict
+                        try:
+                            del self.upbit_ticker_dict[each_spot_shared_symbol]
+                        except Exception:
+                            pass
+                        try:
+                            del self.upbit_orderbook_dict[each_spot_shared_symbol]
+                        except Exception:
+                            pass
                 
                 if restart_websockets is True:
                     # Set the newer values to before values
@@ -211,6 +258,49 @@ class UpbitWebsocket:
                 content = f"monitor_shared_symbol_change|{traceback.format_exc()}"
                 self.websocket_logger.error(content)
                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_shared_symbol_change", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+
+    def monitor_websocket_last_update(self, update_threshold_mins=10, loop_time_secs=15):
+        self.websocket_logger.info(f"[UPBIT SPOT]started monitor_websocket_last_update..")
+        while True:
+            time.sleep(loop_time_secs)
+            try:
+                ticker_df = pd.DataFrame(dict(self.upbit_ticker_dict)).T.reset_index()
+                orderbook_df = pd.DataFrame(dict(self.upbit_orderbook_dict)).T.reset_index()
+                for i in range(self.proc_n):
+                    allocated_symbol_list = self.websocket_symbol_dict[f"{i+1}th_ticker_symbol"]
+                    # check ticker dict's last_update
+                    allocated_ticker_df = ticker_df[ticker_df['cd'].isin(allocated_symbol_list)]
+                    if len(allocated_ticker_df) == 0:
+                        content = f"monitor_websocket_last_update|{i+1}th_ticker_proc has no ticker_dict data. Restarting websocket.."
+                        self.websocket_logger.info(content)
+                        self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
+                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
+                        continue
+                    ticker_last_update = allocated_ticker_df['last_update'].max()
+                    # check orderbook dict's last_update
+                    allocated_orderbook_df = orderbook_df[orderbook_df['cd'].isin(allocated_symbol_list)]
+                    if len(allocated_orderbook_df) == 0:
+                        content = f"monitor_websocket_last_update|{i+1}th_orderbook_proc has no orderbook_dict data. Restarting websocket.."
+                        self.websocket_logger.info(content)
+                        self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
+                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
+                        continue
+                    orderbook_last_update = allocated_orderbook_df['last_update'].max()
+                    # If the last update is older than update_threshold_mins, restart websocket
+                    if (datetime.datetime.now() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
+                        content = f"monitor_websocket_last_update|{i+1}th_ticker_proc last_update is older than {update_threshold_mins} mins. Restarting websocket.."
+                        self.websocket_logger.info(content)
+                        self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
+                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
+                    if (datetime.datetime.now() - orderbook_last_update).total_seconds() / 60 > update_threshold_mins:
+                        content = f"monitor_websocket_last_update|{i+1}th_orderbook_proc last_update is older than {update_threshold_mins} mins. Restarting websocket.."
+                        self.websocket_logger.info(content)
+                        self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
+                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
+            except Exception as e:
+                content = f"monitor_websocket_last_update|{traceback.format_exc()}"
+                self.websocket_logger.error(content)
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
 
     def get_price_df(self):
         upbit_ticker_df = pd.DataFrame(dict(self.upbit_ticker_dict)).T.reset_index()[['index','tp','scr','atp24h','h52wp','l52wp','ms','mw','tms']]

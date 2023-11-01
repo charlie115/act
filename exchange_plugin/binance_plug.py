@@ -3,6 +3,7 @@ import os
 import datetime
 import traceback
 import pandas as pd
+import numpy as np
 import time
 from binance.client import Client
 
@@ -52,27 +53,27 @@ class InitBinanceAdaptor:
         df = df.applymap(lambda x: pd.to_numeric(x, errors='ignore'))
         return df
     
-    def usdm_exchange_info(self):
+    def usd_m_exchange_info(self):
         df = pd.DataFrame(self.pub_client.futures_exchange_info()['symbols'])
         df = df.applymap(lambda x: pd.to_numeric(x, errors='ignore'))
         return df
     
-    def usdm_all_tickers(self):
+    def usd_m_all_tickers(self):
         df = pd.DataFrame(self.pub_client.futures_ticker())
         df = df.applymap(lambda x: pd.to_numeric(x, errors='ignore'))
         if self.info_dict is None or self.info_dict.get('binance_usd_m_info_df') is None:
             # TEST
-            usdm_exchange_info_df = self.usdm_exchange_info()
+            usd_m_exchange_info_df = self.usd_m_exchange_info()
             self.binance_plug_logger.info(f"self.info_dict is None or self.info_dict.get('binance_usd_m_info_df') is None, Fetched from API")
         else:
-            usdm_exchange_info_df = self.info_dict.get('binance_usd_m_info_df')
+            usd_m_exchange_info_df = self.info_dict.get('binance_usd_m_info_df')
         if self.info_dict is None or self.info_dict.get('binance_spot_ticker_df') is None:
             # TEST
             binance_spot_ticker_df = self.spot_all_tickers()
             self.binance_plug_logger.info(f"self.info_dict is None or self.info_dict.get('binance_spot_ticker_df') is None, Fetched from API")
         else:
             binance_spot_ticker_df = self.info_dict.get('binance_spot_ticker_df')
-        df = df.merge(usdm_exchange_info_df[['symbol', 'baseAsset', 'quoteAsset']], on='symbol', how='inner')
+        df = df.merge(usd_m_exchange_info_df[['symbol', 'baseAsset', 'quoteAsset']], on='symbol', how='inner')
         df.rename(columns={'baseAsset': 'base_asset', 'quoteAsset': 'quote_asset'}, inplace=True)
         df['quote_symbol'] = df['quote_asset'] + 'USDT'
         df2 = binance_spot_ticker_df.copy()
@@ -85,12 +86,12 @@ class InitBinanceAdaptor:
 
         return df
     
-    def coinm_exchange_info(self):
+    def coin_m_exchange_info(self):
         df = pd.DataFrame(self.pub_client.futures_coin_exchange_info()['symbols'])
         df = df.applymap(lambda x: pd.to_numeric(x, errors='ignore'))
         return df
     
-    def coinm_all_tickers(self):
+    def coin_m_all_tickers(self):
         df = pd.DataFrame(self.pub_client.futures_coin_ticker())
         df = df.applymap(lambda x: pd.to_numeric(x, errors='ignore'))
         df['base_asset'] = df['symbol'].str.split('USD_').str[0]
@@ -98,10 +99,38 @@ class InitBinanceAdaptor:
         df['volume_usdt'] = df['volume'] * 100
         return df
 
-    def usdm_fundingrate(self):
+    def get_fundingrate(self, futures_type="USD_M"):
         bi_client = self.pub_client
-        binance_fund = pd.DataFrame(bi_client.futures_mark_price())
-        binance_fund = binance_fund.rename(columns={'symbol':'binance', 'lastFundingRate':'binance_fundingrate', 'nextFundingTime':'fundingtime'})
-        binance_fund.loc[:,['nextFundingTime', 'time']] = binance_fund.loc[:,['nextFundingTime', 'time']].apply(lambda x: datetime.datetime.fromtimestamp(x/1000))
-        binance_fund['symbol'] = binance_fund['binance'].apply(lambda x: x.replace('USDT',''))
-        return binance_fund
+        if futures_type == "USD_M":
+            if self.info_dict is None or self.info_dict.get('binance_usd_m_info_df') is None:
+                usd_m_exchange_info_df = self.usd_m_exchange_info()
+                self.binance_plug_logger.info(f"self.info_dict is None or self.info_dict.get('binance_usd_m_info_df') is None, Fetched from API")
+            else:
+                usd_m_exchange_info_df = self.info_dict.get('binance_usd_m_info_df')
+            binance_fund = pd.DataFrame(bi_client.futures_mark_price())
+            binance_fund = binance_fund.merge(usd_m_exchange_info_df[['symbol','baseAsset','quoteAsset']], on='symbol', how='left')
+            binance_fund = binance_fund.rename(columns={'baseAsset':'base_asset', 'quoteAsset':'quote_asset', 'lastFundingRate':'funding_rate', 'nextFundingTime':'funding_time'})
+            binance_fund.loc[:,'funding_time'] = binance_fund.loc[:,'funding_time'].apply(lambda x: datetime.datetime.fromtimestamp(x/1000, tz=datetime.timezone.utc))
+            binance_fund.loc[:,'funding_time'] = binance_fund.loc[:,'funding_time'].dt.tz_localize(None)
+            # replace '' to None
+            binance_fund.replace("", None, inplace=True)
+            binance_fund.loc[:, 'funding_rate'] = binance_fund['funding_rate'].astype(float)
+            binance_fund.drop(columns=['markPrice','indexPrice','estimatedSettlePrice','interestRate','time'], inplace=True)
+            binance_fund['perpetual'] = binance_fund['symbol'].apply(lambda x: False if '_' in x else True)
+            return binance_fund
+        elif futures_type == "COIN_M":
+            binance_fund = pd.DataFrame(bi_client.futures_coin_mark_price())
+            binance_fund['base_asset'] = binance_fund['symbol'].str.split('USD_').str[0]
+            binance_fund['quote_asset'] = 'USD'
+            binance_fund = binance_fund.rename(columns={'lastFundingRate':'funding_rate', 'nextFundingTime':'funding_time'})
+            binance_fund.loc[:,'funding_time'] = binance_fund.loc[:,'funding_time'].apply(lambda x: datetime.datetime.fromtimestamp(x/1000, tz=datetime.timezone.utc))
+            binance_fund.loc[:,'funding_time'] = binance_fund.loc[:,'funding_time'].dt.tz_localize(None)
+            # replace '' to None
+            binance_fund.replace("", None, inplace=True)
+            binance_fund.loc[:, 'funding_rate'] = binance_fund['funding_rate'].astype(float)
+            binance_fund.drop(columns=['markPrice','indexPrice','estimatedSettlePrice','interestRate','pair','time'], inplace=True)
+            binance_fund['perpetual'] = binance_fund['symbol'].apply(lambda x: True if '_PERP' in x else False)
+            return binance_fund
+        else:
+            raise Exception(f"Invalid futures_type: {futures_type}")
+        

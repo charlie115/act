@@ -48,7 +48,7 @@ class InitUpbitAdaptor:
     def wallet_status(self):
         return pd.DataFrame(self.my_client.Account.Account_wallet()['result'])
 
-    def all_tickers(self, return_dict=None):
+    def spot_all_tickers(self, return_dict=None):
         upbit_client = self.pub_client
         upbit_symbols_df = pd.DataFrame(upbit_client.Market.Market_info_all()['result'])
         upbit_symbols = upbit_symbols_df['market'].to_list()

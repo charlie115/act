@@ -14,7 +14,7 @@ import asyncio # For MarginCallback
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from data_process.processor import InitDataProcessor
-from etc.db_handler.create_schema_tables import InitDBClient, InitDBPool
+from kp_info_loader.etc.db_handler.postgres_client import InitDBClient, InitDBPool
 from kp_info_loader.etc.register_monitor_msg import RegisterMonitorMsg
 from loggers.logger import KimpBotLogger
 

@@ -95,6 +95,7 @@ class InitTelegramBot:
     def __init__(self, bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list):
         self.node = node
         # self.encryption_key = encryption_key
+        self.core = core
         self.check_status = core.check_status
         self.dollar_update_thread_status = core.dollar_update_thread_status
         self.reinitiate_dollar_update_thread = core.reinitiate_dollar_update_thread
@@ -122,6 +123,8 @@ class InitTelegramBot:
         self.dispatcher.add_handler(admin_msgto_handler)
         status_handler = CommandHandler('status', self.status)
         self.dispatcher.add_handler(status_handler)
+        check_symbols_handler = CommandHandler('check_symbols', self.check_symbols)
+        self.dispatcher.add_handler(check_symbols_handler)
         ##### Functions for system management############################
         stop_handler = CommandHandler('stop', self.stop)
         self.dispatcher.add_handler(stop_handler)
@@ -129,6 +132,11 @@ class InitTelegramBot:
         self.dispatcher.add_handler(restart_handler)
         redollar_handler = CommandHandler('redollar', self.redollar)
         self.dispatcher.add_handler(redollar_handler)
+        ###### Functions for testing ##################################
+        add_to_exclude_handler = CommandHandler('add_to_exclude', self.add_to_exclude)
+        self.dispatcher.add_handler(add_to_exclude_handler)
+        remove_to_exclude_handler = CommandHandler('remove_to_exclude', self.remove_to_exclude)
+        self.dispatcher.add_handler(remove_to_exclude_handler)
         ########### Normal message handler ##############################
         # process_message_handler = MessageHandler(Filters.text & ~Filters.command, self.process_message)
         # self.dispatcher.add_handler(process_message_handler)
@@ -222,6 +230,36 @@ class InitTelegramBot:
         status_thread_th = Thread(target=status_thread, daemon=True)
         status_thread_th.start()
     
+    def check_symbols(self, update, context):
+        def check_symbols_thread():
+            user_id = update.effective_chat.id
+            if user_id in self.admin_id_list:
+                try:
+                    # read input message
+                    input_msg = context.args
+                    exchange_name = input_msg[0].upper()
+                    if exchange_name not in ['UPBIT_SPOT', 'BINANCE_USD_M']:
+                        body = f"exchange_name: {exchange_name}은 지원하지 않는 거래소 입니다."
+                        self.bot.send_thread(chat_id=user_id, text=body)
+                        return
+                    # Passed validation
+                    content = ""
+                    for proc_name, symbol_list in self.core.exchange_websocket_dict[exchange_name].websocket_symbol_dict.items():
+                        content += f"{proc_name}\n"
+                        for symbol in symbol_list:
+                            content += f"{symbol}\n"
+                        content += "\n"
+                    self.bot.send_thread(chat_id=user_id, text=content)
+
+                except Exception as e:
+                    self.telegram_bot_logger.error(f"check_symbols|{traceback.format_exc()}")
+                    body = f"서비스에 불편을 드려 죄송합니다. 일시적인 오류가 발생했습니다. 관리자에게 문의 해 주세요. (@charlie1155)\n"
+                    body += f"error: {e}"
+                    self.bot.send_thread(chat_id=user_id, text=body)
+                    return
+        check_symbols_thread_th = Thread(target=check_symbols_thread, daemon=True)
+        check_symbols_thread_th.start()
+
     # System handling functions
     ######################################################################################
     def stop(self, update, context):
@@ -242,7 +280,7 @@ class InitTelegramBot:
         
     def restart(self, update, context):
         user_id  =update.effective_chat.id
-        if user_id not in admin_id_list: # 나, 영익이형, 준우형, 홍갑이형
+        if user_id not in self.admin_id_list: # 나, 영익이형, 준우형, 홍갑이형
             return
         try:
             # systemd_name = 'kp_trade_v2'
@@ -267,6 +305,59 @@ class InitTelegramBot:
             # reinitiating_dollar_thread_res = self.reinitiate_dollar_update_thread()
             # self.bot.send_thread(chat_id=self.admin_id, text=reinitiating_dollar_thread_res)
             pass
+        except Exception as e:
+            body = f"서비스에 불편을 드려 죄송합니다. 일시적인 오류가 발생했습니다. 관리자에게 문의 해 주세요. (@charlie1155)\n"
+            body += f"error: {e}"
+            self.bot.send_thread(chat_id=user_id, text=body)
+            return
+        
+    # Testing functions #######################################################################################################
+    def add_to_exclude(self, update, context):
+        user_id = update.effective_chat.id
+        if user_id not in self.admin_id_list: # 나, 영익이형, 준우형, 홍갑이형
+            return
+        try:
+            input_msg = ''.join(context.args).split(',')
+            if len(input_msg) != 2:
+                body = f"잘못된 입력입니다. self.binance_usdm_symbols_to_exclude: {self.core.binance_usdm_symbols_to_exclude}\n"
+                body += f"/add_to_exclude market_code, base_asset 형식으로 입력하세요. ex) BINANCE_USD_M, BTC"
+                self.bot.send_thread(chat_id=user_id, text=body)
+                return
+            if input_msg[0].upper() not in ['BINANCE_USD_M', 'BINANCE_SPOT', 'BINANCE_COIN_M', 'UPBIT_SPOT']:
+                body = f"잘못된 입력입니다.\n"
+                body += f"지원하지 않는 마켓 입니다. 지원되는 마켓은 BINANCE_USD_M, BINANCE_SPOT, BINANCE_COIN_M, UPBIT_SPOT 입니다."
+                self.bot.send_thread(chat_id=user_id, text=body)
+                return
+            # Passed validation
+            market_code = input_msg[0].upper()
+            base_asset = input_msg[1].upper()
+            self.core.add_symbol_to_exclude(market_code, base_asset)
+        except Exception as e:
+            body = f"서비스에 불편을 드려 죄송합니다. 일시적인 오류가 발생했습니다. 관리자에게 문의 해 주세요. (@charlie1155)\n"
+            body += f"error: {e}"
+            self.bot.send_thread(chat_id=user_id, text=body)
+            return
+    
+    def remove_to_exclude(self, update, context):
+        user_id = update.effective_chat.id
+        if user_id not in self.admin_id_list: # 나, 영익이형, 준우형, 홍갑이형
+            return
+        try:
+            input_msg = ''.join(context.args).split(',')
+            if len(input_msg) != 2:
+                body = f"잘못된 입력입니다.\n"
+                body += f"/remove_to_exclude market_code, base_asset 형식으로 입력하세요. ex) BINANCE_USD_M, BTC"
+                self.bot.send_thread(chat_id=user_id, text=body)
+                return
+            if input_msg[0].upper() not in ['BINANCE_USD_M', 'BINANCE_SPOT', 'BINANCE_COIN_M', 'UPBIT_SPOT']:
+                body = f"잘못된 입력입니다.\n"
+                body += f"지원하지 않는 마켓 입니다. 지원되는 마켓은 BINANCE_USD_M, BINANCE_SPOT, BINANCE_COIN_M, UPBIT_SPOT 입니다."
+                self.bot.send_thread(chat_id=user_id, text=body)
+                return
+            # Passed validation
+            market_code = input_msg[0].upper()
+            base_asset = input_msg[1].upper()
+            self.core.remove_symbol_to_exclude(market_code, base_asset)
         except Exception as e:
             body = f"서비스에 불편을 드려 죄송합니다. 일시적인 오류가 발생했습니다. 관리자에게 문의 해 주세요. (@charlie1155)\n"
             body += f"error: {e}"

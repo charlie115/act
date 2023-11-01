@@ -6,7 +6,7 @@
         "kp_info_loader":
         {
             "MASTER": true,
-            "db_settings": "mycore2_local",
+            "db_settings": "mongodb_docker",
             "telegram_bot_name": "kp_info_loader_bot",
             "reference_node": null
         }
@@ -19,9 +19,15 @@
         },
         "BINANCE":
         {
-            "SPOT": ["USDT", "BUSD", "BTC"],
-            "USD_M_FUTURES": ["USDT_PERPETUAL", "BUSD_PERPETUAL"],
+            "SPOT": ["USDT", "BTC"],
+            "USD_M_FUTURES": ["USDT_PERPETUAL"],
             "COIN_M_FUTURES": ["PERPETUAL"]
+        },
+        "OKX":
+        {
+            "SPOT": ["USDT", "BTC"],
+            "USD_M_FUTURES":["USDT_PERPETUAL"],
+            "COIN_M_FUTURES":["PERPETUAL"]
         }
     },
     "telegram_bot_setting": 
@@ -38,7 +44,7 @@
     "monitor_setting":
     {
         "monitor_bot": "kp_trade_monitor",
-        "monitor_bot_api_url": "http://221.148.128.214:22180/api/monitor_v1/monitorbot/"
+        "monitor_bot_api_url": "http://221.148.128.213:22180/api/monitor_v1/monitorbot/"
     },
     "database_setting":
     {
@@ -111,8 +117,27 @@
             "port":22153,
             "user":"root",
             "passwd":"13245dh!!"
+        },
+        "postgres_docker":
+        {
+            "host":"postgres",
+            "port":5432,
+            "user":"test",
+            "passwd":"CommunityPostgres123!"
+        },
+        "mongodb_docker":
+        {
+            "host":"mongodb",
+            "port":27017,
+            "user": "test",
+            "passwd": "CommunityMongodb123!"
+        },
+        "redis":
+        {
+            "host": "redis",
+            "port": 6379,
+            "passwd": "CommunityRedis123!"
         }
-
     },
 
     "exchange_api_key":

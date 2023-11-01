@@ -56,7 +56,7 @@ if __name__ == '__main__':
     admin_id_list = []
     admin_id = config['telegram_admin_id']['charlie1155']
     admin_id_list.append(admin_id)
-    register_monitor_msg = RegisterMonitorMsg(monitor_bot_token, monitor_bot_api_url, admin_id)
+    register_monitor_msg = RegisterMonitorMsg(monitor_bot_token, monitor_bot_api_url, admin_id, logging_dir)
     # Read api keys
     exchange_api_key_dict = config['exchange_api_key']
     # Exchange market settings
@@ -65,26 +65,26 @@ if __name__ == '__main__':
     # idle
 
     from telegram_bot_plugin.telegram_bot import InitTelegramBot
-    from etc.db_handler.create_schema_tables import InitDBClient
+    from kp_info_loader.etc.db_handler.postgres_client import InitDBClient
     telegram_bot_name = config['node_settings'][node]['telegram_bot_name']
     telegram_bot_token = config['telegram_bot_setting'][telegram_bot_name]
     master_flag = config['node_settings'][node]['MASTER']
     db_dict = config['database_setting'][config['node_settings'][node]['db_settings']]
-    db_dict['database'] = node
+    # db_dict['database'] = 'info_core'
 
-    # Create database and tables if not exists
-    temp_db_dict = db_dict.copy()
-    temp_db_dict['create_database'] = True
-    temp_db_dict['logging_dir'] = logging_dir
-    temp_db_client = InitDBClient(**temp_db_dict)
-    temp_db_client.create_all_table(master_node=master_flag)
-    temp_db_client.curr.close()
-    temp_db_client.conn.close()
+    # # Create database and tables if not exists
+    # temp_db_dict = db_dict.copy()
+    # temp_db_dict['create_database'] = True
+    # temp_db_dict['logging_dir'] = logging_dir
+    # temp_db_client = InitDBClient(**temp_db_dict)
+    # temp_db_client.create_all_table(master_node=master_flag)
+    # temp_db_client.curr.close()
+    # temp_db_client.conn.close()
 
     # kline_schema_name = 'coin_kimp_kline'
     
     # Initiate Kimp core (Websocket engine)
-    core = InitCore(logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_markets_dict)
+    core = InitCore(logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_markets_dict, db_dict)
 
     # Initiate Kimp core monitor
     # core_monitor = InitKimpCoreMonitor()
