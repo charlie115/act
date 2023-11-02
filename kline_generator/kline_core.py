@@ -45,8 +45,13 @@ class InitKlineCore:
         for market_combination_tuple in self.market_combination_list:
             if (("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "BINANCE_SPOT/USDT" in market_combination_tuple[1])
                 or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "BINANCE_USD_M/USDT" in market_combination_tuple[1])
-                or ("BINANCE_COIN_M/USD" in market_combination_tuple[0] and "BINANCE_USD_M/USDT" in market_combination_tuple[1])
-                or ("BINANCE_USD_M/USDT" in market_combination_tuple[0] and "BINANCE_COIN_M/USDT" in market_combination_tuple[1])):
+                # or ("BINANCE_COIN_M/USD" in market_combination_tuple[0] and "BINANCE_USD_M/USDT" in market_combination_tuple[1])
+                or ("BINANCE_USD_M/USDT" in market_combination_tuple[0] and "BINANCE_COIN_M/USDT" in market_combination_tuple[1])
+                or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "OKX_SPOT/USDT" in market_combination_tuple[1])
+                or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "OKX_USD_M/USDT" in market_combination_tuple[1])
+                or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "OKX_COIN_M/USDT" in market_combination_tuple[1])
+                or ("BINANCE_USD_M/USDT" in market_combination_tuple[0] and "OKX_USD_M/USDT" in market_combination_tuple[1])
+                ):
                 target_market_code = market_combination_tuple[0]
                 origin_market_code = market_combination_tuple[1]
                 self.enaled_market_combination_list.append((target_market_code, origin_market_code))

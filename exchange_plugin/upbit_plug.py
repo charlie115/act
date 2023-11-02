@@ -46,7 +46,19 @@ class InitUpbitAdaptor:
 
     # Private API
     def wallet_status(self):
-        return pd.DataFrame(self.my_client.Account.Account_wallet()['result'])
+        wallet_status = pd.DataFrame(self.my_client.Account.Account_wallet()['result'])
+        wallet_status = wallet_status.rename(columns={"currency": "asset"})
+        wallet_status['deposit'] = wallet_status['wallet_state'].apply(lambda x: True if x in ["working", "deposit_only"] else False)
+        wallet_status['withdraw'] = wallet_status['wallet_state'].apply(lambda x: True if x in ["working", "withdraw_only"] else False)
+        return wallet_status
+    
+    def spot_exchange_info(self):
+        info_df = pd.DataFrame(self.pub_client.Market.Market_info_all(isDetails=True)['result'])
+        info_df['base_asset'] = info_df['market'].apply(lambda x: x.split('-')[1])
+        info_df['quote_asset'] = info_df['market'].apply(lambda x: x.split('-')[0])
+        info_df.loc[:, 'market_warning'] = info_df['market_warning'].apply(lambda x: False if x == "NONE" else True)
+        info_df.rename(columns={"market": "symbol"}, inplace=True)
+        return info_df
 
     def spot_all_tickers(self, return_dict=None):
         upbit_client = self.pub_client
@@ -66,7 +78,7 @@ class InitUpbitAdaptor:
         upbit_all_ticker_df['base_asset'] = upbit_all_ticker_df['market'].apply(lambda x: x.split('-')[1])
         upbit_all_ticker_df['quote_asset'] = upbit_all_ticker_df['market'].apply(lambda x: x.split('-')[0])
         upbit_all_ticker_df['acc_trade_price_24h_krw'] = upbit_all_ticker_df.apply(convert_to_krw, axis=1)
-        upbit_all_ticker_df.rename(columns={"trade_price": "lastPrice"}, inplace=True)
+        upbit_all_ticker_df.rename(columns={"market": "symbol", "trade_price": "lastPrice", "acc_trade_price_24h_krw": "atp24h"}, inplace=True)
         if return_dict is None:
             res = upbit_all_ticker_df
             return res

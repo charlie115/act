@@ -61,6 +61,7 @@ class InitCore:
         # UPBIT wallet status
         # BINANCE SPOT, USD-M Futures, COIN-M Futures
         self.data_name_list = [
+            "upbit_spot_info_df",
             "upbit_spot_ticker_df",
             "upbit_wallet_status_df",
             "binance_spot_ticker_df",
@@ -70,8 +71,11 @@ class InitCore:
             "binance_coin_m_ticker_df",
             "binance_coin_m_info_df",
             "okx_spot_ticker_df",
+            "okx_spot_info_df",
             "okx_usd_m_ticker_df",
-            "okx_coin_m_ticker_df"
+            "okx_usd_m_info_df",
+            "okx_coin_m_ticker_df",
+            "okx_coin_m_info_df"
         ]
 
         for data_name in self.data_name_list:
@@ -93,15 +97,17 @@ class InitCore:
         self.exchange_websocket_dict['BINANCE_SPOT'] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_spot_symbol_list, register_monitor_msg, self.info_dict, logging_dir)
         self.exchange_websocket_dict['BINANCE_USD_M'] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_usd_m_symbol_list, register_monitor_msg, self.info_dict, logging_dir)
         self.exchange_websocket_dict['BINANCE_COIN_M'] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_coin_m_symbol_list, register_monitor_msg, self.info_dict, logging_dir)
-        # self.exchange_websocket_dict['OKX_SPOT'] = 
+        self.exchange_websocket_dict['OKX_SPOT'] = OkxWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_spot_symbol_list, register_monitor_msg, "SPOT", logging_dir)
+        self.exchange_websocket_dict['OKX_USD_M'] = OkxUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_usd_m_symbol_list, register_monitor_msg, "USD_M", logging_dir)
+        self.exchange_websocket_dict['OKX_COIN_M'] = OkxCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_coin_m_symbol_list, register_monitor_msg, "COIN_M", logging_dir)
         self.logger.info(f"InitCore|exchange_websocket_dict, {self.exchange_websocket_dict.keys()} has been initiated.")
         time.sleep(10)
 
-        # Start updating fundingrate
-        # self.update_fundingrate_proc = Process(target=self.update_fundingrate, daemon=True) # Deprecated
-        # self.update_fundingrate_proc.start()
-        self.update_fundingrate_thread = Thread(target=self.update_fundingrate, daemon=True)
-        self.update_fundingrate_thread.start()
+        # # Start updating fundingrate
+        self.binance_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("BINANCE", self.binance_adaptor), daemon=True)
+        self.binance_update_fundingrate_thread.start()
+        self.okx_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("OKX", self.okx_adaptor), daemon=True)
+        self.okx_update_fundingrate_thread.start()
 
         # Start kline generator
         self.kline_generator = InitKlineCore(self.admin_id, node, self.get_premium_df, self.get_market_code_list, register_monitor_msg, self.redis_client, self.db_client, logging_dir)
@@ -109,7 +115,9 @@ class InitCore:
     def update_exchange_info_as_df(self, data_name, loop_time_secs=15):
         while True:
             try:
-                if data_name == "upbit_spot_ticker_df":
+                if data_name == "upbit_spot_info_df":
+                    self.info_dict[data_name] = self.upbit_adaptor.spot_exchange_info()
+                elif data_name == "upbit_spot_ticker_df":
                     self.info_dict[data_name] = self.upbit_adaptor.spot_all_tickers()
                 elif data_name == "upbit_wallet_status_df":
                     self.info_dict[data_name] = self.upbit_adaptor.wallet_status()
@@ -127,10 +135,16 @@ class InitCore:
                     self.info_dict[data_name] = self.binance_adaptor.coin_m_exchange_info()
                 elif data_name == "okx_spot_ticker_df":
                     self.info_dict[data_name] = self.okx_adaptor.spot_all_tickers()
+                elif data_name == "okx_spot_info_df":
+                    self.info_dict[data_name] = self.okx_adaptor.spot_exchange_info()
                 elif data_name == "okx_usd_m_ticker_df":
                     self.info_dict[data_name] = self.okx_adaptor.usd_m_all_tickers()
+                elif data_name == "okx_usd_m_info_df":
+                    self.info_dict[data_name] = self.okx_adaptor.usd_m_exchange_info()
                 elif data_name == "okx_coin_m_ticker_df":
                     self.info_dict[data_name] = self.okx_adaptor.coin_m_all_tickers()
+                elif data_name == "okx_coin_m_info_df":
+                    self.info_dict[data_name] = self.okx_adaptor.coin_m_exchange_info()
                 else:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name} is not valid.")
                     self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
@@ -148,8 +162,8 @@ class InitCore:
     def get_market_code_list(self):
         market_code_list = []
         for exchange in self.exchange_websocket_dict.keys():
-            for quete_asset in self.exchange_websocket_dict[exchange].get_price_df()['quote_asset'].unique():
-                market_code_list.append(f"{exchange}/{quete_asset}")
+            for quote_asset in self.exchange_websocket_dict[exchange].get_price_df()['quote_asset'].unique():
+                market_code_list.append(f"{exchange}/{quote_asset}")
         return market_code_list
     
     def dollar_update_thread_status(self):
@@ -172,155 +186,87 @@ class InitCore:
         self.logger.info("reinitiate_dollar_update_thread|dollar_update_thread has been reinitiated.")
         return before_reinitiate + "\n" + after_reinitiate
 
-    def get_upbit_symbol_list(self, return_df=False):
+    def get_symbol_list(self, target_market): # E.g) UPBIT_SPOT, BINANCE_SPOT, BINANCE_USD_M, BINANCE_COIN_M
+        target_exchange = target_market.split('_')[0]
+        target_market_type = '_'.join(target_market.split('_')[1:])
+
+        comparing_exchanges = self.enabled_markets_dict.keys()
+        comparison_list = []
         total_df = pd.DataFrame()
-        upbit_ticker_df = self.info_dict['upbit_spot_ticker_df'][['market','acc_trade_price_24h_krw']].copy()
-        upbit_ticker_df['base_symbol'] = upbit_ticker_df['market'].apply(lambda x: x.split('-')[1])
-        for upbit_market in self.enabled_markets_dict['UPBIT']['SPOT']:
-            each_upbit_ticker_df = upbit_ticker_df[upbit_ticker_df['market'].str.startswith(upbit_market)].copy()
-            
-            for binance_spot_market in self.enabled_markets_dict['BINANCE']['SPOT']:
-                each_binance_spot_info_df = self.info_dict['binance_spot_info_df'][self.info_dict['binance_spot_info_df']['symbol'].str.endswith(binance_spot_market)].copy()
-                each_binance_spot_info_df['base_symbol'] = each_binance_spot_info_df['symbol'].apply(lambda x: x[:-len(binance_spot_market)])
-                merged_df = each_upbit_ticker_df.merge(each_binance_spot_info_df[['symbol','base_symbol']], on='base_symbol', how='inner')
-                total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
+        for exchange in comparing_exchanges:
+            for market_type in self.enabled_markets_dict[exchange]:
+                if market_type == "SPOT":
+                    for quote_asset in self.enabled_markets_dict[exchange][market_type]:
+                        comparison_list.append({"exchange": exchange, "market_type": market_type, "contract_type":None, "quote_asset": quote_asset})
+                else:
+                    for contract_type in self.enabled_markets_dict[exchange][market_type]:
+                        for quote_asset in self.enabled_markets_dict[exchange][market_type][contract_type]:
+                            comparison_list.append({"exchange": exchange, "market_type": market_type, "contract_type":contract_type, "quote_asset": quote_asset})
 
-            for binance_usd_m_market in self.enabled_markets_dict['BINANCE']['USD_M_FUTURES']: # ["USDT_PERPETUAL", "BUSD_PERPETUAL"]
-                # Check PERPETUAL
-                quote_asset, contract_type = binance_usd_m_market.split('_')
-                each_binance_usd_m_info_df = self.info_dict['binance_usd_m_info_df'][(self.info_dict['binance_usd_m_info_df']['quoteAsset']==quote_asset)&(self.info_dict['binance_usd_m_info_df']['contractType']==contract_type)].copy()        
-                merged_df = each_upbit_ticker_df.merge(each_binance_usd_m_info_df[['symbol','baseAsset']], left_on='base_symbol', right_on='baseAsset' ,how='inner')
-                total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
+        for i, comparison_dict in enumerate(comparison_list):
+            if comparison_dict['exchange'] == target_exchange and comparison_dict['market_type'] == target_market_type:
+                target_market_dict = comparison_list.pop(i)
+                break
 
-            for binance_coin_m_market in self.enabled_markets_dict['BINANCE']['COIN_M_FUTURES']: # ["PERPETUAL"]
-                # Check PERPETUAL
-                contract_type = binance_coin_m_market
-                each_binance_coin_m_info_df = self.info_dict['binance_coin_m_info_df'][self.info_dict['binance_coin_m_info_df']['contractType']==contract_type].copy()
-                merged_df = each_upbit_ticker_df.merge(each_binance_coin_m_info_df[['symbol','baseAsset']], left_on='base_symbol', right_on='baseAsset' ,how='inner')
-                total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
+        # Start compare and concat
+        target_market_ticker_df = self.info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"]
+        # check if it's spot or not
+        if target_market_dict['market_type'] != "SPOT":
+            target_market_info_df = self.info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_info_df"][['symbol','perpetual']]
+            target_market_ticker_df = target_market_ticker_df.merge(target_market_info_df, on='symbol', how='inner')
+            if target_market_dict['contract_type'] == "PERPETUAL":
+                target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['perpetual'] == True]
+            else: # FUTURES
+                target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['perpetual'] == False]
+        target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['quote_asset']==target_market_dict['quote_asset']][['symbol','lastPrice','atp24h','base_asset','quote_asset']]
+        for each_comparison_dict in comparison_list:
+            each_market_info_df = self.info_dict[f"{each_comparison_dict['exchange'].lower()}_{each_comparison_dict['market_type'].lower()}_info_df"]
+            if each_comparison_dict['contract_type'] is None:
+                each_market_info_df = each_market_info_df[each_market_info_df['quote_asset']==each_comparison_dict['quote_asset']]
+            else: # contract_type is PERPETUAL or FUTURES
+                if each_comparison_dict['contract_type'] == "PERPETUAL":
+                    each_market_info_df = each_market_info_df[(each_market_info_df['quote_asset']==each_comparison_dict['quote_asset'])&(each_market_info_df['perpetual'] == True)]
+                else: # FUTURES
+                    each_market_info_df = each_market_info_df[(each_market_info_df['quote_asset']==each_comparison_dict['quote_asset'])&(each_market_info_df['perpetual'] == False)]
+            comparison_market_code = f"{each_comparison_dict['exchange'].lower()}_{each_comparison_dict['market_type'].lower()}"
+            new_symbol = f"symbol_{comparison_market_code}"
+            new_quote_asset = f"quote_asset_{comparison_market_code}"
+            each_market_info_df = each_market_info_df.rename(columns={"symbol":new_symbol, "quote_asset": new_quote_asset})
+            merged_df = target_market_ticker_df.merge(each_market_info_df[[new_symbol, "base_asset", new_quote_asset]], on='base_asset', how='inner')
+            total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
 
-            # for okx_spot_quote_asset in self.enabled_market_dict['OKX']['SPOT']:
-            #     each_okx_spot_ticker_df = self.info_dict['okx_spot_ticker_df'][self.info_dict['okx_spot_ticker_df']['quote_asset']==okx_spot_market].copy()
-
-
-        total_df.drop_duplicates(subset=['market'], inplace=True)
-        total_df.sort_values(by='acc_trade_price_24h_krw', ascending=False, inplace=True)
+        total_df.drop_duplicates(['symbol'], inplace=True)
+        total_df.sort_values('atp24h', ascending=False)
         total_df.reset_index(drop=True, inplace=True)
-        if return_df:
-            return total_df
-        market_symbol_list = total_df['market'].to_list()
-        # return market_symbol_list
-        # TEST
-        return [x for x in market_symbol_list if x not in (['KRW-'+y for y in self.upbit_symbols_to_exclude]+['BTC-'+y for y in self.upbit_symbols_to_exclude])]
+        return total_df['symbol'].to_list()
+
+    def get_upbit_symbol_list(self):
+        symbol_list = self.get_symbol_list('UPBIT_SPOT')
+        return [x for x in symbol_list if x not in (['KRW-'+y for y in self.upbit_symbols_to_exclude]+['BTC-'+y for y in self.upbit_symbols_to_exclude])]
     
-    def get_binance_spot_symbol_list(self, return_df=False):
-        total_df = pd.DataFrame()
-        binance_spot_ticker_df = self.info_dict['binance_spot_ticker_df'][['symbol','volume_usdt']].copy()
-        binance_spot_ticker_df = binance_spot_ticker_df.rename(columns={'symbol':'spot_symbol'})
+    def get_binance_spot_symbol_list(self):
+        symbol_list = self.get_symbol_list('BINANCE_SPOT')
+        return symbol_list
 
-        for binance_spot_market in self.enabled_markets_dict['BINANCE']['SPOT']:
-            each_binance_spot_ticker_df = binance_spot_ticker_df[binance_spot_ticker_df['spot_symbol'].str.endswith(binance_spot_market)].copy()
-            each_binance_spot_ticker_df['base_symbol'] = each_binance_spot_ticker_df['spot_symbol'].apply(lambda x: x[:-len(binance_spot_market)])
-            
-            for upbit_market in self.enabled_markets_dict['UPBIT']['SPOT']:
-                each_upbit_ticker_df = self.info_dict['upbit_spot_ticker_df'][self.info_dict['upbit_spot_ticker_df']['market'].str.startswith(upbit_market)].copy()
-                each_upbit_ticker_df['base_symbol'] = each_upbit_ticker_df['market'].apply(lambda x: x.split('-')[1])
-                merged_df = each_binance_spot_ticker_df.merge(each_upbit_ticker_df[['market','base_symbol']], on='base_symbol', how='inner')
-                total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
-
-            for binance_usd_m_market in self.enabled_markets_dict['BINANCE']['USD_M_FUTURES']:
-                quote_asset, contract_type = binance_usd_m_market.split('_')
-                each_binance_usd_m_info_df = self.info_dict['binance_usd_m_info_df'][(self.info_dict['binance_usd_m_info_df']['quoteAsset']==quote_asset)&(self.info_dict['binance_usd_m_info_df']['contractType']==contract_type)].copy()        
-                merged_df = each_binance_spot_ticker_df.merge(each_binance_usd_m_info_df[['symbol','baseAsset']], left_on='base_symbol', right_on='baseAsset' ,how='inner')
-                total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
-
-            for binance_coin_m_market in self.enabled_markets_dict['BINANCE']['COIN_M_FUTURES']:
-                contract_type = binance_coin_m_market
-                each_binance_coin_m_info_df = self.info_dict['binance_coin_m_info_df'][self.info_dict['binance_coin_m_info_df']['contractType']==contract_type].copy()
-                merged_df = each_binance_spot_ticker_df.merge(each_binance_coin_m_info_df[['symbol','baseAsset']], left_on='base_symbol', right_on='baseAsset' ,how='inner')
-                total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
-
-        total_df.drop_duplicates(subset=['spot_symbol'], inplace=True)
-        total_df.sort_values(by='volume_usdt', ascending=False, inplace=True)
-        total_df.reset_index(drop=True, inplace=True)
-        if return_df:
-            return total_df
-        return total_df['spot_symbol'].to_list()
-
-    def get_binance_usd_m_symbol_list(self, return_df=False):
-        total_df = pd.DataFrame()
-        binance_usd_m_ticker_df = self.info_dict['binance_usd_m_ticker_df'][['symbol','volume_usdt']].copy()
-        binance_usd_m_info_df = self.info_dict['binance_usd_m_info_df'][['symbol','quoteAsset','baseAsset','contractType']].copy()
-        binance_usd_m_merged_df = binance_usd_m_ticker_df.merge(binance_usd_m_info_df, on='symbol', how='inner')
-        binance_usd_m_merged_df = binance_usd_m_merged_df.rename(columns={'symbol':'usd_m_symbol'})
-
-        for binance_usd_m_market in self.enabled_markets_dict['BINANCE']['USD_M_FUTURES']:
-            quote_asset, contract_type = binance_usd_m_market.split('_')
-            each_binance_usd_m_merged_df = binance_usd_m_merged_df[(binance_usd_m_merged_df['quoteAsset']==quote_asset)&(binance_usd_m_merged_df['contractType']==contract_type)].copy()
-
-            for upbit_market in self.enabled_markets_dict['UPBIT']['SPOT']:
-                each_upbit_ticker_df = self.info_dict['upbit_spot_ticker_df'][self.info_dict['upbit_spot_ticker_df']['market'].str.startswith(upbit_market)].copy()
-                each_upbit_ticker_df['base_symbol'] = each_upbit_ticker_df['market'].apply(lambda x: x.split('-')[1])
-                merged_df = each_binance_usd_m_merged_df.merge(each_upbit_ticker_df[['market','base_symbol']], left_on='baseAsset', right_on='base_symbol' ,how='inner')
-                total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
-
-            for binance_spot_market in self.enabled_markets_dict['BINANCE']['SPOT']:
-                each_binance_spot_ticker_df = self.info_dict['binance_spot_ticker_df'][self.info_dict['binance_spot_ticker_df']['symbol'].str.endswith(binance_spot_market)].copy()
-                each_binance_spot_ticker_df['base_symbol'] = each_binance_spot_ticker_df['symbol'].apply(lambda x: x[:-len(binance_spot_market)])
-                merged_df = each_binance_usd_m_merged_df.merge(each_binance_spot_ticker_df[['symbol','base_symbol']], left_on='baseAsset', right_on='base_symbol' ,how='inner')
-                total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
-
-            for binance_coin_m_market in self.enabled_markets_dict['BINANCE']['COIN_M_FUTURES']:
-                contract_type = binance_coin_m_market
-                each_binance_coin_m_info_df = self.info_dict['binance_coin_m_info_df'][self.info_dict['binance_coin_m_info_df']['contractType']==contract_type].copy()
-                merged_df = each_binance_usd_m_merged_df.merge(each_binance_coin_m_info_df[['symbol','baseAsset']], left_on='baseAsset', right_on='baseAsset' ,how='inner')
-                total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
-
-        total_df.drop_duplicates(subset=['usd_m_symbol'], inplace=True)
-        total_df.sort_values(by='volume_usdt', ascending=False, inplace=True)
-        total_df.reset_index(drop=True, inplace=True)
-        if return_df:
-            return total_df
-        symbol_list = total_df['usd_m_symbol'].to_list()
-        # return total_df['usd_m_symbol'].to_list()
-        # TEST
+    def get_binance_usd_m_symbol_list(self):
+        symbol_list = self.get_symbol_list('BINANCE_USD_M')
         return [x for x in symbol_list if x not in [y+'USDT' for y in self.binance_usd_m_symbols_to_exclude]]
 
-    def get_binance_coin_m_symbol_list(self, return_df=False):
-        total_df = pd.DataFrame()
-        binance_coin_m_ticker_df = self.info_dict['binance_coin_m_ticker_df'][['symbol','volume_usdt']].copy()
-        binance_coin_m_info_df = self.info_dict['binance_coin_m_info_df'][['symbol','baseAsset','contractType']].copy()
-        binance_coin_m_merged_df = binance_coin_m_ticker_df.merge(binance_coin_m_info_df, on='symbol', how='inner')
-        binance_coin_m_merged_df = binance_coin_m_merged_df.rename(columns={'symbol':'coin_m_symbol'})
+    def get_binance_coin_m_symbol_list(self):
+        symbol_list = self.get_symbol_list('BINANCE_COIN_M')
+        return symbol_list
 
-        for binance_coin_m_market in self.enabled_markets_dict['BINANCE']['COIN_M_FUTURES']:
-            contract_type = binance_coin_m_market
-            each_binance_coin_m_merged_df = binance_coin_m_merged_df[binance_coin_m_merged_df['contractType']==contract_type].copy()
-
-            for upbit_market in self.enabled_markets_dict['UPBIT']['SPOT']:
-                each_upbit_ticker_df = self.info_dict['upbit_spot_ticker_df'][self.info_dict['upbit_spot_ticker_df']['market'].str.startswith(upbit_market)].copy()
-                each_upbit_ticker_df['base_symbol'] = each_upbit_ticker_df['market'].apply(lambda x: x.split('-')[1])
-                merged_df = each_binance_coin_m_merged_df.merge(each_upbit_ticker_df[['market','base_symbol']], left_on='baseAsset', right_on='base_symbol' ,how='inner')
-                total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
-
-            for binance_spot_market in self.enabled_markets_dict['BINANCE']['SPOT']:
-                each_binance_spot_ticker_df = self.info_dict['binance_spot_ticker_df'][self.info_dict['binance_spot_ticker_df']['symbol'].str.endswith(binance_spot_market)].copy()
-                each_binance_spot_ticker_df['base_symbol'] = each_binance_spot_ticker_df['symbol'].apply(lambda x: x[:-len(binance_spot_market)])
-                merged_df = each_binance_coin_m_merged_df.merge(each_binance_spot_ticker_df[['symbol','base_symbol']], left_on='baseAsset', right_on='base_symbol' ,how='inner')
-                total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
-
-            for binance_usd_m_market in self.enabled_markets_dict['BINANCE']['USD_M_FUTURES']:
-                quote_asset, contract_type = binance_usd_m_market.split('_')
-                each_binance_usd_m_info_df = self.info_dict['binance_usd_m_info_df'][(self.info_dict['binance_usd_m_info_df']['quoteAsset']==quote_asset)&(self.info_dict['binance_usd_m_info_df']['contractType']==contract_type)].copy()        
-                merged_df = each_binance_coin_m_merged_df.merge(each_binance_usd_m_info_df[['symbol','baseAsset']], left_on='baseAsset', right_on='baseAsset', how='inner')
-                total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
-
-        total_df.drop_duplicates(subset=['coin_m_symbol'], inplace=True)
-        total_df.sort_values(by='volume_usdt', ascending=False, inplace=True)
-        total_df.reset_index(drop=True, inplace=True)
-        if return_df:
-            return total_df
-        return total_df['coin_m_symbol'].to_list()
+    def get_okx_spot_symbol_list(self):
+        symbol_list = self.get_symbol_list('OKX_SPOT')
+        return symbol_list
+    
+    def get_okx_usd_m_symbol_list(self):
+        symbol_list = self.get_symbol_list('OKX_USD_M')
+        return symbol_list
+    
+    def get_okx_coin_m_symbol_list(self):
+        symbol_list = self.get_symbol_list('OKX_COIN_M')
+        return symbol_list
     
     def check_status(self, print_result=False, include_text=False):
         exchange_proc_status_tup_list = [x.check_status(include_text=True) for x in self.exchange_websocket_dict.values()]
@@ -472,25 +418,21 @@ class InitCore:
         else:
             raise Exception(f"market: {market} is not supported.")
         
-    def update_fundingrate(self, loop_time_secs=60):
+    def update_fundingrate(self, exchange_name, exchange_adaptor, loop_time_secs=60):
+        self.logger.info(f"update_fundingrate|{exchange_name} update_fundingrate thread has started.")
         while True:
             try:
-                mongo_db_conn = self.db_client.get_conn()
-                for each_market_code in [x for x in self.exchange_websocket_dict.keys() if 'SPOT' not in x]:
-                    exchange = each_market_code.split('_')[0]
-                    futures_type = each_market_code.split('_')[1]+'_'+each_market_code.split('_')[2]
+                for futures_type in ["USD_M", "COIN_M"]:
+                    mongo_db_conn = self.db_client.get_conn()
                     # First fetch from the mongodb
                     # fetch from mongodb
-                    mongo_db = mongo_db_conn[f"{exchange}_fundingrate"]
+                    mongo_db = mongo_db_conn[f"{exchange_name}_fundingrate"]
                     collection = mongo_db[futures_type]
                     # get all the data
                     data = collection.find({})
                     # convert to dataframe
                     df = pd.DataFrame(data)
-                    if exchange == "BINANCE":
-                        funding_df = self.binance_adaptor.get_fundingrate(futures_type)
-                    else:
-                        raise Exception(f"exchange: {exchange} is not supported.")
+                    funding_df = exchange_adaptor.get_fundingrate(futures_type)[['symbol','funding_rate','funding_time','base_asset','quote_asset','perpetual']]
                     funding_df['datetime_now'] = datetime.datetime.utcnow()
                     if len(df) == 0:
                         # Store
@@ -509,8 +451,8 @@ class InitCore:
                                 # INSERT new funding_rate
                                 row_dict = row.to_dict()
                                 collection.insert_one({'symbol': row_dict['symbol'], 'funding_rate': row_dict['funding_rate_x'], 'funding_time': row_dict['funding_time'],
-                                                       'base_asset': row_dict['base_asset_x'], 'quote_asset': row_dict['quote_asset_x'], 'perpetual': row_dict['perpetual_x'],
-                                                       'datetime_now': row_dict['datetime_now_x']})
+                                                        'base_asset': row_dict['base_asset_x'], 'quote_asset': row_dict['quote_asset_x'], 'perpetual': row_dict['perpetual_x'],
+                                                        'datetime_now': row_dict['datetime_now_x']})
                                 # self.logger.info(f"{each_market_code}_fundingrate, New funding data inserted.. symbol: {row_dict['symbol']}")
                 mongo_db_conn.close()
             except Exception as e:

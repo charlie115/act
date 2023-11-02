@@ -55,36 +55,81 @@ class InitOkxAdaptor:
         self.okx_plug_logger.info(f"okx_plug_logger started.")
         # self.instrument_info = self.get_swap_instrument_info()
 
+    def spot_exchange_info(self):
+        info_df = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='SPOT')['data'])
+        info_df['symbol'] = info_df['instId']
+        info_df['base_asset'] = info_df['baseCcy']
+        info_df['quote_asset'] = info_df['quoteCcy']
+        return info_df
+
     def spot_all_tickers(self):
         spot_tickers_df = pd.DataFrame(self.pub_client.MarketAPI.get_tickers(instType="SPOT")['data']).drop(columns=['instType'])
         spot_tickers_df['base_asset'] = spot_tickers_df['instId'].apply(lambda x: x.split('-')[0])
         spot_tickers_df['quote_asset'] = spot_tickers_df['instId'].apply(lambda x: x.split('-')[1])
         spot_tickers_df.loc[:, 'last':'sodUtc0'] = spot_tickers_df.loc[:, 'last':'sodUtc0'].apply(pd.to_numeric)
         spot_tickers_df = spot_tickers_df.rename(columns={"last": "lastPrice"})
-        spot_tickers_df['volume_usdt'] = spot_tickers_df.apply\
-            (lambda x: x['volCcy24h'] if x['quote_asset'] == "USDT" else x['volCcy24h'] * spot_tickers_df[spot_tickers_df['instId']==f"{x['quote_asset']}-USDT"]['lastPrice'].iloc[0], axis=1)
+        spot_tickers_df['symbol'] = spot_tickers_df['instId']
+        def calculate_usdt_vol(x):
+            try:
+                if x['quote_asset'] == "USDT":
+                    return x['volCcy24h']
+                else:
+                    return x['volCcy24h'] * spot_tickers_df[spot_tickers_df['instId']==f"{x['quote_asset']}-USDT"]['lastPrice'].iloc[0]
+            except:
+                return None
+        spot_tickers_df['atp24h'] = spot_tickers_df.apply(calculate_usdt_vol, axis=1)
         return spot_tickers_df
 
+    def usd_m_exchange_info(self):
+        info_df = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='SWAP')['data'])
+        info_df['perpetual'] = True
+        temp = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='FUTURES')['data'])
+        # temp['base_asset']
+        temp['perpetual'] = False
+        info_df = pd.concat([info_df, temp], axis=0, ignore_index=True)
+        info_df['symbol'] = info_df['instId']
+        info_df['base_asset'] = info_df['uly'].str.split('-').apply(lambda x: x[0])
+        info_df['quote_asset'] = info_df['uly'].str.split('-').apply(lambda x: x[1])
+        info_df = info_df[info_df['ctType']=="linear"].reset_index(drop=True)
+        info_df['symbol'] = info_df['instId']
+        return info_df
+
     def usd_m_all_tickers(self):
-        usd_m_tickers_df = pd.DataFrame(okx_adaptor.pub_client.MarketAPI.get_tickers(instType="SWAP")['data']).drop(columns=['instType'])
+        usd_m_tickers_df = pd.DataFrame(self.pub_client.MarketAPI.get_tickers(instType="SWAP")['data']).drop(columns=['instType'])
         usd_m_tickers_df['base_asset'] = usd_m_tickers_df['instId'].apply(lambda x: x.split('-')[0])
         usd_m_tickers_df['quote_asset'] = usd_m_tickers_df['instId'].apply(lambda x: x.split('-')[1])
         usd_m_tickers_df.loc[:, 'last':'sodUtc0'] = usd_m_tickers_df.loc[:, 'last':'sodUtc0'].apply(pd.to_numeric)
         usd_m_tickers_df = usd_m_tickers_df.rename(columns={"last": "lastPrice"})
-        usd_m_tickers_df['volume_usdt'] = usd_m_tickers_df['lastPrice'] * usd_m_tickers_df['volCcy24h']
+        usd_m_tickers_df['atp24h'] = usd_m_tickers_df['lastPrice'] * usd_m_tickers_df['volCcy24h']
         usd_m_tickers_df = usd_m_tickers_df[usd_m_tickers_df['quote_asset'] == "USDT"]
         usd_m_tickers_df = usd_m_tickers_df.reset_index(drop=True)
+        usd_m_tickers_df['symbol'] = usd_m_tickers_df['instId']
         return usd_m_tickers_df
 
+    def coin_m_exchange_info(self):
+        info_df = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='SWAP')['data'])
+        info_df['perpetual'] = True
+        temp = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='FUTURES')['data'])
+        # temp['base_asset']
+        temp['perpetual'] = False
+        info_df = pd.concat([info_df, temp], axis=0, ignore_index=True)
+        info_df['symbol'] = info_df['instId']
+        info_df['base_asset'] = info_df['uly'].str.split('-').apply(lambda x: x[0])
+        info_df['quote_asset'] = info_df['uly'].str.split('-').apply(lambda x: x[1])
+        info_df = info_df[info_df['ctType']=="inverse"].reset_index(drop=True)
+        info_df['symbol'] = info_df['instId']
+        return info_df
+
     def coin_m_all_tickers(self):
-        coin_m_tickers_df = pd.DataFrame(okx_adaptor.pub_client.MarketAPI.get_tickers(instType="SWAP")['data']).drop(columns=['instType'])
+        coin_m_tickers_df = pd.DataFrame(self.pub_client.MarketAPI.get_tickers(instType="SWAP")['data']).drop(columns=['instType'])
         coin_m_tickers_df['base_asset'] = coin_m_tickers_df['instId'].apply(lambda x: x.split('-')[0])
         coin_m_tickers_df['quote_asset'] = coin_m_tickers_df['instId'].apply(lambda x: x.split('-')[1])
         coin_m_tickers_df.loc[:, 'last':'sodUtc0'] = coin_m_tickers_df.loc[:, 'last':'sodUtc0'].apply(pd.to_numeric)
         coin_m_tickers_df = coin_m_tickers_df.rename(columns={"last": "lastPrice"})
-        coin_m_tickers_df['volume_usdt'] = coin_m_tickers_df['lastPrice'] * coin_m_tickers_df['volCcy24h']
+        coin_m_tickers_df['atp24h'] = coin_m_tickers_df['lastPrice'] * coin_m_tickers_df['volCcy24h']
         coin_m_tickers_df = coin_m_tickers_df[coin_m_tickers_df['quote_asset'] == "USD"]
         coin_m_tickers_df = coin_m_tickers_df.reset_index(drop=True)
+        coin_m_tickers_df['symbol'] = coin_m_tickers_df['instId']
         return coin_m_tickers_df
 
     def get_swap_instrument_info(self):
@@ -411,3 +456,29 @@ class InitOkxAdaptor:
         kline.columns = columns
         kline.loc[:, [x for x in columns if x != 'okx_time']] = kline.loc[:, [x for x in columns if x != 'okx_time']].astype(float)
         return kline
+
+
+    def get_fundingrate(self, futures_type='USD_M'):
+        if futures_type == "COIN_M":
+            symbol_list = [x['instId'] for x in self.pub_client.PublicAPI.get_instruments(instType='SWAP')['data'] if x['instId'].split("-")[1] == "USD"]
+        elif futures_type == "USD_M":
+            symbol_list = [x['instId'] for x in self.pub_client.PublicAPI.get_instruments(instType='SWAP')['data'] if x['instId'].split("-")[1] != "USD"]
+        else:
+            print(f"get_okx_fundingrate|futures_type:{futures_type} is not valid.")
+
+        funding_data_list = []
+        for each_symbol in symbol_list:
+            funding_data_list.append(self.pub_client.PublicAPI.get_funding_rate(each_symbol)['data'][0])
+            time.sleep(0.15)
+
+        funding_df = pd.DataFrame(funding_data_list)
+        funding_df[["fundingRate", "fundingTime", "nextFundingRate", "nextFundingTime"]] = funding_df[["fundingRate", "fundingTime", "nextFundingRate", "nextFundingTime"]].astype(float)
+        funding_df[["fundingTime", "nextFundingTime"]] = funding_df.loc[:, ["fundingTime", "nextFundingTime"]].applymap(lambda x: pd.to_datetime(x, unit='ms', utc=True))
+        funding_df.loc[:, "fundingTime"] = funding_df["fundingTime"].dt.tz_localize(None)
+        funding_df.loc[:, "nextFundingTime"] = funding_df["nextFundingTime"].dt.tz_localize(None)
+        funding_df['symbol'] = funding_df['instId']
+        funding_df['base_asset'] = funding_df['instId'].apply(lambda x: x.split("-")[0])
+        funding_df['quote_asset'] = funding_df['instId'].apply(lambda x: x.split("-")[1])
+        funding_df['perpetual'] = True
+        funding_df = funding_df.rename(columns={"fundingRate": "funding_rate", "fundingTime": "funding_time", "nextFundingRate": "next_funding_rate", "nextFundingTime": "next_funding_time"})
+        return funding_df

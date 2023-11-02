@@ -263,9 +263,8 @@ class BinanceWebsocket:
         binance_bookticker_df.rename(columns={"b": "bp", "a": "ap"}, inplace=True)
         binance_merged_df = pd.merge(binance_ticker_df, binance_bookticker_df, on='s', how='inner')
         binance_merged_df.loc[:, ['scr','tp','atp24h','ap','bp']] = binance_merged_df[['scr','tp','atp24h','ap','bp']].astype(float)
-        binance_merged_df = binance_merged_df.merge(self.info_dict['binance_spot_info_df'][['symbol','baseAsset','quoteAsset']], left_on='s', right_on='symbol', how='inner')
+        binance_merged_df = binance_merged_df.merge(self.info_dict['binance_spot_info_df'][['symbol','base_asset','quote_asset']], left_on='s', right_on='symbol', how='inner')
         binance_merged_df.drop(['symbol', 's'], axis=1, inplace=True)
-        binance_merged_df.rename(columns={'baseAsset':"base_asset", 'quoteAsset':"quote_asset"}, inplace=True)
         return binance_merged_df
 
 
@@ -559,9 +558,8 @@ class BinanceUSDMWebsocket:
         binance_bookticker_df.rename(columns={"b": "bp", "a": "ap"}, inplace=True)
         binance_merged_df = pd.merge(binance_ticker_df, binance_bookticker_df, on='s', how='inner')
         binance_merged_df.loc[:, ['scr','tp','atp24h','ap','bp']] = binance_merged_df[['scr','tp','atp24h','ap','bp']].astype(float)
-        binance_merged_df = binance_merged_df.merge(self.info_dict['binance_usd_m_info_df'][['symbol','baseAsset','quoteAsset']], left_on='s', right_on='symbol', how='inner')
+        binance_merged_df = binance_merged_df.merge(self.info_dict['binance_usd_m_info_df'][['symbol','base_asset','quote_asset']], left_on='s', right_on='symbol', how='inner')
         binance_merged_df.drop(['symbol', 's'], axis=1, inplace=True)
-        binance_merged_df.rename(columns={'baseAsset':"base_asset", 'quoteAsset':"quote_asset"}, inplace=True)
         return binance_merged_df
 
 ##############################################################################################################################
@@ -855,7 +853,6 @@ class BinanceCOINMWebsocket:
         binance_bookticker_df.rename(columns={"b": "bp", "a": "ap"}, inplace=True)
         binance_merged_df = pd.merge(binance_ticker_df, binance_bookticker_df, on='s', how='inner')
         binance_merged_df.loc[:, ['scr','tp','atp24h','ap','bp']] = binance_merged_df[['scr','tp','atp24h','ap','bp']].astype(float)
-        binance_merged_df = binance_merged_df.merge(self.info_dict['binance_coin_m_info_df'][['symbol','baseAsset','quoteAsset']], left_on='s', right_on='symbol', how='inner')
+        binance_merged_df = binance_merged_df.merge(self.info_dict['binance_coin_m_info_df'][['symbol','base_asset','quote_asset']], left_on='s', right_on='symbol', how='inner')
         binance_merged_df.drop(['symbol', 's'], axis=1, inplace=True)
-        binance_merged_df.rename(columns={'baseAsset':"base_asset", 'quoteAsset':"quote_asset"}, inplace=True)
         return binance_merged_df

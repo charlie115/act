@@ -46,7 +46,9 @@ class OkxWebsocket:
             # print(message_dict)
             if 'data' in message_dict.keys():
                 self.ticker_dict[message_dict['data'][0]['instId']] = {**message_dict['data'][0], "last_update": datetime.datetime.now()}
-
+                for each_value in ["last","askPx","bidPx","open24h","volCcy24h"]:
+                    if message_dict['data'][0][each_value] == '':
+                        self.websocket_logger.error(f"okx_websocket|Empty string detected.\n{self.ticker_dict[message_dict['data'][0]['instId']]}")
         def on_error(ws, error):
             # print(f'okx_websocket on_error executed!')
             # print(error)
@@ -208,15 +210,25 @@ class OkxWebsocket:
                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"[OKX {self.market_type}] monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
 
     def get_price_df(self):
-        ticker_df = pd.DataFrame(self.ticker_dict.values())
-        ticker_df['base_asset'] = ticker_df['instId'].apply(lambda x: x.split('-')[0])
-        ticker_df['quote_asset'] = ticker_df['instId'].apply(lambda x: x.split('-')[1])
-        ticker_df = ticker_df.rename(columns={"last": "tp", "askPx": "ap", "bidPx":"bp", "volCcy24h":"atp24h"})
-        ticker_df.loc[:, ['tp', 'ap', 'bp', 'open24h', 'atp24h']] = ticker_df.loc[:, ['tp', 'ap', 'bp', 'open24h', 'atp24h']].astype(float)
-        ticker_df['atp24h'] = ticker_df.apply(lambda x: x['tp']*x['atp24h'] if x['instType'] != "SPOT" else x['atp24h'], axis=1)
-        ticker_df['scr'] = (ticker_df['tp'] - ticker_df['open24h'])/ticker_df['open24h'] * 100
-        ticker_df = ticker_df[['instId', 'base_asset', 'quote_asset', 'tp', 'ap', 'bp', 'scr', 'atp24h', 'last_update']]
-        return ticker_df
+        try:
+            ticker_df = pd.DataFrame(self.ticker_dict.values())
+            ticker_df['base_asset'] = ticker_df['instId'].apply(lambda x: x.split('-')[0])
+            ticker_df['quote_asset'] = ticker_df['instId'].apply(lambda x: x.split('-')[1])
+            ticker_df = ticker_df.rename(columns={"last": "tp", "askPx": "ap", "bidPx":"bp", "volCcy24h":"atp24h"})
+            ticker_df.loc[:, ['tp', 'ap', 'bp', 'open24h', 'atp24h']] = ticker_df.loc[:, ['tp', 'ap', 'bp', 'open24h', 'atp24h']].astype(float)
+            ticker_df['atp24h'] = ticker_df.apply(lambda x: x['tp']*x['atp24h'] if x['instType'] != "SPOT" else x['atp24h'], axis=1)
+            ticker_df['scr'] = (ticker_df['tp'] - ticker_df['open24h'])/ticker_df['open24h'] * 100
+            ticker_df = ticker_df[['instId', 'base_asset', 'quote_asset', 'tp', 'ap', 'bp', 'scr', 'atp24h', 'last_update']]
+            return ticker_df
+        except Exception as e:
+            content = f"get_price_df|{traceback.format_exc()}"
+            self.websocket_logger.error(content)
+            empty_string_rows = ticker_df[ticker_df[['tp', 'ap', 'bp', 'open24h', 'atp24h']].eq('').any(axis=1)]
+            self.websocket_logger.error(f"get_price_df|empty_string_rows: {empty_string_rows[['instId','tp', 'ap', 'bp', 'open24h', 'atp24h']]}")
+            self.websocket_logger.error(f"{empty_string_rows[['instId','tp', 'ap', 'bp', 'open24h', 'atp24h']].to_dict()}")
+            # Find where the cell in dataframe is empty string
+
+            raise e
 
 class OkxUSDMWebsocket(OkxWebsocket):
     def __init__(self, admin_id, node, proc_n, get_symbol_list, register_monitor_msg, market_type, logging_dir):

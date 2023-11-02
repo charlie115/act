@@ -15,19 +15,31 @@
     {
         "UPBIT": 
         {
-            "SPOT": ["KRW-","BTC-"]
+            "SPOT": ["KRW","BTC"]
         },
         "BINANCE":
         {
             "SPOT": ["USDT", "BTC"],
-            "USD_M_FUTURES": ["USDT_PERPETUAL"],
-            "COIN_M_FUTURES": ["PERPETUAL"]
+            "USD_M": {
+                "PERPETUAL": ["USDT"],
+                "FUTURES": []
+            },
+            "COIN_M": {
+                "PERPETUAL": ["USD"],
+                "FUTURES": []
+            }
         },
         "OKX":
         {
             "SPOT": ["USDT", "BTC"],
-            "USD_M_FUTURES":["USDT_PERPETUAL"],
-            "COIN_M_FUTURES":["PERPETUAL"]
+            "USD_M": {
+                "PERPETUAL": ["USDT"],
+                "FUTURES": []
+            },
+            "COIN_M": {
+                "PERPETUAL": ["USD"],
+                "FUTURES": []
+            }
         }
     },
     "telegram_bot_setting": 
