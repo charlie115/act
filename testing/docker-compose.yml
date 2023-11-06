@@ -86,6 +86,13 @@ services:
       - test-community-network
     restart: always
   
+  news-core:
+    image: $LOCAL_REGISTRY_URL/news-core:test
+    container_name: test-news-core
+    networks:
+      - test-community-network
+    restart: always
+  
 networks:
   test-community-network:
     driver: bridge
