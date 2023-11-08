@@ -83,6 +83,7 @@ LOCAL_APPS = (
     "authentication",
     "chat",
     "infocore",
+    "newscore",
     "users",
 )
 
@@ -101,8 +102,15 @@ MIDDLEWARE = (
 )
 
 DATABASES = {
-    "default": dj_database_url.config(default=env("COMMUNITY_DB_URL"), conn_max_age=600)
+    "default": dj_database_url.config(
+        default=env("COMMUNITY_DB_URL"), conn_max_age=600
+    ),
+    "newscore": dj_database_url.config(
+        default=env("NEWSCORE_DB_URL"), conn_max_age=600
+    ),
 }
+
+DATABASE_ROUTERS = ["apps.newscore.dbrouter.NewsCoreDBRouter"]
 
 MONGODB = {
     "HOST": env("MONGODB_HOST", default="mongodb"),
@@ -261,24 +269,28 @@ SPECTACULAR_SETTINGS = {
     "EXTENSIONS_ROOT": {
         "x-tagGroups": [
             {
+                "name": "ARBOT",
+                "tags": ["ArbotNode", "ArbotUserConfig"],
+            },
+            {
                 "name": "AUTHORIZATION",
                 "tags": ["Auth"],
             },
             {
-                "name": "USER",
-                "tags": ["User", "UserProfile", "UserBlocklist", "UserFavoriteAssets"],
-            },
-            {
-                "name": "ARBOT",
-                "tags": ["ArbotNode", "ArbotUserConfig"],
+                "name": "CHAT",
+                "tags": ["PastChatMessages", "RandomUsername"],
             },
             {
                 "name": "INFO CORE",
                 "tags": ["Asset", "MarketCodes", "Kline", "FundingRate"],
             },
             {
-                "name": "CHAT",
-                "tags": ["PastChatMessages", "RandomUsername"],
+                "name": "NEWS CORE",
+                "tags": ["News"],
+            },
+            {
+                "name": "USER",
+                "tags": ["User", "UserProfile", "UserBlocklist", "UserFavoriteAssets"],
             },
         ],
     },

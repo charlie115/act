@@ -1,0 +1,14 @@
+from django.db import models
+
+
+class News(models.Model):
+    title = models.CharField(max_length=300)
+    content = models.TextField()
+    datetime = models.DateTimeField()
+    url = models.CharField(max_length=500)
+    thumbnail = models.CharField(max_length=500)
+    media = models.CharField(max_length=300)
+
+    class Meta:
+        db_table = "news"
+        managed = False

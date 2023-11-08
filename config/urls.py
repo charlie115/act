@@ -39,6 +39,7 @@ urlpatterns = [
     path("arbot/", include("arbot.urls"), name="arbot urls"),
     path("chat/", include("chat.urls"), name="chat urls"),
     path("infocore/", include("infocore.urls"), name="infocore urls"),
+    path("newscore/", include("newscore.urls"), name="newscore urls"),
     path("users/", include("users.urls"), name="users urls"),
     # docs
     path("docs/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),

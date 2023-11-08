@@ -1,6 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework.pagination import PageNumberPagination
 
 from lib.filters import CharArrayFilter, UserUuidFilter
 from lib.permissions import IsDjangoAdmin, IsAdminOrIsSelf
@@ -67,8 +66,6 @@ class UserViewSet(UserOwnedViewSet):
     queryset = User.objects.all().order_by("id")
     lookup_field = "uuid"
     serializer_class = UserSerializer
-    pagination_class = PageNumberPagination
-    PageNumberPagination.page_size = 100
     filter_backends = [DjangoFilterBackend]
     filterset_fields = (
         "email",
