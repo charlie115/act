@@ -166,13 +166,17 @@ function MarketCodeMenu({ onChange }) {
         label: market.getLabel(),
         value: market.value,
         icon: (
-          <SvgIcon sx={{ fontSize: { xs: 10, sm: 12, md: 14 } }}>
+          <SvgIcon
+            className="market-icon"
+            color={theme.palette.mode === 'dark' ? 'light' : 'dark'}
+            sx={{ fontSize: { xs: 10, sm: 12, md: 14 } }}
+          >
             <market.icon />
           </SvgIcon>
         ),
       }))
     );
-  }, [i18n.language]);
+  }, [i18n.language, theme.palette.mode]);
 
   useEffect(() => {
     if (!open) setOriginMarketCodeList([]);
@@ -209,13 +213,9 @@ function MarketCodeMenu({ onChange }) {
             height: '100%',
             minWidth: { xs: '40%', sm: 320 },
             px: { xs: 0.5, sm: 1, md: 1.5 },
-            '& .MuiButton-startIcon>*:nth-of-type(1)': {
-              fontSize: {
-                xs: '0.65rem',
-                sm: '0.75rem',
-                md: '0.65rem',
-                lg: '0.95rem',
-              },
+            '& .market-icon': {
+              bgcolor: 'transparent',
+              mr: { xs: 0.25, sm: 0.5 },
             },
           }}
         >
@@ -224,17 +224,18 @@ function MarketCodeMenu({ onChange }) {
             spacing={{ xs: 0.5, sm: 1 }}
             sx={{ alignItems: 'center' }}
           >
-            {targetMarketCode?.icon}
-            <Box>{targetMarketCode?.label}</Box>
+            <Stack direction="row" sx={{ alignItems: 'center' }}>
+              {targetMarketCode?.icon} {targetMarketCode?.label}
+            </Stack>
             <SyncAltIcon color="secondary" fontSize="small" />
-            {originMarketCode?.icon || <WarningAmberIcon color="secondary" />}
-            <Box>
+            <Stack direction="row" sx={{ alignItems: 'center' }}>
+              {originMarketCode?.icon || <WarningAmberIcon color="secondary" />}
               {originMarketCode?.label || (
                 <Box component="small" sx={{ color: 'secondary.main' }}>
                   {t('Please select origin exchange')}
                 </Box>
               )}
-            </Box>
+            </Stack>
           </Stack>
         </Button>
         {bookmarkedPairs.length > 0 && (
@@ -401,7 +402,7 @@ function MarketCodeMenu({ onChange }) {
                                       })
                                     );
                                   }}
-                                  sx={{ p: 0.25 }}
+                                  edge="end"
                                 >
                                   <BookmarkIcon
                                     color={
@@ -446,8 +447,8 @@ function MarketCodeMenu({ onChange }) {
             key={`${target.index}-${origin.index}`}
             secondaryAction={
               <IconButton
-                edge="end"
                 aria-label="bookmark"
+                edge="end"
                 onClick={(e) => {
                   e.stopPropagation();
                   dispatch(
