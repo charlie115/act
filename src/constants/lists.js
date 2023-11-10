@@ -1,9 +1,16 @@
 import i18n from 'configs/i18n';
 
-import { ReactComponent as BinanceSvg } from 'assets/svg/binance.svg';
-import { ReactComponent as BithumbSvg } from 'assets/svg/bithumb.svg';
-import { ReactComponent as OkxSvg } from 'assets/svg/okx.svg';
-import { ReactComponent as UPbitSvg } from 'assets/svg/upbit.svg';
+// import { ReactComponent as BinanceSvg } from 'assets/svg/binance.svg';
+// import { ReactComponent as BithumbSvg } from 'assets/svg/bithumb.svg';
+// import { ReactComponent as BybitSvg } from 'assets/svg/bybit.svg';
+// import { ReactComponent as OkxSvg } from 'assets/svg/okx.svg';
+// import { ReactComponent as UPbitSvg } from 'assets/svg/upbit.svg';
+
+import BinanceSvg from 'assets/svg/binance.svg';
+import BithumbSvg from 'assets/svg/bithumb.svg';
+import BybitSvg from 'assets/svg/bybit.svg';
+import OkxSvg from 'assets/svg/okx.svg';
+import UPbitSvg from 'assets/svg/upbit.svg';
 
 export const KLINE_DATA_TYPE = [
   {
@@ -118,6 +125,21 @@ export const MARKET_CODE_LIST = [
     getLabel: () => i18n.t('Binance COIN-M (USD)'),
     value: 'BINANCE_COIN_M/USD',
     icon: BinanceSvg,
+  },
+  {
+    getLabel: () => i18n.t('Bybit (KRW)'),
+    value: 'BINANCE_SPOT/KRW',
+    icon: BybitSvg,
+  },
+  {
+    getLabel: () => i18n.t('Bybit USDⓈ-M (USDT)'),
+    value: 'BYBIT_USD_M/USDT',
+    icon: BybitSvg,
+  },
+  {
+    getLabel: () => i18n.t('Bybit COIN-M (USD)'),
+    value: 'BYBIT_COIN_M/USD',
+    icon: BybitSvg,
   },
   {
     getLabel: () => i18n.t('OKX (USDT)'),

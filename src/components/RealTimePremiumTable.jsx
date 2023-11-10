@@ -10,7 +10,6 @@ import Box from '@mui/material/Box';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
 import Stack from '@mui/material/Stack';
-import SvgIcon from '@mui/material/SvgIcon';
 import Switch from '@mui/material/Switch';
 import Tooltip from '@mui/material/Tooltip';
 
@@ -325,12 +324,18 @@ export default function RealTimePremiumTable({
     if (!marketCode) return t('Funding Rate');
     return (
       <Tooltip title={marketCode.getLabel()} placement="bottom-end">
-        <Box>
-          <Box component="span">{t('Funding Rate')}</Box>{' '}
-          <SvgIcon sx={{ fontSize: { xs: 10, sm: 14, md: 18 } }}>
-            <marketCode.icon />
-          </SvgIcon>
-        </Box>
+        <Stack direction="row" spacing={0.5}>
+          <Box component="span">{t('Funding Rate')}</Box>
+          <Box
+            component="img"
+            src={marketCode.icon}
+            alt={marketCode.label}
+            sx={{
+              height: { xs: 8, sm: 10, md: 12 },
+              width: { xs: 8, sm: 10, md: 12 },
+            }}
+          />
+        </Stack>
       </Tooltip>
     );
   };
@@ -616,9 +621,7 @@ export default function RealTimePremiumTable({
 
   useEffect(() => {
     assets.forEach((asset) => {
-      if (!assetsData?.[asset]?.icon) {
-        postAsset({ symbol: asset });
-      }
+      if (!assetsData?.[asset]?.icon) postAsset({ symbol: asset });
     });
   }, [assets, assetsData]);
 
