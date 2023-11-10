@@ -19,7 +19,6 @@ import ListSubheader from '@mui/material/ListSubheader';
 import Paper from '@mui/material/Paper';
 import Popper from '@mui/material/Popper';
 import Stack from '@mui/material/Stack';
-import SvgIcon from '@mui/material/SvgIcon';
 
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkRemoveIcon from '@mui/icons-material/BookmarkRemove';
@@ -43,6 +42,11 @@ import { useGetMarketCodesQuery } from 'redux/api/drf/infocore';
 import orderBy from 'lodash/orderBy';
 
 import { MARKET_CODE_LIST } from 'constants/lists';
+
+const DEFAULT_MARKET_CODE = {
+  target: 0,
+  origin: 7,
+};
 
 function MarketCodeMenu({ onChange }) {
   const anchorRef = useRef();
@@ -122,11 +126,12 @@ function MarketCodeMenu({ onChange }) {
     }));
     setTargetMarketCodeList(orderBy(targetList, 'disabled'));
     setTargetMarketCode(
-      (state) => targetList?.[state?.index] || targetList?.[0]
+      (state) =>
+        targetList?.[state?.index] || targetList?.[DEFAULT_MARKET_CODE.target]
     );
     setOriginMarketCode((state) => {
       if (state) return marketCodeList[state?.index] || {};
-      return marketCodeList[5];
+      return marketCodeList[DEFAULT_MARKET_CODE.origin];
     });
   }, [data, isFetching, marketCodeList]);
 
@@ -165,15 +170,7 @@ function MarketCodeMenu({ onChange }) {
         index,
         label: market.getLabel(),
         value: market.value,
-        icon: (
-          <SvgIcon
-            className="market-icon"
-            color={theme.palette.mode === 'dark' ? 'light' : 'dark'}
-            sx={{ fontSize: { xs: 10, sm: 12, md: 14 } }}
-          >
-            <market.icon />
-          </SvgIcon>
-        ),
+        icon: market.icon,
       }))
     );
   }, [i18n.language, theme.palette.mode]);
@@ -225,11 +222,32 @@ function MarketCodeMenu({ onChange }) {
             sx={{ alignItems: 'center' }}
           >
             <Stack direction="row" sx={{ alignItems: 'center' }}>
-              {targetMarketCode?.icon} {targetMarketCode?.label}
+              <Box
+                component="img"
+                src={targetMarketCode.icon}
+                alt={targetMarketCode.label}
+                sx={{
+                  height: { xs: 18, md: 24 },
+                  width: { xs: 18, md: 24 },
+                }}
+              />{' '}
+              {targetMarketCode?.label}
             </Stack>
             <SyncAltIcon color="secondary" fontSize="small" />
             <Stack direction="row" sx={{ alignItems: 'center' }}>
-              {originMarketCode?.icon || <WarningAmberIcon color="secondary" />}
+              {originMarketCode?.icon ? (
+                <Box
+                  component="img"
+                  src={originMarketCode.icon}
+                  alt={originMarketCode.label}
+                  sx={{
+                    height: { xs: 18, md: 24 },
+                    width: { xs: 18, md: 24 },
+                  }}
+                />
+              ) : (
+                <WarningAmberIcon color="secondary" />
+              )}{' '}
               {originMarketCode?.label || (
                 <Box component="small" sx={{ color: 'secondary.main' }}>
                   {t('Please select origin exchange')}
@@ -336,7 +354,15 @@ function MarketCodeMenu({ onChange }) {
                               <ListItemIcon
                                 sx={{ minWidth: { xs: 15, sm: 20, md: 25 } }}
                               >
-                                {target.icon}
+                                <Box
+                                  component="img"
+                                  src={target.icon}
+                                  alt={target.label}
+                                  sx={{
+                                    height: { xs: 12, md: 15 },
+                                    width: { xs: 12, md: 15 },
+                                  }}
+                                />
                               </ListItemIcon>
                               <ListItemText
                                 primary={target.label}
@@ -385,7 +411,15 @@ function MarketCodeMenu({ onChange }) {
                                 <ListItemIcon
                                   sx={{ minWidth: { xs: 15, sm: 20, md: 25 } }}
                                 >
-                                  {origin.icon}
+                                  <Box
+                                    component="img"
+                                    src={origin.icon}
+                                    alt={origin.label}
+                                    sx={{
+                                      height: { xs: 12, md: 15 },
+                                      width: { xs: 12, md: 15 },
+                                    }}
+                                  />
                                 </ListItemIcon>
                                 <ListItemText
                                   primary={origin.label}

@@ -36,7 +36,6 @@ const api = drfApi.injectEndpoints({
         url: '/infocore/kline/',
         params,
       }),
-      transformResponse: (response) => response,
     }),
     getMarketCodes: builder.query({
       keepUnusedDataFor: 5,

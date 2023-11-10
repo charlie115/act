@@ -256,7 +256,9 @@ function LightWeightKlineChart({
         minMove: 0.001,
         type: 'custom',
         formatter: (price) =>
-          `${formatIntlNumber(price)} ${isTetherPriceView ? t('KRW') : '%'}`,
+          `${formatIntlNumber(price, 2, 2)} ${
+            isTetherPriceView ? t('KRW') : '%'
+          }`,
       },
       // priceFormat: { minMove: 0.00001 precision: 5, type: 'percent' },
       // title: t('Premium'),

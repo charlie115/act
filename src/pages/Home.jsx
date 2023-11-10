@@ -18,7 +18,7 @@ function Home() {
   const { loggedin, user } = useSelector((state) => state.auth);
 
   return (
-    <Box sx={{ overflowX: 'hidden' }}>
+    <Box sx={{ overflowX: 'hidden', p: 1 }}>
       <RealTimePremiumTable
         t={t}
         language={i18n.language}

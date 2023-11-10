@@ -358,9 +358,15 @@ export default function RealTimePremiumTable({
             .diff(dateTimeNow, ['hours', 'minutes', 'seconds'])
             .toObject()
         : null;
+    const value = cell.getValue();
     return (
       <>
-        {formatIntlNumber(cell.getValue(), 3, 1)} <small>%</small>
+        <Box
+          component="span"
+          sx={{ color: value < 0 ? 'error.main' : undefined }}
+        >
+          {formatIntlNumber(value, 3, 1)} <small>%</small>
+        </Box>
         {diff &&
           (!isMobile ? (
             <Box sx={{ color: 'secondary.main', fontStyle: 'italic' }}>

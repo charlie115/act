@@ -19,7 +19,6 @@ export default function ThemeSelector() {
   const [theme, setTheme] = useState(currentTheme);
 
   const changeTheme = (value) => dispatch(toggleTheme(value));
-
   const debouncedChangeTheme = useCallback(
     debounce(changeTheme, 1500, {
       leading: true,

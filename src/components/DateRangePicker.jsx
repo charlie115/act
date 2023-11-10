@@ -1,0 +1,152 @@
+import React, { useCallback, useEffect, useState } from 'react';
+
+import Box from '@mui/material/Box';
+import ClickAwayListener from '@mui/material/ClickAwayListener';
+import Collapse from '@mui/material/Collapse';
+import IconButton from '@mui/material/IconButton';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+
+import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded';
+
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { PickersDay } from '@mui/x-date-pickers/PickersDay';
+
+import { DateTime } from 'luxon';
+import { useTranslation } from 'react-i18next';
+
+import debounce from 'lodash/debounce';
+
+function CustomDay({ day, range, selected, ...props }) {
+  const timestamp = day.toMillis();
+  return (
+    <PickersDay
+      {...props}
+      selected={
+        selected || (timestamp >= range?.from && timestamp <= range?.to)
+      }
+      day={day}
+    />
+  );
+}
+
+function CustomTextField({ range, sx, ...props }) {
+  const [value, setValue] = useState('');
+
+  useEffect(() => {
+    if (range) {
+      const from = range.from
+        ? DateTime.fromMillis(range.from).toFormat('yyyy/MM/dd')
+        : '';
+      const to = range.to
+        ? DateTime.fromMillis(range.to).toFormat('yyyy/MM/dd')
+        : '';
+      setValue(`${from}—${to}`);
+    } else setValue('');
+  }, [range, props.value]);
+
+  return (
+    <TextField
+      {...props}
+      size="small"
+      value={value}
+      sx={{ ...sx, width: 250 }}
+    />
+  );
+}
+
+export default function DateRangePicker({ onChange, onClear }) {
+  const { t } = useTranslation();
+
+  const [collapsed, setCollapsed] = useState(true);
+
+  const [open, setOpen] = useState(false);
+  const [range, setRange] = useState();
+
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => {
+    if (!range || (range?.from && range?.to)) setOpen(false);
+    if (!range || !(range?.from && range?.to))
+      setTimeout(() => setCollapsed(true), 1500);
+  };
+
+  const handleDayToggle = (e) => {
+    const { timestamp } = e.target.dataset;
+    if (e.type === 'click') {
+      if (!range || (range?.from && range?.to))
+        setRange({ from: Number(timestamp), to: null });
+      else if (range?.from && !range?.to) {
+        if (timestamp >= range.from)
+          setRange({ ...range, to: Number(timestamp) });
+        else setRange({ from: Number(timestamp), to: null });
+      }
+    }
+  };
+
+  const debouncedOnChange = useCallback(
+    debounce(onChange, 1000, { leading: false, trailing: true }),
+    []
+  );
+  const debouncedOnClear = useCallback(
+    debounce(onClear, 1000, { leading: false, trailing: true }),
+    []
+  );
+
+  useEffect(() => {
+    if (range?.from && range?.to) debouncedOnChange(range);
+  }, [range]);
+
+  useEffect(() => {
+    let timeout;
+    if (!collapsed) timeout = setTimeout(() => setOpen(true), 1000);
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [collapsed]);
+
+  return (
+    <ClickAwayListener onClickAway={handleClose}>
+      <Box>
+        {/* <Collapse in={!collapsed} orientation="horizontal"> */}
+        <DatePicker
+          disableFuture
+          showDaysOutsideCurrentMonth
+          closeOnSelect={false}
+          open={open}
+          timezone={DateTime.now().zoneName}
+          minDate={DateTime.now().minus({ weeks: 2 })}
+          onClose={handleClose}
+          onAccept={handleClose}
+          slots={{ day: CustomDay, textField: CustomTextField }}
+          slotProps={{
+            day: { onClick: handleDayToggle, range },
+            field: {
+              clearable: true,
+              onClear: () => {
+                setRange(null);
+                debouncedOnClear(range);
+              },
+            },
+            openPickerButton: { onClick: handleOpen },
+            textField: {
+              onClick: handleOpen,
+              placeholder: t('Select date range'),
+              size: 'small',
+              range,
+            },
+          }}
+        />
+        {/* </Collapse> */}
+        {/* {collapsed && (
+          <IconButton onClick={() => setCollapsed(false)}>
+            <CalendarTodayRoundedIcon />
+          </IconButton>
+        )} */}
+      </Box>
+
+      {/* <input hidden name="fromDate" value={from || ''} onChange={(e) => {}} />
+      <input hidden name="toDate" value={to || ''} onChange={(e) => {}} /> */}
+    </ClickAwayListener>
+  );
+}

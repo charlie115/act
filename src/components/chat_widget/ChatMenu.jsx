@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 
+import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
@@ -39,7 +40,10 @@ export default function ChatMenu() {
   return (
     <>
       <IconButton
-        aria-label="close-chat"
+        id="chat-menu-btn"
+        aria-controls={open ? 'chat-menu' : undefined}
+        aria-haspopup="true"
+        aria-expanded={open ? 'true' : undefined}
         color="white"
         onClick={(event) => {
           setAnchorEl(event.currentTarget);
@@ -50,8 +54,10 @@ export default function ChatMenu() {
       </IconButton>
       <Menu
         id="chat-menu"
-        aria-controls={open ? 'chat-menu' : undefined}
-        aria-expanded={open ? 'true' : undefined}
+        aria-controls="chat-menu"
+        aria-expanded="true"
+        // aria-controls={open ? 'chat-menu' : undefined}
+        // aria-expanded={open ? 'true' : undefined}
         aria-haspopup="true"
         anchorEl={anchorEl}
         open={open}
@@ -73,7 +79,10 @@ export default function ChatMenu() {
         <Divider />
         <MenuItem sx={{ ':hover': { backgroundColor: 'unset' } }}>
           <ListItemIcon>
-            <MarkChatUnreadIcon fontSize="small" />
+            <MarkChatUnreadIcon
+              color={enableNotification ? 'light' : 'secondary'}
+              fontSize="small"
+            />
           </ListItemIcon>
           <ListItemText id="switch-label-notification">
             {enableNotification

@@ -10,25 +10,22 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import MuiAlert from '@mui/material/Alert';
-import Snackbar from '@mui/material/Snackbar';
 import SvgIcon from '@mui/material/SvgIcon';
 
 import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
 
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useLogoutMutation } from 'redux/api/drf/auth';
+import { setSnackbar } from 'redux/reducers/app';
 
 import { useTranslation } from 'react-i18next';
 
 import { ReactComponent as RobotSvg } from 'assets/icons/font-awesome/robot.svg';
 
-const Alert = React.forwardRef((props, ref) => (
-  <MuiAlert ref={ref} elevation={6} {...props} />
-));
-
 export default function HeaderUserMenu({ iconStyle }) {
+  const dispatch = useDispatch();
+
   const navigate = useNavigate();
 
   const { t } = useTranslation();
@@ -46,12 +43,28 @@ export default function HeaderUserMenu({ iconStyle }) {
   const handleClose = () => setAnchorEl(null);
 
   useEffect(() => {
-    if (isSuccess) handleClose();
+    if (isSuccess) {
+      dispatch(
+        setSnackbar({
+          message: t('You have been logged out!'),
+          closeCallback: reset,
+          snackbarProps: {
+            autoHideDuration: 1500,
+            open: true,
+          },
+        })
+      );
+      handleClose();
+    }
   }, [isSuccess]);
 
   return (
     <>
-      <IconButton onClick={handleClick} sx={{ p: 0, ...iconStyle }}>
+      <IconButton
+        id="user-menu-btn"
+        onClick={handleClick}
+        sx={{ p: 0, ...iconStyle }}
+      >
         <Avatar
           src={user?.profile?.picture}
           alt={`${user?.first_name} ${user?.last_name}`}
@@ -59,8 +72,8 @@ export default function HeaderUserMenu({ iconStyle }) {
         />
       </IconButton>
       <Menu
-        anchorEl={anchorEl}
         id="user-menu"
+        anchorEl={anchorEl}
         open={!!anchorEl}
         onClose={handleClose}
         PaperProps={{
@@ -124,16 +137,6 @@ export default function HeaderUserMenu({ iconStyle }) {
           {isLoading && <CircularProgress size={16} />}
         </MenuItem>
       </Menu>
-      <Snackbar
-        open={isSuccess}
-        autoHideDuration={1000}
-        onClose={reset}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert onClose={reset} severity="info" sx={{ width: '100%' }}>
-          {t('You have been logged out!')}
-        </Alert>
-      </Snackbar>
     </>
   );
 }

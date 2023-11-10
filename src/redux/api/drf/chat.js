@@ -12,7 +12,7 @@ const api = drfApi.injectEndpoints({
         params,
       }),
       transformResponse: (response) =>
-        sortBy(response?.results || [], 'datetime')?.map((item, idx) => ({
+        sortBy(response?.results || [], 'datetime').map((item, idx) => ({
           ...item,
           id: `past-${idx}-${DateTime.now().toMillis()}`,
         })),
