@@ -1,7 +1,7 @@
 from rest_framework import routers
 
 from lib.views import BaseEndpointListView
-from news.views import NewsViewSet
+from newscore.views import AnnouncementViewSet, NewsViewSet
 
 
 class NewsCoreAPIListView(BaseEndpointListView):
@@ -17,6 +17,7 @@ class DocumentedRouter(routers.DefaultRouter):
 
 
 router = DocumentedRouter()
+router.register(r"announcements", AnnouncementViewSet)
 router.register(r"news", NewsViewSet)
 
 urlpatterns = router.urls
