@@ -50,13 +50,13 @@ class BinanceWebsocket:
                 # print(msg['data']) # test
                 # if msg['data']['s'] == 'ETHUSDT': # test
                 #     print(msg['data']['T']) # test
-                bookticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.now()}
+                bookticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.utcnow()}
             except Exception:
                 self.websocket_logger.error(f"handle_spot_bookticker_streams|{traceback.format_exc()}, msg:{msg}")
                 error_event.set()
         def handle_spot_ticker_streams(msg):
             try:
-                ticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.now()}
+                ticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.utcnow()}
             except Exception:
                 self.websocket_logger.error(f"handle_spot_ticker_streams|{traceback.format_exc()}, msg:{msg}")
                 error_event.set()
@@ -236,12 +236,12 @@ class BinanceWebsocket:
                         continue
                     bookticker_last_update = allocated_bookticker_df['last_update'].max()
                     # If the last update is older than update_threshold_mins, restart websocket
-                    if (datetime.datetime.now() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
+                    if (datetime.datetime.utcnow() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
                         terminate_flag = True
                         content = f"monitor_websocket_last_update|{i+1}th_price_proc ticker_dict's last update is older than {update_threshold_mins} mins."
                         self.websocket_logger.error(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                    if (datetime.datetime.now() - bookticker_last_update).total_seconds() / 60 > update_threshold_mins:
+                    if (datetime.datetime.utcnow() - bookticker_last_update).total_seconds() / 60 > update_threshold_mins:
                         terminate_flag = True
                         content = f"monitor_websocket_last_update|{i+1}th_price_proc bookticker_dict's last update is older than {update_threshold_mins} mins."
                         self.websocket_logger.error(content)
@@ -306,13 +306,13 @@ class BinanceUSDMWebsocket:
             # if msg['data']['s'] == 'ETHUSDT': # test
             #     print(msg['data']['T']) # test
             try:
-                bookticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.now()}
+                bookticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.utcnow()}
             except Exception:
                 self.websocket_logger.error(f"handle_usdm_bookticker_streams|{traceback.format_exc()}, msg:{msg}")
                 error_event.set()
         def handle_usdm_ticker_streams(msg):
             try:
-                ticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.now()}
+                ticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.utcnow()}
             except Exception:
                 self.websocket_logger.error(f"handle_usdm_ticker_streams|{traceback.format_exc()}, msg:{msg}")
                 error_event.set()
@@ -531,12 +531,12 @@ class BinanceUSDMWebsocket:
                         continue
                     bookticker_last_update = allocated_bookticker_df['last_update'].max()
                     # If the last update is older than update_threshold_mins, restart websocket
-                    if (datetime.datetime.now() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
+                    if (datetime.datetime.utcnow() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
                         terminate_flag = True
                         content = f"monitor_websocket_last_update|{i+1}th_price_proc ticker_dict's last update is older than {update_threshold_mins} mins."
                         self.websocket_logger.error(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                    if (datetime.datetime.now() - bookticker_last_update).total_seconds() / 60 > update_threshold_mins:
+                    if (datetime.datetime.utcnow() - bookticker_last_update).total_seconds() / 60 > update_threshold_mins:
                         terminate_flag = True
                         content = f"monitor_websocket_last_update|{i+1}th_price_proc bookticker_dict's last update is older than {update_threshold_mins} mins."
                         self.websocket_logger.error(content)
@@ -601,13 +601,13 @@ class BinanceCOINMWebsocket:
                 # print(msg['data']) # test
                 # if msg['data']['s'] == 'ETHUSDT': # test
                 #     print(msg['data']['T']) # test
-                bookticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.now()}
+                bookticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.utcnow()}
             except Exception:
                 self.websocket_logger.error(f"handle_coinm_bookticker_streams|{traceback.format_exc()}, msg:{msg}")
                 error_event.set()
         def handle_coinm_ticker_streams(msg):
             try:
-                ticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.now()}
+                ticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.utcnow()}
             except Exception:
                 self.websocket_logger.error(f"handle_coinm_ticker_streams|{traceback.format_exc()}, msg:{msg}")
                 error_event.set()
@@ -826,12 +826,12 @@ class BinanceCOINMWebsocket:
                         continue
                     bookticker_last_update = allocated_bookticker_df['last_update'].max()
                     # If the last update is older than update_threshold_mins, restart websocket
-                    if (datetime.datetime.now() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
+                    if (datetime.datetime.utcnow() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
                         terminate_flag = True
                         content = f"monitor_websocket_last_update|{i+1}th_price_proc ticker_dict's last update is older than {update_threshold_mins} mins."
                         self.websocket_logger.error(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                    if (datetime.datetime.now() - bookticker_last_update).total_seconds() / 60 > update_threshold_mins:
+                    if (datetime.datetime.utcnow() - bookticker_last_update).total_seconds() / 60 > update_threshold_mins:
                         terminate_flag = True
                         content = f"monitor_websocket_last_update|{i+1}th_price_proc bookticker_dict's last update is older than {update_threshold_mins} mins."
                         self.websocket_logger.error(content)

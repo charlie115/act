@@ -45,10 +45,17 @@ class OkxWebsocket:
             message_dict = json.loads(message)
             # print(message_dict)
             if 'data' in message_dict.keys():
-                self.ticker_dict[message_dict['data'][0]['instId']] = {**message_dict['data'][0], "last_update": datetime.datetime.now()}
-                for each_value in ["last","askPx","bidPx","open24h","volCcy24h"]:
-                    if message_dict['data'][0][each_value] == '':
-                        self.websocket_logger.error(f"okx_websocket|Empty string detected.\n{self.ticker_dict[message_dict['data'][0]['instId']]}")
+                message_data_dict = message_dict['data'][0]
+                try:
+                    if '' in message_data_dict.values():
+                        self.websocket_logger.error(f"okx_websocket|Empty string detected.\n{message_data_dict}")
+                        return
+                except Exception as e:
+                    self.websocket_logger.error(f"okx_websocket|message_data_dict.values(): {message_data_dict.values()}")
+                    self.websocket_logger.error(f"okx_websocket|{traceback.format_exc()}")
+                    return
+                self.ticker_dict[message_data_dict['instId']] = {**message_data_dict, "last_update": datetime.datetime.utcnow()}
+
         def on_error(ws, error):
             # print(f'okx_websocket on_error executed!')
             # print(error)
@@ -56,12 +63,12 @@ class OkxWebsocket:
             pass
 
         def on_close(ws, close_status_code, close_msg):
-            print(f"\n\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
-            # self.websocket_logger.info(f"okx_websocket|\n\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
+            # print(f"\n\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
+            self.websocket_logger.info(f"okx_websocket|\n\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
 
         def on_open(ws):
-            print(f'okx_websocket started')
-            # self.websocket_logger.info(f'okx_websocket|okx_websocket started')
+            # print(f'okx_websocket started')
+            self.websocket_logger.info(f'okx_websocket|okx_websocket started')
             ws.send(json.dumps(data))
 
         websocket.enableTrace(False)
@@ -199,7 +206,7 @@ class OkxWebsocket:
                     ticker_last_update = allocated_ticker_df['last_update'].max()
                     # check orderbook dict's last_update
                     # If the last update is older than update_threshold_mins, restart websocket
-                    if (datetime.datetime.now() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
+                    if (datetime.datetime.utcnow() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
                         content = f"monitor_websocket_last_update|{i+1}th_ticker_proc last_update is older than {update_threshold_mins} mins. Restarting websocket.."
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)

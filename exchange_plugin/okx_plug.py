@@ -469,7 +469,7 @@ class InitOkxAdaptor:
         funding_data_list = []
         for each_symbol in symbol_list:
             funding_data_list.append(self.pub_client.PublicAPI.get_funding_rate(each_symbol)['data'][0])
-            time.sleep(0.15)
+            time.sleep(0.25)
 
         funding_df = pd.DataFrame(funding_data_list)
         funding_df[["fundingRate", "fundingTime", "nextFundingRate", "nextFundingTime"]] = funding_df[["fundingRate", "fundingTime", "nextFundingRate", "nextFundingTime"]].astype(float)
@@ -482,3 +482,19 @@ class InitOkxAdaptor:
         funding_df['perpetual'] = True
         funding_df = funding_df.rename(columns={"fundingRate": "funding_rate", "fundingTime": "funding_time", "nextFundingRate": "next_funding_rate", "nextFundingTime": "next_funding_time"})
         return funding_df
+    
+    def wallet_status(self):
+        okx_wallet_status_df = pd.DataFrame(self.my_client.FundingAPI.get_currencies()['data'])
+        okx_wallet_status_df = okx_wallet_status_df.rename(columns={"ccy": "asset", "canDep": "deposit", "canWd": "withdraw"})
+        def convert_full_name_to_symbol(okx_wallet_status_df, x):
+            if x.split('-')[1] in okx_wallet_status_df['name'].unique():
+                return okx_wallet_status_df[okx_wallet_status_df['name']==x.split('-')[1]]['asset'].values[0]
+            else:
+                return x.split('-')[1]
+        okx_wallet_status_df['network_type'] = okx_wallet_status_df['chain'].apply(lambda x: convert_full_name_to_symbol(okx_wallet_status_df, x))
+        okx_wallet_status_df['network_type'] = okx_wallet_status_df['network_type'].replace('TRC20', 'TRX')
+        okx_wallet_status_df['network_type'] = okx_wallet_status_df['network_type'].replace('ERC20', 'ETH')
+        okx_wallet_status_df['network_type'] = okx_wallet_status_df['network_type'].replace('BRC20', 'ORDI')
+        okx_wallet_status_df['network_type'] = okx_wallet_status_df['network_type'].replace('BEP2', 'BNB')
+        okx_wallet_status_df['network_type'] = okx_wallet_status_df['network_type'].replace('BitcoinCash', 'BCH')
+        return okx_wallet_status_df
