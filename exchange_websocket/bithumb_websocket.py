@@ -87,6 +87,7 @@ class BithumbWebsocket:
                                 ticker_start_proc = True
                                 ticker_restarted = True
                                 self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
+                                self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
                                 self.websocket_logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_ticker_proc terminated.")
                             elif f"{i+1}th_ticker_proc" not in self.websocket_proc_dict.keys():
                                 ticker_start_proc = True
@@ -112,6 +113,7 @@ class BithumbWebsocket:
                                 orderbook_start_proc = True
                                 orderbook_restarted = True
                                 self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
+                                self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
                                 self.websocket_logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_orderbook_proc terminated.")
                             elif f"{i+1}th_orderbook_proc" not in self.websocket_proc_dict.keys():
                                 orderbook_start_proc = True
@@ -224,6 +226,7 @@ class BithumbWebsocket:
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
                         self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
+                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
                         continue
                     ticker_last_update = allocated_ticker_df['last_update'].max()
                     # check orderbook dict's last_update
@@ -233,6 +236,7 @@ class BithumbWebsocket:
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
                         self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
+                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
                         continue
                     orderbook_last_update = allocated_orderbook_df['last_update'].max()
                     # If the last update is older than update_threshold_mins, restart websocket
@@ -241,11 +245,13 @@ class BithumbWebsocket:
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
                         self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
+                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
                     if (datetime.datetime.utcnow() - orderbook_last_update).total_seconds() / 60 > update_threshold_mins:
                         content = f"monitor_websocket_last_update|{i+1}th_orderbook_proc last_update is older than {update_threshold_mins} mins. Restarting websocket.."
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
                         self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
+                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
             except Exception as e:
                 content = f"monitor_websocket_last_update|{traceback.format_exc()}"
                 self.websocket_logger.error(content)

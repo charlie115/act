@@ -29,7 +29,7 @@ class BinanceWebsocket:
         manager = Manager()
         self.bookticker_dict = manager.dict()
         self.ticker_dict = manager.dict()
-        self.proc_n = proc_n
+        self.proc_n = int(proc_n * 2)
         self.before_symbol_list = self.get_symbol_list()
         self.sliced_symbol_list = list_slice(self.get_symbol_list(), self.proc_n)
         self.stop_restart_webscoket = False
@@ -67,9 +67,23 @@ class BinanceWebsocket:
         twm.start()
         if symbol_list != []:
             bookticker_list = [x.lower()+'@bookTicker' for x in symbol_list]
-            twm.start_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list)
+            if self.market_type == "SPOT":
+                twm.start_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list)
+            elif self.market_type == "USD_M":
+                twm.start_futures_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list)
+            elif self.market_type == "COIN_M":
+                twm.start_futures_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list, futures_type=FuturesType.COIN_M)
+            else:
+                raise Exception(f"price_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
             ticker_list = [x.lower()+'@ticker' for x in symbol_list]
-            twm.start_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list)
+            if self.market_type == "SPOT":
+                twm.start_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list)
+            elif self.market_type == "USD_M":
+                twm.start_futures_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list)
+            elif self.market_type == "COIN_M":
+                twm.start_futures_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list, futures_type=FuturesType.COIN_M)
+            else:
+                raise Exception(f"price_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
         # twm.join()
         while not error_event.is_set():
             time.sleep(0.1)
@@ -309,4 +323,4 @@ class BinanceUSDMWebsocket(BinanceWebsocket):
 
 class BinanceCOINMWebsocket(BinanceWebsocket):
     def __init__(self, admin_id, node, proc_n, get_binance_coinm_symbol_list, register_monitor_msg, market_type, info_dict, logging_dir):
-        super().__init__(admin_id, node, proc_n, get_binance_coinm_symbol_list, register_monitor_msg, market_type, info_dict, logging_dir)
+        super().__init__(admin_id, node, proc_n/2, get_binance_coinm_symbol_list, register_monitor_msg, market_type, info_dict, logging_dir)

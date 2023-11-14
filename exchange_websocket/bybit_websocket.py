@@ -132,6 +132,7 @@ class BybitWebsocket:
                                 ticker_start_proc = True
                                 ticker_restarted = True
                                 self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
+                                self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
                                 self.websocket_logger.info(f"bybit_ticker_websocket|{i+1}th bybit_ticker_proc terminated.")
                             elif f"{i+1}th_ticker_proc" not in self.websocket_proc_dict.keys():
                                 ticker_start_proc = True
@@ -155,6 +156,7 @@ class BybitWebsocket:
                                 orderbook_start_proc = True
                                 orderbook_restarted = True
                                 self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
+                                self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
                                 self.websocket_logger.info(f"bybit_orderbook_websocket|{i+1}th bybit_orderbook_proc terminated.")
                             elif f"{i+1}th_orderbook_proc" not in self.websocket_proc_dict.keys():
                                 orderbook_start_proc = True
@@ -260,6 +262,7 @@ class BybitWebsocket:
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
                         self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
+                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
                         continue
                     ticker_last_update = allocated_ticker_df['last_update'].max()
                     # check orderbook dict's last_update
@@ -269,6 +272,7 @@ class BybitWebsocket:
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
                         self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
+                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
 
                 orderbook_df = pd.DataFrame(dict(self.orderbook_dict)).T.reset_index()
                 for i in range(self.proc_n):
@@ -280,6 +284,7 @@ class BybitWebsocket:
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
                         self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
+                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
                         continue
                     orderbook_last_update = allocated_orderbook_df['last_update'].max()
                     # If the last update is older than update_threshold_mins, restart websocket

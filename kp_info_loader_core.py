@@ -94,7 +94,10 @@ class InitCore:
         ]
 
         for data_name in self.data_name_list:
-            self.info_thread_dict[f"update_{data_name}"] = Thread(target=self.update_exchange_info_as_df, args=(data_name,), daemon=True)
+            if 'okx' in data_name:
+                self.info_thread_dict[f"update_{data_name}"] = Thread(target=self.update_exchange_info_as_df, args=(data_name, 3), daemon=True)
+            else:
+                self.info_thread_dict[f"update_{data_name}"] = Thread(target=self.update_exchange_info_as_df, args=(data_name,), daemon=True)
             self.info_thread_dict[f"update_{data_name}"].start()
             self.logger.info(f"InitCore|update_{data_name} thread has started.")
 
@@ -112,13 +115,13 @@ class InitCore:
         self.exchange_websocket_dict['BITHUMB_SPOT'] = BithumbWebsocket(self.admin_id, self.node, self.proc_n, self.get_bithumb_symbol_list, self.register_monitor_msg, self.logging_dir)
         self.exchange_websocket_dict['BINANCE_SPOT'] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
         self.exchange_websocket_dict['BINANCE_USD_M'] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
-        # self.exchange_websocket_dict['BINANCE_COIN_M'] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
-        # self.exchange_websocket_dict['OKX_SPOT'] = OkxWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_spot_symbol_list, register_monitor_msg, "SPOT", logging_dir)
-        # self.exchange_websocket_dict['OKX_USD_M'] = OkxUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_usd_m_symbol_list, register_monitor_msg, "USD_M", logging_dir)
-        # self.exchange_websocket_dict['OKX_COIN_M'] = OkxCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_coin_m_symbol_list, register_monitor_msg, "COIN_M", logging_dir)
+        self.exchange_websocket_dict['BINANCE_COIN_M'] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
+        self.exchange_websocket_dict['OKX_SPOT'] = OkxWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_spot_symbol_list, register_monitor_msg, "SPOT", logging_dir)
+        self.exchange_websocket_dict['OKX_USD_M'] = OkxUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_usd_m_symbol_list, register_monitor_msg, "USD_M", logging_dir)
+        self.exchange_websocket_dict['OKX_COIN_M'] = OkxCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_coin_m_symbol_list, register_monitor_msg, "COIN_M", logging_dir)
         self.exchange_websocket_dict['BYBIT_SPOT'] = BybitWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
         self.exchange_websocket_dict['BYBIT_USD_M'] = BybitUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
-        # self.exchange_websocket_dict['BYBIT_COIN_M'] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
+        self.exchange_websocket_dict['BYBIT_COIN_M'] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
         self.logger.info(f"InitCore|exchange_websocket_dict, {self.exchange_websocket_dict.keys()} has been initiated.")
         time.sleep(10)
 
@@ -145,7 +148,8 @@ class InitCore:
         # Start kline generator
         self.kline_generator = InitKlineCore(self.admin_id, node, self.get_premium_df, self.get_market_code_list, register_monitor_msg, self.redis_client, self.db_client, logging_dir)
 
-    def update_exchange_info_as_df(self, data_name, loop_time_secs=30):
+    def update_exchange_info_as_df(self, data_name, error_count_limit=1, loop_time_secs=30):
+        error_count = 0
         while True:
             try:
                 if data_name == "upbit_spot_info_df":
@@ -201,9 +205,12 @@ class InitCore:
                     self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
                     break
                 time.sleep(loop_time_secs)
+                error_count = 0
             except Exception as e:
-                self.logger.error(f"update_exchange_info_as_df|name:{data_name}, {traceback.format_exc()}")
-                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} failed.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                error_count += 1
+                if error_count >= error_count_limit:
+                    self.logger.error(f"update_exchange_info_as_df|name:{data_name}, {traceback.format_exc()}")
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} failed.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
                 time.sleep(loop_time_secs)
 
     def get_dollar_dict(self):
