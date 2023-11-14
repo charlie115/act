@@ -562,7 +562,7 @@ class InitCore:
                 error_count = 0
             except Exception as e:
                 error_count += 1
-                if error_count >= 5:
+                if error_count >= 10:
                     content = f"update_wallet_status|Exception occured in {exchange_name}'s update_wallet_status! Error: {e}, {traceback.format_exc()}"
                     self.logger.error(content)
                     self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"Error occured in {exchange_name} update_wallet_status.", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
