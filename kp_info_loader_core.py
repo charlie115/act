@@ -110,9 +110,9 @@ class InitCore:
         self.exchange_websocket_dict = {}
         self.exchange_websocket_dict['UPBIT_SPOT'] = UpbitWebsocket(self.admin_id, self.node, self.proc_n, self.get_upbit_symbol_list, self.register_monitor_msg, self.logging_dir)
         self.exchange_websocket_dict['BITHUMB_SPOT'] = BithumbWebsocket(self.admin_id, self.node, self.proc_n, self.get_bithumb_symbol_list, self.register_monitor_msg, self.logging_dir)
-        self.exchange_websocket_dict['BINANCE_SPOT'] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_spot_symbol_list, register_monitor_msg, self.info_dict, logging_dir)
-        self.exchange_websocket_dict['BINANCE_USD_M'] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_usd_m_symbol_list, register_monitor_msg, self.info_dict, logging_dir)
-        # self.exchange_websocket_dict['BINANCE_COIN_M'] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_coin_m_symbol_list, register_monitor_msg, self.info_dict, logging_dir)
+        self.exchange_websocket_dict['BINANCE_SPOT'] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
+        self.exchange_websocket_dict['BINANCE_USD_M'] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
+        # self.exchange_websocket_dict['BINANCE_COIN_M'] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
         # self.exchange_websocket_dict['OKX_SPOT'] = OkxWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_spot_symbol_list, register_monitor_msg, "SPOT", logging_dir)
         # self.exchange_websocket_dict['OKX_USD_M'] = OkxUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_usd_m_symbol_list, register_monitor_msg, "USD_M", logging_dir)
         # self.exchange_websocket_dict['OKX_COIN_M'] = OkxCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_coin_m_symbol_list, register_monitor_msg, "COIN_M", logging_dir)
