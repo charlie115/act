@@ -46,6 +46,8 @@ class BinanceWebsocket:
 
     # For fetching ticker, bookticker data for usdm, coinm, spot
     def price_websocket(self, bookticker_dict, ticker_dict, symbol_list, error_event, proc_name):
+        if symbol_list == []:
+            raise Exception(f"price_websocket|symbol_list should not be empty")
         def handle_bookticker_streams(msg):
             try:
                 # event_type = msg['stream']
@@ -65,28 +67,29 @@ class BinanceWebsocket:
         twm = ThreadedWebsocketManager()
         twm.daemon = True
         twm.start()
-        if symbol_list != []:
-            bookticker_list = [x.lower()+'@bookTicker' for x in symbol_list]
-            if self.market_type == "SPOT":
-                twm.start_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list)
-            elif self.market_type == "USD_M":
-                twm.start_futures_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list)
-            elif self.market_type == "COIN_M":
-                twm.start_futures_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list, futures_type=FuturesType.COIN_M)
-            else:
-                raise Exception(f"price_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
-            ticker_list = [x.lower()+'@ticker' for x in symbol_list]
-            if self.market_type == "SPOT":
-                twm.start_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list)
-            elif self.market_type == "USD_M":
-                twm.start_futures_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list)
-            elif self.market_type == "COIN_M":
-                twm.start_futures_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list, futures_type=FuturesType.COIN_M)
-            else:
-                raise Exception(f"price_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
+        bookticker_list = [x.lower()+'@bookTicker' for x in symbol_list]
+        if self.market_type == "SPOT":
+            twm.start_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list)
+        elif self.market_type == "USD_M":
+            twm.start_futures_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list)
+        elif self.market_type == "COIN_M":
+            twm.start_futures_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list, futures_type=FuturesType.COIN_M)
+        else:
+            raise Exception(f"price_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
+        ticker_list = [x.lower()+'@ticker' for x in symbol_list]
+        if self.market_type == "SPOT":
+            twm.start_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list)
+        elif self.market_type == "USD_M":
+            twm.start_futures_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list)
+        elif self.market_type == "COIN_M":
+            twm.start_futures_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list, futures_type=FuturesType.COIN_M)
+        else:
+            raise Exception(f"price_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
         # twm.join()
         while not error_event.is_set():
             time.sleep(0.1)
+        twm.stop_socket(bookticker_list)
+        twm.stop_socket(ticker_list)
         twm.stop()
         self.websocket_logger.info(f"[BINANCE {self.market_type}]{proc_name} websocket has been terminated. (twm.stop() has been executed)")
 

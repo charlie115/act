@@ -3,7 +3,7 @@ module.exports = {
     name: 'info_core',
     script: 'kp_info_loader_main.py',
     interpreter: 'python3.9',
-    args: "-p 5",
+    args: "-p 3",
     restart_delay: 3000,
   },
   ],
