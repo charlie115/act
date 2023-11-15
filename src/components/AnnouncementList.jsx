@@ -87,7 +87,7 @@ export default function AnnouncementList({ filters, timezone, onUnreadData }) {
           [...latestAnnouncementList, ...filteredAnnouncementList],
           filters?.search.join(' '),
           {
-            keys: ['title', 'subtitle', 'content'],
+            keys: ['title', 'subtitle', 'content', 'exchange'],
             threshold: matchSorter.rankings.WORD_STARTS_WITH,
           }
         )
