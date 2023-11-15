@@ -45,7 +45,7 @@ class BinanceWebsocket:
         self.terminate_websocket()
 
     # For fetching ticker, bookticker data for usdm, coinm, spot
-    def price_websocket(self, bookticker_dict, ticker_dict, symbol_list, error_event, proc_name):
+    def price_websocket(self, store_dict, symbol_list, error_event, proc_name):
         if symbol_list == []:
             raise Exception(f"price_websocket|symbol_list should not be empty")
         def handle_bookticker_streams(msg):
@@ -54,42 +54,43 @@ class BinanceWebsocket:
                 # print(msg['data']) # test
                 # if msg['data']['s'] == 'ETHUSDT': # test
                 #     print(msg['data']['T']) # test
-                bookticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.utcnow()}
+                store_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.utcnow()}
             except Exception:
-                self.websocket_logger.error(f"handle_bookticker_streams|{traceback.format_exc()}, msg:{msg}")
+                self.websocket_logger.error(f"handle_bookticker_streams|{proc_name}, {traceback.format_exc()}, msg:{msg}")
                 error_event.set()
         def handle_ticker_streams(msg):
             try:
-                ticker_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.utcnow()}
+                store_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.utcnow()}
             except Exception:
-                self.websocket_logger.error(f"handle_ticker_streams|{traceback.format_exc()}, msg:{msg}")
+                self.websocket_logger.error(f"handle_ticker_streams|{proc_name}, {traceback.format_exc()}, msg:{msg}")
                 error_event.set()
         twm = ThreadedWebsocketManager()
         twm.daemon = True
         twm.start()
-        bookticker_list = [x.lower()+'@bookTicker' for x in symbol_list]
-        if self.market_type == "SPOT":
-            twm.start_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list)
-        elif self.market_type == "USD_M":
-            twm.start_futures_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list)
-        elif self.market_type == "COIN_M":
-            twm.start_futures_multiplex_socket(callback=handle_bookticker_streams, streams=bookticker_list, futures_type=FuturesType.COIN_M)
+        if 'bookticker' in proc_name:
+            stream_list = [x.lower()+'@bookTicker' for x in symbol_list]
+            if self.market_type == "SPOT":
+                twm.start_multiplex_socket(callback=handle_bookticker_streams, streams=stream_list)
+            elif self.market_type == "USD_M":
+                twm.start_futures_multiplex_socket(callback=handle_bookticker_streams, streams=stream_list)
+            elif self.market_type == "COIN_M":
+                twm.start_futures_multiplex_socket(callback=handle_bookticker_streams, streams=stream_list, futures_type=FuturesType.COIN_M)
+            else:
+                raise Exception(f"price_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
         else:
-            raise Exception(f"price_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
-        ticker_list = [x.lower()+'@ticker' for x in symbol_list]
-        if self.market_type == "SPOT":
-            twm.start_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list)
-        elif self.market_type == "USD_M":
-            twm.start_futures_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list)
-        elif self.market_type == "COIN_M":
-            twm.start_futures_multiplex_socket(callback=handle_ticker_streams, streams=ticker_list, futures_type=FuturesType.COIN_M)
-        else:
-            raise Exception(f"price_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
+            stream_list = [x.lower()+'@ticker' for x in symbol_list]
+            if self.market_type == "SPOT":
+                twm.start_multiplex_socket(callback=handle_ticker_streams, streams=stream_list)
+            elif self.market_type == "USD_M":
+                twm.start_futures_multiplex_socket(callback=handle_ticker_streams, streams=stream_list)
+            elif self.market_type == "COIN_M":
+                twm.start_futures_multiplex_socket(callback=handle_ticker_streams, streams=stream_list, futures_type=FuturesType.COIN_M)
+            else:
+                raise Exception(f"price_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
         # twm.join()
         while not error_event.is_set():
             time.sleep(0.1)
-        twm.stop_socket(bookticker_list)
-        twm.stop_socket(ticker_list)
+        twm.stop_socket(stream_list)
         twm.stop()
         self.websocket_logger.info(f"[BINANCE {self.market_type}]{proc_name} websocket has been terminated. (twm.stop() has been executed)")
 
@@ -102,29 +103,54 @@ class BinanceWebsocket:
                             # Check if the process exists and is alive
                             start_proc = False
                             restarted = False
-                            if f"{i+1}th_price_proc" in self.websocket_proc_dict and not self.websocket_proc_dict[f"{i+1}th_price_proc"].is_alive():
-                                content = f"handle_price_procs|[BINANCE {self.market_type}]{i+1}th_price_proc has died. terminating and restarting.."
+                            if f"{i+1}th_bookticker_proc" in self.websocket_proc_dict and not self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].is_alive():
+                                content = f"handle_price_procs|[BINANCE {self.market_type}]{i+1}th_bookticker_proc has died. terminating and restarting.."
                                 self.websocket_logger.error(content)
                                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                                self.websocket_proc_dict[f"{i+1}th_price_proc"].terminate()
-                                self.websocket_proc_dict[f"{i+1}th_price_proc"].join()
+                                self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].terminate()
+                                self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].join()
                                 start_proc = True
                                 restarted = True
-                            elif f"{i+1}th_price_proc" not in self.websocket_proc_dict:
-                                self.websocket_logger.info(f"[BINANCE {self.market_type}]{i+1}th_price_proc is not in self.websocket_proc_dict. starting..")
+                            elif f"{i+1}th_bookticker_proc" not in self.websocket_proc_dict:
+                                self.websocket_logger.info(f"[BINANCE {self.market_type}]{i+1}th_bookticker_proc is not in self.websocket_proc_dict. starting..")
                                 start_proc = True
                             if start_proc:
                                 error_event = Event()
                                 self.price_proc_event_list.append(error_event)
                                 symbol_list = self.sliced_symbol_list[i]
-                                self.websocket_proc_dict[f"{i+1}th_price_proc"] = Process(target=self.price_websocket, args=(self.bookticker_dict, self.ticker_dict, symbol_list, error_event, f"{i+1}th_price_proc"), daemon=True)
-                                self.websocket_symbol_dict[f"{i+1}th_price_symbol"] = symbol_list
-                                self.websocket_proc_dict[f"{i+1}th_price_proc"].start()
-                                self.websocket_logger.info(f"[BINANCE {self.market_type}]started {i+1}th_price_proc websocket proc..")
+                                self.websocket_proc_dict[f"{i+1}th_bookticker_proc"] = Process(target=self.price_websocket, args=(self.bookticker_dict, symbol_list, error_event, f"{i+1}th_bookticker_proc"), daemon=True)
+                                self.websocket_symbol_dict[f"{i+1}th_bookticker_symbol"] = symbol_list
+                                self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].start()
+                                self.websocket_logger.info(f"[BINANCE {self.market_type}]started {i+1}th_bookticker_proc websocket proc..")
                                 if restarted:
-                                    content = f"handle_price_procs|[BINANCE {self.market_type}]{i+1}th_price_proc has been restarted. alive status: {self.websocket_proc_dict[f'{i+1}th_price_proc'].is_alive()}"
+                                    content = f"handle_price_procs|[BINANCE {self.market_type}]{i+1}th_bookticker_proc has been restarted. alive status: {self.websocket_proc_dict[f'{i+1}th_bookticker_proc'].is_alive()}"
                                     self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
                                 time.sleep(0.5)
+                        
+                        start_proc = False
+                        restarted = False
+                        if "ticker_proc" in self.websocket_proc_dict and not self.websocket_proc_dict["ticker_proc"].is_alive():
+                            content = f"handle_price_procs|[BINANCE {self.market_type}]ticker_proc has died. terminating and restarting.."
+                            self.websocket_logger.error(content)
+                            self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                            self.websocket_proc_dict["ticker_proc"].terminate()
+                            self.websocket_proc_dict["ticker_proc"].join()
+                            start_proc = True
+                            restarted = True
+                        elif "ticker_proc" not in self.websocket_proc_dict:
+                            self.websocket_logger.info(f"[BINANCE {self.market_type}]ticker_proc is not in self.websocket_proc_dict. starting..")
+                            start_proc = True
+                        if start_proc:
+                            error_event = Event()
+                            self.price_proc_event_list.append(error_event)
+                            symbol_list = self.before_symbol_list
+                            self.websocket_proc_dict["ticker_proc"] = Process(target=self.price_websocket, args=(self.ticker_dict, symbol_list, error_event, "ticker_proc"), daemon=True)
+                            self.websocket_symbol_dict["ticker_symbol"] = symbol_list
+                            self.websocket_proc_dict["ticker_proc"].start()
+                            self.websocket_logger.info(f"[BINANCE {self.market_type}]started ticker_proc websocket proc..")
+                            if restarted:
+                                content = f"handle_price_procs|[BINANCE {self.market_type}]ticker_proc has been restarted. alive status: {self.websocket_proc_dict['ticker_proc'].is_alive()}"
+                                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"handle_price_procs", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
 
                         # Spawning liquidation process in case the market_type is USD_M or COIN_M
                         if self.market_type != "SPOT":
@@ -260,45 +286,54 @@ class BinanceWebsocket:
                 time.sleep(loop_time_secs)
                 ticker_df = pd.DataFrame(dict(self.ticker_dict)).T.reset_index(drop=True)
                 bookticker_df = pd.DataFrame(dict(self.bookticker_dict)).T.reset_index(drop=True)
+                ticker_terminate_flag = False
+                allocated_ticker_df = ticker_df[ticker_df['s'].isin(self.before_symbol_list)]
+                ticker_last_update = allocated_ticker_df['last_update'].max()
+                if len(allocated_ticker_df) == 0:
+                    content = f"monitor_websocket_last_update|[BINANCE {self.market_type}]ticker_proc has no ticker_dict data. Restarting Websocket.."
+                    self.websocket_logger.info(content)
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                    self.websocket_proc_dict[f"ticker_proc"].terminate()
+                    self.websocket_proc_dict[f"ticker_proc"].join()
+                    continue
+                if (datetime.datetime.utcnow() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
+                    ticker_terminate_flag = True
+                    content = f"monitor_websocket_last_update|ticker_proc ticker_dict's last update is older than {update_threshold_mins} mins."
+                    self.websocket_logger.error(content)
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                if ticker_terminate_flag is True:
+                    content = f"monitor_websocket_last_update|Restarting Websocket.. ticker_proc will be terminated."
+                    self.websocket_logger.error(content)
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                    self.websocket_proc_dict["ticker_proc"].terminate()
+                    self.websocket_proc_dict["ticker_proc"].join()
+
                 for i in range(self.proc_n):
-                    terminate_flag = False
+                    bookticker_terminate_flag = False
                     allocated_symbol_list = self.sliced_symbol_list[i]
                     # check ticker dict's last update
-                    allocated_ticker_df = ticker_df[ticker_df['s'].isin(allocated_symbol_list)]
-                    if len(allocated_ticker_df) == 0:
-                        content = f"monitor_websocket_last_update|[BINANCE {self.market_type}]{i+1}th_price_proc has no ticker_dict data. Restarting Websocket.."
-                        self.websocket_logger.info(content)
-                        self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"].join()
-                        continue
-                    ticker_last_update = allocated_ticker_df['last_update'].max()
                     allocated_bookticker_df = bookticker_df[bookticker_df['s'].isin(allocated_symbol_list)]
                     if len(allocated_bookticker_df) == 0:
-                        content = f"monitor_websocket_last_update|[BINANCE {self.market_type}]{i+1}th_price_proc has no bookticker_dict data. Restarting Websocket.."
+                        content = f"monitor_websocket_last_update|[BINANCE {self.market_type}]{i+1}th_bookticker_proc has no bookticker_dict data. Restarting Websocket.."
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"].join()
+                        self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].terminate()
+                        self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].join()
                         continue
                     bookticker_last_update = allocated_bookticker_df['last_update'].max()
                     # If the last update is older than update_threshold_mins, restart websocket
-                    if (datetime.datetime.utcnow() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
-                        terminate_flag = True
-                        content = f"monitor_websocket_last_update|{i+1}th_price_proc ticker_dict's last update is older than {update_threshold_mins} mins."
-                        self.websocket_logger.error(content)
-                        self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+
                     if (datetime.datetime.utcnow() - bookticker_last_update).total_seconds() / 60 > update_threshold_mins:
-                        terminate_flag = True
-                        content = f"monitor_websocket_last_update|{i+1}th_price_proc bookticker_dict's last update is older than {update_threshold_mins} mins."
+                        bookticker_terminate_flag = True
+                        content = f"monitor_websocket_last_update|{i+1}th_bookticker_proc bookticker_dict's last update is older than {update_threshold_mins} mins."
                         self.websocket_logger.error(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                    if terminate_flag is True:
-                        content = f"monitor_websocket_last_update|Restarting Websocket.. {i+1}th_price_proc will be terminated."
+                    if bookticker_terminate_flag is True:
+                        content = f"monitor_websocket_last_update|Restarting Websocket.. {i+1}th_bookticker_proc will be terminated."
                         self.websocket_logger.error(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_price_proc"].join()
+                        self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].terminate()
+                        self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].join()
             except Exception as e:
                 content = f"monitor_websocket_last_update|[BINANCE {self.market_type}]{traceback.format_exc()}"
                 self.websocket_logger.error(content)
