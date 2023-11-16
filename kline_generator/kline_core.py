@@ -132,7 +132,7 @@ class InitKlineCore:
             self.kline_logger.error(content)
         return ohlc_df
 
-    def ohlc_1T_loader(self, get_premium_df, target_market_code, origin_market_code, loop_downtime_sec=0.01, max_length=300):
+    def ohlc_1T_loader(self, get_premium_df, target_market_code, origin_market_code, loop_downtime_sec=0.02, max_length=300):
         columns_to_merge = ['base_asset', 'tp', 'scr', 'atp24h', 'converted_tp']
         appended_premium_df = pd.DataFrame()
         datetime_now = datetime.datetime.utcnow()

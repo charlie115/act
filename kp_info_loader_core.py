@@ -46,7 +46,8 @@ class InitCore:
         self.upbit_symbols_to_exclude = []
         self.binance_usd_m_symbols_to_exclude = []
         # For redis connesction
-        self.redis_client = InitRedis()
+        self.redis_client_db0 = InitRedis()
+        self.redis_client_db1 = InitRedis(db=1)
 
         self.logger.info(f"InitCore|InitCore initiated with proc_n={proc_n}")
 
@@ -69,7 +70,6 @@ class InitCore:
         self.data_name_list = [
             "upbit_spot_info_df",
             "upbit_spot_ticker_df",
-            # "upbit_wallet_status_df",
             "binance_spot_ticker_df",
             "binance_spot_info_df",
             "binance_usd_m_ticker_df",
@@ -84,7 +84,6 @@ class InitCore:
             "okx_coin_m_info_df",
             "bithumb_spot_info_df",
             "bithumb_spot_ticker_df",
-            # "bithumb_wallet_status_df",
             "bybit_spot_info_df",
             "bybit_spot_ticker_df",
             "bybit_usd_m_info_df",
@@ -146,7 +145,7 @@ class InitCore:
         self.bybit_update_wallet_status_thread.start()
 
         # Start kline generator
-        self.kline_generator = InitKlineCore(self.admin_id, node, self.get_premium_df, self.get_market_code_list, register_monitor_msg, self.redis_client, self.db_client, logging_dir)
+        self.kline_generator = InitKlineCore(self.admin_id, node, self.get_premium_df, self.get_market_code_list, register_monitor_msg, self.redis_client_db0, self.db_client, logging_dir)
 
     def update_exchange_info_as_df(self, data_name, error_count_limit=1, loop_time_secs=30):
         error_count = 0
@@ -204,6 +203,7 @@ class InitCore:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name} is not valid.")
                     self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
                     break
+                self.redis_client_db1.set_dict(f'INFO_CORE|{data_name}', pickle.dumps(self.info_dict[data_name]))
                 time.sleep(loop_time_secs)
                 error_count = 0
             except Exception as e:
@@ -214,7 +214,7 @@ class InitCore:
                 time.sleep(loop_time_secs)
 
     def get_dollar_dict(self):
-        dollar_dict = self.redis_client.get_dict('INFO_CORE|dollar')
+        dollar_dict = self.redis_client_db0.get_dict('INFO_CORE|dollar')
         return dollar_dict
 
     def get_market_code_list(self):
@@ -458,7 +458,7 @@ class InitCore:
                 "change": self.update_dollar_return_dict['change'],
                 "last_updated_time": self.update_dollar_return_dict['last_updated_time'].strftime("%Y-%m-%d %H:%M:%S")
             }
-            self.redis_client.set_dict('INFO_CORE|dollar', dict_for_redis)
+            self.redis_client_db0.set_dict('INFO_CORE|dollar', dict_for_redis)
             update_dollar_logger.info(f"fetch_dollar|Dollar price ({self.update_dollar_return_dict['price']} KRW) has been updated.")
         except Exception as e:
             # print(f'Except executed in get_dollar function, {e}')
