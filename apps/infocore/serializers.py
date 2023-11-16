@@ -13,6 +13,9 @@ class AssetSerializer(AssetMixin, serializers.ModelSerializer):
 
         validated_data["icon"] = self.get_icon_image(asset_info)
 
+        if "note" in asset_info:
+            validated_data["note"] = asset_info["note"]
+
         return super().create(validated_data)
 
     class Meta:

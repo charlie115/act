@@ -18,6 +18,7 @@ class AssetAdmin(AssetMixin, ModelAdmin):
     list_display = [
         "symbol",
         "get_icon_preview",
+        "note",
         "last_update",
     ]
     search_fields = ["symbol"]
@@ -28,6 +29,8 @@ class AssetAdmin(AssetMixin, ModelAdmin):
                 "fields": (
                     "symbol",
                     "get_icon",
+                    "note",
+                    "last_update",
                 )
             },
         ),
@@ -54,13 +57,13 @@ class AssetAdmin(AssetMixin, ModelAdmin):
     get_icon_preview.short_description = "Icon"
 
     def get_icon(self, obj, width="", height=""):
-        icon_html = (
-            f'<a href="{obj.icon.url}">'
-            f'<img src="{obj.icon.url}" {width} {height}/>'
-            "</a>"
-        )
-
-        return mark_safe(icon_html)
+        if obj.icon and hasattr(obj.icon, "url"):
+            icon_html = (
+                f'<a href="{obj.icon.url}">'
+                f'<img src="{obj.icon.url}" {width} {height}/>'
+                "</a>"
+            )
+            return mark_safe(icon_html)
 
     get_icon.allow_tags = True
     get_icon.short_description = "Icon"

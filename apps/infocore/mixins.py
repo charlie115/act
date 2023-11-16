@@ -1,10 +1,13 @@
 import json
 import requests
+
 from django_rq import job
 from django.conf import settings
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from io import BytesIO
 from PIL import Image
+
+from lib.status import HTTP_200_OK
 
 
 class AssetMixin(object):
@@ -27,12 +30,17 @@ class AssetMixin(object):
                 headers={"X-CMC_PRO_API_KEY": settings.COINMARKETCAP_API_KEY},
                 params={"symbol": symbol},
             )
-
             content = json.loads(response.content)
-            data = content["data"][symbol][0]
+
+            if response.status_code == HTTP_200_OK and "data" in content:
+                data = content["data"][symbol][0]
+            else:
+                data["note"] = content["status"]["error_message"]
 
         except Exception as err:
-            print(str(err))  # FIXME: Change to logging
+            data["note"] = str(err)
+            print("EXCEPTION", str(err))  # FIXME: Change to logging
+            raise err
 
         return data
 
