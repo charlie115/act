@@ -27,7 +27,7 @@ current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
 logging_dir = f"{current_folder_dir}/loggers/logs/"
 
 class InitCore:
-    def __init__(self, logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_market_klines, db_dict):
+    def __init__(self, logging_dir, master_flag, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_market_klines, db_dict):
         # Inital value setting
         self.logger = KimpBotLogger("kp_info_loader", logging_dir).logger
         self.price_websocket_logger = KimpBotLogger("price_websocket", logging_dir).logger
@@ -143,25 +143,26 @@ class InitCore:
         self.logger.info(f"InitCore|exchange_websocket_dict, {self.exchange_websocket_dict.keys()} has been initiated.")
         time.sleep(10)
 
-        ## Start updating fundingrate
-        self.binance_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("BINANCE", self.binance_adaptor), daemon=True)
-        self.binance_update_fundingrate_thread.start()
-        self.okx_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("OKX", self.okx_adaptor, 180), daemon=True)
-        self.okx_update_fundingrate_thread.start()
-        self.bybit_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("BYBIT", self.bybit_adaptor), daemon=True)
-        self.bybit_update_fundingrate_thread.start()
+        if master_flag:
+            ## Start updating fundingrate
+            self.binance_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("BINANCE", self.binance_adaptor), daemon=True)
+            self.binance_update_fundingrate_thread.start()
+            self.okx_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("OKX", self.okx_adaptor, 180), daemon=True)
+            self.okx_update_fundingrate_thread.start()
+            self.bybit_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("BYBIT", self.bybit_adaptor), daemon=True)
+            self.bybit_update_fundingrate_thread.start()
 
-        ## Start updating wallet status
-        self.upbit_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("UPBIT", self.upbit_adaptor), daemon=True)
-        self.upbit_update_wallet_status_thread.start()
-        self.binance_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BINANCE", self.binance_adaptor), daemon=True)
-        self.binance_update_wallet_status_thread.start()
-        self.okx_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("OKX", self.okx_adaptor), daemon=True)
-        self.okx_update_wallet_status_thread.start()
-        self.bithumb_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BITHUMB", self.bithumb_adaptor), daemon=True)
-        self.bithumb_update_wallet_status_thread.start()
-        self.bybit_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BYBIT", self.bybit_adaptor), daemon=True)
-        self.bybit_update_wallet_status_thread.start()
+            ## Start updating wallet status
+            self.upbit_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("UPBIT", self.upbit_adaptor), daemon=True)
+            self.upbit_update_wallet_status_thread.start()
+            self.binance_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BINANCE", self.binance_adaptor), daemon=True)
+            self.binance_update_wallet_status_thread.start()
+            self.okx_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("OKX", self.okx_adaptor), daemon=True)
+            self.okx_update_wallet_status_thread.start()
+            self.bithumb_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BITHUMB", self.bithumb_adaptor), daemon=True)
+            self.bithumb_update_wallet_status_thread.start()
+            self.bybit_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BYBIT", self.bybit_adaptor), daemon=True)
+            self.bybit_update_wallet_status_thread.start()
 
         # Start kline generator
         self.kline_generator = InitKlineCore(self.admin_id, node, self.get_premium_df, self.enabled_market_klines, register_monitor_msg, self.redis_client_db0, self.db_client, logging_dir)
