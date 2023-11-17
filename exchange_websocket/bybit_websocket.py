@@ -6,12 +6,14 @@ from pybit.unified_trading import WebSocket
 import json
 import datetime
 import time
+import _pickle as pickle
 # set directory to upper directory
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from loggers.logger import KimpBotLogger
 from exchange_websocket.utils import list_slice
+from etc.redis_connector.redis_connector import InitRedis
 
 class BybitWebsocket:
     def __init__(self, admin_id, node, proc_n, get_symbol_list, register_monitor_msg, market_type, info_dict, logging_dir=None):
@@ -32,11 +34,13 @@ class BybitWebsocket:
         self.price_proc_event_list = []
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
+        self.redis_client_db1 = InitRedis(db=1)
         self._start_websocket()
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
         self.monitor_websocket_last_update_thread = Thread(target=self.monitor_websocket_last_update, daemon=True)
         self.monitor_websocket_last_update_thread.start()
+        
 
     def init_ticker_websocket(self, ticker_dict, symbol_list, error_event):
         def cut_list(list):
@@ -60,7 +64,9 @@ class BybitWebsocket:
                 ws.exit()
                 return
             if 'data' in message.keys():
-                ticker_dict[message['data']['symbol']] = {**message['data'], 'last_update': datetime.datetime.utcnow()}
+                ticker_dict[message['data']['symbol']] = {**message['data'], 'last_update_timestamp': int(datetime.datetime.utcnow().timestamp()*1000000)}
+                # self.redis_client_db1.set_data(f"INFO_CORE|BYBIT_{self.market_type}|ticker|{message['data']['symbol']}", json.dumps({**message['data'], "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)}))
+                # self.redis_client_db1.set_data(f"INFO_CORE|BYBIT_{self.market_type}|ticker", pickle.dumps(dict(ticker_dict)))
         
         if self.market_type == "SPOT":
             for symbol_bunch in cut_list(symbol_list):
@@ -100,8 +106,9 @@ class BybitWebsocket:
                 ws.exit()
                 return
             if 'data' in message.keys():
-                orderbook_dict[message['data']['s']] = {**message['data'], 'last_update': datetime.datetime.utcnow()}
-
+                orderbook_dict[message['data']['s']] = {**message['data'], 'last_update_timestamp': int(datetime.datetime.utcnow().timestamp()*1000000)}
+                # self.redis_client_db1.set_data(f"INFO_CORE|BYBIT_{self.market_type}|orderbook|{message['data']['s']}", json.dumps({**message['data'], "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)}))
+                # self.redis_client_db1.set_data(f"INFO_CORE|BYBIT_{self.market_type}|orderbook", pickle.dumps(dict(orderbook_dict)))
         if self.market_type == "SPOT":
             for symbol_bunch in cut_list(symbol_list):
                 ws.orderbook_stream(
@@ -223,15 +230,21 @@ class BybitWebsocket:
                 
                 if sorted(self.before_symbols_list) != sorted(new_symbols_list):
                     restart_websockets = True
-                    deleted_spot_shared_symbol = [x for x in self.before_symbols_list if x not in new_symbols_list]
-                    added_spot_shared_symbol = [x for x in new_symbols_list if x not in self.before_symbols_list]
-                    content = f"monitor_shared_symbol_change|[BYBIT {self.market_type}]shared symbol changed. deleted: {deleted_spot_shared_symbol}, added: {added_spot_shared_symbol}"
+                    deleted_shared_symbol = [x for x in self.before_symbols_list if x not in new_symbols_list]
+                    added_shared_symbol = [x for x in new_symbols_list if x not in self.before_symbols_list]
+                    content = f"monitor_shared_symbol_change|[BYBIT {self.market_type}]shared symbol changed. deleted: {deleted_shared_symbol}, added: {added_shared_symbol}"
                     self.websocket_logger.info(content)
                     self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_shared_symbol_change', content, code=None, sent_switch=0, send_counts=1, remark=None)
-                    for each_shared_symbol in deleted_spot_shared_symbol:
-                        # remove deleted symbol from ticker_dict
+                    for each_shared_symbol in deleted_shared_symbol:
+                        # remove deleted symbol from ticker_dict and orderbook_dict
                         try:
                             del self.ticker_dict[each_shared_symbol]
+                            # self.redis_client_db1.redis_conn.delete(f"INFO_CORE|BYBIT_{self.market_type}|ticker|{each_shared_symbol}")
+                        except Exception:
+                            pass
+                        try:
+                            del self.orderbook_dict[each_shared_symbol]
+                            # self.redis_client_db1.redis_conn.delete(f"INFO_CORE|BYBIT_{self.market_type}|orderbook|{each_shared_symbol}")
                         except Exception:
                             pass
                 
@@ -264,13 +277,14 @@ class BybitWebsocket:
                         self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
                         self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
                         continue
-                    ticker_last_update = allocated_ticker_df['last_update'].max()
+                    ticker_last_update = allocated_ticker_df['last_update_timestamp'].max()
                     # check orderbook dict's last_update
                     # If the last update is older than update_threshold_mins, restart websocket
-                    if (datetime.datetime.utcnow() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
-                        content = f"monitor_websocket_last_update|{i+1}th_ticker_proc last_update is older than {update_threshold_mins} mins. Restarting websocket.."
+                    if (datetime.datetime.utcnow().timestamp() - ticker_last_update/1000000) > update_threshold_mins*60:
+                        slow_ticker_symbol = allocated_ticker_df[allocated_ticker_df['last_update_timestamp'] == ticker_last_update]['symbol'].values[0]
+                        content = f"monitor_websocket_last_update|{i+1}th_ticker_proc {slow_ticker_symbol} last_update is older than {update_threshold_mins} mins. Restarting websocket.."
                         self.websocket_logger.info(content)
-                        self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
+                        self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', f'[BYBIT {self.market_type}] monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
                         self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
                         self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
 
@@ -286,12 +300,15 @@ class BybitWebsocket:
                         self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
                         self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
                         continue
-                    orderbook_last_update = allocated_orderbook_df['last_update'].max()
+                    orderbook_last_update = allocated_orderbook_df['last_update_timestamp'].max()
                     # If the last update is older than update_threshold_mins, restart websocket
-                    if (datetime.datetime.utcnow() - orderbook_last_update).total_seconds() / 60 > update_threshold_mins:
-                        content = f"monitor_websocket_last_update|{i+1}th_orderbook_proc last_update is older than {update_threshold_mins} mins. Restarting websocket.."
+                    if (datetime.datetime.utcnow().timestamp() - orderbook_last_update/1000000) > update_threshold_mins*60:
+                        slow_orderbook_symbol = allocated_orderbook_df[allocated_orderbook_df['last_update'] == orderbook_last_update]['s'].values[0]
+                        content = f"monitor_websocket_last_update|{i+1}th_orderbook_proc {slow_orderbook_symbol} last_update is older than {update_threshold_mins} mins. Restarting websocket.."
                         self.websocket_logger.info(content)
-                        self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
+                        self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', f'[BYBIT {self.market_type}] monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
+                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
+                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
             except Exception as e:
                 content = f"monitor_websocket_last_update|{traceback.format_exc()}"
                 self.websocket_logger.error(content)

@@ -2,10 +2,26 @@ import redis
 import json
 import datetime
 import pandas as pd
+import os
+import sys
+
+upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+upper_upper_dir = os.path.dirname(upper_dir)
+config_name = "kp_info_loader_config.json"
+
+sys.path.append(upper_upper_dir)
+
+with open(f"{upper_upper_dir}/{config_name}") as f:
+    config = json.load(f)
+
+node = config['node']
+node_settings = config['node_settings'][node]
+redis_settings_name = node_settings['redis_settings']
+redis_setting_dict = config['database_setting'][redis_settings_name]
 
 class InitRedis:
-    def __init__(self, passwd="CommunityRedis123!", host='redis', port=6379, db=0): # Temporary
-        self.redis_pool = redis.ConnectionPool(host=host, port=port, db=db, password=passwd, decode_responses=False)
+    def __init__(self, passwd=redis_setting_dict['passwd'], host=redis_setting_dict['host'], port=redis_setting_dict['port'], db=0): # Temporary
+        self.redis_pool = redis.ConnectionPool(host=host, port=port, db=db, password=passwd, decode_responses=False, max_connections=20)
         self.redis_conn = redis.Redis(connection_pool=self.redis_pool)
 
     def set_data(self, key_name, value):

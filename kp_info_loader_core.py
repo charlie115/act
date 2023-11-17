@@ -27,7 +27,7 @@ current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
 logging_dir = f"{current_folder_dir}/loggers/logs/"
 
 class InitCore:
-    def __init__(self, logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_markets_dict, db_dict):
+    def __init__(self, logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_market_klines, db_dict):
         # Inital value setting
         self.logger = KimpBotLogger("kp_info_loader", logging_dir).logger
         self.price_websocket_logger = KimpBotLogger("price_websocket", logging_dir).logger
@@ -40,7 +40,9 @@ class InitCore:
         self.exclude_outliers = True
         self.register_monitor_msg = register_monitor_msg
         self.exchange_api_key_dict = exchange_api_key_dict
-        self.enabled_markets_dict = enabled_markets_dict
+        self.enabled_market_klines = enabled_market_klines
+        self.enabled_websocket_list = self.generate_enabled_websocket_list()
+        self.enabled_markets_dict = self.generate_enabled_market_code_dict()
         self.db_client = InitDBClient(**db_dict)
         # TESTTEST
         self.upbit_symbols_to_exclude = []
@@ -110,17 +112,34 @@ class InitCore:
                 time.sleep(2)
 
         self.exchange_websocket_dict = {}
-        self.exchange_websocket_dict['UPBIT_SPOT'] = UpbitWebsocket(self.admin_id, self.node, self.proc_n, self.get_upbit_symbol_list, self.register_monitor_msg, self.logging_dir)
-        # self.exchange_websocket_dict['BITHUMB_SPOT'] = BithumbWebsocket(self.admin_id, self.node, self.proc_n, self.get_bithumb_symbol_list, self.register_monitor_msg, self.logging_dir)
-        self.exchange_websocket_dict['BINANCE_SPOT'] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
-        self.exchange_websocket_dict['BINANCE_USD_M'] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
-        self.exchange_websocket_dict['BINANCE_COIN_M'] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
-        self.exchange_websocket_dict['OKX_SPOT'] = OkxWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_spot_symbol_list, register_monitor_msg, "SPOT", logging_dir)
-        self.exchange_websocket_dict['OKX_USD_M'] = OkxUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_usd_m_symbol_list, register_monitor_msg, "USD_M", logging_dir)
-        self.exchange_websocket_dict['OKX_COIN_M'] = OkxCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_coin_m_symbol_list, register_monitor_msg, "COIN_M", logging_dir)
-        self.exchange_websocket_dict['BYBIT_SPOT'] = BybitWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
-        # self.exchange_websocket_dict['BYBIT_USD_M'] = BybitUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
-        # self.exchange_websocket_dict['BYBIT_COIN_M'] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
+        for enabled_websocket_name in self.enabled_websocket_list:
+            if enabled_websocket_name == "UPBIT_SPOT":
+                self.exchange_websocket_dict[enabled_websocket_name] = UpbitWebsocket(self.admin_id, self.node, self.proc_n, self.get_upbit_symbol_list, self.register_monitor_msg, self.logging_dir)
+            elif enabled_websocket_name == "BITHUMB_SPOT":
+                self.exchange_websocket_dict[enabled_websocket_name] = BithumbWebsocket(self.admin_id, self.node, self.proc_n, self.get_bithumb_symbol_list, self.register_monitor_msg, self.logging_dir)
+            elif enabled_websocket_name == "BINANCE_SPOT":
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
+            elif enabled_websocket_name == "BINANCE_USD_M":
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
+            elif enabled_websocket_name == "BINANCE_COIN_M":
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
+            elif enabled_websocket_name == "OKX_SPOT":
+                self.exchange_websocket_dict[enabled_websocket_name] = OkxWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_spot_symbol_list, register_monitor_msg, "SPOT", logging_dir)
+            elif enabled_websocket_name == "OKX_USD_M":
+                self.exchange_websocket_dict[enabled_websocket_name] = OkxUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_usd_m_symbol_list, register_monitor_msg, "USD_M", logging_dir)
+            elif enabled_websocket_name == "OKX_COIN_M":
+                self.exchange_websocket_dict[enabled_websocket_name] = OkxCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_coin_m_symbol_list, register_monitor_msg, "COIN_M", logging_dir)
+            elif enabled_websocket_name == "BYBIT_SPOT":
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
+            elif enabled_websocket_name == "BYBIT_USD_M":
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
+            elif enabled_websocket_name == "BYBIT_COIN_M":
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
+            else:
+                self.logger.error(f"InitCore|{enabled_websocket_name} is not valid.")
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"InitCore|{enabled_websocket_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                break
+
         self.logger.info(f"InitCore|exchange_websocket_dict, {self.exchange_websocket_dict.keys()} has been initiated.")
         time.sleep(10)
 
@@ -145,7 +164,48 @@ class InitCore:
         self.bybit_update_wallet_status_thread.start()
 
         # Start kline generator
-        self.kline_generator = InitKlineCore(self.admin_id, node, self.get_premium_df, self.get_market_code_list, register_monitor_msg, self.redis_client_db0, self.db_client, logging_dir)
+        self.kline_generator = InitKlineCore(self.admin_id, node, self.get_premium_df, self.enabled_market_klines, register_monitor_msg, self.redis_client_db0, self.db_client, logging_dir)
+
+
+    def generate_enabled_websocket_list(self):
+        market_list = []
+        for each_market_combi in self.enabled_market_klines:
+            market_code1, market_code2 = each_market_combi.split(':')
+            market_list.append(market_code1.split('/')[0])
+            market_list.append(market_code2.split('/')[0])
+        market_list = list(set(market_list))
+        return market_list
+    
+    def generate_enabled_market_code_dict(self):
+        organized_markets = {}
+
+        def add_market_product(market, product_type, product):
+            if market not in organized_markets:
+                organized_markets[market] = {"SPOT": [], "USD_M": {"PERPETUAL": [], "FUTURES": []}, "COIN_M": {"PERPETUAL": [], "FUTURES": []}}
+            
+            if product_type == "SPOT":
+                if product not in organized_markets[market]["SPOT"]:
+                    organized_markets[market]["SPOT"].append(product)
+            elif product_type in ["USD_M", "COIN_M"]:
+                if product not in organized_markets[market][product_type]["PERPETUAL"]:
+                    organized_markets[market][product_type]["PERPETUAL"].append(product)
+
+        # Process each entry in the enabled_market_klines
+        for entry in self.enabled_market_klines:
+            pairs = entry.split(":")
+            for pair in pairs:
+                market, quote_asset = pair.split("/")
+                # Handle different market types
+                if "USD_M" in market:
+                    market_name = market.replace("_USD_M", "")
+                    market_type = "USD_M"
+                elif "COIN_M" in market:
+                    market_name = market.replace("_COIN_M", "")
+                    market_type = "COIN_M"
+                else:
+                    market_name, market_type = market.split("_")
+                add_market_product(market_name, market_type, quote_asset)
+        return organized_markets
 
     def update_exchange_info_as_df(self, data_name, error_count_limit=1, loop_time_secs=30):
         error_count = 0
@@ -203,7 +263,7 @@ class InitCore:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name} is not valid.")
                     self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
                     break
-                self.redis_client_db1.set_dict(f'INFO_CORE|{data_name}', pickle.dumps(self.info_dict[data_name]))
+                # self.redis_client_db1.set_data(f'INFO_CORE|{data_name}', pickle.dumps(self.info_dict[data_name]))
                 time.sleep(loop_time_secs)
                 error_count = 0
             except Exception as e:
@@ -267,6 +327,7 @@ class InitCore:
                 break
 
         # Start compare and concat
+        target_market_symbols = []
         target_market_ticker_df = self.info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"]
         # check if it's spot or not
         if target_market_dict['market_type'] != "SPOT":
@@ -291,12 +352,22 @@ class InitCore:
             new_quote_asset = f"quote_asset_{comparison_market_code}"
             each_market_info_df = each_market_info_df.rename(columns={"symbol":new_symbol, "quote_asset": new_quote_asset})
             merged_df = target_market_ticker_df.merge(each_market_info_df[[new_symbol, "base_asset", new_quote_asset]], on='base_asset', how='inner')
+            if (each_comparison_dict['exchange'] == target_market_dict['exchange'] and
+                each_comparison_dict['market_type'] == target_market_dict['market_type']):
+                target_market_symbols += merged_df[new_symbol].to_list()
             total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
+            target_market_symbols += total_df['symbol'].to_list()
+        
+        target_market_symbols = list(set(target_market_symbols))
+        total_target_market_ticker_df = self.info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"]
+        total_target_market_df = total_target_market_ticker_df[total_target_market_ticker_df['symbol'].isin(target_market_symbols)]
+        final_symbol_list = total_target_market_df.sort_values('atp24h', ascending=False)['symbol'].to_list()
 
-        total_df.drop_duplicates(['symbol'], inplace=True)
-        total_df.sort_values('atp24h', ascending=False)
-        total_df.reset_index(drop=True, inplace=True)
-        return total_df['symbol'].to_list()
+        # total_df.drop_duplicates(['symbol'], inplace=True)
+        # total_df.sort_values('atp24h', ascending=False)
+        # total_df.reset_index(drop=True, inplace=True)
+        # return total_df['symbol'].to_list()
+        return final_symbol_list
 
     def get_upbit_symbol_list(self):
         symbol_list = self.get_symbol_list('UPBIT_SPOT')

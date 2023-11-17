@@ -21,7 +21,7 @@ from etc.redis_connector.redis_connector import InitRedis
 
 
 class InitKlineCore:
-    def __init__(self, admin_id, node, get_premium_df, get_market_code_list, register_monitor_msg, redis_client, db_client, logging_dir):
+    def __init__(self, admin_id, node, get_premium_df, enabled_market_klines, register_monitor_msg, redis_client, db_client, logging_dir):
         self.node = node
         self.admin_id = admin_id
         self.get_premium_df = get_premium_df
@@ -29,74 +29,57 @@ class InitKlineCore:
         self.kline_logger = KimpBotLogger("kline_core", logging_dir).logger
         self.kline_logger.info(f"InitKlineCore started.")
         self.redis_client = InitRedis()
-        self.market_code_list = get_market_code_list()
-        self.market_combination_list = self.get_market_combination_list()
+        # self.market_code_list = get_market_code_list()
+        # self.market_combination_list = self.get_market_combination_list()
+        self.enabled_market_klines = enabled_market_klines
         self.enabled_kline_types = ['1T', '5T', '15T', '30T', '1H', '4H', '1D']
         self.kline_proc_dict = {}
         self.redis_client = redis_client
         self.pubsub = self.redis_client.redis_conn.pubsub()
         self.db_client = db_client
-        self.enaled_market_combination_list = []
+        # self.enaled_market_combination_list = []
         self._start_generating_kline()
         self.subscribe_kline_channel()
 
     def _start_generating_kline(self):
         # Start generating kline
-        for market_combination_tuple in self.market_combination_list:
-            if (("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "BINANCE_SPOT/USDT" in market_combination_tuple[1])
-                or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "BINANCE_USD_M/USDT" in market_combination_tuple[1])
-                # or ("BINANCE_COIN_M/USD" in market_combination_tuple[0] and "BINANCE_USD_M/USDT" in market_combination_tuple[1])
-                or ("BINANCE_USD_M/USDT" in market_combination_tuple[0] and "BINANCE_COIN_M/USDT" in market_combination_tuple[1])
-                or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "OKX_SPOT/USDT" in market_combination_tuple[1])
-                or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "OKX_USD_M/USDT" in market_combination_tuple[1])
-                # or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "OKX_COIN_M/USDT" in market_combination_tuple[1])
-                or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "BITHUMB_SPOT/KRW" in market_combination_tuple[1])
-                or ("BINANCE_USD_M/USDT" in market_combination_tuple[0] and "OKX_USD_M/USDT" in market_combination_tuple[1])
-                or ("BITHUMB_SPOT/KRW" in market_combination_tuple[0] and "BINANCE_SPOT/USDT" in market_combination_tuple[1])
-                or ("BITHUMB_SPOT/KRW" in market_combination_tuple[0] and "BINANCE_USD_M/USDT" in market_combination_tuple[1])
-                # or ("BITHUMB_SPOT/KRW" in market_combination_tuple[0] and "OKX_SPOT/USDT" in market_combination_tuple[1])
-                # or ("BITHUMB_SPOT/KRW" in market_combination_tuple[0] and "OKX_USD_M/USDT" in market_combination_tuple[1])
-                or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "BYBIT_USD_M/USDT" in market_combination_tuple[1])
-                or ("BINANCE_USD_M/USDT" in market_combination_tuple[0] and "BYBIT_USD_M/USDT" in market_combination_tuple[1])
-                ):
-                target_market_code = market_combination_tuple[0]
-                origin_market_code = market_combination_tuple[1]
-                self.enaled_market_combination_list.append((target_market_code, origin_market_code))
-
-                for i, each_kline_type in enumerate(self.enabled_kline_types):
-                    if each_kline_type.endswith('T'):
-                        if each_kline_type == '1T':
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_loader"] = Process(target=self.ohlc_1T_loader, args=(self.get_premium_df, target_market_code, origin_market_code), daemon=True)
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_loader"].start()
-                        else:
-                            count = int(each_kline_type[:-1]) / int(self.enabled_kline_types[i-1][:-1])
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_min_resample_loader, args=(target_market_code, origin_market_code, self.enabled_kline_types[i-1], each_kline_type, count), daemon=True)
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"].start()
-                    elif each_kline_type.endswith('H'):
-                        if each_kline_type == '1H':
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_hour_resample_loader, args=(target_market_code, origin_market_code, "30T", "1H", 2), daemon=True)
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"].start()
-                        else:
-                            count = int(each_kline_type[:-1]) / int(self.enabled_kline_types[i-1][:-1])
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_hour_resample_loader, args=(target_market_code, origin_market_code, self.enabled_kline_types[i-1], each_kline_type, count), daemon=True)
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"].start()
-                    elif each_kline_type.endswith('D'):
-                        if each_kline_type == "1D":
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_day_resample_loader, args=(target_market_code, origin_market_code, "4H", "1D", 6), daemon=True)
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"].start()
-                        else:
-                            pass
+        for market_combination in self.enabled_market_klines:
+            target_market_code = market_combination.split(':')[0]
+            origin_market_code = market_combination.split(':')[1]
+            for i, each_kline_type in enumerate(self.enabled_kline_types):
+                if each_kline_type.endswith('T'):
+                    if each_kline_type == '1T':
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"] = Process(target=self.ohlc_1T_loader, args=(self.get_premium_df, target_market_code, origin_market_code), daemon=True)
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].start()
                     else:
-                        raise ValueError(f"Invalid kline_type: {each_kline_type}")
-                    time.sleep(1)
+                        count = int(each_kline_type[:-1]) / int(self.enabled_kline_types[i-1][:-1])
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_min_resample_loader, args=(target_market_code, origin_market_code, self.enabled_kline_types[i-1], each_kline_type, count), daemon=True)
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"].start()
+                elif each_kline_type.endswith('H'):
+                    if each_kline_type == '1H':
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_hour_resample_loader, args=(target_market_code, origin_market_code, "30T", "1H", 2), daemon=True)
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"].start()
+                    else:
+                        count = int(each_kline_type[:-1]) / int(self.enabled_kline_types[i-1][:-1])
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_hour_resample_loader, args=(target_market_code, origin_market_code, self.enabled_kline_types[i-1], each_kline_type, count), daemon=True)
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"].start()
+                elif each_kline_type.endswith('D'):
+                    if each_kline_type == "1D":
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_day_resample_loader, args=(target_market_code, origin_market_code, "4H", "1D", 6), daemon=True)
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"].start()
+                    else:
+                        pass
+                else:
+                    raise ValueError(f"Invalid kline_type: {each_kline_type}")
+                time.sleep(1)
 
-    def get_market_combination_list(self):
-        market_combination_list = []
-        for market_one in self.market_code_list:
-            for market_two in self.market_code_list:
-                if market_one != market_two:
-                    market_combination_list.append((market_one, market_two))
-        return market_combination_list
+    # def get_market_combination_list(self):
+    #     market_combination_list = []
+    #     for market_one in self.market_code_list:
+    #         for market_two in self.market_code_list:
+    #             if market_one != market_two:
+    #                 market_combination_list.append((market_one, market_two))
+    #     return market_combination_list
 
     def generate_ohlc_df(self, appended_df, freq='1T'):
         df = appended_df.set_index(['base_asset', 'datetime_now'])
@@ -128,7 +111,7 @@ class InitKlineCore:
         try:
             ohlc_df['record_count'] = appended_df.groupby('base_asset')['base_asset'].count().values
         except Exception as e:
-            content = f"Error in generate_ohlc_df: {traceback.format_exc()}\n ohlc_df:{ohlc_df}, appended_df.groupby('base_asset'):{appended_df.groupby('base_asset')}"
+            content = f"Error in generate_ohlc_df: {traceback.format_exc()}\n ohlc_df:{ohlc_df}, appended_df.groupby('base_asset'):{appended_df.groupby('base_asset')}\n appended_df:{appended_df}"
             self.kline_logger.error(content)
         return ohlc_df
 
@@ -180,7 +163,7 @@ class InitKlineCore:
                     # Publish to redis pubsub
                     self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
             except Exception as e:
-                content = f"ohlc_1T_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_1T_loader: {traceback.format_exc()}"
+                content = f"ohlc_1T_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_1T_loader: {traceback.format_exc()}\n appended_premium_df:{appended_premium_df}, premium_df:{premium_df}"
                 self.kline_logger.error(content)
                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"ohlc_1T_loader got an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
                 time.sleep(3)
@@ -520,9 +503,9 @@ class InitKlineCore:
                 self.kline_logger.error(f"subscribe_kline_channel|Error in message_handler: {traceback.format_exc()}")
 
         channels_dict = {}
-        for market_combination_tuple in self.enaled_market_combination_list:
+        for market_combination in self.enabled_market_klines:
             for each_kline_type in self.enabled_kline_types:
-                channel_name = f'INFO_CORE|{market_combination_tuple[0]}:{market_combination_tuple[1]}_{each_kline_type}_kline'
+                channel_name = f'INFO_CORE|{market_combination}_{each_kline_type}_kline'
                 channels_dict[channel_name] = message_handler
                 self.kline_logger.info(f"subscribe_kline_channel|Subscribing to {channel_name}")
 

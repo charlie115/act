@@ -59,44 +59,28 @@ if __name__ == '__main__':
     register_monitor_msg = RegisterMonitorMsg(monitor_bot_token, monitor_bot_api_url, admin_id, logging_dir)
     # Read api keys
     exchange_api_key_dict = config['exchange_api_key']
-    # Exchange market settings
-    enabled_markets_dict = config['enabled_markets']
+    # enabled kline market settings
+    enabled_market_klines = config['node_settings'][node]['enabled_market_klines']
 
     # idle
 
     from telegram_bot_plugin.telegram_bot import InitTelegramBot
     from kp_info_loader.etc.db_handler.postgres_client import InitDBClient
     telegram_bot_name = config['node_settings'][node]['telegram_bot_name']
-    telegram_bot_token = config['telegram_bot_setting'][telegram_bot_name]
+    if telegram_bot_name:
+        telegram_bot_token = config['telegram_bot_setting'][telegram_bot_name]
+    else:
+        telegram_bot_token = None
     master_flag = config['node_settings'][node]['MASTER']
     db_dict = config['database_setting'][config['node_settings'][node]['db_settings']]
-    # db_dict['database'] = 'info_core'
-
-    # # Create database and tables if not exists
-    # temp_db_dict = db_dict.copy()
-    # temp_db_dict['create_database'] = True
-    # temp_db_dict['logging_dir'] = logging_dir
-    # temp_db_client = InitDBClient(**temp_db_dict)
-    # temp_db_client.create_all_table(master_node=master_flag)
-    # temp_db_client.curr.close()
-    # temp_db_client.conn.close()
-
-    # kline_schema_name = 'coin_kimp_kline'
     
     # Initiate Kimp core (Websocket engine)
-    core = InitCore(logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_markets_dict, db_dict)
-
-    # Initiate Kimp core monitor
-    # core_monitor = InitKimpCoreMonitor()
-    # core_monitor.start_loop_monitor_websocket_time(threshold_minutes=3)
-    # core_monitor.start_loop_monitor_dollar_time(threshold_minutes=2)
-    # core_monitor.start_loop_monitor_kline_data(threshold_minutes=3)
+    core = InitCore(logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_market_klines, db_dict)
 
     time.sleep(5)
 
-    # kline_generator = InitKlineCore(node, core.get_premium_df, core.get_market_code_list, register_monitor_msg, logging_dir)
-
     # Initiate TelegramBot with Trigger engine
-    admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list) # LATER
-    admin_telegram_bot.updater.idle()
+    if master_flag:
+        admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list)
+        admin_telegram_bot.updater.idle()
 

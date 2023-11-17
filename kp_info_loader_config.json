@@ -2,67 +2,41 @@
     "node": "kp_info_loader",
     "node_settings":
     {
-        "django_backend": null,
         "kp_info_loader":
         {
             "MASTER": true,
             "db_settings": "mongodb_docker",
+            "redis_settings": "redis_docker",
             "telegram_bot_name": "kp_info_loader_bot",
-            "reference_node": null
+            "reference_node": null,
+            "enabled_market_klines": [
+                "UPBIT_SPOT/KRW:BINANCE_SPOT/USDT",
+                "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT",
+                "UPBIT_SPOT/KRW:BYBIT_USD_M/USDT",
+                "UPBIT_SPOT/KRW:UPBIT_SPOT/BTC"
+            ]
         },
         "kp_info_loader_dev":
         {
             "MASTER": true,
             "db_settings": "mongodb_docker",
+            "redis_settings": "redis_docker",
             "telegram_bot_name": "kp_info_loader_dev_bot",
             "reference_node": null
-        }
-    },
-    "enabled_markets":
-    {
-        "UPBIT": 
-        {
-            "SPOT": ["KRW","BTC"]
         },
-        "BITHUMB":
+        "kline_generator1":
         {
-            "SPOT": ["KRW"]
-        },
-        "BINANCE":
-        {
-            "SPOT": ["USDT", "BTC"],
-            "USD_M": {
-                "PERPETUAL": ["USDT"],
-                "FUTURES": []
-            },
-            "COIN_M": {
-                "PERPETUAL": ["USD"],
-                "FUTURES": []
-            }
-        },
-        "OKX":
-        {
-            "SPOT": ["USDT", "BTC"],
-            "USD_M": {
-                "PERPETUAL": ["USDT"],
-                "FUTURES": []
-            },
-            "COIN_M": {
-                "PERPETUAL": ["USD"],
-                "FUTURES": []
-            }
-        },
-        "BYBIT":
-        {
-            "SPOT": ["USDT"],
-            "USD_M": {
-                "PERPETUAL": ["USDT"],
-                "FUTURES": []
-            },
-            "COIN_M": {
-                "PERPETUAL": ["USD"],
-                "FUTURES": []
-            }
+            "MASTER": false,
+            "db_settings": "mongodb_remote",
+            "redis_settings": "redis_remote",
+            "telegram_bot_name": null,
+            "reference_node": "kp_info_loader",
+            "enabled_market_klines": [
+                "BITHUMB_SPOT/KRW:BINANCE_SPOT/USDT",
+                "BITHUMB_SPOT/BTC:BINANCE_USD_M/USDT",
+                "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT",
+                "BYBIT_USD_M/USDT:OKX_USD_M/USDT"
+            ]
         }
     },
     "telegram_bot_setting": 
@@ -168,10 +142,23 @@
             "user": "test",
             "passwd": "CommunityMongodb123!"
         },
-        "redis":
+        "redis_docker":
         {
             "host": "redis",
             "port": 6379,
+            "passwd": "CommunityRedis123!"
+        },
+        "mongodb_remote":
+        {
+            "host": "221.148.128.212",
+            "port": 27018,
+            "user": "test",
+            "passwd": "CommunityMongodb123!"
+        },
+        "redis_remote":
+        {
+            "host": "221.148.128.212",
+            "port": 26379,
             "passwd": "CommunityRedis123!"
         }
     },

@@ -7,12 +7,14 @@ import websocket
 import json
 import datetime
 import time
+import _pickle as pickle
 # set directory to upper directory
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from loggers.logger import KimpBotLogger
 from exchange_websocket.utils import list_slice
+from etc.redis_connector.redis_connector import InitRedis
 
 class BithumbWebsocket:
     def __init__(self, admin_id, node, proc_n, get_symbol_list, register_monitor_msg, logging_dir):
@@ -32,6 +34,7 @@ class BithumbWebsocket:
         self.price_proc_event_list = []
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
+        self.redis_client_db1 = InitRedis(db=1)
         self._start_websocket()
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
@@ -41,7 +44,7 @@ class BithumbWebsocket:
     def __del__(self):
         self.terminate_websocket()
 
-    def bithumb_websocket(self, result_dict, data, error_event):
+    def bithumb_websocket(self, result_dict, data, error_event, data_name):
         def on_message(ws, message):
             if error_event.is_set():
                 ws.close()
@@ -49,8 +52,9 @@ class BithumbWebsocket:
             message_dict = json.loads(message)
             # print(message_dict) # TEST
             if 'content' in message_dict.keys():
-                result_dict[message_dict['content']['symbol']] = {**message_dict['content'], "last_update": datetime.datetime.utcnow()}
-
+                result_dict[message_dict['content']['symbol']] = {**message_dict['content'], "last_update_timestamp": int(datetime.datetime.utcnow().timestamp()*1000000)}
+                # self.redis_client_db1.set_data(f"INFO_CORE|BITHUMB_SPOT|{data_name}|{message_dict['content']['symbol']}", json.dumps({**message_dict['content'], "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)}))
+                # self.redis_client_db1.set_data(f"INFO_CORE|BITHUMB_SPOT|{data_name}", pickle.dumps(dict(result_dict)))
 
         def on_error(ws, error):
             # print(f'bithumb_websocket on_error executed!')
@@ -98,7 +102,7 @@ class BithumbWebsocket:
                                 self.price_proc_event_list.append(error_event)
                                 self.websocket_symbol_dict[f"{i+1}th_ticker_symbol"] = self.sliced_symbols_list[i]
                                 ticker_data = {"type": "ticker", "symbols": self.sliced_symbols_list[i], "tickTypes": ["24H"]}
-                                ticker_proc = Process(target=self.bithumb_websocket, args=(self.ticker_dict, ticker_data, error_event), daemon=True)
+                                ticker_proc = Process(target=self.bithumb_websocket, args=(self.ticker_dict, ticker_data, error_event, 'ticker'), daemon=True)
                                 self.websocket_proc_dict[f"{i+1}th_ticker_proc"] = ticker_proc
                                 ticker_proc.start()
                                 if ticker_restarted:
@@ -124,7 +128,7 @@ class BithumbWebsocket:
                                 self.price_proc_event_list.append(error_event)
                                 self.websocket_symbol_dict[f"{i+1}th_orderbook_symbol"] = self.sliced_symbols_list[i]
                                 orderbook_data = {"type": "orderbooksnapshot", "symbols": self.sliced_symbols_list[i]}
-                                orderbook_proc = Process(target=self.bithumb_websocket, args=(self.orderbook_dict, orderbook_data, error_event), daemon=True)
+                                orderbook_proc = Process(target=self.bithumb_websocket, args=(self.orderbook_dict, orderbook_data, error_event, 'orderbook'), daemon=True)
                                 self.websocket_proc_dict[f"{i+1}th_orderbook_proc"] = orderbook_proc
                                 orderbook_proc.start()
                                 if orderbook_restarted:
@@ -190,10 +194,12 @@ class BithumbWebsocket:
                         # remove deleted symbol from bithumb_ticker_dict and bithumb_orderbook_dict
                         try:
                             del self.ticker_dict[each_spot_shared_symbol]
+                            # self.redis_client_db1.redis_conn.delete(f"INFO_CORE|BITHUMB_SPOT|ticker|{each_spot_shared_symbol}")
                         except Exception:
                             pass
                         try:
                             del self.orderbook_dict[each_spot_shared_symbol]
+                            # self.redis_client_db1.redis_conn.delete(f"INFO_CORE|BITHUMB_SPOT|orderbook|{each_spot_shared_symbol}")
                         except Exception:
                             pass
                 
@@ -228,7 +234,7 @@ class BithumbWebsocket:
                         self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
                         self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
                         continue
-                    ticker_last_update = allocated_ticker_df['last_update'].max()
+                    ticker_last_update = allocated_ticker_df['last_update_timestamp'].max()
                     # check orderbook dict's last_update
                     allocated_orderbook_df = orderbook_df[orderbook_df['symbol'].isin(allocated_symbol_list)]
                     if len(allocated_orderbook_df) == 0:
@@ -238,16 +244,18 @@ class BithumbWebsocket:
                         self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
                         self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
                         continue
-                    orderbook_last_update = allocated_orderbook_df['last_update'].max()
+                    orderbook_last_update = allocated_orderbook_df['last_update_timestamp'].max()
                     # If the last update is older than update_threshold_mins, restart websocket
-                    if (datetime.datetime.utcnow() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
-                        content = f"monitor_websocket_last_update|{i+1}th_ticker_proc last_update is older than {update_threshold_mins} mins. Restarting websocket.."
+                    if (datetime.datetime.utcnow().timestamp() - ticker_last_update/1000000) > update_threshold_mins*60:
+                        slow_ticker_symbol = allocated_ticker_df[allocated_ticker_df['last_update_timestamp'] == ticker_last_update]['symbol'].values[0]
+                        content = f"monitor_websocket_last_update|{i+1}th_ticker_proc {slow_ticker_symbol} last_update is older than {update_threshold_mins} mins. Restarting websocket.."
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
                         self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
                         self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
-                    if (datetime.datetime.utcnow() - orderbook_last_update).total_seconds() / 60 > update_threshold_mins:
-                        content = f"monitor_websocket_last_update|{i+1}th_orderbook_proc last_update is older than {update_threshold_mins} mins. Restarting websocket.."
+                    if (datetime.datetime.utcnow().timestamp() - orderbook_last_update/1000000) > update_threshold_mins*60:
+                        slow_orderbook_symbol = allocated_orderbook_df[allocated_orderbook_df['last_update_timestamp'] == orderbook_last_update]['symbol'].values[0]
+                        content = f"monitor_websocket_last_update|{i+1}th_orderbook_proc {slow_orderbook_symbol} last_update is older than {update_threshold_mins} mins. Restarting websocket.."
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
                         self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()

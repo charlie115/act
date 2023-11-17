@@ -7,13 +7,15 @@ from binance.enums import FuturesType
 import traceback
 import time
 import queue
+import _pickle as pickle
 # set directory to upper directory
 import os
 import sys
+import json
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from loggers.logger import KimpBotLogger
 from exchange_websocket.utils import list_slice
-
+from etc.redis_connector.redis_connector import InitRedis
 
 class BinanceWebsocket:
     def __init__(self, admin_id, node, proc_n, get_symbol_list, register_monitor_msg, market_type, info_dict, logging_dir):
@@ -35,17 +37,18 @@ class BinanceWebsocket:
         self.stop_restart_webscoket = False
         self.price_proc_event_list = []
         self.liquidation_list = manager.list()
+        self.redis_client_db1 = InitRedis(db=1)
         self._start_websocket()
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
         self.monitor_websocket_last_update_thread = Thread(target=self.monitor_websocket_last_update, daemon=True)
         self.monitor_websocket_last_update_thread.start()
-
+        
     def __del__(self):
         self.terminate_websocket()
 
     # For fetching ticker, bookticker data for usdm, coinm, spot
-    def price_websocket(self, store_dict, symbol_list, error_event, proc_name):
+    def price_websocket(self, store_dict, symbol_list, error_event, proc_name, data_name):
         if symbol_list == []:
             raise Exception(f"price_websocket|symbol_list should not be empty")
         def handle_bookticker_streams(msg):
@@ -54,13 +57,17 @@ class BinanceWebsocket:
                 # print(msg['data']) # test
                 # if msg['data']['s'] == 'ETHUSDT': # test
                 #     print(msg['data']['T']) # test
-                store_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.utcnow()}
+                store_dict[msg['data']['s']] = {**msg['data'], "last_update_timestamp": int(datetime.datetime.utcnow().timestamp()*1000000)}
+                # self.redis_client_db1.set_data(f"INFO_CORE|BINANCE_{self.market_type}|{data_name}|{msg['data']['s']}", json.dumps({**msg['data'], "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)}))
+                # self.redis_client_db1.set_data(f"INFO_CORE|BINANCE_{self.market_type}|{data_name}", pickle.dumps(dict(store_dict)))
             except Exception:
                 self.websocket_logger.error(f"handle_bookticker_streams|{proc_name}, {traceback.format_exc()}, msg:{msg}")
                 error_event.set()
         def handle_ticker_streams(msg):
             try:
-                store_dict[msg['data']['s']] = {**msg['data'], "last_update": datetime.datetime.utcnow()}
+                store_dict[msg['data']['s']] = {**msg['data'], "last_update_timestamp": int(datetime.datetime.utcnow().timestamp()*1000000)}
+                # self.redis_client_db1.set_data(f"INFO_CORE|BINANCE_{self.market_type}|{data_name}|{msg['data']['s']}", json.dumps({**msg['data'], "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)}))
+                # self.redis_client_db1.set_data(f"INFO_CORE|BINANCE_{self.market_type}|{data_name}", pickle.dumps(dict(store_dict)))
             except Exception:
                 self.websocket_logger.error(f"handle_ticker_streams|{proc_name}, {traceback.format_exc()}, msg:{msg}")
                 error_event.set()
@@ -118,7 +125,7 @@ class BinanceWebsocket:
                                 error_event = Event()
                                 self.price_proc_event_list.append(error_event)
                                 symbol_list = self.sliced_symbol_list[i]
-                                self.websocket_proc_dict[f"{i+1}th_bookticker_proc"] = Process(target=self.price_websocket, args=(self.bookticker_dict, symbol_list, error_event, f"{i+1}th_bookticker_proc"), daemon=True)
+                                self.websocket_proc_dict[f"{i+1}th_bookticker_proc"] = Process(target=self.price_websocket, args=(self.bookticker_dict, symbol_list, error_event, f"{i+1}th_bookticker_proc", "bookticker"), daemon=True)
                                 self.websocket_symbol_dict[f"{i+1}th_bookticker_symbol"] = symbol_list
                                 self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].start()
                                 self.websocket_logger.info(f"[BINANCE {self.market_type}]started {i+1}th_bookticker_proc websocket proc..")
@@ -144,7 +151,7 @@ class BinanceWebsocket:
                             error_event = Event()
                             self.price_proc_event_list.append(error_event)
                             symbol_list = self.before_symbol_list
-                            self.websocket_proc_dict["ticker_proc"] = Process(target=self.price_websocket, args=(self.ticker_dict, symbol_list, error_event, "ticker_proc"), daemon=True)
+                            self.websocket_proc_dict["ticker_proc"] = Process(target=self.price_websocket, args=(self.ticker_dict, symbol_list, error_event, "ticker_proc", "ticker"), daemon=True)
                             self.websocket_symbol_dict["ticker_symbol"] = symbol_list
                             self.websocket_proc_dict["ticker_proc"].start()
                             self.websocket_logger.info(f"[BINANCE {self.market_type}]started ticker_proc websocket proc..")
@@ -255,13 +262,15 @@ class BinanceWebsocket:
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', 'monitor_shared_symbol_change', content, code=None, sent_switch=0, send_counts=1, remark=None)
                         for each_symbol in deleted_symbols:
-                            # remove deleted symbol from upbit_ticker_dict and upbit_orderbook_dict
+                            # remove deleted symbol from ticker_dict and bookticker_dict
                             try:
                                 del self.bookticker_dict[each_symbol]
+                                # self.redis_client_db1.redis_conn.delete(f"INFO_CORE|BINANCE_{self.market_type}|bookticker|{each_symbol}")
                             except Exception:
                                 pass
                             try:
                                 del self.ticker_dict[each_symbol]
+                                # self.redis_client_db1.redis_conn.delete(f"INFO_CORE|BINANCE_{self.market_type}|ticker|{each_symbol}")
                             except Exception:
                                 pass
                 else:
@@ -288,7 +297,7 @@ class BinanceWebsocket:
                 bookticker_df = pd.DataFrame(dict(self.bookticker_dict)).T.reset_index(drop=True)
                 ticker_terminate_flag = False
                 allocated_ticker_df = ticker_df[ticker_df['s'].isin(self.before_symbol_list)]
-                ticker_last_update = allocated_ticker_df['last_update'].max()
+                ticker_last_update = allocated_ticker_df['last_update_timestamp'].max()
                 if len(allocated_ticker_df) == 0:
                     content = f"monitor_websocket_last_update|[BINANCE {self.market_type}]ticker_proc has no ticker_dict data. Restarting Websocket.."
                     self.websocket_logger.info(content)
@@ -296,11 +305,12 @@ class BinanceWebsocket:
                     self.websocket_proc_dict[f"ticker_proc"].terminate()
                     self.websocket_proc_dict[f"ticker_proc"].join()
                     continue
-                if (datetime.datetime.utcnow() - ticker_last_update).total_seconds() / 60 > update_threshold_mins:
+                if (datetime.datetime.utcnow().timestamp() - ticker_last_update/1000000) > update_threshold_mins*60:
                     ticker_terminate_flag = True
-                    content = f"monitor_websocket_last_update|ticker_proc ticker_dict's last update is older than {update_threshold_mins} mins."
+                    slow_ticker_symbol = allocated_ticker_df[allocated_ticker_df['last_update_timestamp'] == ticker_last_update]['s'].values[0]
+                    content = f"monitor_websocket_last_update|ticker_proc ticker_dict's {slow_ticker_symbol} last update is older than {update_threshold_mins} mins."
                     self.websocket_logger.error(content)
-                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"[BINANCE {self.market_type}]monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
                 if ticker_terminate_flag is True:
                     content = f"monitor_websocket_last_update|Restarting Websocket.. ticker_proc will be terminated."
                     self.websocket_logger.error(content)
@@ -320,14 +330,15 @@ class BinanceWebsocket:
                         self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].terminate()
                         self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].join()
                         continue
-                    bookticker_last_update = allocated_bookticker_df['last_update'].max()
+                    bookticker_last_update = allocated_bookticker_df['last_update_timestamp'].max()
                     # If the last update is older than update_threshold_mins, restart websocket
 
-                    if (datetime.datetime.utcnow() - bookticker_last_update).total_seconds() / 60 > update_threshold_mins:
+                    if (datetime.datetime.utcnow().timestamp() - bookticker_last_update/1000000) > update_threshold_mins*60:
                         bookticker_terminate_flag = True
-                        content = f"monitor_websocket_last_update|{i+1}th_bookticker_proc bookticker_dict's last update is older than {update_threshold_mins} mins."
+                        slow_bookticker_symbol = allocated_bookticker_df[allocated_bookticker_df['last_update_timestamp'] == bookticker_last_update]['s'].values[0]
+                        content = f"monitor_websocket_last_update|{i+1}th_bookticker_proc bookticker_dict's {slow_bookticker_symbol} last update is older than {update_threshold_mins} mins."
                         self.websocket_logger.error(content)
-                        self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                        self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"[BINANCE {self.market_type}]monitor_websocket_last_update", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
                     if bookticker_terminate_flag is True:
                         content = f"monitor_websocket_last_update|Restarting Websocket.. {i+1}th_bookticker_proc will be terminated."
                         self.websocket_logger.error(content)
