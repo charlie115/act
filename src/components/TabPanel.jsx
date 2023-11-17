@@ -11,7 +11,7 @@ export default function TabPanel({ id, children, value, index, ...props }) {
       role="tabpanel"
       {...props}
     >
-      {value === index && <Box>{children}</Box>}
+      <Box sx={{ display: value === index ? 'block' : 'none' }}>{children}</Box>
     </div>
   );
 }

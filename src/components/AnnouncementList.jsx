@@ -2,13 +2,18 @@ import React, { useEffect, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+
+import HighlightOffRoundedIcon from '@mui/icons-material/HighlightOffRounded';
 
 import { useGetAnnouncementsQuery } from 'redux/api/drf/newscore';
 
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { matchSorter } from 'match-sorter';
 
@@ -22,6 +27,18 @@ import BithumbSvg from 'assets/svg/bithumb_logo.svg';
 import BybitSvg from 'assets/svg/bybit_logo.svg';
 import OkxSvg from 'assets/svg/okx_logo.svg';
 import UPbitSvg from 'assets/svg/upbit_logo.svg';
+
+const CATEGORIES = {
+  Airdrop: { label: <Trans>Airdrop</Trans> },
+  Maintenance: { color: 'secondary', label: <Trans>Maintenance</Trans> },
+  Delisting: { color: 'error', label: <Trans>Delisting</Trans> },
+  'Deposit/Withdrawal': {
+    color: 'warning',
+    label: <Trans>Deposit/Withdrawal</Trans>,
+  },
+  'New Listing': { color: 'success', label: <Trans>New Listing</Trans> },
+  Notice: { color: 'info', label: <Trans>Notice</Trans> },
+};
 
 const THUMBNAILS = {
   binance: { img: BinanceSvg, bgcolor: 'dark.main' },
@@ -41,6 +58,8 @@ export default function AnnouncementList({ filters, timezone, onUnreadData }) {
   const [page, setPage] = useState();
   const [startTime, setStartTime] = useState();
   const [endTime, setEndTime] = useState();
+
+  const [categoryFilters, setCategoryFilters] = useState([]);
 
   const { data: latestAnnouncements, isLoading } = useGetAnnouncementsQuery(
     {},
@@ -84,6 +103,10 @@ export default function AnnouncementList({ filters, timezone, onUnreadData }) {
           uniqBy(
             [...latestAnnouncementList, ...filteredAnnouncementList],
             'id'
+          ).filter(
+            (item) =>
+              categoryFilters.length === 0 ||
+              categoryFilters.includes(item.category)
           ),
           filters?.search.join(' '),
           {
@@ -94,9 +117,21 @@ export default function AnnouncementList({ filters, timezone, onUnreadData }) {
       );
     else
       setAnnouncementList(
-        uniqBy([...latestAnnouncementList, ...filteredAnnouncementList], 'id')
+        uniqBy(
+          [...latestAnnouncementList, ...filteredAnnouncementList],
+          'id'
+        ).filter(
+          (item) =>
+            categoryFilters.length === 0 ||
+            categoryFilters.includes(item.category)
+        )
       );
-  }, [filteredAnnouncementList, latestAnnouncementList, filters?.search]);
+  }, [
+    filteredAnnouncementList,
+    latestAnnouncementList,
+    categoryFilters,
+    filters?.search,
+  ]);
 
   useEffect(() => {
     if (latestAnnouncementList.length)
@@ -128,39 +163,91 @@ export default function AnnouncementList({ filters, timezone, onUnreadData }) {
       </Stack>
     ));
 
-  if (announcementList.length === 0)
-    return (
-      <Typography
-        align="center"
-        variant="h6"
-        sx={{ color: 'secondary.main', fontStyle: 'italic' }}
-      >
-        {t('No announcements found.')}
-      </Typography>
-    );
-
   return (
     <>
-      <Box sx={{ p: 2 }}>Filter by category</Box>
-      {announcementList?.map((item) => (
-        <NewsItem
-          key={item.id}
-          searchWords={filters?.search}
-          {...item}
-          thumbnail={THUMBNAILS[item.exchange.toLowerCase()].img}
-          slotProps={{
-            thumbnail: {
-              fit: 'contain',
-              sx: {
-                bgcolor: THUMBNAILS[item.exchange.toLowerCase()].bgcolor,
-                borderRadius: 1,
-                p: 1,
+      <Stack
+        useFlexGap
+        alignItems="center"
+        direction="row"
+        flexWrap="wrap"
+        spacing={1}
+        sx={{ mb: 3, px: 2 }}
+      >
+        <Box sx={{ mr: 1 }}>{t('Filter by category')}</Box>
+        {[
+          'Notice',
+          'Maintenance',
+          'New Listing',
+          'Delisting',
+          'Deposit/Withdrawal',
+          'Airdrop',
+        ].map((category) => (
+          <Chip
+            // clickable
+            key={category}
+            size="small"
+            label={CATEGORIES[category].label}
+            color={CATEGORIES[category].color}
+            variant={
+              categoryFilters.includes(category) ? 'contained' : 'outlined'
+            }
+            onClick={() =>
+              setCategoryFilters((state) => state.concat(category))
+            }
+            onDelete={
+              categoryFilters.includes(category)
+                ? () =>
+                    setCategoryFilters((state) =>
+                      state.filter((item) => item !== category)
+                    )
+                : undefined
+            }
+            sx={
+              {
+                // height: '16px',
+                // opacity: categoryFilters.includes(category) ? 1 : 0.65,
+              }
+            }
+          />
+        ))}
+        {categoryFilters.length > 0 && (
+          <Tooltip title={t('Clear')}>
+            <IconButton onClick={() => setCategoryFilters([])}>
+              <HighlightOffRoundedIcon />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Stack>
+      {announcementList.length === 0 ? (
+        <Typography
+          align="center"
+          variant="h6"
+          sx={{ color: 'secondary.main', fontStyle: 'italic', mt: 3 }}
+        >
+          {t('No announcements found.')}
+        </Typography>
+      ) : (
+        announcementList?.map((item) => (
+          <NewsItem
+            key={item.id}
+            searchWords={filters?.search}
+            {...item}
+            category={CATEGORIES[item.category]}
+            thumbnail={THUMBNAILS[item.exchange.toLowerCase()].img}
+            slotProps={{
+              thumbnail: {
+                fit: 'contain',
+                sx: {
+                  bgcolor: THUMBNAILS[item.exchange.toLowerCase()].bgcolor,
+                  borderRadius: 1,
+                  p: 1,
+                },
               },
-            },
-          }}
-          sx={{ alignItems: 'center' }}
-        />
-      ))}
+            }}
+            sx={{ alignItems: 'center' }}
+          />
+        ))
+      )}
       {((isFilteredAnnouncementsUninitialized && announcementList.length > 0) ||
         filteredAnnouncements?.nextPage) && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>

@@ -114,9 +114,19 @@ export default function NewsList({ filters, timezone, onUnreadData }) {
 
   return (
     <>
-      {newsList?.map((item) => (
-        <NewsItem key={item.id} searchWords={filters?.search} {...item} />
-      ))}
+      {newsList.length === 0 ? (
+        <Typography
+          align="center"
+          variant="h6"
+          sx={{ color: 'secondary.main', fontStyle: 'italic' }}
+        >
+          {t('No news found.')}
+        </Typography>
+      ) : (
+        newsList?.map((item) => (
+          <NewsItem key={item.id} searchWords={filters?.search} {...item} />
+        ))
+      )}
       {((isFilteredNewsUninitialized && newsList.length > 0) ||
         filteredNews?.nextPage) && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>

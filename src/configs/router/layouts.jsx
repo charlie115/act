@@ -76,6 +76,15 @@ export function MainLayout() {
   useUserQuery({}, { skip: !loggedin });
 
   useEffect(() => {
+    const handleContextmenu = (e) =>
+      process.env.NODE_ENV === 'development' ? null : e.preventDefault();
+    document.addEventListener('contextmenu', handleContextmenu);
+    return () => {
+      document.removeEventListener('contextmenu', handleContextmenu);
+    };
+  }, []);
+
+  useEffect(() => {
     scrollTo({ left: 0, top: 0, behavior: 'smooth' });
   }, [location.pathname]);
 

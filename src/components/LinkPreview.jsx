@@ -38,10 +38,8 @@ export default function LinkPreview({ url, rawUrl }) {
             ?.getAttribute('content') || '';
 
         setPreviewData({ title, description, image });
-
         setLoading(false);
       } catch (error) {
-        console.error(error);
         setLoading(false);
       }
     };
@@ -56,14 +54,14 @@ export default function LinkPreview({ url, rawUrl }) {
   if (!previewData) {
     return (
       <Card
-        sx={{ cursor: 'pointer', width: 320 }}
+        sx={{ cursor: 'pointer', width: 280 }}
         onClick={() => window.open(rawUrl, '_blank', 'noreferrer')}
       >
         <CardContent sx={{ bgcolor: 'grey.400', opacity: 0.45 }}>
           <Stack
             alignItems="center"
             justifyContent="center"
-            sx={{ height: 180 }}
+            sx={{ height: 120 }}
           >
             <PhotoRoundedIcon fontSize="large" />
             <Box component="small">{t('No preview available')}</Box>

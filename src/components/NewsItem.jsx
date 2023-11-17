@@ -4,6 +4,7 @@ import Highlighter from 'react-highlight-words';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
+import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -25,7 +26,12 @@ import copy from 'copy-to-clipboard';
 import truncate from 'lodash/truncate';
 
 const NewsItemContainer = styled((props) => (
-  <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} {...props} />
+  <Stack
+    alignItems="flex-start"
+    direction={{ xs: 'column', md: 'row' }}
+    spacing={2}
+    {...props}
+  />
 ))(({ theme }) => ({
   cursor: 'pointer',
   padding: 10,
@@ -36,6 +42,7 @@ const NewsItemContainer = styled((props) => (
 }));
 
 export default function NewsItem({
+  category,
   datetime,
   subtitle,
   thumbnail,
@@ -45,6 +52,7 @@ export default function NewsItem({
   slotProps,
   ...props
 }) {
+  console.log('category: ', category);
   const dispatch = useDispatch();
 
   const theme = useTheme();
@@ -112,6 +120,16 @@ export default function NewsItem({
           </Box>
           {DateTime.fromISO(datetime).toFormat('DDDD')}
         </Box>
+        {category && (
+          <Box my={2}>
+            <Chip
+              label={category.label}
+              color={category.color}
+              size="small"
+              sx={{ height: '16px' }}
+            />
+          </Box>
+        )}
       </Box>
       <Box sx={{ alignSelf: 'center' }}>
         <IconButton

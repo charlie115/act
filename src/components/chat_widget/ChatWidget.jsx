@@ -85,8 +85,11 @@ export default function ChatWidget({ isVisible }) {
       (node) => {
         if (isAutoScroll) {
           setTimeout(() => {
-            node.scrollIntoView(false);
-            window.scrollBy(0, -10);
+            node.scrollIntoView({
+              behavior: 'smooth',
+              block: 'end',
+              inline: 'end',
+            });
           }, 0);
         }
       },
@@ -281,10 +284,6 @@ export default function ChatWidget({ isVisible }) {
                     </IconButton>
                   </Stack>
                 }
-                // title={t('userFullName', {
-                //   firstName: user?.first_name,
-                //   lastName: user?.last_name,
-                // })}
                 title={`@${chatUsername}`}
                 subheader="Online"
                 titleTypographyProps={{
@@ -318,9 +317,10 @@ export default function ChatWidget({ isVisible }) {
                           disabled={isPastMessagesFetching}
                           href="#"
                           underline="hover"
-                          onClick={() =>
-                            setPastMessagesPage(pastMessagesPage + 1)
-                          }
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPastMessagesPage(pastMessagesPage + 1);
+                          }}
                         >
                           {t('Load more messages')}...
                         </LoadMoreLink>
@@ -353,16 +353,17 @@ export default function ChatWidget({ isVisible }) {
                           }
                         }}
                       />
-                      <Box
-                        ref={
-                          idx === renderMessages.length - 1 - badgeCount
-                            ? lastVisibleMessagePlaceholderRef
-                            : null
-                        }
-                        sx={{ scrollMarginBottom: '2em' }}
-                      />
                     </Box>
                   ))}
+                  <Box
+                    key={renderMessages[renderMessages.length - 1].id}
+                    ref={lastVisibleMessagePlaceholderRef}
+                    sx={{
+                      scrollMarginBottom: '2em',
+                      height: '1px',
+                      width: '1px',
+                    }}
+                  />
                 </Box>
                 <Box sx={{ position: 'relative' }}>
                   {badgeCount > 0 && (

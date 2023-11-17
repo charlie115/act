@@ -4,6 +4,7 @@ import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
 import Link from '@mui/material/Link';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
@@ -15,6 +16,9 @@ import SvgIcon from '@mui/material/SvgIcon';
 import Typography from '@mui/material/Typography';
 
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import ShareRoundedIcon from '@mui/icons-material/ShareRounded';
+
+import { alpha, useTheme } from '@mui/material/styles';
 
 import { useGetSocialMediaPostsQuery } from 'redux/api/drf/newscore';
 
@@ -24,11 +28,16 @@ import { matchSorter } from 'match-sorter';
 
 import linkify from 'linkify-it';
 
+import copy from 'copy-to-clipboard';
+
 import differenceBy from 'lodash/differenceBy';
 import truncate from 'lodash/truncate';
 import uniqBy from 'lodash/uniqBy';
 
 import { DateTime } from 'luxon';
+
+import { useDispatch } from 'react-redux';
+import { setSnackbar } from 'redux/reducers/app';
 
 import formatShortNumber from 'utils/formatShortNumber';
 
@@ -152,17 +161,7 @@ const getContentElements = (content, item) => {
         .slice(index, lastIndex)
         .replace(REGEX.ctrlCharactersRegex, '');
       elements.push({
-        element: (
-          <Link
-            href={item.url}
-            rel="noopener"
-            target="_blank"
-            color="inherit"
-            underline="none"
-          >
-            {textBeforeUrl}
-          </Link>
-        ),
+        element: textBeforeUrl,
         id: `${item.id}-${idx}-text`,
       });
       elements.push({
@@ -177,6 +176,7 @@ const getContentElements = (content, item) => {
             target="_blank"
             color="info.main"
             underline="hover"
+            onClick={(e) => e.stopPropagation()}
           >
             {url.replace('nitter', 'twitter')}
           </Link>
@@ -187,21 +187,11 @@ const getContentElements = (content, item) => {
     });
   } else
     elements.push({
-      element: (
-        <Link
-          href={item.url}
-          rel="noopener"
-          target="_blank"
-          color="inherit"
-          underline="none"
-        >
-          {truncate(content, {
-            length: 320,
-            omission: '... ',
-            separator: ' ',
-          })}
-        </Link>
-      ),
+      element: truncate(content, {
+        length: 320,
+        omission: '... ',
+        separator: ' ',
+      }),
       id: `${item.id}-text`,
     });
 
@@ -209,7 +199,10 @@ const getContentElements = (content, item) => {
 };
 
 export default function SocMedPostList({ filters, timezone, onUnreadData }) {
+  const dispatch = useDispatch();
   const { t } = useTranslation();
+
+  const theme = useTheme();
 
   const [filteredPostList, setFilteredPostList] = useState([]);
   const [latestPostList, setLatestPostList] = useState([]);
@@ -304,157 +297,197 @@ export default function SocMedPostList({ filters, timezone, onUnreadData }) {
       </Stack>
     ));
 
-  if (postList.length === 0)
-    return (
-      <Typography
-        align="center"
-        variant="h6"
-        sx={{ color: 'secondary.main', fontStyle: 'italic' }}
-      >
-        {t('No posts found.')}
-      </Typography>
-    );
-
   return (
     <>
-      <List>
-        {postList?.map((item) => (
-          <Fragment key={item.id}>
-            <ListItem
-              alignItems="flex-start"
-              // onClick={() => window.open(item.url, '_blank', 'noreferrer')}
-              // sx={{ cursor: 'pointer' }}
-            >
-              <ListItemAvatar>
-                <Avatar alt={item.name} src={item.extra_data?.avatar} />
-              </ListItemAvatar>
-              <ListItemText
-                primary={
-                  <Link
-                    href={item.url}
-                    rel="noopener"
-                    target="_blank"
-                    color="text.primary"
-                    underline="none"
-                  >
-                    <Typography component="span" sx={{ fontWeight: 700 }}>
-                      {item.name}
-                    </Typography>
-                    <Typography
-                      component="small"
-                      color="text.secondary"
-                      sx={{ ml: 0.5 }}
+      {postList.length === 0 ? (
+        <Typography
+          align="center"
+          variant="h6"
+          sx={{ color: 'secondary.main', fontStyle: 'italic' }}
+        >
+          {t('No posts found.')}
+        </Typography>
+      ) : (
+        <List>
+          {postList?.map((item) => (
+            <Fragment key={item.id}>
+              <ListItem
+                alignItems="flex-start"
+                // onClick={() => window.open(item.url, '_blank', 'noreferrer')}
+                // sx={{ cursor: 'pointer' }}
+              >
+                <ListItemAvatar>
+                  <Avatar alt={item.name} src={item.extra_data?.avatar} />
+                </ListItemAvatar>
+                <ListItemText
+                  primary={
+                    <Link
+                      href={item.url}
+                      rel="noopener"
+                      target="_blank"
+                      color="text.primary"
+                      underline="none"
                     >
-                      {item.username}
-                    </Typography>
-                    {item.extra_data?.verified && (
-                      <CheckCircleRoundedIcon
-                        color="twitter"
-                        sx={{ fontSize: 14, ml: 0.5 }}
-                      />
-                    )}
-                    <Typography
-                      component="small"
-                      variant="subtitle"
-                      color="grey.600"
-                      sx={{ ml: 1 }}
-                    >
-                      {DateTime.fromISO(item.datetime).toLocaleString(
-                        DateTime.DATETIME_MED
+                      <Typography component="span" sx={{ fontWeight: 700 }}>
+                        {item.name}
+                      </Typography>
+                      <Typography
+                        component="small"
+                        color="text.secondary"
+                        sx={{ ml: 0.5 }}
+                      >
+                        {item.username}
+                      </Typography>
+                      {item.extra_data?.verified && (
+                        <CheckCircleRoundedIcon
+                          color="twitter"
+                          sx={{ fontSize: 14, ml: 0.5 }}
+                        />
                       )}
-                    </Typography>
-                  </Link>
-                }
-                secondary={
-                  <>
-                    <Typography
-                      gutterBottom
-                      component="div"
-                      color="text.secondary"
-                      sx={{ fontSize: 16, whiteSpace: 'pre-line' }}
-                    >
-                      {item.elements?.map((el) => (
-                        <Fragment key={el.id}>{el.element}</Fragment>
-                      ))}
-                    </Typography>
-                    {(item.extra_data?.attachments?.gallery ||
-                      item.extra_data?.attachments?.video) && (
-                      <Stack
-                        useFlexGap
-                        direction="row"
-                        flexWrap="wrap"
-                        spacing={0.5}
+                      <Typography
+                        component="small"
+                        variant="subtitle"
+                        color="grey.600"
+                        sx={{ ml: 1 }}
+                      >
+                        {DateTime.fromISO(item.datetime).toLocaleString(
+                          DateTime.DATETIME_MED
+                        )}
+                      </Typography>
+                    </Link>
+                  }
+                  secondary={
+                    <>
+                      <Typography
+                        gutterBottom
+                        component="div"
+                        color="text.secondary"
                         onClick={() =>
                           window.open(item.url, '_blank', 'noreferrer')
                         }
-                        sx={{ mb: 2, width: { xs: 180, md: 500 } }}
+                        sx={{
+                          cursor: 'pointer',
+                          display: 'inline',
+                          fontSize: 16,
+                          whiteSpace: 'pre-line',
+                        }}
                       >
-                        {[
-                          ...(item.extra_data.attachments?.gallery || []),
-                          ...(item.extra_data.attachments?.video || []),
-                        ]?.map((img) => (
-                          <Box
-                            key={img}
-                            component="img"
-                            alt={img}
-                            src={img}
-                            height={180}
-                            // width={320}
-                            sx={{
-                              borderRadius: 1,
-                              objectFit: 'cover',
-                              width: { xs: 80, md: 240 },
-                            }}
-                          />
+                        {item.elements?.map((el) => (
+                          <Fragment key={el.id}>{el.element}</Fragment>
                         ))}
-                      </Stack>
-                    )}
-                    {item.extra_data?.quote?.url && (
-                      <LinkPreview
-                        url={`${item.extra_data?.quote?.url.replace(
-                          'x.com',
-                          'nitter.net'
-                        )}#m`}
-                        rawUrl={item.extra_data.quote.url}
-                      />
-                    )}
-                    <Stack direction="row" spacing={2} mt={1}>
-                      {STATS_LIST.map((stat) => (
+                      </Typography>
+                      {(item.extra_data?.attachments?.gallery ||
+                        item.extra_data?.attachments?.video) && (
                         <Stack
-                          key={stat.key}
+                          useFlexGap
                           direction="row"
-                          alignItems="center"
+                          flexWrap="wrap"
+                          spacing={0.5}
                           onClick={() =>
                             window.open(item.url, '_blank', 'noreferrer')
                           }
+                          sx={{
+                            cursor: 'pointer',
+                            mb: 2,
+                            width: { xs: 180, md: 500 },
+                          }}
                         >
-                          <SvgIcon
-                            sx={{
-                              cursor: 'pointer',
-                              fontSize: { xs: 14, md: 16 },
-                              mr: 1,
-                            }}
-                          >
-                            {stat.icon}
-                          </SvgIcon>
-                          {formatShortNumber(
-                            item.extra_data?.stats?.[`${stat.key}_count`]
-                          )}
+                          {[
+                            ...(item.extra_data.attachments?.gallery || []),
+                            ...(item.extra_data.attachments?.video || []),
+                          ]?.map((img) => (
+                            <Box
+                              key={img}
+                              component="img"
+                              alt={img}
+                              src={img}
+                              height={180}
+                              // width={320}
+                              sx={{
+                                borderRadius: 1,
+                                objectFit: 'cover',
+                                width: { xs: 80, md: 240 },
+                              }}
+                            />
+                          ))}
                         </Stack>
-                      ))}
-                    </Stack>
-                  </>
-                }
-                secondaryTypographyProps={{
-                  component: 'div',
-                  paragraph: false,
-                }}
-              />
-            </ListItem>
-            <Divider variant="inset" component="li" />
-          </Fragment>
-        ))}
-      </List>
+                      )}
+                      {item.extra_data?.quote?.url && (
+                        <Box
+                          sx={{
+                            pl: 2,
+                            borderLeft: `5px ${alpha(
+                              theme.palette.grey['300'],
+                              0.25
+                            )} solid`,
+                            borderRadius: 1,
+                          }}
+                        >
+                          <LinkPreview
+                            url={`${item.extra_data?.quote?.url.replace(
+                              'x.com',
+                              'nitter.net'
+                            )}#m`}
+                            rawUrl={item.extra_data.quote.url}
+                          />
+                        </Box>
+                      )}
+                      <Stack direction="row" spacing={2} mt={1}>
+                        {STATS_LIST.map((stat) => (
+                          <Stack
+                            key={stat.key}
+                            direction="row"
+                            alignItems="center"
+                            onClick={() =>
+                              window.open(item.url, '_blank', 'noreferrer')
+                            }
+                          >
+                            <SvgIcon
+                              sx={{
+                                cursor: 'pointer',
+                                fontSize: { xs: 14, md: 16 },
+                                mr: 1,
+                              }}
+                            >
+                              {stat.icon}
+                            </SvgIcon>
+                            {formatShortNumber(
+                              item.extra_data?.stats?.[`${stat.key}_count`]
+                            )}
+                          </Stack>
+                        ))}
+                      </Stack>
+                    </>
+                  }
+                  secondaryTypographyProps={{
+                    component: 'div',
+                    paragraph: false,
+                  }}
+                />
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    copy(item.url);
+                    dispatch(
+                      setSnackbar({
+                        message: t(
+                          "The URL to {{username}}'s post has been copied to clipboard.",
+                          { username: `${item.username}` }
+                        ),
+                        snackbarProps: { autoHideDuration: 1500, open: true },
+                        alertProps: { severity: 'success' },
+                      })
+                    );
+                  }}
+                >
+                  <ShareRoundedIcon />
+                </IconButton>
+              </ListItem>
+              <Divider variant="inset" component="li" />
+            </Fragment>
+          ))}
+        </List>
+      )}
       {((isFilteredPostsUninitialized && postList.length > 0) ||
         filteredPosts?.nextPage) && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>

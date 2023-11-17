@@ -128,13 +128,8 @@ export default function News() {
         }}
       >
         <Tabs
-          // centered
-          // disableRipple
           aria-label="news-tabs"
           value={currentTab}
-          // indicatorColor="secondary"
-          // textColor="secondary"
-          // variant="fullWidth"
           onChange={(e, newValue) => setCurrentTab(newValue)}
           sx={{
             '& .MuiTabs-indicator': { bgcolor: 'text.main', height: '1px' },

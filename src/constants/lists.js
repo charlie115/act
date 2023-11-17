@@ -1,11 +1,5 @@
 import i18n from 'configs/i18n';
 
-// import { ReactComponent as BinanceSvg } from 'assets/svg/binance.svg';
-// import { ReactComponent as BithumbSvg } from 'assets/svg/bithumb.svg';
-// import { ReactComponent as BybitSvg } from 'assets/svg/bybit.svg';
-// import { ReactComponent as OkxSvg } from 'assets/svg/okx.svg';
-// import { ReactComponent as UPbitSvg } from 'assets/svg/upbit.svg';
-
 import BinanceSvg from 'assets/svg/binance.svg';
 import BithumbSvg from 'assets/svg/bithumb.svg';
 import BybitSvg from 'assets/svg/bybit.svg';
