@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { matchSorter } from 'match-sorter';
 
 import differenceBy from 'lodash/differenceBy';
+import uniqBy from 'lodash/uniqBy';
 
 import NewsItem from 'components/NewsItem';
 
@@ -62,7 +63,7 @@ export default function NewsList({ filters, timezone, onUnreadData }) {
     if (filters?.search.length)
       setNewsList(
         matchSorter(
-          [...latestNewsList, ...filteredNewsList],
+          uniqBy([...latestNewsList, ...filteredNewsList], 'id'),
           filters?.search.join(' '),
           {
             keys: ['title', 'subtitle', 'content'],
@@ -70,7 +71,7 @@ export default function NewsList({ filters, timezone, onUnreadData }) {
           }
         )
       );
-    else setNewsList([...latestNewsList, ...filteredNewsList]);
+    else setNewsList(uniqBy([...latestNewsList, ...filteredNewsList], 'id'));
   }, [filteredNewsList, latestNewsList, filters?.search]);
 
   useEffect(() => {

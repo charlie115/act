@@ -26,6 +26,7 @@ import linkify from 'linkify-it';
 
 import differenceBy from 'lodash/differenceBy';
 import truncate from 'lodash/truncate';
+import uniqBy from 'lodash/uniqBy';
 
 import { DateTime } from 'luxon';
 
@@ -265,7 +266,7 @@ export default function SocMedPostList({ filters, timezone, onUnreadData }) {
     if (filters?.search.length)
       setPostList(
         matchSorter(
-          [...latestPostList, ...filteredPostList],
+          uniqBy([...latestPostList, ...filteredPostList], 'id'),
           filters?.search.join(' '),
           {
             keys: ['name', 'username', 'content'],
@@ -273,7 +274,7 @@ export default function SocMedPostList({ filters, timezone, onUnreadData }) {
           }
         )
       );
-    else setPostList([...latestPostList, ...filteredPostList]);
+    else setPostList(uniqBy([...latestPostList, ...filteredPostList], 'id'));
   }, [filteredPostList, latestPostList, filters?.search]);
 
   useEffect(() => {
