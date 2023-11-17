@@ -40,8 +40,29 @@ const api = drfApi.injectEndpoints({
         ),
       }),
     }),
+    getSocialMediaPosts: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/newscore/posts/',
+        params,
+      }),
+      transformResponse: (response) => ({
+        nextPage: response?.next
+          ? new URL(response.next).searchParams?.get('page')
+          : null,
+        results: orderBy(
+          response?.results || [],
+          (o) => DateTime.fromISO(o.datetime).toMillis(),
+          'desc'
+        ),
+      }),
+    }),
   }),
 });
 
 export default api;
-export const { useGetAnnouncementsQuery, useGetNewsQuery } = api;
+export const {
+  useGetAnnouncementsQuery,
+  useGetNewsQuery,
+  useGetSocialMediaPostsQuery,
+} = api;

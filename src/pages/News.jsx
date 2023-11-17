@@ -23,6 +23,7 @@ import AnnouncementList from 'components/AnnouncementList';
 import CollapsibleSearch from 'components/CollapsibleSearch';
 import DateRangePicker from 'components/DateRangePicker';
 import NewsList from 'components/NewsList';
+import SocMedPostList from 'components/SocMedPostList';
 import TabPanel from 'components/TabPanel';
 
 import { DATE_FORMAT_API_QUERY } from 'constants';
@@ -81,10 +82,10 @@ export default function News() {
         setNewsBadge(false);
         break;
       case NEWS_TYPE.socialMedia:
-        setNewsBadge(false);
+        setSocialMediaBadge(false);
         break;
       case NEWS_TYPE.announcements:
-        setNewsBadge(false);
+        setAnnouncementsBadge(false);
         break;
       default:
         break;
@@ -222,7 +223,17 @@ export default function News() {
           />
         </TabPanel>
         <TabPanel index={1} dir={theme.direction} value={currentTab}>
-          Social Media
+          <SocMedPostList
+            filters={{ search, startTime, endTime }}
+            timezone={timezone}
+            isActive={currentTab === NEWS_TYPE.socialMedia}
+            onUnreadData={(unread) => {
+              if (currentTab === NEWS_TYPE.socialMedia)
+                if (y > 150 && unread) setUnreadMessage(t('See latest posts'));
+                else setUnreadMessage();
+              else setSocialMediaBadge(unread > 0);
+            }}
+          />
         </TabPanel>
         <TabPanel index={2} dir={theme.direction} value={currentTab}>
           <AnnouncementList

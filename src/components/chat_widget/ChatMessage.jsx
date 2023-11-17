@@ -37,6 +37,22 @@ const TOOLTIP_POPPER_OPTIONS = {
   },
 };
 
+const linkifyIt = linkify().add('@', {
+  validate: (text, pos, self) => {
+    const tail = text.slice(pos);
+    if (!self.re.twitter) {
+      self.re.twitter = new RegExp(
+        `^([a-zA-Z0-9_]){1,15}(?!_)(?=$|${self.re.src_ZPCc})`
+      );
+    }
+    if (self.re.twitter.test(tail)) {
+      if (pos >= 2 && tail[pos - 2] === '@') return false;
+      return tail.match(self.re.twitter)[0].length;
+    }
+    return 0;
+  },
+});
+
 export default function ChatMessage({
   isNewMessage,
   isOwnMessage,
@@ -61,23 +77,7 @@ export default function ChatMessage({
   const prevIsNewMessage = usePrevious(isNewMessage);
 
   useEffect(() => {
-    const matches = linkify()
-      .add('@', {
-        validate: (text, pos, self) => {
-          const tail = text.slice(pos);
-          if (!self.re.twitter) {
-            self.re.twitter = new RegExp(
-              `^([a-zA-Z0-9_]){1,15}(?!_)(?=$|${self.re.src_ZPCc})`
-            );
-          }
-          if (self.re.twitter.test(tail)) {
-            if (pos >= 2 && tail[pos - 2] === '@') return false;
-            return tail.match(self.re.twitter)[0].length;
-          }
-          return 0;
-        },
-      })
-      .match(message);
+    const matches = linkifyIt.match(message);
 
     if (matches?.length > 0) {
       const newElements = [];

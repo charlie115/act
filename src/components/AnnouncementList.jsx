@@ -6,8 +6,6 @@ import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import { useTheme } from '@mui/material/styles';
-
 import { useGetAnnouncementsQuery } from 'redux/api/drf/newscore';
 
 import { useTranslation } from 'react-i18next';
@@ -34,8 +32,6 @@ const THUMBNAILS = {
 
 export default function AnnouncementList({ filters, timezone, onUnreadData }) {
   const { t } = useTranslation();
-
-  const theme = useTheme();
 
   const [filteredAnnouncementList, setFilteredAnnouncementList] = useState([]);
   const [latestAnnouncementList, setLatestAnnouncementList] = useState([]);
@@ -142,6 +138,7 @@ export default function AnnouncementList({ filters, timezone, onUnreadData }) {
 
   return (
     <>
+      <Box sx={{ p: 2 }}>Filter by category</Box>
       {announcementList?.map((item) => (
         <NewsItem
           key={item.id}

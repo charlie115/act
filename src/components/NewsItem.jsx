@@ -63,6 +63,7 @@ export default function NewsItem({
             errorIcon
             height={100}
             width={150}
+            alt={thumbnail}
             src={thumbnail}
             sx={{ borderRadius: 1 }}
             {...(slotProps?.thumbnail || {})}
