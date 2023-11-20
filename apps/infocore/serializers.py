@@ -63,7 +63,6 @@ class KlineDataSerializer(serializers.Serializer):
     atp24h = FloatOrNoneField()
     converted_tp = FloatOrNoneField()
     closed = serializers.BooleanField()
-    record_count = serializers.IntegerField(required=False)
 
     def to_representation(self, instance):
         instance["datetime_now"] = instance["datetime_now"].astimezone(
