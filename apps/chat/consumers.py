@@ -9,6 +9,7 @@ from django_redis import get_redis_connection
 from pymongo import MongoClient
 
 from lib.datetime import DATE_FORMAT_NUM, TZ_ASIA_SEOUL, TZ_UTC
+from users.models import UserBlocklist
 
 
 REDIS_CLI = get_redis_connection("default")
@@ -98,6 +99,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_blocklist(self):
         blocklist = cache.get("acw:user:blocklist")
+        if blocklist is None:
+            blocklist = UserBlocklist.objects.all()
+            cache.set(
+                settings.REDIS_CHAT_BLOCKLIST_KEY,
+                blocklist,
+                timeout=None,
+            )
         self.username_blocklist = [
             username
             for username in blocklist.values_list("target_username", flat=True)
