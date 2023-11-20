@@ -25,3 +25,17 @@ class Announcement(models.Model):
     class Meta:
         db_table = "announcements"
         managed = False
+
+
+class Post(models.Model):
+    name = models.CharField(max_length=100)
+    username = models.CharField(max_length=100)
+    content = models.TextField()
+    extra_data = models.JSONField()
+    datetime = models.DateTimeField()
+    url = models.CharField(max_length=500)
+    social_media = models.CharField(max_length=100)
+
+    class Meta:
+        db_table = "posts"
+        managed = False

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from newscore.models import Announcement, News
+from newscore.models import Announcement, News, Post
 
 
 class NewsSerializer(serializers.ModelSerializer):
@@ -30,4 +30,18 @@ class AnnouncementSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Announcement
+        fields = "__all__"
+
+
+class PostSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(max_length=100)
+    username = serializers.CharField(max_length=100)
+    content = serializers.CharField()
+    extra_data = serializers.JSONField()
+    datetime = serializers.DateTimeField()
+    url = serializers.CharField(max_length=500)
+    social_media = serializers.CharField(max_length=100)
+
+    class Meta:
+        model = Post
         fields = "__all__"

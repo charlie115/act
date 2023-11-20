@@ -6,8 +6,8 @@ from pytz import all_timezones, timezone
 from lib.datetime import TZ_UTC
 from lib.pagination import CustomPageNumberPagination
 from lib.views import BaseViewSet
-from newscore.models import Announcement, News
-from newscore.serializers import AnnouncementSerializer, NewsSerializer
+from newscore.models import Announcement, News, Post
+from newscore.serializers import AnnouncementSerializer, NewsSerializer, PostSerializer
 
 
 class StartTimeEndTimeFilter(FilterSet):
@@ -32,16 +32,22 @@ class StartTimeEndTimeFilter(FilterSet):
         return queryset
 
 
+class AnnouncementFilter(StartTimeEndTimeFilter):
+    class Meta:
+        model = Announcement
+        fields = ("category", "exchange", "start_time", "end_time", "tz")
+
+
 class NewsFilter(StartTimeEndTimeFilter):
     class Meta:
         model = News
         fields = ("media", "start_time", "end_time", "tz")
 
 
-class AnnouncementFilter(StartTimeEndTimeFilter):
+class PostFilter(StartTimeEndTimeFilter):
     class Meta:
-        model = Announcement
-        fields = ("category", "exchange", "start_time", "end_time", "tz")
+        model = Post
+        fields = ("name", "username", "social_media", "start_time", "end_time", "tz")
 
 
 @extend_schema(tags=["News"])
@@ -82,6 +88,28 @@ class AnnouncementViewSet(BaseViewSet):
     serializer_class = AnnouncementSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = AnnouncementFilter
+    http_method_names = ["get"]
+    permission_classes = []
+    pagination_class = CustomPageNumberPagination
+    pagination_class.page_size = 10
+
+
+@extend_schema(tags=["SNS Posts"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List sns posts",
+        description="Returns a list of sns posts",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve post",
+        description="Retrieve details of an existing sns post.",
+    ),
+)
+class PostViewSet(BaseViewSet):
+    queryset = Post.objects.all().order_by("-datetime")
+    serializer_class = PostSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = PostFilter
     http_method_names = ["get"]
     permission_classes = []
     pagination_class = CustomPageNumberPagination
