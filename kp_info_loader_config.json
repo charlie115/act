@@ -12,8 +12,7 @@
             "enabled_market_klines": [
                 "UPBIT_SPOT/KRW:BINANCE_SPOT/USDT",
                 "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT",
-                "UPBIT_SPOT/KRW:BYBIT_USD_M/USDT",
-                "UPBIT_SPOT/KRW:UPBIT_SPOT/BTC"
+                "UPBIT_SPOT/KRW:BYBIT_USD_M/USDT"
             ]
         },
         "kp_info_loader_dev":
@@ -34,7 +33,8 @@
             "enabled_market_klines": [
                 "BITHUMB_SPOT/KRW:BINANCE_SPOT/USDT",
                 "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT",
-                "BYBIT_USD_M/USDT:OKX_USD_M/USDT"
+                "BYBIT_USD_M/USDT:OKX_USD_M/USDT",
+                "UPBIT_SPOT/KRW:UPBIT_SPOT/BTC"
             ]
         }
     },
