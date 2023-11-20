@@ -12,6 +12,7 @@ import { styled } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
 
 import debounce from 'lodash/debounce';
+import isPlainObject from 'lodash/isPlainObject';
 
 import { KLINE_DATA_TYPE } from 'constants/lists';
 
@@ -23,6 +24,7 @@ const ToggleBtn = styled(ToggleButton)(() => ({
 
 function KlineDataSelector({
   defaultValue,
+  disabled,
   isKimpExchange,
   isTetherPriceView,
   onChange,
@@ -69,6 +71,7 @@ function KlineDataSelector({
     <Box>
       <ToggleButtonGroup
         exclusive
+        disabled={!isPlainObject(disabled) && disabled}
         value={selectedIdx}
         onChange={(e, newIdx) => {
           e.stopPropagation();
@@ -79,7 +82,12 @@ function KlineDataSelector({
         sx={{ display: { xs: 'none', md: 'inline-flex' } }}
       >
         {kLineData.map((item, idx) => (
-          <ToggleBtn key={item.value} value={idx} sx={{ px: 1, py: 0 }}>
+          <ToggleBtn
+            key={item.value}
+            disabled={disabled?.[item.value]}
+            value={idx}
+            sx={{ px: 1, py: 0 }}
+          >
             {item.label}
           </ToggleBtn>
         ))}
@@ -88,6 +96,7 @@ function KlineDataSelector({
         color="secondary"
         size="small"
         variant="outlined"
+        disabled={!isPlainObject(disabled) && disabled}
         onClick={(e) => {
           e.stopPropagation();
           setAnchorEl(e.currentTarget);
@@ -107,17 +116,17 @@ function KlineDataSelector({
         onClose={() => setAnchorEl(null)}
         sx={{ display: { xs: 'inline-flex', md: 'none' } }}
       >
-        {kLineData.map((interval, idx) => (
+        {kLineData.map((item, idx) => (
           <MenuItem
-            key={interval.value}
-            disabled={selectedIdx === idx}
+            key={item.value}
+            disabled={selectedIdx === idx || disabled?.[item.value]}
             selected={idx === selectedIdx}
             onClick={() => {
               setSelectedIdx(idx);
               setAnchorEl(null);
             }}
           >
-            {interval.label}
+            {item.label}
           </MenuItem>
         ))}
       </Menu>

@@ -325,10 +325,11 @@ function MarketCodeMenu({ onChange }) {
                   <Divider />
                   <Grid container>
                     <Grid item xs={isFetching ? 12 : 6}>
-                      <List onKeyDown={handleListKeyDown} sx={{ py: 0 }}>
-                        <ListSubheader
-                          sx={{ bgcolor: 'inherit', lineHeight: 2 }}
-                        >
+                      <List
+                        onKeyDown={handleListKeyDown}
+                        sx={{ maxHeight: 400, overflowY: 'auto', py: 0 }}
+                      >
+                        <ListSubheader sx={{ lineHeight: 2 }}>
                           {t('Base Exchange')}
                         </ListSubheader>
                         {targetMarketCodeList.map((target) => (
@@ -385,10 +386,11 @@ function MarketCodeMenu({ onChange }) {
                         xs={6}
                         className="animate__animated animate__fadeIn"
                       >
-                        <List onKeyDown={handleListKeyDown} sx={{ py: 0 }}>
-                          <ListSubheader
-                            sx={{ bgcolor: 'inherit', lineHeight: 2 }}
-                          >
+                        <List
+                          onKeyDown={handleListKeyDown}
+                          sx={{ maxHeight: 400, overflowY: 'auto', py: 0 }}
+                        >
+                          <ListSubheader sx={{ lineHeight: 2 }}>
                             {t('Origin Exchange')}
                           </ListSubheader>
                           {originMarketCodeList?.map((origin) => (

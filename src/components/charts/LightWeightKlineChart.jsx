@@ -6,7 +6,10 @@ import React, {
   useRef,
 } from 'react';
 
+import { useNavigate } from 'react-router-dom';
+
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
@@ -24,7 +27,10 @@ import { createChart, CrosshairMode, LineType } from 'lightweight-charts';
 
 import { DateTime } from 'luxon';
 
+import { useSelector } from 'react-redux';
+
 import debounce from 'lodash/debounce';
+import isNaN from 'lodash/isNaN';
 import isUndefined from 'lodash/isUndefined';
 import orderBy from 'lodash/orderBy';
 import uniqBy from 'lodash/uniqBy';
@@ -58,11 +64,17 @@ function LightWeightKlineChart({
 }) {
   const isFocused = useVisibilityChange();
 
+  const navigate = useNavigate();
+
+  const { loggedin, user } = useSelector((state) => state.auth);
+  const isAuthorized = loggedin && user.role !== 'visitor';
+
   const theme = useTheme();
   const { i18n, t } = useTranslation();
 
   const chartRef = useRef();
   const chartContainerRef = useRef();
+  const wrapperRef = useRef();
 
   const candlestickSeriesRef = useRef();
   const lineSeriesRef = useRef();
@@ -75,7 +87,8 @@ function LightWeightKlineChart({
 
   const [klineInterval, setKlineInterval] = useState('1T');
 
-  const [klineDataType, setKlineDataType] = useState('tp');
+  const [klineDataType, setKlineDataType] = useState();
+  const [disabledKlineDataType, setDisabledKlineDataType] = useState();
 
   const [barsInfo, setBarsInfo] = useState(null);
 
@@ -120,13 +133,17 @@ function LightWeightKlineChart({
       tz: timezone,
     },
     {
-      skip: !marketCodes || !(startTime && endTime) || barsInfo?.barsBefore > 0,
+      skip:
+        !isAuthorized ||
+        !marketCodes ||
+        !(startTime && endTime) ||
+        barsInfo?.barsBefore > 0,
     }
   );
 
   const chartRealTimeData = useMemo(() => {
     const value = data?.[baseAsset.name];
-    if (!value) return null;
+    if (!value || !klineDataType) return null;
 
     const time = value.datetime_now;
 
@@ -144,17 +161,19 @@ function LightWeightKlineChart({
           low: value.dollar * (1 + low * 0.01),
           close: value.dollar * (1 + close * 0.01),
         },
-        line: { time, value: value.tp },
+        line: value.tp !== null ? { time, value: value.tp } : undefined,
       };
     return {
       candlestick: { time, open, high, low, close },
-      line: { time, value: value.tp },
+      line: value.tp !== null ? { time, value: value.tp } : undefined,
     };
   }, [data?.[baseAsset.name], isTetherPriceView, klineDataType]);
 
   const chartHistoricalData = useMemo(() => {
     const candlestick = [];
     const line = [];
+    if (!klineDataType) return { candlestick, line };
+
     currentData?.forEach((item) => {
       const time = DateTime.fromISO(item.datetime_now).toMillis();
       const open = item[`${klineDataType}_open`] || 0;
@@ -170,10 +189,11 @@ function LightWeightKlineChart({
           close: item.dollar * (1 + close * 0.01),
         });
       else candlestick.push({ time, open, high, low, close });
-      line.push({
-        time,
-        value: item.tp,
-      });
+      if (item.tp !== null)
+        line.push({
+          time,
+          value: item.tp,
+        });
     });
     return { candlestick, line };
   }, [currentData, isTetherPriceView, klineDataType]);
@@ -217,15 +237,17 @@ function LightWeightKlineChart({
         textColor: theme.palette.text.main,
       },
       grid: {
-        vertLines: { color: alpha(theme.palette.grey['600'], 0.15) },
         horzLines: { color: alpha(theme.palette.grey['600'], 0.15) },
+        vertLines: { color: alpha(theme.palette.grey['600'], 0.15) },
       },
+      handleScale: isAuthorized,
+      handleScroll: isAuthorized,
       localization: {
         timeFormatter: (time) =>
           DateTime.fromMillis(time).toFormat('DD HH:mm:ss'),
       },
       crosshair: { mode: CrosshairMode.Normal },
-      width: chartContainerRef.current.clientWidth,
+      width: chartContainerRef.current?.clientWidth,
       height: CHART_HEIGHT,
     });
     chartRef.current.priceScale('left').applyOptions({
@@ -279,6 +301,16 @@ function LightWeightKlineChart({
       title: t('Price'),
     });
 
+    if (!isAuthorized) {
+      // chartRef.current.timeScale().fitContent();
+      const canvas = document.querySelector(
+        '.tv-lightweight-charts td:nth-child(2) canvas:nth-child(2)'
+      );
+      canvas.style.backdropFilter = 'blur(10px)';
+      canvas.style['-webkit-backdrop-filter'] = 'blur(10px)';
+      canvas.style.pointerEvents = 'none';
+    }
+
     return () => {
       chartRef.current
         .timeScale()
@@ -287,7 +319,20 @@ function LightWeightKlineChart({
         );
       clearTimeout(refetchTimeoutRef.current);
     };
-  }, [marketCodes, klineInterval, isTetherPriceView, i18n.language]);
+  }, [marketCodes, klineInterval, isAuthorized]);
+
+  useEffect(() => {
+    if (!klineDataType) {
+      if (data?.[baseAsset.name]) {
+        const { tp } = data[baseAsset.name];
+        if (tp && !isNaN(tp)) setKlineDataType('tp');
+        else {
+          setKlineDataType('LS');
+          setDisabledKlineDataType({ tp: true });
+        }
+      }
+    }
+  }, [data?.[baseAsset.name], klineDataType]);
 
   useEffect(() => {
     setLoadedHistoricalData((state) => [...(historicalData || []), ...state]);
@@ -319,12 +364,13 @@ function LightWeightKlineChart({
 
   const prevIsFocused = usePrevious(isFocused);
   useEffect(() => {
-    if (prevIsFocused !== null) {
-      if (!prevIsFocused && isFocused) {
-        refetchInitialData();
+    if (isAuthorized)
+      if (prevIsFocused !== null) {
+        if (!prevIsFocused && isFocused) {
+          refetchInitialData();
+        }
       }
-    }
-  }, [isFocused]);
+  }, [isFocused, isAuthorized]);
 
   const prevBarsInfo = usePrevious(barsInfo);
   useEffect(() => {
@@ -365,14 +411,17 @@ function LightWeightKlineChart({
       !isFetchingHistoricalData &&
       chartRealTimeData
     ) {
-      candlestickSeriesRef.current.update(chartRealTimeData.candlestick);
-      lineSeriesRef.current.update(chartRealTimeData.line);
+      if (chartRealTimeData.candlestick)
+        candlestickSeriesRef.current.update(chartRealTimeData.candlestick);
+      if (chartRealTimeData.line)
+        lineSeriesRef.current.update(chartRealTimeData.line);
     }
   }, [chartRealTimeData, isFetchingHistoricalData, isFetchingInitialData]);
 
   const prevTimestamp = usePrevious(data?.[baseAsset.name]?.datetime_now);
   useEffect(() => {
     if (
+      isAuthorized &&
       !isUninitializedInitialData &&
       prevTimestamp &&
       prevTimestamp !== data?.[baseAsset.name]?.datetime_now
@@ -384,7 +433,11 @@ function LightWeightKlineChart({
           /* no-op */
         }
       }, 5000);
-  }, [isUninitializedInitialData, data?.[baseAsset.name]?.datetime_now]);
+  }, [
+    isAuthorized,
+    isUninitializedInitialData,
+    data?.[baseAsset.name]?.datetime_now,
+  ]);
 
   useEffect(() => {
     if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
@@ -418,6 +471,16 @@ function LightWeightKlineChart({
     chartRef.current.applyOptions({
       layout: { fontSize: isMobile ? 8 : 11 },
     });
+    candlestickSeriesRef.current.applyOptions({
+      priceFormat: {
+        minMove: 0.001,
+        type: 'custom',
+        formatter: (price) =>
+          `${formatIntlNumber(price, 2, 2)} ${
+            isTetherPriceView ? t('KRW') : '%'
+          }`,
+      },
+    });
     lineSeriesRef.current.applyOptions({
       priceFormat: {
         minMove: 0.001,
@@ -428,12 +491,14 @@ function LightWeightKlineChart({
             : formatIntlNumber(price, 2, 1),
       },
     });
-  }, [isMobile, i18n.language]);
+  }, [isMobile, isTetherPriceView, i18n.language]);
 
   const isFavorite = !isUndefined(baseAsset.favoriteAssetId);
 
+  // if (!klineDataType) return null;
+
   return (
-    <Card onClick={(e) => e.stopPropagation()}>
+    <Card ref={wrapperRef} onClick={(e) => e.stopPropagation()}>
       <Box sx={{ bgcolor: 'background.paper' }}>
         <Grid container sx={{ p: 1 }}>
           <Grid
@@ -473,7 +538,11 @@ function LightWeightKlineChart({
           >
             <IntervalSelector
               defaultValue={klineInterval}
-              disabled={isFetchingInitialData || isFetchingHistoricalData}
+              disabled={
+                isFetchingInitialData ||
+                isFetchingHistoricalData ||
+                !isAuthorized
+              }
               onChange={(value) => {
                 reinitialize();
                 setKlineInterval(value);
@@ -486,12 +555,15 @@ function LightWeightKlineChart({
             sm={3}
             sx={{ display: 'flex', justifyContent: 'end' }}
           >
-            <KlineDataSelector
-              defaultValue={klineDataType}
-              isKimpExchange={isKimpExchange}
-              isTetherPriceView={isTetherPriceView}
-              onChange={(value) => setKlineDataType(value)}
-            />
+            {klineDataType && (
+              <KlineDataSelector
+                defaultValue={klineDataType}
+                disabled={disabledKlineDataType}
+                isKimpExchange={isKimpExchange}
+                isTetherPriceView={isTetherPriceView}
+                onChange={(value) => setKlineDataType(value)}
+              />
+            )}
           </Grid>
         </Grid>
         {(isLoadingInitialData ||
@@ -502,6 +574,23 @@ function LightWeightKlineChart({
           sx={{ position: 'relative', pt: 2 }}
           onClick={(e) => e.stopPropagation()}
         >
+          {!isLoadingInitialData && !isAuthorized && (
+            <Button
+              color="error"
+              size="large"
+              // variant="contained"
+              onClick={() => navigate('/login')}
+              sx={{
+                position: 'absolute',
+                top: '35%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 3,
+              }}
+            >
+              {t('Login to view data')}
+            </Button>
+          )}
           {barsInfo?.barsAfter > 100 && (
             <IconButton
               color="dark"

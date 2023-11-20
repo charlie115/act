@@ -52,7 +52,6 @@ export default function NewsItem({
   slotProps,
   ...props
 }) {
-  console.log('category: ', category);
   const dispatch = useDispatch();
 
   const theme = useTheme();
