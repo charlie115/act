@@ -15,7 +15,6 @@ from threading import Thread
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from loggers.logger import KimpBotLogger
-from etc.register_monitor_msg import RegisterMonitorMsg
 # from etc.db_handler.create_schema_tables import InitDBClient
 from etc.redis_connector.redis_connector import InitRedis
 

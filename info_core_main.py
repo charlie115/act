@@ -6,7 +6,7 @@ import time
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
-from info_core.info_core import InitCore
+from info_core import InitCore
 # from monitor_engine.kimp_core_monitor import InitKimpCoreMonitor
 from etc.register_monitor_msg import RegisterMonitorMsg
 # from kline_generator.kline_core import InitKlineCore
@@ -31,7 +31,7 @@ def get_arguments():
     # parser.add_argument('--node', '-n', required=True, nargs=1, help='Specify a node name. Configuration will be done based on the node name.', dest='node')
     parser.add_argument('--proc_n', '-p', nargs=1, help='Specify a number of processes to handle websockets.', default=[1], dest='proc_n')
     parser.add_argument('--log', '-l', nargs=1, help='Specify a directory to save log files.', default=[logging_dir], dest='logging_dir')
-    parser.add_argument('--config', '-c', nargs=1, help='Specify a directory of a config json file.', default=[current_folder_dir+"/kp_info_loader_config.json"], dest='config_dir')
+    parser.add_argument('--config', '-c', nargs=1, help='Specify a directory of a config json file.', default=[current_folder_dir+"/info_core_config.json"], dest='config_dir')
 
     # node = parser.parse_args().node[0]
     proc_n = int(parser.parse_args().proc_n[0])
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     admin_id_list.append(admin_id)
     register_monitor_msg = RegisterMonitorMsg(monitor_bot_token, monitor_bot_api_url, admin_id, logging_dir)
     # For Test
-    register_monitor_msg.register(admin_id, node, 'info', f"kp_info_loader_main|node:{node} has started.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+    register_monitor_msg.register(admin_id, node, 'info', f"info_core_main|node:{node} has started.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
     # Read api keys
     exchange_api_key_dict = config['exchange_api_key']
     # enabled kline market settings
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     # idle
 
     from telegram_bot_plugin.telegram_bot import InitTelegramBot
-    from kp_info_loader.etc.db_handler.postgres_client import InitDBClient
+    from etc.db_handler.postgres_client import InitDBClient
     telegram_bot_name = config['node_settings'][node]['telegram_bot_name']
     if telegram_bot_name:
         telegram_bot_token = config['telegram_bot_setting'][telegram_bot_name]

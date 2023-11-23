@@ -7,7 +7,7 @@ import sys
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 upper_upper_dir = os.path.dirname(upper_dir)
-config_name = "kp_info_loader_config.json"
+config_name = "info_core_config.json"
 
 sys.path.append(upper_upper_dir)
 
