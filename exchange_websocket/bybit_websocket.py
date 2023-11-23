@@ -36,6 +36,12 @@ class BybitWebsocket:
         self.websocket_symbol_dict = {}
         self.redis_client_db1 = InitRedis(db=1)
         self._start_websocket()
+        while True:
+            if self.ticker_dict.values() == [] or self.orderbook_dict.values() == []:
+                self.websocket_logger.info(f"[BYBIT {self.market_type}]waiting for websocket data to be loaded..")
+                time.sleep(2)
+            else:
+                break
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
         self.monitor_websocket_last_update_thread = Thread(target=self.monitor_websocket_last_update, daemon=True)
