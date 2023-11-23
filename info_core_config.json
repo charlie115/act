@@ -1,27 +1,31 @@
 {
-    "node": "kp_info_loader",
+    "node": "info_core",
     "node_settings":
     {
-        "kp_info_loader":
+        "info_core":
         {
             "MASTER": true,
             "db_settings": "mongodb_docker",
             "redis_settings": "redis_docker",
-            "telegram_bot_name": "kp_info_loader_bot",
+            "telegram_bot_name": "info_core_bot",
             "reference_node": null,
             "enabled_market_klines": [
-                "UPBIT_SPOT/KRW:BINANCE_SPOT/USDT",
-                "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT",
-                "UPBIT_SPOT/KRW:BYBIT_USD_M/USDT"
+                "UPBIT_SPOT/KRW:BYBIT_USD_M/USDT",
+                "UPBIT_SPOT/KRW:UPBIT_SPOT/BTC",
+                "UPBIT_SPOT/KRW:OKX_SPOT/USDT",
+                "UPBIT_SPOT/KRW:OKX_USD_M/USDT",
+                "BYBIT_USD_M/USDT:OKX_USD_M/USDT"
             ]
         },
-        "kp_info_loader_dev":
+        "info_core_dev":
         {
             "MASTER": true,
             "db_settings": "mongodb_docker",
             "redis_settings": "redis_docker",
-            "telegram_bot_name": "kp_info_loader_dev_bot",
-            "reference_node": null
+            "telegram_bot_name": "info_core_dev_bot",
+            "reference_node": null,
+            "enabled_market_klines": [
+            ]
         },
         "kline_generator1":
         {
@@ -29,12 +33,13 @@
             "db_settings": "mongodb_remote",
             "redis_settings": "redis_remote",
             "telegram_bot_name": null,
-            "reference_node": "kp_info_loader",
+            "reference_node": "info_core",
             "enabled_market_klines": [
+                "UPBIT_SPOT/KRW:BINANCE_SPOT/USDT",
+                "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT",
                 "BITHUMB_SPOT/KRW:BINANCE_SPOT/USDT",
                 "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT",
-                "BYBIT_USD_M/USDT:OKX_USD_M/USDT",
-                "UPBIT_SPOT/KRW:UPBIT_SPOT/BTC"
+                "BINANCE_USD_M/USDT:OKX_USD_M/USDT"
             ]
         }
     },
@@ -43,8 +48,8 @@
         "monitor_bot": "2107044564:AAFJUX_f2BEA-tp5TLxtOMUg5cqGE_mYnQo",
         "test_bot": "1334132077:AAE7Pvj0bu4sHGKWlH6VsZFsSkcwPrwxB6I",
         "kp_trade_monitor": "5556345865:AAFJy8wdyTjKxDBOb89bTRFsNs6UFMn4twY",
-        "kp_info_loader_bot": "6235471467:AAGgBXx4WtK_LTee8Lb7zuYFeTAe6rb_ZgU",
-        "kp_info_loader_dev_bot": "6661285565:AAGjGdZKYhwgQ5CcuDMZumEwaEGbzdTWAHE"
+        "info_core_bot": "6235471467:AAGgBXx4WtK_LTee8Lb7zuYFeTAe6rb_ZgU",
+        "info_core_dev_bot": "6661285565:AAGjGdZKYhwgQ5CcuDMZumEwaEGbzdTWAHE"
     },
     "telegram_admin_id":
     {

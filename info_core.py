@@ -14,6 +14,7 @@ from loggers.logger import KimpBotLogger
 from etc.redis_connector.redis_connector import InitRedis
 from etc.db_handler.mongodb_client import InitDBClient
 from kline_generator.kline_core import InitKlineCore
+from arbitrage_generator.arbitrage_core import InitAbitrageCore
 import _pickle as pickle
 from threading import Thread
 from multiprocessing import Process
@@ -27,7 +28,7 @@ current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
 logging_dir = f"{current_folder_dir}/loggers/logs/"
 
 class InitCore:
-    def __init__(self, logging_dir, master_flag, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_market_klines, db_dict):
+    def __init__(self, logging_dir, master_flag, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_market_klines, total_enabled_market_klines, db_dict):
         # Inital value setting
         self.logger = KimpBotLogger("kp_info_loader", logging_dir).logger
         self.price_websocket_logger = KimpBotLogger("price_websocket", logging_dir).logger
@@ -41,6 +42,7 @@ class InitCore:
         self.register_monitor_msg = register_monitor_msg
         self.exchange_api_key_dict = exchange_api_key_dict
         self.enabled_market_klines = enabled_market_klines
+        self.total_enabled_market_klines = total_enabled_market_klines
         self.enabled_websocket_list = self.generate_enabled_websocket_list()
         self.enabled_markets_dict = self.generate_enabled_market_code_dict()
         self.db_client = InitDBClient(**db_dict)
@@ -69,7 +71,7 @@ class InitCore:
         # UPBIT SPOT (KRW, BTC Market)
         # UPBIT wallet status
         # BINANCE SPOT, USD-M Futures, COIN-M Futures
-        self.data_name_list = [
+        self.total_data_name_list = [
             "upbit_spot_info_df",
             "upbit_spot_ticker_df",
             "binance_spot_ticker_df",
@@ -94,7 +96,9 @@ class InitCore:
             "bybit_coin_m_ticker_df"
         ]
 
-        for data_name in self.data_name_list:
+        # self.enabled_data_name_list = self.get_enabled_data_name_list()
+
+        for data_name in self.total_data_name_list:
             if 'okx' in data_name:
                 self.info_thread_dict[f"update_{data_name}"] = Thread(target=self.update_exchange_info_as_df, args=(data_name, 3), daemon=True)
             else:
@@ -104,7 +108,7 @@ class InitCore:
 
         # Wait until all info df has been updated
         while True:
-            if all([x in self.info_dict.keys() for x in self.data_name_list]):
+            if all([x in self.info_dict.keys() for x in self.total_data_name_list]):
                 self.logger.info(f"InitCore|All info df has been updated.")
                 break
             else:
@@ -164,6 +168,9 @@ class InitCore:
             self.bybit_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BYBIT", self.bybit_adaptor), daemon=True)
             self.bybit_update_wallet_status_thread.start()
 
+            ## Start arbitrage core
+            self.arbitrage_generator = InitAbitrageCore(self.admin_id, self.node, self.info_dict, self.register_monitor_msg, self.total_enabled_market_klines, self.db_client, logging_dir)
+
         # Start kline generator
         self.kline_generator = InitKlineCore(self.admin_id, node, self.get_premium_df, self.enabled_market_klines, register_monitor_msg, self.redis_client_db0, self.db_client, logging_dir)
 
@@ -207,6 +214,14 @@ class InitCore:
                     market_name, market_type = market.split("_")
                 add_market_product(market_name, market_type, quote_asset)
         return organized_markets
+    
+    # def get_enabled_data_name_list(self):
+    #     enabled_data_name_list = []
+    #     for each_market in self.enabled_websocket_list:
+    #         for each_data_name in self.total_data_name_list:
+    #             if each_market.lower() in each_data_name:
+    #                 enabled_data_name_list.append(each_data_name)
+    #     return enabled_data_name_list
 
     def update_exchange_info_as_df(self, data_name, error_count_limit=1, loop_time_secs=30):
         error_count = 0

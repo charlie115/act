@@ -6,7 +6,7 @@ import time
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
-from kp_info_loader_core import InitCore
+from info_core.info_core import InitCore
 # from monitor_engine.kimp_core_monitor import InitKimpCoreMonitor
 from etc.register_monitor_msg import RegisterMonitorMsg
 # from kline_generator.kline_core import InitKlineCore
@@ -57,10 +57,16 @@ if __name__ == '__main__':
     admin_id = config['telegram_admin_id']['charlie1155']
     admin_id_list.append(admin_id)
     register_monitor_msg = RegisterMonitorMsg(monitor_bot_token, monitor_bot_api_url, admin_id, logging_dir)
+    # For Test
+    register_monitor_msg.register(admin_id, node, 'info', f"kp_info_loader_main|node:{node} has started.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
     # Read api keys
     exchange_api_key_dict = config['exchange_api_key']
     # enabled kline market settings
     enabled_market_klines = config['node_settings'][node]['enabled_market_klines']
+    # total enabled market settings
+    total_enabled_market_klines = []
+    for each_market_code_list in config['node_settings'].values():
+        total_enabled_market_klines += each_market_code_list['enabled_market_klines']
 
     # idle
 
@@ -75,7 +81,7 @@ if __name__ == '__main__':
     db_dict = config['database_setting'][config['node_settings'][node]['db_settings']]
     
     # Initiate Kimp core (Websocket engine)
-    core = InitCore(logging_dir, master_flag, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_market_klines, db_dict)
+    core = InitCore(logging_dir, master_flag, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_market_klines, total_enabled_market_klines, db_dict)
 
     time.sleep(5)
 

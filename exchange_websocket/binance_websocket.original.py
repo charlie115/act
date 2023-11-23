@@ -100,6 +100,7 @@ class BinanceWebsocket:
         twm.stop_socket(stream_list)
         twm.stop()
         self.websocket_logger.info(f"[BINANCE {self.market_type}]{proc_name} websocket has been terminated. (twm.stop() has been executed)")
+        raise Exception(f"[BINANCE {self.market_type}]{proc_name} websocket has been terminated. (twm.stop() has been executed)")
 
     def _start_websocket(self):
         def handle_price_procs():
