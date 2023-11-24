@@ -548,7 +548,7 @@ class InitKlineCore:
         subscribe_to_channels()
         # # Start the keep_alive_check in another thread
         # Thread(target=keep_alive_check, daemon=True).start()
-        keep_alive_check()
+        # keep_alive_check()
 
     def unsubscribe_kline_channel(self):
         self.pubsub.unsubscribe() 

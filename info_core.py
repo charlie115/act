@@ -30,7 +30,7 @@ logging_dir = f"{current_folder_dir}/loggers/logs/"
 class InitCore:
     def __init__(self, logging_dir, master_flag, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_market_klines, total_enabled_market_klines, db_dict):
         # Inital value setting
-        self.logger = KimpBotLogger("kp_info_loader", logging_dir).logger
+        self.logger = KimpBotLogger("info_core", logging_dir).logger
         self.price_websocket_logger = KimpBotLogger("price_websocket", logging_dir).logger
         self.update_dollar_logger = KimpBotLogger("update_dollar", logging_dir).logger
         self.logging_dir = logging_dir
