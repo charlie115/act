@@ -14,7 +14,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
 import Snackbar from '@mui/material/Snackbar';
 
-import KeyboardArrowUpRoundedIcon from '@mui/icons-material/KeyboardArrowUpRounded';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { useUserQuery } from 'redux/api/drf/auth';
@@ -147,7 +147,8 @@ export function MainLayout() {
                 component={Paper}
                 sx={{ display: 'flex', flex: 1, overflowX: 'clip' }}
               >
-                <SwitchTransition>
+                <Outlet />
+                {/* <SwitchTransition>
                   <CSSTransition
                     unmountOnExit
                     key={location.pathname}
@@ -157,7 +158,7 @@ export function MainLayout() {
                   >
                     {() => <Outlet />}
                   </CSSTransition>
-                </SwitchTransition>
+                </SwitchTransition> */}
               </Box>
             </Grid>
             <Grid item xs={12} lg={2}>
@@ -189,7 +190,7 @@ export function MainLayout() {
               onClick={() => scrollTo({ left: 0, top: 0, behavior: 'smooth' })}
               sx={{ bgcolor: 'grey.900', color: 'light.main' }}
             >
-              <KeyboardArrowUpRoundedIcon fontSize="large" />
+              <KeyboardArrowUpIcon fontSize="large" />
             </IconButton>
           </Box>
         )}

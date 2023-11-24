@@ -15,8 +15,8 @@ import Stack from '@mui/material/Stack';
 import SvgIcon from '@mui/material/SvgIcon';
 import Typography from '@mui/material/Typography';
 
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import ShareRoundedIcon from '@mui/icons-material/ShareRounded';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ShareIcon from '@mui/icons-material/Share';
 
 import { alpha, useTheme } from '@mui/material/styles';
 
@@ -289,7 +289,7 @@ export default function SocMedPostList({ filters, timezone, onUnreadData }) {
           height={100}
           sx={{ borderRadius: 1 }}
         />
-        <Stack sx={{ flex: 1 }}>
+        <Stack spacing={1} sx={{ flex: 1 }}>
           <Skeleton variant="text" />
           <Skeleton variant="text" />
           <Skeleton variant="text" />
@@ -339,7 +339,7 @@ export default function SocMedPostList({ filters, timezone, onUnreadData }) {
                         {item.username}
                       </Typography>
                       {item.extra_data?.verified && (
-                        <CheckCircleRoundedIcon
+                        <CheckCircleIcon
                           color="twitter"
                           sx={{ fontSize: 14, ml: 0.5 }}
                         />
@@ -480,7 +480,7 @@ export default function SocMedPostList({ filters, timezone, onUnreadData }) {
                     );
                   }}
                 >
-                  <ShareRoundedIcon />
+                  <ShareIcon />
                 </IconButton>
               </ListItem>
               <Divider variant="inset" component="li" />

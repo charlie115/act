@@ -35,7 +35,7 @@ import isUndefined from 'lodash/isUndefined';
 import orderBy from 'lodash/orderBy';
 import uniqBy from 'lodash/uniqBy';
 
-import { usePrevious, useVisibilityChange } from '@uidotdev/usehooks';
+import { usePrevious } from '@uidotdev/usehooks';
 
 import { useTranslation } from 'react-i18next';
 
@@ -60,13 +60,12 @@ function LightWeightKlineChart({
   isTetherPriceView,
   onAddFavoriteAsset,
   onRemoveFavoriteAsset,
-  timezone,
+  queryKey,
 }) {
-  const isFocused = useVisibilityChange();
-
   const navigate = useNavigate();
 
   const { loggedin, user } = useSelector((state) => state.auth);
+  const { timezone } = useSelector((state) => state.app);
   const isAuthorized = loggedin && user.role !== 'visitor';
 
   const theme = useTheme();
@@ -100,8 +99,13 @@ function LightWeightKlineChart({
   const [preloadedData, setPreloadedData] = useState([]);
 
   const { data } = useGetRealTimeKlineQuery(
-    { ...marketCodes, interval: klineInterval, component: 'kline-chart' },
-    { skip: !marketCodes || !isFocused }
+    {
+      ...marketCodes,
+      interval: klineInterval,
+      component: 'kline-chart',
+      queryKey,
+    },
+    { skip: !marketCodes }
   );
 
   const {
@@ -362,15 +366,12 @@ function LightWeightKlineChart({
     chartRef.current.timeScale().scrollToRealTime();
   }, [klineInterval]);
 
-  const prevIsFocused = usePrevious(isFocused);
+  const prevQueryKey = usePrevious(queryKey);
   useEffect(() => {
     if (isAuthorized)
-      if (prevIsFocused !== null) {
-        if (!prevIsFocused && isFocused) {
-          refetchInitialData();
-        }
-      }
-  }, [isFocused, isAuthorized]);
+      if (prevQueryKey !== null)
+        if (prevQueryKey !== queryKey) refetchInitialData();
+  }, [queryKey, isAuthorized]);
 
   const prevBarsInfo = usePrevious(barsInfo);
   useEffect(() => {
@@ -498,7 +499,11 @@ function LightWeightKlineChart({
   // if (!klineDataType) return null;
 
   return (
-    <Card ref={wrapperRef} onClick={(e) => e.stopPropagation()}>
+    <Card
+      ref={wrapperRef}
+      onClick={(e) => e.stopPropagation()}
+      sx={{ borderRadius: 0 }}
+    >
       <Box sx={{ bgcolor: 'background.paper' }}>
         <Grid container sx={{ p: 1 }}>
           <Grid

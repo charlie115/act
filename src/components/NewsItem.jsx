@@ -9,8 +9,8 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import PhotoRoundedIcon from '@mui/icons-material/PhotoRounded';
-import ShareRoundedIcon from '@mui/icons-material/ShareRounded';
+import PhotoIcon from '@mui/icons-material/Photo';
+import ShareIcon from '@mui/icons-material/Share';
 
 import Image from 'mui-image';
 
@@ -86,7 +86,7 @@ export default function NewsItem({
               opacity: 0.5,
             }}
           >
-            <PhotoRoundedIcon fontSize="large" />
+            <PhotoIcon fontSize="large" />
           </Card>
         )}
       </Box>
@@ -147,7 +147,7 @@ export default function NewsItem({
             );
           }}
         >
-          <ShareRoundedIcon />
+          <ShareIcon />
         </IconButton>
       </Box>
     </NewsItemContainer>

@@ -83,7 +83,8 @@ const persistedReducer = persistReducer(rootPersistConfig, reducers);
 
 const loggerMiddleware = createLogger({
   predicate: (getState, action) =>
-    action.type !== 'websocketApi/queries/queryResultPatched',
+    action.type !== 'websocketApi/queries/queryResultPatched' &&
+    action.type !== 'websocketApi/invalidation/updateProvidedBy',
 });
 
 export default configureStore({

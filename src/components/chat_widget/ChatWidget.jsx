@@ -327,7 +327,7 @@ export default function ChatWidget({ isVisible }) {
                       )}
                     </Box>
                   )}
-                  {renderMessages.map((item, idx) => (
+                  {renderMessages.map((item) => (
                     <Box key={item.id}>
                       <ChatMessage
                         {...item}

@@ -4,9 +4,9 @@ import React, { useMemo, useRef } from 'react';
 
 import {
   MaterialReactTable,
-  MRT_FullScreenToggleButton,
   MRT_ShowHideColumnsButton,
   MRT_ToggleDensePaddingButton,
+  MRT_ToggleFullScreenButton,
 } from 'material-react-table';
 import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -26,6 +26,7 @@ const DEFAULT_PROPS = {
   enableExpanding: true,
   enableGlobalFilter: true,
   enablePagination: false,
+  // enableRowVirtualization: true,
   enableStickyHeader: false,
   initialState: { showGlobalFilter: true },
   muiTableProps: { sx: { tableLayout: 'fixed' } },
@@ -56,7 +57,6 @@ export default function MRTable({
   const globalTheme = useTheme();
 
   const cols = useMemo(() => columns, [columns]);
-  const rows = useMemo(() => data, [data]);
 
   const localization = useMemo(() => getLocalization(), [i18n.language]);
 
@@ -96,7 +96,8 @@ export default function MRTable({
       <MaterialReactTable
         tableInstanceRef={ref}
         columns={cols}
-        data={rows}
+        // data={[]}
+        data={data}
         state={state}
         localization={localization}
         // positionToolbarDropZone="none"
@@ -105,7 +106,7 @@ export default function MRTable({
           <>
             <MRT_ShowHideColumnsButton table={table} />
             <MRT_ToggleDensePaddingButton table={table} />
-            <MRT_FullScreenToggleButton table={table} />
+            <MRT_ToggleFullScreenButton table={table} />
           </>
         )}
         {...tableProps}

@@ -43,10 +43,7 @@ import orderBy from 'lodash/orderBy';
 
 import { MARKET_CODE_LIST } from 'constants/lists';
 
-const DEFAULT_MARKET_CODE = {
-  target: 0,
-  origin: 7,
-};
+const DEFAULT_MARKET_CODE = { target: 0, origin: 7 };
 
 function MarketCodeMenu({ onChange }) {
   const anchorRef = useRef();
@@ -221,34 +218,36 @@ function MarketCodeMenu({ onChange }) {
             spacing={{ xs: 0.5, sm: 1 }}
             sx={{ alignItems: 'center' }}
           >
-            <Stack direction="row" sx={{ alignItems: 'center' }}>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
               <Box
                 component="img"
                 src={targetMarketCode.icon}
                 alt={targetMarketCode.label}
                 sx={{
-                  height: { xs: 18, md: 24 },
-                  width: { xs: 18, md: 24 },
+                  height: { xs: 16, md: 18 },
+                  width: { xs: 16, md: 18 },
                 }}
-              />{' '}
-              {targetMarketCode?.label}
+              />
+              <Box>{targetMarketCode?.label}</Box>
             </Stack>
             <SyncAltIcon color="secondary" fontSize="small" />
-            <Stack direction="row" sx={{ alignItems: 'center' }}>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
               {originMarketCode?.icon ? (
                 <Box
                   component="img"
                   src={originMarketCode.icon}
                   alt={originMarketCode.label}
                   sx={{
-                    height: { xs: 18, md: 24 },
-                    width: { xs: 18, md: 24 },
+                    height: { xs: 16, md: 18 },
+                    width: { xs: 16, md: 18 },
                   }}
                 />
               ) : (
                 <WarningAmberIcon color="secondary" />
-              )}{' '}
-              {originMarketCode?.label || (
+              )}
+              {originMarketCode?.label ? (
+                <Box>{originMarketCode.label}</Box>
+              ) : (
                 <Box component="small" sx={{ color: 'secondary.main' }}>
                   {t('Please select origin exchange')}
                 </Box>
@@ -343,12 +342,12 @@ function MarketCodeMenu({ onChange }) {
                               selected={target.value === targetMarketCode.value}
                               onClick={() => {
                                 setTargetMarketCode(target);
-                                if (
-                                  !target.origins?.find(
-                                    (o) => o === originMarketCode?.value
-                                  )
-                                )
-                                  setOriginMarketCode({});
+                                // if (
+                                //   !target.origins?.find(
+                                //     (o) => o === originMarketCode?.value
+                                //   )
+                                // )
+                                setOriginMarketCode({});
                               }}
                               sx={{ p: { xs: 0.25, sm: 1 } }}
                             >

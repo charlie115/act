@@ -12,10 +12,7 @@ export const darkTheme = createTheme({
   components,
   palette: {
     ...colors,
-    background: {
-      default: '#000000',
-      paper: '#0e1114',
-    },
+    background: { default: '#000000', paper: '#0e1114' },
     text: { main: '#ffffff' },
     divider: 'rgba(255, 255, 255, 0.12)',
     mode: 'dark',

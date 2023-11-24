@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 
-import Box from '@mui/material/Box';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
 import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 
-import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { PickersDay } from '@mui/x-date-pickers/PickersDay';
@@ -66,8 +65,8 @@ export default function DateRangePicker({ onChange, onClear }) {
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
     if (!range || (range?.from && range?.to)) setOpen(false);
-    if (!range || !(range?.from && range?.to))
-      setTimeout(() => setCollapsed(true), 1500);
+    if (!range || !(range?.from || range?.to))
+      setTimeout(() => setCollapsed(true), 500);
   };
 
   const handleDayToggle = (e) => {
@@ -98,7 +97,7 @@ export default function DateRangePicker({ onChange, onClear }) {
 
   useEffect(() => {
     let timeout;
-    if (!collapsed) timeout = setTimeout(() => setOpen(true), 1000);
+    if (!collapsed) timeout = setTimeout(() => setOpen(true), 500);
 
     return () => {
       if (timeout) clearTimeout(timeout);
@@ -107,46 +106,43 @@ export default function DateRangePicker({ onChange, onClear }) {
 
   return (
     <ClickAwayListener onClickAway={handleClose}>
-      <Box>
-        {/* <Collapse in={!collapsed} orientation="horizontal"> */}
-        <DatePicker
-          disableFuture
-          showDaysOutsideCurrentMonth
-          closeOnSelect={false}
-          open={open}
-          timezone={DateTime.now().zoneName}
-          minDate={DateTime.now().minus({ weeks: 2 })}
-          onClose={handleClose}
-          onAccept={handleClose}
-          slots={{ day: CustomDay, textField: CustomTextField }}
-          slotProps={{
-            day: { onClick: handleDayToggle, range },
-            field: {
-              clearable: true,
-              onClear: () => {
-                setRange(null);
-                debouncedOnClear(range);
+      <Stack direction="row">
+        <Collapse in={!collapsed} orientation="horizontal">
+          <DatePicker
+            disableFuture
+            showDaysOutsideCurrentMonth
+            closeOnSelect={false}
+            open={open}
+            timezone={DateTime.now().zoneName}
+            minDate={DateTime.now().minus({ weeks: 2 })}
+            onClose={handleClose}
+            onAccept={handleClose}
+            slots={{ day: CustomDay, textField: CustomTextField }}
+            slotProps={{
+              day: { onClick: handleDayToggle, range },
+              field: {
+                clearable: true,
+                onClear: () => {
+                  setRange(null);
+                  debouncedOnClear(range);
+                },
               },
-            },
-            openPickerButton: { onClick: handleOpen },
-            textField: {
-              onClick: handleOpen,
-              placeholder: t('Select date range'),
-              size: 'small',
-              range,
-            },
-          }}
-        />
-        {/* </Collapse> */}
-        {/* {collapsed && (
+              openPickerButton: { onClick: handleOpen },
+              textField: {
+                onClick: handleOpen,
+                placeholder: t('Select date range'),
+                size: 'small',
+                range,
+              },
+            }}
+          />
+        </Collapse>
+        {collapsed && (
           <IconButton onClick={() => setCollapsed(false)}>
-            <CalendarTodayRoundedIcon />
+            <CalendarTodayIcon />
           </IconButton>
-        )} */}
-      </Box>
-
-      {/* <input hidden name="fromDate" value={from || ''} onChange={(e) => {}} />
-      <input hidden name="toDate" value={to || ''} onChange={(e) => {}} /> */}
+        )}
+      </Stack>
     </ClickAwayListener>
   );
 }

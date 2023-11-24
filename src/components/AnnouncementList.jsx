@@ -9,7 +9,7 @@ import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
-import HighlightOffRoundedIcon from '@mui/icons-material/HighlightOffRounded';
+import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 
 import { useGetAnnouncementsQuery } from 'redux/api/drf/newscore';
 
@@ -155,7 +155,7 @@ export default function AnnouncementList({ filters, timezone, onUnreadData }) {
           height={100}
           sx={{ borderRadius: 1 }}
         />
-        <Stack sx={{ flex: 1 }}>
+        <Stack spacing={1} sx={{ flex: 1 }}>
           <Skeleton variant="text" />
           <Skeleton variant="text" />
           <Skeleton variant="text" />
@@ -213,7 +213,7 @@ export default function AnnouncementList({ filters, timezone, onUnreadData }) {
         {categoryFilters.length > 0 && (
           <Tooltip title={t('Clear')}>
             <IconButton onClick={() => setCategoryFilters([])}>
-              <HighlightOffRoundedIcon />
+              <HighlightOffIcon />
             </IconButton>
           </Tooltip>
         )}

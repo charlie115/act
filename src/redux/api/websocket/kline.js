@@ -10,7 +10,7 @@ import { DATE_FORMAT_API_QUERY } from 'constants';
 const api = websocketApi.injectEndpoints({
   endpoints: (build) => ({
     getRealTimeKline: build.query({
-      keepUnusedDataFor: 5,
+      keepUnusedDataFor: 1,
       queryFn: () => ({ data: {} }),
       onCacheEntryAdded: async (
         args,
@@ -44,6 +44,10 @@ const api = websocketApi.injectEndpoints({
             /* empty */
           }
         });
+
+        // const throttled = throttle(onMessage, 500);
+
+        // const listener = args.throttle ? throttled : onMessage;
 
         try {
           await cacheDataLoaded;

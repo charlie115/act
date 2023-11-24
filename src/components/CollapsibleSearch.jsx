@@ -9,7 +9,6 @@ import Stack from '@mui/material/Stack';
 
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 
 import { useTranslation } from 'react-i18next';
 
@@ -64,7 +63,7 @@ export default function CollapsibleSearch({ onChange }) {
         </Collapse>
         {!open && (
           <IconButton onClick={() => setOpen(!open)}>
-            <SearchRoundedIcon />
+            <SearchIcon />
           </IconButton>
         )}
       </Stack>

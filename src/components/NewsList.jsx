@@ -93,7 +93,7 @@ export default function NewsList({ filters, timezone, onUnreadData }) {
           height={100}
           sx={{ borderRadius: 1 }}
         />
-        <Stack sx={{ flex: 1 }}>
+        <Stack spacing={1} sx={{ flex: 1 }}>
           <Skeleton variant="text" />
           <Skeleton variant="text" />
           <Skeleton variant="text" />

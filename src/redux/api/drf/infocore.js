@@ -3,6 +3,7 @@ import drfApi from 'redux/api/drf';
 const api = drfApi.injectEndpoints({
   endpoints: (builder) => ({
     getAssets: builder.query({
+      keepUnusedDataFor: 5,
       query: (params) => ({
         url: '/infocore/assets/',
         params,
@@ -18,6 +19,7 @@ const api = drfApi.injectEndpoints({
         ),
     }),
     getFundingRate: builder.query({
+      keepUnusedDataFor: 1,
       query: (params) => ({
         url: '/infocore/funding-rate/',
         params,
@@ -32,6 +34,7 @@ const api = drfApi.injectEndpoints({
         ),
     }),
     getHistoricalKline: builder.query({
+      keepUnusedDataFor: 5,
       query: (params) => ({
         url: '/infocore/kline/',
         params,

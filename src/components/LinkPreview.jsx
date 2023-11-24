@@ -8,7 +8,7 @@ import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import PhotoRoundedIcon from '@mui/icons-material/PhotoRounded';
+import PhotoIcon from '@mui/icons-material/Photo';
 
 import { useTranslation } from 'react-i18next';
 
@@ -63,7 +63,7 @@ export default function LinkPreview({ url, rawUrl }) {
             justifyContent="center"
             sx={{ height: 120 }}
           >
-            <PhotoRoundedIcon fontSize="large" />
+            <PhotoIcon fontSize="large" />
             <Box component="small">{t('No preview available')}</Box>
           </Stack>
         </CardContent>
