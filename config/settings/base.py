@@ -143,7 +143,15 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [env("REDIS_DB_URL", default="redis://localhost:6379")],
+            "hosts": [
+                {
+                    "address": env(
+                        "REDIS_DB_URL",
+                        default="redis://localhost:6379",
+                    ),
+                    "client_name": "django-channels",
+                }
+            ],
         },
     },
 }

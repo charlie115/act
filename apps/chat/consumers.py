@@ -13,6 +13,8 @@ from users.models import UserBlocklist
 
 
 REDIS_CLI = get_redis_connection("default")
+REDIS_CLI.client_setname("django")
+
 MONGODB_CLI = MongoClient(
     host=settings.MONGODB["HOST"],
     port=settings.MONGODB["PORT"],
