@@ -294,7 +294,7 @@ SPECTACULAR_SETTINGS = {
             },
             {
                 "name": "NEWS CORE",
-                "tags": ["News"],
+                "tags": ["Announcements", "News", "SNS Posts"],
             },
             {
                 "name": "USER",

@@ -38,7 +38,7 @@ urlpatterns = [
     path("auth/", include("authentication.urls"), name="authentication urls"),
     path("arbot/", include("arbot.urls"), name="arbot urls"),
     path("chat/", include("chat.urls"), name="chat urls"),
-    path("infocore/", include("infocore.urls"), name="infocore urls"),
+    path("infocore/", include("infocore.urls.urls"), name="infocore urls"),
     path("newscore/", include("newscore.urls"), name="newscore urls"),
     path("users/", include("users.urls"), name="users urls"),
     # docs
