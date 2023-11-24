@@ -14,10 +14,14 @@ from infocore.serializers import (
     FundingRateDataQueryParamsSerializer,
     KlineDataSerializer,
     KlineDataQueryParamsSerializer,
+    WalletStatusQueryParamsSerializer,
+    WalletStatusResponseSerializer,
 )
 from lib.filters import CharArrayFilter
 from lib.views import BaseViewSet
 
+
+REDIS_CLI = get_redis_connection("default")
 
 MONGODB_CLI = MongoClient(
     host=settings.MONGODB["HOST"],
@@ -25,7 +29,6 @@ MONGODB_CLI = MongoClient(
     username=settings.MONGODB["USERNAME"],
     password=settings.MONGODB["PASSWORD"],
 )
-REDIS_CLI = get_redis_connection("default")
 
 
 class AssetFilter(FilterSet):
@@ -189,7 +192,7 @@ class KlineDataView(views.APIView):
 
 @extend_schema_view(
     get=extend_schema(
-        operation_id="Get funding rate data",
+        operation_id="Get funding rate",
         description="Returns funding rate data",
         parameters=[FundingRateDataQueryParamsSerializer],
         responses={200: FundingRateDataSerializer},
@@ -287,5 +290,126 @@ class FundingRateDataView(views.APIView):
         results = [
             FundingRateDataSerializer(item, context={"tz": tz}).data for item in cursor
         ]
+
+        return results
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Get wallet status",
+        description="Returns wallet status of assets whether transfer is possible "
+        "between 2 exchanges.<br><br>"
+        "Transfer is possible if: <br>"
+        "`target exchange`'s ***withdraw*** network is also available in <br>"
+        "`origin exchange`'s ***deposit*** network.",
+        parameters=[WalletStatusQueryParamsSerializer],
+        responses={200: WalletStatusResponseSerializer},
+        tags=["WalletStatus"],
+    ),
+)
+class WalletStatusView(views.APIView):
+    permission_classes = []
+    page_size = 200
+
+    def get(self, request):
+        query_params = WalletStatusQueryParamsSerializer(data=request.query_params)
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        data = self.get_data(
+            target_market_code=query.get("target_market_code", ""),
+            origin_market_code=query.get("origin_market_code", ""),
+            base_assets=query.get("base_asset", ""),
+        )
+
+        return response.Response(data)
+
+    def get_data(self, target_market_code, origin_market_code, base_assets):
+        target_market_code = target_market_code.split("/")[0]
+        origin_market_code = origin_market_code.split("/")[0]
+
+        target_exchange = target_market_code.split("_")[0]
+        origin_exchange = origin_market_code.split("_")[0]
+
+        target_market = target_market_code.replace(f"{target_exchange}_", "")
+        origin_market = origin_market_code.replace(f"{origin_exchange}_", "")
+
+        db = MONGODB_CLI.get_database("wallet_status")
+
+        # Get collection
+        collections = db.list_collection_names()
+        if not (target_exchange in collections and origin_exchange in collections):
+            raise exceptions.ValidationError({"detail": "Invalid exchange."})
+
+        # Prepare parameters
+        query_filter = dict()
+        if base_assets:
+            query_filter["asset"] = {"$in": base_assets}
+        projection = {
+            "_id": False,
+        }
+
+        # Query collection
+        target_coll = db.get_collection(target_exchange)
+        target_cursor = target_coll.find(
+            filter=query_filter,
+            projection=projection,
+        )
+
+        if target_exchange == origin_exchange:
+            origin_coll = target_coll
+            origin_cursor = target_cursor
+
+        else:
+            origin_coll = db.get_collection(origin_exchange)
+            origin_cursor = origin_coll.find(
+                filter=query_filter,
+                projection=projection,
+            )
+
+        # Serialize
+        results = {asset: dict() for asset in base_assets}
+        if target_market == "SPOT":
+            for item in target_cursor:
+                asset = item.pop("asset")
+                network = item.pop("network_type")
+
+                if target_exchange not in results[asset]:
+                    results[asset][target_exchange] = dict()
+
+                if item["deposit"] is True:
+                    if "deposit" in results[asset][target_exchange]:
+                        results[asset][target_exchange]["deposit"].append(network)
+                    else:
+                        results[asset][target_exchange]["deposit"] = [network]
+
+                if item["withdraw"] is True:
+                    if "withdraw" in results[asset][target_exchange]:
+                        results[asset][target_exchange]["withdraw"].append(network)
+                    else:
+                        results[asset][target_exchange]["withdraw"] = [network]
+
+        # If target and origin exchanges are the same (e.g UPBIT_SPOT/KRW, UPBIT_SPOT/BTC),
+        # results won't get repeated since cursor was already exhausted in above
+        # because origin cursor = target cursor
+        if origin_market == "SPOT":
+            for item in origin_cursor:
+                asset = item.pop("asset")
+                network = item.pop("network_type")
+
+                if origin_exchange not in results[asset]:
+                    results[asset][origin_exchange] = dict()
+
+                if item["deposit"] is True:
+                    if "deposit" in results[asset][origin_exchange]:
+                        results[asset][origin_exchange]["deposit"].append(network)
+                    else:
+                        results[asset][origin_exchange]["deposit"] = [network]
+
+                if item["withdraw"] is True:
+                    if "withdraw" in results[asset][origin_exchange]:
+                        results[asset][origin_exchange]["withdraw"].append(network)
+                    else:
+                        results[asset][origin_exchange]["withdraw"] = [network]
 
         return results

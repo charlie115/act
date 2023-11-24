@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 from infocore.views import (
     KlineDataView,
     MarketCodesView,
+    WalletStatusView,
 )
 from lib.views import BaseEndpointListView
 
@@ -58,4 +59,5 @@ urlpatterns = [
     ),
     path("kline/", KlineDataView.as_view(), name="kline data"),
     path("market-codes/", MarketCodesView.as_view(), name="market codes"),
+    path("wallet-status/", WalletStatusView.as_view(), name="wallet status"),
 ]

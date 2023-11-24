@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 from pytz import all_timezones, timezone
 
@@ -102,3 +103,31 @@ class FundingRateDataSerializer(serializers.Serializer):
         data["datetime_now"] = instance["datetime_now"].strftime(DATE_TIME_TZ_FORMAT)
 
         return data
+
+
+class WalletStatusQueryParamsSerializer(serializers.Serializer):
+    target_market_code = serializers.CharField(required=True)
+    origin_market_code = serializers.CharField(required=True)
+    base_asset = CharacterSeparatedField(required=False, empty=True)
+
+
+class WalletStatusExchangeResponseSerializer(serializers.Serializer):
+    deposit = serializers.ListField(child=serializers.CharField(default="network1"))
+    withdraw = serializers.ListField(child=serializers.CharField(default="network1"))
+
+
+class WalletStatusResponseSerializer(serializers.Serializer):
+    base_asset1 = serializers.SerializerMethodField(method_name="get_base_asset")
+    base_asset2 = serializers.SerializerMethodField(method_name="get_base_asset")
+
+    @extend_schema_field(
+        inline_serializer(
+            name="WalletStatusBaseAssetResponseSerializer",
+            fields={
+                "target_exchange": WalletStatusExchangeResponseSerializer(),
+                "origin_exchange": WalletStatusExchangeResponseSerializer(),
+            },
+        )
+    )
+    def get_base_asset(self, obj):
+        pass
