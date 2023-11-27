@@ -105,6 +105,32 @@ class FundingRateDataSerializer(serializers.Serializer):
         return data
 
 
+class FundingRateDiffDataQueryParamsSerializer(serializers.Serializer):
+    base_asset = CharacterSeparatedField(required=False, empty=True)
+    market_code_x = serializers.CharField(required=False)
+    exchange_x = serializers.CharField(required=False)
+    market_code_y = serializers.CharField(required=False)
+    exchange_y = serializers.CharField(required=False)
+    tz = serializers.ChoiceField(choices=all_timezones, default=UTC)
+
+
+class FundingRateDiffDataSerializer(serializers.Serializer):
+    base_asset = serializers.CharField()
+    symbol_x = serializers.CharField()
+    funding_rate_x = FloatOrNoneField()
+    funding_time_x = serializers.DateTimeField(default_timezone=TZ_UTC)
+    quote_asset_x = serializers.CharField()
+    market_code_x = serializers.CharField()
+    exchange_x = serializers.CharField()
+    symbol_y = serializers.CharField()
+    funding_rate_y = FloatOrNoneField()
+    funding_time_y = serializers.DateTimeField(default_timezone=TZ_UTC)
+    quote_asset_y = serializers.CharField()
+    market_code_y = serializers.CharField()
+    exchange_y = serializers.CharField()
+    funding_rate_diff = FloatOrNoneField()
+
+
 class WalletStatusQueryParamsSerializer(serializers.Serializer):
     target_market_code = serializers.CharField(required=True)
     origin_market_code = serializers.CharField(required=True)

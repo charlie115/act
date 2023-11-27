@@ -12,6 +12,8 @@ from infocore.serializers import (
     AssetSerializer,
     FundingRateDataSerializer,
     FundingRateDataQueryParamsSerializer,
+    FundingRateDiffDataQueryParamsSerializer,
+    FundingRateDiffDataSerializer,
     KlineDataSerializer,
     KlineDataQueryParamsSerializer,
     WalletStatusQueryParamsSerializer,
@@ -289,6 +291,78 @@ class FundingRateDataView(views.APIView):
         # Serialize
         results = [
             FundingRateDataSerializer(item, context={"tz": tz}).data for item in cursor
+        ]
+
+        return results
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Get funding rate difference",
+        description="Returns funding rate difference data",
+        parameters=[FundingRateDiffDataQueryParamsSerializer],
+        responses={200: FundingRateDiffDataSerializer},
+        tags=["FundingRate"],
+    ),
+)
+class FundingRateDiffDataView(views.APIView):
+    permission_classes = []
+    page_size = 200
+
+    def get(self, request):
+        query_params = FundingRateDiffDataQueryParamsSerializer(
+            data=request.query_params
+        )
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        data = self.get_data(
+            base_assets=query.get("base_asset", ""),
+            market_code_x=query.get("market_code_x", ""),
+            exchange_x=query.get("exchange_x", ""),
+            market_code_y=query.get("market_code_y", ""),
+            exchange_y=query.get("exchange_y", ""),
+            tz=query.get("tz"),
+        )
+
+        return response.Response(data)
+
+    def get_data(
+        self, base_assets, market_code_x, exchange_x, market_code_y, exchange_y, tz
+    ):
+        # Get database
+        db = MONGODB_CLI.get_database("arbitrage_fundingrate")
+
+        # Get collection
+        coll = db.get_collection("diff")
+
+        # Prepare parameters
+        query_filter = dict()
+        if base_assets:
+            query_filter["base_asset"] = {"$in": base_assets}
+        if market_code_x:
+            query_filter["market_code_x"] = market_code_x
+        if exchange_x:
+            query_filter["exchange_x"] = exchange_x
+        if market_code_y:
+            query_filter["market_code_y"] = market_code_y
+        if exchange_y:
+            query_filter["exchange_y"] = exchange_y
+
+        projection = {
+            "_id": False,
+        }
+
+        # Query collection
+        cursor = coll.find(
+            filter=query_filter,
+            projection=projection,
+        )
+
+        # Serialize
+        results = [
+            FundingRateDiffDataSerializer(item, context={"tz": tz}).data
+            for item in cursor
         ]
 
         return results
