@@ -77,7 +77,8 @@ class KlineDataSerializer(serializers.Serializer):
 
 class FundingRateDataQueryParamsSerializer(serializers.Serializer):
     market_code = serializers.CharField(required=True)
-    base_asset = CharacterSeparatedField(required=False, empty=True)
+    base_asset = CharacterSeparatedField()
+    past = serializers.BooleanField(default=False)
     tz = serializers.ChoiceField(choices=all_timezones, default=UTC)
 
 
@@ -85,10 +86,10 @@ class FundingRateDataSerializer(serializers.Serializer):
     symbol = serializers.CharField()
     funding_rate = FloatOrNoneField()
     funding_time = serializers.DateTimeField(default_timezone=TZ_UTC)
-    base_asset = serializers.CharField()
-    quote_asset = serializers.CharField()
-    perpetual = serializers.BooleanField()
     datetime_now = serializers.DateTimeField(default_timezone=TZ_UTC)
+    # base_asset = serializers.CharField()
+    # quote_asset = serializers.CharField()
+    # perpetual = serializers.BooleanField()
 
     def to_representation(self, instance):
         instance["funding_time"] = instance["funding_time"].astimezone(
@@ -111,7 +112,7 @@ class AverageFundingRateDataQueryParamsSerializer(serializers.Serializer):
         required=True, validators=[MinValueValidator(1), MaxValueValidator(100)]
     )
     market_code = serializers.CharField(required=False)
-    base_asset = CharacterSeparatedField(required=False, empty=True)
+    base_asset = CharacterSeparatedField()
 
 
 class AverageFundingRateDataSerializer(serializers.Serializer):
@@ -123,7 +124,7 @@ class AverageFundingRateDataSerializer(serializers.Serializer):
 
 
 class FundingRateDiffDataQueryParamsSerializer(serializers.Serializer):
-    base_asset = CharacterSeparatedField(required=False, empty=True)
+    base_asset = CharacterSeparatedField()
     market_code_x = serializers.CharField(required=False)
     exchange_x = serializers.CharField(required=False)
     market_code_y = serializers.CharField(required=False)
@@ -151,7 +152,7 @@ class FundingRateDiffDataSerializer(serializers.Serializer):
 class WalletStatusQueryParamsSerializer(serializers.Serializer):
     target_market_code = serializers.CharField(required=True)
     origin_market_code = serializers.CharField(required=True)
-    base_asset = CharacterSeparatedField(required=False, empty=True)
+    base_asset = CharacterSeparatedField()
 
 
 class WalletStatusExchangeResponseSerializer(serializers.Serializer):

@@ -215,13 +215,19 @@ class FundingRateDataView(views.APIView):
         data = self.get_data(
             market_code=query.get("market_code", ""),
             base_assets=query.get("base_asset", ""),
+            past=query.get("past", ""),
             tz=query.get("tz"),
         )
 
         return response.Response(data)
 
-    def get_data(self, market_code, base_assets, tz):
-        market_code, quote_asset = market_code.split("/")
+    def get_data(self, market_code, base_assets, past, tz):
+        try:
+            market_code, quote_asset = market_code.split("/")
+        except ValueError as err:
+            # TODO: Add logging
+            print(err)
+            raise exceptions.ValidationError()
 
         database = f"{market_code.split('_')[0]}_fundingrate"
         collection = "_".join(market_code.split("_")[1:])
@@ -240,46 +246,54 @@ class FundingRateDataView(views.APIView):
 
         coll = db.get_collection(collection)
 
-        latest_dates = coll.aggregate(
-            [
-                {
-                    "$match": {
-                        "base_asset": {"$in": base_assets} if base_assets else {},
-                        "quote_asset": quote_asset,
-                    }
-                },
-                {"$sort": {"datetime_now": ASCENDING}},
-                {
-                    "$group": {
-                        "_id": "$base_asset",
-                        "datetime_now": {"$last": "$datetime_now"},
-                    }
-                },
-            ]
-        )
-        latest_dates = {item["_id"]: item["datetime_now"] for item in latest_dates}
-
-        # Prepare parameters
-        and_cond = list()
-        for base_asset, datetime_now in latest_dates.items():
-            query = {
-                "$and": [
-                    {
-                        "base_asset": base_asset,
-                        "quote_asset": quote_asset,
-                        "perpetual": True,
-                        "datetime_now": {"$eq": datetime_now},
-                    }
-                ]
+        if past:
+            query_filter = {
+                "base_asset": {"$in": base_assets},
+                "quote_asset": quote_asset,
+                "perpetual": True,
             }
-            and_cond.append(query)
+        else:
+            latest_dates = coll.aggregate(
+                [
+                    {
+                        "$match": {
+                            "base_asset": {"$in": base_assets},
+                            "quote_asset": quote_asset,
+                        }
+                    },
+                    {"$sort": {"datetime_now": ASCENDING}},
+                    {
+                        "$group": {
+                            "_id": "$base_asset",
+                            "datetime_now": {"$last": "$datetime_now"},
+                        }
+                    },
+                ]
+            )
+            latest_dates = {item["_id"]: item["datetime_now"] for item in latest_dates}
 
-        if not and_cond:
-            raise exceptions.ValidationError()
+            # Prepare parameters
+            and_cond = list()
+            for base_asset, datetime_now in latest_dates.items():
+                query = {
+                    "$and": [
+                        {
+                            "base_asset": base_asset,
+                            "quote_asset": quote_asset,
+                            "perpetual": True,
+                            "datetime_now": {"$eq": datetime_now},
+                        }
+                    ]
+                }
+                and_cond.append(query)
 
-        query_filter = {
-            "$or": and_cond,
-        }
+            if not and_cond:
+                return []
+
+            query_filter = {
+                "$or": and_cond,
+            }
+
         projection = {
             "_id": False,
         }
@@ -291,9 +305,11 @@ class FundingRateDataView(views.APIView):
         )
 
         # Serialize
-        results = [
-            FundingRateDataSerializer(item, context={"tz": tz}).data for item in cursor
-        ]
+        results = {base_asset: [] for base_asset in base_assets}
+        for item in cursor:
+            results[item["base_asset"]].append(
+                FundingRateDataSerializer(item, context={"tz": tz}).data
+            )
 
         return results
 
@@ -351,7 +367,11 @@ class AverageFundingRateDataView(views.APIView):
         )
 
         # Serialize
-        results = [AverageFundingRateDataSerializer(item).data for item in cursor]
+        results = {base_asset: [] for base_asset in base_assets}
+        for item in cursor:
+            results[item["base_asset"]].append(
+                AverageFundingRateDataSerializer(item).data
+            )
 
         return results
 
@@ -420,10 +440,11 @@ class FundingRateDiffDataView(views.APIView):
         )
 
         # Serialize
-        results = [
-            FundingRateDiffDataSerializer(item, context={"tz": tz}).data
-            for item in cursor
-        ]
+        results = {base_asset: [] for base_asset in base_assets}
+        for item in cursor:
+            results[item["base_asset"]].append(
+                FundingRateDiffDataSerializer(item, context={"tz": tz}).data
+            )
 
         return results
 
