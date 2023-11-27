@@ -10,6 +10,8 @@ from pytz import timezone
 from infocore.models import Asset
 from infocore.serializers import (
     AssetSerializer,
+    AverageFundingRateDataQueryParamsSerializer,
+    AverageFundingRateDataSerializer,
     FundingRateDataSerializer,
     FundingRateDataQueryParamsSerializer,
     FundingRateDiffDataQueryParamsSerializer,
@@ -292,6 +294,64 @@ class FundingRateDataView(views.APIView):
         results = [
             FundingRateDataSerializer(item, context={"tz": tz}).data for item in cursor
         ]
+
+        return results
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Get average funding rate",
+        description="Returns average funding rate data",
+        parameters=[AverageFundingRateDataQueryParamsSerializer],
+        responses={200: AverageFundingRateDataSerializer},
+        tags=["FundingRate"],
+    ),
+)
+class AverageFundingRateDataView(views.APIView):
+    permission_classes = []
+    page_size = 200
+
+    def get(self, request):
+        query_params = AverageFundingRateDataQueryParamsSerializer(
+            data=request.query_params
+        )
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        data = self.get_data(
+            n=query.get("n", ""),
+            market_code=query.get("market_code", ""),
+            base_assets=query.get("base_asset", ""),
+        )
+
+        return response.Response(data)
+
+    def get_data(self, n, market_code, base_assets):
+        # Get database
+        db = MONGODB_CLI.get_database("arbitrage_fundingrate")
+
+        # Get collection
+        coll = db.get_collection(f"recent_{n}_fundingrate_mean")
+
+        # Prepare parameters
+        query_filter = dict()
+        if market_code:
+            query_filter["market_code"] = market_code
+        if base_assets:
+            query_filter["base_asset"] = {"$in": base_assets}
+
+        projection = {
+            "_id": False,
+        }
+
+        # Query collection
+        cursor = coll.find(
+            filter=query_filter,
+            projection=projection,
+        )
+
+        # Serialize
+        results = [AverageFundingRateDataSerializer(item).data for item in cursor]
 
         return results
 

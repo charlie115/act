@@ -1,6 +1,7 @@
 from django.urls import path
 
 from infocore.views import (
+    AverageFundingRateDataView,
     FundingRateDataView,
     FundingRateDiffDataView,
 )
@@ -11,6 +12,11 @@ urlpatterns = [
         "",
         FundingRateDataView.as_view(),
         name="funding rate data",
+    ),
+    path(
+        "average/",
+        AverageFundingRateDataView.as_view(),
+        name=" average funding rate data",
     ),
     path(
         "diff/",

@@ -1,3 +1,4 @@
+from django.core.validators import MinValueValidator, MaxValueValidator
 from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 from pytz import all_timezones, timezone
@@ -103,6 +104,22 @@ class FundingRateDataSerializer(serializers.Serializer):
         data["datetime_now"] = instance["datetime_now"].strftime(DATE_TIME_TZ_FORMAT)
 
         return data
+
+
+class AverageFundingRateDataQueryParamsSerializer(serializers.Serializer):
+    n = serializers.IntegerField(
+        required=True, validators=[MinValueValidator(1), MaxValueValidator(100)]
+    )
+    market_code = serializers.CharField(required=False)
+    base_asset = CharacterSeparatedField(required=False, empty=True)
+
+
+class AverageFundingRateDataSerializer(serializers.Serializer):
+    symbol = serializers.CharField()
+    base_asset = serializers.CharField()
+    quote_asset = serializers.CharField()
+    market_code = serializers.CharField()
+    funding_rate = FloatOrNoneField()
 
 
 class FundingRateDiffDataQueryParamsSerializer(serializers.Serializer):
