@@ -32,7 +32,7 @@ class InitKlineCore:
         # self.market_code_list = get_market_code_list()
         # self.market_combination_list = self.get_market_combination_list()
         self.enabled_market_klines = enabled_market_klines
-        self.enabled_kline_types = ['1T', '5T', '15T', '30T', '1H', '4H', '1D']
+        self.enabled_kline_types = ['1T', '5T', '15T', '30T', '1H', '4H']
         self.kline_proc_dict = {}
         self.pubsub = self.redis_client_db0.redis_conn.pubsub()
         self.db_client = db_client
@@ -453,58 +453,66 @@ class InitKlineCore:
                 self.kline_logger.error(content)
                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"ohlc_min_resample_loader got an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
 
-    def insert_kline_to_db(self, kline_df, channel_name):    
-        service_name = channel_name.split('|')[0].lower()
-        market_kline_name = channel_name.split('|')[1]
-        market_code_combination = '_'.join(market_kline_name.split('_')[:-2])
-        converted_market_code_combination = market_code_combination.replace(':', '-').replace('/', '__')
-        kline_type = market_kline_name.split('_')[-2]
-        
-        mongo_client = self.db_client.get_conn()
-        db = mongo_client[converted_market_code_combination]
+    def insert_kline_to_db(self, kline_df, channel_name):
+        try:
+            service_name = channel_name.split('|')[0].lower()
+            market_kline_name = channel_name.split('|')[1]
+            market_code_combination = '_'.join(market_kline_name.split('_')[:-2])
+            converted_market_code_combination = market_code_combination.replace(':', '-').replace('/', '__')
+            kline_type = market_kline_name.split('_')[-2]
+            
+            mongo_client = self.db_client.get_conn()
+            db = mongo_client[converted_market_code_combination]
 
-        closed_kline_df = kline_df[kline_df['closed']==True]
-        if len(closed_kline_df) == 0:
-            self.kline_logger.info(f'insert_kline_to_db|{channel_name} No klines to be inserted')
-            # print(f'insert_kline_to_db|{channel_name} No klines to be inserted') # TEST
-        else:
-            # Filter the klines to be inserted
-            start = time.time()
-            base_asset_list = closed_kline_df['base_asset'].unique()
-            count = 0
-            inserted_coin_list = []
-            filtering_time = 0 # TEST
-            insert_time = 0 # TEST
-            for each_base_asset in base_asset_list:
-                # start2 = time.time()
-                collection_name = f"{each_base_asset}_{kline_type}"
-                collection = db[collection_name]
-                document_count = collection.count_documents({})
-                if document_count == 0:
-                    df_to_insert = closed_kline_df[closed_kline_df['base_asset']==each_base_asset]
-                else:
+            closed_kline_df = kline_df[kline_df['closed']==True]
+            if len(closed_kline_df) == 0:
+                self.kline_logger.info(f'insert_kline_to_db|{channel_name} No klines to be inserted')
+                # print(f'insert_kline_to_db|{channel_name} No klines to be inserted') # TEST
+            else:
+                # Filter the klines to be inserted
+                start = time.time()
+                base_asset_list = closed_kline_df['base_asset'].unique()
+                count = 0
+                inserted_coin_list = []
+                filtering_time = 0 # TEST
+                insert_time = 0 # TEST
+                for each_base_asset in base_asset_list:
+                    # start2 = time.time()
+                    collection_name = f"{each_base_asset}_{kline_type}"
+                    collection = db[collection_name]
+                    document_count = collection.count_documents({})
+                    if document_count == 0:
+                        df_to_insert = closed_kline_df[closed_kline_df['base_asset']==each_base_asset]
+                    else:
+                        # TEST
+                        start_filter = time.time()
+                        df_to_insert = closed_kline_df[(closed_kline_df['base_asset']==each_base_asset)&(closed_kline_df['datetime_now']>collection.find_one(sort=[("datetime_now", -1)])['datetime_now'])]
+                        # TEST
+                        filtering_time += (time.time() - start_filter)
+                    if len(df_to_insert) != 0:
+                        # TEST
+                        start_insert = time.time()       
+                        collection.insert_many(df_to_insert.to_dict('records'))
+                        # TEST
+                        insert_time += (time.time() - start_insert)
+                        count += len(df_to_insert)
+                        inserted_coin_list.append(each_base_asset)
+                        # self.kline_logger.info(f"insert_kline_to_db|database: {market_code_combination}, collection:{collection_name}, Inserting {len(df_to_insert)} klines took {time.time() - start2} seconds")
+                if count != 0:
                     # TEST
-                    start_filter = time.time()
-                    df_to_insert = closed_kline_df[(closed_kline_df['base_asset']==each_base_asset)&(closed_kline_df['datetime_now']>collection.find_one(sort=[("datetime_now", -1)])['datetime_now'])]
+                    self.kline_logger.info(f"insert_kline_to_db|database: {market_code_combination}, Filtering {count} klines for {len(inserted_coin_list)} unique base_assets took {filtering_time} seconds")
+                    self.kline_logger.info(f"insert_kline_to_db|database: {market_code_combination}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {insert_time} seconds")
                     # TEST
-                    filtering_time += (time.time() - start_filter)
-                if len(df_to_insert) != 0:
-                    # TEST
-                    start_insert = time.time()       
-                    collection.insert_many(df_to_insert.to_dict('records'))
-                    # TEST
-                    insert_time += (time.time() - start_insert)
-                    count += len(df_to_insert)
-                    inserted_coin_list.append(each_base_asset)
-                    # self.kline_logger.info(f"insert_kline_to_db|database: {market_code_combination}, collection:{collection_name}, Inserting {len(df_to_insert)} klines took {time.time() - start2} seconds")
-            if count != 0:
-                # TEST
-                self.kline_logger.info(f"insert_kline_to_db|database: {market_code_combination}, Filtering {count} klines for {len(inserted_coin_list)} unique base_assets took {filtering_time} seconds")
-                self.kline_logger.info(f"insert_kline_to_db|database: {market_code_combination}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {insert_time} seconds")
-                # TEST
-                self.kline_logger.info(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds")
-            # print(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds") # TEST
-        mongo_client.close()
+                    self.kline_logger.info(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds")
+                # print(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds") # TEST
+            mongo_client.close()
+        except:
+            try:
+                mongo_client.close()
+            except:
+                pass
+            self.kline_logger.error(f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}")
+            self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"insert_kline_to_db", content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}", code=None, sent_switch=0, send_counts=1, remark=None)
 
     def subscribe_kline_channel(self):
         self.kline_logger.info(f"subscribe_kline_channel|Subscribing to kline channels Started..")
@@ -548,7 +556,7 @@ class InitKlineCore:
         subscribe_to_channels()
         # # Start the keep_alive_check in another thread
         # Thread(target=keep_alive_check, daemon=True).start()
-        # keep_alive_check()
+        keep_alive_check()
 
     def unsubscribe_kline_channel(self):
         self.pubsub.unsubscribe() 

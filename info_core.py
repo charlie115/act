@@ -617,6 +617,10 @@ class InitCore:
                                 # self.logger.info(f"{each_market_code}_fundingrate, New funding data inserted.. symbol: {row_dict['symbol']}")
                 mongo_db_conn.close()
             except Exception as e:
+                try:
+                    mongo_db_conn.close()
+                except:
+                    pass
                 content = f"update_fundingrate|Exception occured! Error: {e}, {traceback.format_exc()}"
                 self.logger.error(content)
                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', "Error occured in update_fundingrate.", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
