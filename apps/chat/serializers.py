@@ -1,7 +1,7 @@
 from rest_framework import serializers
-from pytz import all_timezones, timezone
 
-from lib.datetime import DATE_TIME_FORMAT, DATE_TIME_TZ_FORMAT, UTC
+from lib.datetime import DATE_TIME_FORMAT, DATE_TIME_TZ_FORMAT, UTC, TZ_UTC
+from lib.fields import DateTimeWithTzField, TimezoneField
 
 
 class PastChatMessagesQueryParamsSerializer(serializers.Serializer):
@@ -13,7 +13,7 @@ class PastChatMessagesQueryParamsSerializer(serializers.Serializer):
         required=False,
         input_formats=[DATE_TIME_FORMAT],
     )
-    tz = serializers.ChoiceField(choices=all_timezones, default=UTC)
+    tz = TimezoneField(default=UTC)
 
 
 class PastChatMessagesSerializer(serializers.Serializer):
@@ -21,12 +21,7 @@ class PastChatMessagesSerializer(serializers.Serializer):
     username = serializers.CharField()
     # ip = serializers.IPAddressField()
     message = serializers.CharField()
-    datetime = serializers.DateTimeField()
-
-    def to_representation(self, instance):
-        instance["datetime"] = instance["datetime"].astimezone(
-            timezone(self.context["tz"])
-        )
-        data = super().to_representation(instance)
-        data["datetime"] = instance["datetime"].strftime(DATE_TIME_TZ_FORMAT)
-        return data
+    datetime = DateTimeWithTzField(
+        format=DATE_TIME_TZ_FORMAT,
+        default_timezone=TZ_UTC,
+    )

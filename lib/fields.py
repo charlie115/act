@@ -1,7 +1,9 @@
 import math
-from rest_framework import serializers
+from rest_framework import exceptions, serializers
 from rest_framework.fields import empty
 from rest_framework.utils import html
+
+from pytz import all_timezones, timezone
 
 
 class CharacterSeparatedField(serializers.ListField):
@@ -43,3 +45,36 @@ class CharacterSeparatedField(serializers.ListField):
 class FloatOrNoneField(serializers.FloatField):
     def to_representation(self, value):
         return None if math.isnan(value) else float(value)
+
+
+class DateTimeWithTzField(serializers.DateTimeField):
+    """Field with additional conversion of datetime to provided tz param"""
+
+    def to_representation(self, value):
+        value = super().to_representation(value)
+
+        if (
+            hasattr(self.parent, "context")
+            and self.parent.context
+            and "tz" in self.parent.context
+            and self.parent.context["tz"] != self.timezone.zone
+        ):
+            value = self.to_internal_value(value)
+            value = value.astimezone(timezone(self.parent.context["tz"]))
+
+        return value
+
+
+class TimezoneField(serializers.CharField):
+    """CharField with manual timezone validation is used instead of ChoiceField with all_timezones as choices.
+    The `tz` parameter in API docs looks very long and cluttered.
+    Information also gets redundant when used over multiple serializers.
+    """
+
+    def run_validation(self, data=empty):
+        data = super().run_validation(data)
+
+        if data not in all_timezones:
+            raise exceptions.ValidationError("Invalid timezone.")
+
+        return data

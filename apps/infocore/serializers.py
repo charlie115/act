@@ -1,12 +1,16 @@
 from django.core.validators import MinValueValidator, MaxValueValidator
 from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
-from pytz import all_timezones, timezone
 
 from infocore.mixins import AssetMixin
 from infocore.models import Asset
 from lib.datetime import DATE_TIME_FORMAT, DATE_TIME_TZ_FORMAT, UTC, TZ_UTC
-from lib.fields import CharacterSeparatedField, FloatOrNoneField
+from lib.fields import (
+    CharacterSeparatedField,
+    DateTimeWithTzField,
+    FloatOrNoneField,
+    TimezoneField,
+)
 
 
 class AssetSerializer(AssetMixin, serializers.ModelSerializer):
@@ -41,12 +45,15 @@ class KlineDataQueryParamsSerializer(serializers.Serializer):
         required=False,
         input_formats=[DATE_TIME_FORMAT],
     )
-    tz = serializers.ChoiceField(choices=all_timezones, default=UTC)
+    tz = TimezoneField(default=UTC)
 
 
 class KlineDataSerializer(serializers.Serializer):
     base_asset = serializers.CharField()
-    datetime_now = serializers.DateTimeField()
+    datetime_now = DateTimeWithTzField(
+        format=DATE_TIME_TZ_FORMAT,
+        default_timezone=TZ_UTC,
+    )
     tp_open = FloatOrNoneField()
     tp_high = FloatOrNoneField()
     tp_low = FloatOrNoneField()
@@ -66,45 +73,28 @@ class KlineDataSerializer(serializers.Serializer):
     converted_tp = FloatOrNoneField()
     closed = serializers.BooleanField()
 
-    def to_representation(self, instance):
-        instance["datetime_now"] = instance["datetime_now"].astimezone(
-            timezone(self.context["tz"])
-        )
-        data = super().to_representation(instance)
-        data["datetime_now"] = instance["datetime_now"].strftime(DATE_TIME_TZ_FORMAT)
-        return data
-
 
 class FundingRateDataQueryParamsSerializer(serializers.Serializer):
     market_code = serializers.CharField(required=True)
     base_asset = CharacterSeparatedField()
     past = serializers.BooleanField(default=False)
-    tz = serializers.ChoiceField(choices=all_timezones, default=UTC)
+    tz = TimezoneField(default=UTC)
 
 
 class FundingRateDataSerializer(serializers.Serializer):
     symbol = serializers.CharField()
     funding_rate = FloatOrNoneField()
-    funding_time = serializers.DateTimeField(default_timezone=TZ_UTC)
-    datetime_now = serializers.DateTimeField(default_timezone=TZ_UTC)
+    funding_time = DateTimeWithTzField(
+        format=DATE_TIME_TZ_FORMAT,
+        default_timezone=TZ_UTC,
+    )
+    datetime_now = DateTimeWithTzField(
+        format=DATE_TIME_TZ_FORMAT,
+        default_timezone=TZ_UTC,
+    )
     # base_asset = serializers.CharField()
     # quote_asset = serializers.CharField()
     # perpetual = serializers.BooleanField()
-
-    def to_representation(self, instance):
-        instance["funding_time"] = instance["funding_time"].astimezone(
-            timezone(self.context["tz"])
-        )
-        instance["datetime_now"] = instance["datetime_now"].astimezone(
-            timezone(self.context["tz"])
-        )
-
-        data = super().to_representation(instance)
-
-        data["funding_time"] = instance["funding_time"].strftime(DATE_TIME_TZ_FORMAT)
-        data["datetime_now"] = instance["datetime_now"].strftime(DATE_TIME_TZ_FORMAT)
-
-        return data
 
 
 class AverageFundingRateDataQueryParamsSerializer(serializers.Serializer):
@@ -129,20 +119,26 @@ class FundingRateDiffDataQueryParamsSerializer(serializers.Serializer):
     exchange_x = serializers.CharField(required=False)
     market_code_y = serializers.CharField(required=False)
     exchange_y = serializers.CharField(required=False)
-    tz = serializers.ChoiceField(choices=all_timezones, default=UTC)
+    tz = TimezoneField(default=UTC)
 
 
 class FundingRateDiffDataSerializer(serializers.Serializer):
     base_asset = serializers.CharField()
     symbol_x = serializers.CharField()
     funding_rate_x = FloatOrNoneField()
-    funding_time_x = serializers.DateTimeField(default_timezone=TZ_UTC)
+    funding_time_x = DateTimeWithTzField(
+        format=DATE_TIME_TZ_FORMAT,
+        default_timezone=TZ_UTC,
+    )
     quote_asset_x = serializers.CharField()
     market_code_x = serializers.CharField()
     exchange_x = serializers.CharField()
     symbol_y = serializers.CharField()
     funding_rate_y = FloatOrNoneField()
-    funding_time_y = serializers.DateTimeField(default_timezone=TZ_UTC)
+    funding_time_y = DateTimeWithTzField(
+        format=DATE_TIME_TZ_FORMAT,
+        default_timezone=TZ_UTC,
+    )
     quote_asset_y = serializers.CharField()
     market_code_y = serializers.CharField()
     exchange_y = serializers.CharField()
