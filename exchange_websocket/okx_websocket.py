@@ -47,48 +47,52 @@ class OkxWebsocket:
         self.monitor_websocket_last_update_thread.start()
 
     def init_websocket(self, ticker_dict, data, error_event, data_name):
-        def on_message(ws, message):
-            if error_event.is_set():
-                ws.close()
-                raise Exception("okx_websocket|error_event is set. closing websocket..")
-            message_dict = json.loads(message)
-            # print(message_dict)
-            if 'data' in message_dict.keys():
-                message_data_dict = message_dict['data'][0]
-                try:
-                    if '' in message_data_dict.values():
-                        self.websocket_logger.error(f"okx_websocket|Empty string detected.\n{message_data_dict}")
+        try:
+            def on_message(ws, message):
+                if error_event.is_set():
+                    ws.close()
+                    raise Exception("okx_websocket|error_event is set. closing websocket..")
+                message_dict = json.loads(message)
+                # print(message_dict)
+                if 'data' in message_dict.keys():
+                    message_data_dict = message_dict['data'][0]
+                    try:
+                        if '' in message_data_dict.values():
+                            self.websocket_logger.error(f"okx_websocket|Empty string detected.\n{message_data_dict}")
+                            return
+                    except Exception as e:
+                        self.websocket_logger.error(f"okx_websocket|message_data_dict.values(): {message_data_dict.values()}")
+                        self.websocket_logger.error(f"okx_websocket|{traceback.format_exc()}")
                         return
-                except Exception as e:
-                    self.websocket_logger.error(f"okx_websocket|message_data_dict.values(): {message_data_dict.values()}")
-                    self.websocket_logger.error(f"okx_websocket|{traceback.format_exc()}")
-                    return
-                self.ticker_dict[message_data_dict['instId']] = {**message_data_dict, "last_update_timestamp": int(datetime.datetime.utcnow().timestamp()*1000000)}
-                # self.redis_client_db1.set_data(f"INFO_CORE|OKX_{self.market_type}|{data_name}|{message_data_dict['instId']}", json.dumps({**message_data_dict, "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)}))
-                # self.redis_client_db1.set_data(f"INFO_CORE|OKX_{self.market_type}|{data_name}", pickle.dumps(dict(self.ticker_dict)))
+                    self.ticker_dict[message_data_dict['instId']] = {**message_data_dict, "last_update_timestamp": int(datetime.datetime.utcnow().timestamp()*1000000)}
+                    # self.redis_client_db1.set_data(f"INFO_CORE|OKX_{self.market_type}|{data_name}|{message_data_dict['instId']}", json.dumps({**message_data_dict, "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)}))
+                    # self.redis_client_db1.set_data(f"INFO_CORE|OKX_{self.market_type}|{data_name}", pickle.dumps(dict(self.ticker_dict)))
 
-        def on_error(ws, error):
-            # print(f'okx_websocket on_error executed!')
-            # print(error)
-            self.websocket_logger.error(f'okx_websocket|okx_websocket on_error executed!\n Error: {error}')
-            pass
+            def on_error(ws, error):
+                # print(f'okx_websocket on_error executed!')
+                # print(error)
+                self.websocket_logger.error(f'okx_websocket|okx_websocket on_error executed!\n Error: {error}')
+                pass
 
-        def on_close(ws, close_status_code, close_msg):
-            # print(f"\n\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
-            self.websocket_logger.info(f"okx_websocket|\n\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
+            def on_close(ws, close_status_code, close_msg):
+                # print(f"\n\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
+                self.websocket_logger.info(f"okx_websocket|\n\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
 
-        def on_open(ws):
-            # print(f'okx_websocket started')
-            self.websocket_logger.info(f'okx_websocket|okx_websocket started')
-            ws.send(json.dumps(data))
+            def on_open(ws):
+                # print(f'okx_websocket started')
+                self.websocket_logger.info(f'okx_websocket|okx_websocket started')
+                ws.send(json.dumps(data))
 
-        websocket.enableTrace(False)
-        ws = websocket.WebSocketApp(self.url,
-                                on_open=on_open,
-                                on_message=on_message,
-                                on_error=on_error,
-                                on_close=on_close)
-        ws.run_forever(ping_interval=15)
+            websocket.enableTrace(False)
+            ws = websocket.WebSocketApp(self.url,
+                                    on_open=on_open,
+                                    on_message=on_message,
+                                    on_error=on_error,
+                                    on_close=on_close)
+            ws.run_forever(ping_interval=15)
+        except Exception as e:
+            self.websocket_logger.error(f"okx_websocket|{traceback.format_exc()}")
+            raise e
     
     def _start_websocket(self):
         def handle_price_procs():

@@ -583,6 +583,7 @@ class InitCore:
         self.logger.info(f"update_fundingrate|{exchange_name} update_fundingrate thread has started.")
         while True:
             try:
+                start = time.time()
                 for futures_type in ["USD_M", "COIN_M"]:
                     mongo_db_conn = self.db_client.get_conn()
                     # First fetch from the mongodb
@@ -616,6 +617,7 @@ class InitCore:
                                                         'datetime_now': row_dict['datetime_now_x']})
                                 # self.logger.info(f"{each_market_code}_fundingrate, New funding data inserted.. symbol: {row_dict['symbol']}")
                 mongo_db_conn.close()
+                self.logger.info(f"update_fundingrate|{exchange_name} update_fundingrate took {time.time()-start} secs.")
             except Exception as e:
                 try:
                     mongo_db_conn.close()
@@ -632,6 +634,7 @@ class InitCore:
         error_count = 0
         while True:
             try:
+                start = time.time()
                 mongo_db_conn = self.db_client.get_conn()
                 # First fetch from the mongodb
                 # fetch from mongodb
@@ -658,6 +661,7 @@ class InitCore:
                             collection.insert_one(row.to_dict())
                 mongo_db_conn.close()
                 error_count = 0
+                self.logger.info(f"update_wallet_status|{exchange_name} update_wallet_status took {time.time()-start} secs.")
             except Exception as e:
                 error_count += 1
                 if error_count >= 10:

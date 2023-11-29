@@ -231,7 +231,7 @@ class InitKlineCore:
                     new_resampled_ohlc_history_df = new_resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
                     resampled_ohlc_history_df = pd.concat([resampled_ohlc_history_df, new_resampled_ohlc_history_df], axis=0, ignore_index=True)
                     resampled_ohlc_history_df = resampled_ohlc_history_df.drop_duplicates(subset=['base_asset', 'datetime_now'], keep='last').groupby('base_asset').tail(max_length)
-                    print(f"resampling ohlc_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
+                    # print(f"resampling ohlc_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
                     # Save into the Redis DB
                     # start = time.time()
                     pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
@@ -541,6 +541,7 @@ class InitKlineCore:
                     content = f"subscribe_kline_channel|Connection lost. Attempting to reconnect..., error:{traceback.format_exc()}"
                     self.kline_logger.error(content)
                     self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"subscribe_kline_channel", content, code=None, sent_switch=0, send_counts=1, remark=None)
+                    self.pubsub = self.redis_client_db0.redis_conn.pubsub()
                     subscribe_to_channels()
 
         def subscribe_to_channels():
