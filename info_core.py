@@ -584,8 +584,8 @@ class InitCore:
         while True:
             try:
                 start = time.time()
+                mongo_db_conn = self.db_client.get_conn()
                 for futures_type in ["USD_M", "COIN_M"]:
-                    mongo_db_conn = self.db_client.get_conn()
                     # First fetch from the mongodb
                     # fetch from mongodb
                     mongo_db = mongo_db_conn[f"{exchange_name}_fundingrate"]
@@ -623,7 +623,7 @@ class InitCore:
                     mongo_db_conn.close()
                 except:
                     pass
-                content = f"update_fundingrate|Exception occured! Error: {e}, {traceback.format_exc()}"
+                content = f"update_fundingrate|Exception occured from updating {exchange_name}'s fundingrate! Error: {e}, {traceback.format_exc()}"
                 self.logger.error(content)
                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', "Error occured in update_fundingrate.", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
             time.sleep(loop_time_secs)
