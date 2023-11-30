@@ -149,25 +149,28 @@ class InitCore:
         time.sleep(10)
 
         if master_flag:
-            ## Start updating fundingrate
-            self.binance_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("BINANCE", self.binance_adaptor), daemon=True)
-            self.binance_update_fundingrate_thread.start()
-            self.okx_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("OKX", self.okx_adaptor, 180), daemon=True)
-            self.okx_update_fundingrate_thread.start()
-            self.bybit_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("BYBIT", self.bybit_adaptor), daemon=True)
-            self.bybit_update_fundingrate_thread.start()
+            # ## Start updating fundingrate
+            # self.binance_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("BINANCE", self.binance_adaptor), daemon=True)
+            # self.binance_update_fundingrate_thread.start()
+            # self.okx_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("OKX", self.okx_adaptor, 180), daemon=True)
+            # self.okx_update_fundingrate_thread.start()
+            # self.bybit_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("BYBIT", self.bybit_adaptor), daemon=True)
+            # self.bybit_update_fundingrate_thread.start()
 
-            ## Start updating wallet status
-            self.upbit_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("UPBIT", self.upbit_adaptor), daemon=True)
-            self.upbit_update_wallet_status_thread.start()
-            self.binance_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BINANCE", self.binance_adaptor), daemon=True)
-            self.binance_update_wallet_status_thread.start()
-            self.okx_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("OKX", self.okx_adaptor), daemon=True)
-            self.okx_update_wallet_status_thread.start()
-            self.bithumb_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BITHUMB", self.bithumb_adaptor), daemon=True)
-            self.bithumb_update_wallet_status_thread.start()
-            self.bybit_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BYBIT", self.bybit_adaptor), daemon=True)
-            self.bybit_update_wallet_status_thread.start()
+            # ## Start updating wallet status
+            # self.upbit_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("UPBIT", self.upbit_adaptor), daemon=True)
+            # self.upbit_update_wallet_status_thread.start()
+            # self.binance_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BINANCE", self.binance_adaptor), daemon=True)
+            # self.binance_update_wallet_status_thread.start()
+            # self.okx_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("OKX", self.okx_adaptor), daemon=True)
+            # self.okx_update_wallet_status_thread.start()
+            # self.bithumb_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BITHUMB", self.bithumb_adaptor), daemon=True)
+            # self.bithumb_update_wallet_status_thread.start()
+            # self.bybit_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BYBIT", self.bybit_adaptor), daemon=True)
+            # self.bybit_update_wallet_status_thread.start()
+
+            self.wallet_funding_update_proc = Process(target=self._start_wallet_funding_update, daemon=True)
+            self.wallet_funding_update_proc.start()
 
             ## Start arbitrage core
             self.arbitrage_generator = InitAbitrageCore(self.admin_id, self.node, self.info_dict, self.register_monitor_msg, self.total_enabled_market_klines, self.db_client, logging_dir)
@@ -175,6 +178,23 @@ class InitCore:
         # Start kline generator
         self.kline_generator = InitKlineCore(self.admin_id, node, self.get_premium_df, self.enabled_market_klines, register_monitor_msg, self.redis_client_db0, self.db_client, logging_dir)
 
+
+    def _start_wallet_funding_update(self):
+        ## Start updating fundingrate
+        update_thread_list = []
+        update_thread_list.append(Thread(target=self.update_fundingrate, args=("BINANCE", self.binance_adaptor), daemon=True))
+        update_thread_list.append(Thread(target=self.update_fundingrate, args=("OKX", self.okx_adaptor, 180), daemon=True))
+        update_thread_list.append(Thread(target=self.update_fundingrate, args=("BYBIT", self.bybit_adaptor), daemon=True))
+        ## Start updating wallet status
+        update_thread_list.append(Thread(target=self.update_wallet_status, args=("UPBIT", self.upbit_adaptor), daemon=True))
+        update_thread_list.append(Thread(target=self.update_wallet_status, args=("BINANCE", self.binance_adaptor), daemon=True))
+        update_thread_list.append(Thread(target=self.update_wallet_status, args=("OKX", self.okx_adaptor), daemon=True))
+        update_thread_list.append(Thread(target=self.update_wallet_status, args=("BITHUMB", self.bithumb_adaptor), daemon=True))
+        update_thread_list.append(Thread(target=self.update_wallet_status, args=("BYBIT", self.bybit_adaptor), daemon=True))
+        for each_thread in update_thread_list:
+            each_thread.start()
+        for each_thread in update_thread_list:
+            each_thread.join()
 
     def generate_enabled_websocket_list(self):
         market_list = []
@@ -228,6 +248,7 @@ class InitCore:
         error_count = 0
         while True:
             try:
+                start_time = time.time()
                 if data_name == "upbit_spot_info_df":
                     self.info_dict[data_name] = self.upbit_adaptor.spot_exchange_info()
                 elif data_name == "upbit_spot_ticker_df":
@@ -281,8 +302,10 @@ class InitCore:
                     self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
                     break
                 # self.redis_client_db1.set_data(f'INFO_CORE|{data_name}', pickle.dumps(self.info_dict[data_name]))
-                time.sleep(loop_time_secs)
+                end_time = time.time() - start_time
+                self.logger.info(f"update_exchange_info_as_df|name:{data_name} has been updated. ({end_time:.2f} secs), error_count:{error_count}")
                 error_count = 0
+                time.sleep(loop_time_secs)
             except Exception as e:
                 error_count += 1
                 if error_count >= error_count_limit:
@@ -584,18 +607,27 @@ class InitCore:
         self.logger.info(f"update_fundingrate|{exchange_name} update_fundingrate thread has started.")
         while True:
             try:
+                read_time = 0
+                write_time = 0
+                calculate_time = 0
+                api_time = 0
+
                 start = time.time()
                 mongo_db_conn = self.mongo_conn
                 for futures_type in ["USD_M", "COIN_M"]:
                     # First fetch from the mongodb
                     # fetch from mongodb
+                    read_time_start = time.time()
                     mongo_db = mongo_db_conn[f"{exchange_name}_fundingrate"]
                     collection = mongo_db[futures_type]
                     # get all the data
                     data = collection.find({})
                     # convert to dataframe
                     df = pd.DataFrame(data)
+                    read_time += time.time() - read_time_start
+                    api_start = time.time()
                     funding_df = exchange_adaptor.get_fundingrate(futures_type)[['symbol','funding_rate','funding_time','base_asset','quote_asset','perpetual']]
+                    api_time += time.time() - api_start
                     funding_df['datetime_now'] = datetime.datetime.utcnow()
                     if len(df) == 0:
                         # Store
@@ -603,9 +635,12 @@ class InitCore:
                         collection.insert_many(funding_dict)
                         self.logger.info(f"Collection empty. Inserting {futures_type} fundingrate to mongodb")
                     else:
+                        calculate_time_start = time.time()
                         merged_funding_df = funding_df.merge(df, on=['symbol','funding_time'], how='left')
+                        calculate_time += time.time() - calculate_time_start
                         for row_tup in merged_funding_df.iterrows():
                             row = row_tup[1]
+                            write_time_start = time.time()
                             if not pd.isna(row['_id']):
                                 # UPDATE with new funding_rate
                                 collection.update_one({'_id':row['_id']}, {'$set':{'funding_rate':row['funding_rate_x'], 'datetime_now':row['datetime_now_x']}})
@@ -617,8 +652,9 @@ class InitCore:
                                                         'base_asset': row_dict['base_asset_x'], 'quote_asset': row_dict['quote_asset_x'], 'perpetual': row_dict['perpetual_x'],
                                                         'datetime_now': row_dict['datetime_now_x']})
                                 # self.logger.info(f"{each_market_code}_fundingrate, New funding data inserted.. symbol: {row_dict['symbol']}")
+                            write_time += time.time() - write_time_start
                 # mongo_db_conn.close()
-                self.logger.info(f"update_fundingrate|{exchange_name} update_fundingrate took {time.time()-start} secs.")
+                self.logger.info(f"update_fundingrate|{exchange_name} update_fundingrate took {time.time()-start} secs, read_time: {read_time}, write_time: {write_time}, calculate_time: {calculate_time}, api_time: {api_time}")
             except Exception as e:
                 content = f"update_fundingrate|Exception occured from updating {exchange_name}'s fundingrate! Error: {e}, {traceback.format_exc()}"
                 self.logger.error(content)
@@ -631,17 +667,26 @@ class InitCore:
         error_count = 0
         while True:
             try:
+                read_time = 0
+                write_time = 0
+                calculate_time = 0
+                api_time = 0
+
                 start = time.time()
                 mongo_db_conn = self.mongo_conn
                 # First fetch from the mongodb
                 # fetch from mongodb
+                read_time_start = time.time()
                 mongo_db = mongo_db_conn["wallet_status"]
                 collection = mongo_db[f"{exchange_name}"]
                 # get all the data
                 data = collection.find({})
                 # convert to dataframe
                 df = pd.DataFrame(data)
+                read_time += time.time() - read_time_start
+                api_start = time.time()
                 wallet_status_df = exchange_adaptor.wallet_status()
+                api_time += time.time() - api_start
                 wallet_status_df['datetime_now'] = datetime.datetime.utcnow()
                 if len(df) == 0:
                     # Store
@@ -652,13 +697,15 @@ class InitCore:
                     for row_tup in wallet_status_df.iterrows():
                         row = row_tup[1]
                         # if the asset with the network_type already exist in the db, update it otherwise insert it.
+                        write_time_start = time.time()
                         if len(df[(df['asset']==row['asset'])&(df['network_type']==row['network_type'])]) == 1:
                             collection.update_one({'asset':row['asset'], 'network_type':row['network_type']}, {'$set':{k: row[k] for k in row.keys() if k not in ['asset','network_type']}})
                         else:
                             collection.insert_one(row.to_dict())
+                        write_time += time.time() - write_time_start
                 # mongo_db_conn.close()
                 error_count = 0
-                self.logger.info(f"update_wallet_status|{exchange_name} update_wallet_status took {time.time()-start} secs.")
+                self.logger.info(f"update_wallet_status|{exchange_name} update_wallet_status took {time.time()-start} secs, read_time: {read_time}, write_time: {write_time}, calculate_time: {calculate_time}, api_time: {api_time}")
             except Exception as e:
                 error_count += 1
                 if error_count >= 10:

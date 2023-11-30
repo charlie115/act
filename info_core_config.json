@@ -10,11 +10,6 @@
             "telegram_bot_name": "info_core_bot",
             "reference_node": null,
             "enabled_market_klines": [
-                "UPBIT_SPOT/KRW:BYBIT_USD_M/USDT",
-                "UPBIT_SPOT/KRW:UPBIT_SPOT/BTC",
-                "UPBIT_SPOT/KRW:OKX_SPOT/USDT",
-                "UPBIT_SPOT/KRW:OKX_USD_M/USDT",
-                "BYBIT_USD_M/USDT:OKX_USD_M/USDT"
             ]
         },
         "info_core_dev":
@@ -35,6 +30,11 @@
             "telegram_bot_name": null,
             "reference_node": "info_core",
             "enabled_market_klines": [
+                "UPBIT_SPOT/KRW:BYBIT_USD_M/USDT",
+                "UPBIT_SPOT/KRW:UPBIT_SPOT/BTC",
+                "UPBIT_SPOT/KRW:OKX_SPOT/USDT",
+                "UPBIT_SPOT/KRW:OKX_USD_M/USDT",
+                "BYBIT_USD_M/USDT:OKX_USD_M/USDT",
                 "UPBIT_SPOT/KRW:BINANCE_SPOT/USDT",
                 "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT",
                 "BITHUMB_SPOT/KRW:BINANCE_SPOT/USDT",
