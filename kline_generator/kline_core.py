@@ -209,7 +209,8 @@ class InitKlineCore:
         # Publish to redis pubsub
         # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
         # Directly insert into the DB
-        self.insert_kline_to_db(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline")
+        insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+        insert_db_thread.start()
         self.kline_logger.info(f"ohlc_day_resample_loader has started. {target_market_code}:{origin_market_code}_{resample_period}_kline, initial generating and storing resampled_ohlc_history_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
 
         datetime_now = datetime.datetime.utcnow()        
@@ -241,7 +242,8 @@ class InitKlineCore:
                     # Publish to redis pubsub
                     # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
                     # Directly insert into the DB
-                    self.insert_kline_to_db(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline")
+                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+                    insert_db_thread.start()
                     # self.kline_logger.info(f"redis saving {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}")
                     if sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique()):
                         removed_list = [x for x in resampled_ohlc_history_df['base_asset'].unique() if x not in original_ohlc_1T_now['base_asset'].unique()]
@@ -299,7 +301,8 @@ class InitKlineCore:
         # Publish to redis pubsub
         # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
         # Directly insert into the DB
-        self.insert_kline_to_db(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline")
+        insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+        insert_db_thread.start()
         self.kline_logger.info(f"ohlc_hour_resample_loader has started. {target_market_code}:{origin_market_code}_{resample_period}_kline, initial generating and storing resampled_ohlc_history_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
 
         datetime_now = datetime.datetime.utcnow()
@@ -331,7 +334,8 @@ class InitKlineCore:
                     # Publish to redis pubsub
                     # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
                     # Directly insert into the DB
-                    self.insert_kline_to_db(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline")
+                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+                    insert_db_thread.start()
                     # self.kline_logger.info(f"redis saving {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}")
                     if sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique()):
                         removed_list = [x for x in resampled_ohlc_history_df['base_asset'].unique() if x not in original_ohlc_1T_now['base_asset'].unique()]
@@ -390,7 +394,8 @@ class InitKlineCore:
         # Publish to redis pubsub
         # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
         # Directly insert into the DB
-        self.insert_kline_to_db(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline")
+        insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+        insert_db_thread.start()
         self.kline_logger.info(f"ohlc_min_resample_loader has started. {target_market_code}:{origin_market_code}_{resample_period}_kline, initial generating and storing resampled_ohlc_history_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
 
         datetime_now = datetime.datetime.utcnow()
@@ -424,7 +429,8 @@ class InitKlineCore:
                     start = time.time() # TEST
                     # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
                     # Directly insert into the DB
-                    self.insert_kline_to_db(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline")
+                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+                    insert_db_thread.start()
                     self.kline_logger.info(f"redis publishing {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}") # TEST
                     if sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique()):
                         removed_list = [x for x in resampled_ohlc_history_df['base_asset'].unique() if x not in original_ohlc_1T_now['base_asset'].unique()]
