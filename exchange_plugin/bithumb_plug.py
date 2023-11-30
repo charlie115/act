@@ -78,7 +78,7 @@ class Bithumb:
                     return row[1]
             except:
                 network_name = row[1] + " " + row[2]
-                return network_name
+                return network_name.upper()
         wallet_status_df['network_type'] = wallet_status_df.apply(lambda row:temp(row), axis=1)
         wallet_status_df = wallet_status_df.rename(columns={0:'asset', 3: 'deposit', 4: 'withdraw'})
         wallet_status_df.loc[:, 'deposit'] = wallet_status_df['deposit'].apply(lambda x: True if x == '정상' else False)

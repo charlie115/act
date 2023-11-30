@@ -36,6 +36,7 @@ class InitKlineCore:
         self.kline_proc_dict = {}
         self.pubsub = self.redis_client_db0.redis_conn.pubsub()
         self.db_client = db_client
+        self.mongo_db = self.db_client.get_conn()
         # self.enaled_market_combination_list = []
         self._start_generating_kline()
         # self.subscribe_kline_channel()
@@ -461,7 +462,8 @@ class InitKlineCore:
             converted_market_code_combination = market_code_combination.replace(':', '-').replace('/', '__')
             kline_type = market_kline_name.split('_')[-2]
             
-            mongo_client = self.db_client.get_conn()
+            # mongo_client = self.db_client.get_conn()
+            mongo_client = self.mongo_db
             db = mongo_client[converted_market_code_combination]
 
             closed_kline_df = kline_df[kline_df['closed']==True]
@@ -505,10 +507,11 @@ class InitKlineCore:
                     # TEST
                     self.kline_logger.info(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds")
                 # print(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds") # TEST
-            mongo_client.close()
+            # mongo_client.close()
         except:
             try:
-                mongo_client.close()
+                # mongo_client.close()
+                pass
             except:
                 pass
             self.kline_logger.error(f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}")

@@ -46,6 +46,7 @@ class InitCore:
         self.enabled_websocket_list = self.generate_enabled_websocket_list()
         self.enabled_markets_dict = self.generate_enabled_market_code_dict()
         self.db_client = InitDBClient(**db_dict)
+        self.mongo_conn = self.db_client.get_conn()
         # TESTTEST
         self.upbit_symbols_to_exclude = []
         self.binance_usd_m_symbols_to_exclude = []
@@ -584,7 +585,7 @@ class InitCore:
         while True:
             try:
                 start = time.time()
-                mongo_db_conn = self.db_client.get_conn()
+                mongo_db_conn = self.mongo_conn
                 for futures_type in ["USD_M", "COIN_M"]:
                     # First fetch from the mongodb
                     # fetch from mongodb
@@ -616,13 +617,9 @@ class InitCore:
                                                         'base_asset': row_dict['base_asset_x'], 'quote_asset': row_dict['quote_asset_x'], 'perpetual': row_dict['perpetual_x'],
                                                         'datetime_now': row_dict['datetime_now_x']})
                                 # self.logger.info(f"{each_market_code}_fundingrate, New funding data inserted.. symbol: {row_dict['symbol']}")
-                mongo_db_conn.close()
+                # mongo_db_conn.close()
                 self.logger.info(f"update_fundingrate|{exchange_name} update_fundingrate took {time.time()-start} secs.")
             except Exception as e:
-                try:
-                    mongo_db_conn.close()
-                except:
-                    pass
                 content = f"update_fundingrate|Exception occured from updating {exchange_name}'s fundingrate! Error: {e}, {traceback.format_exc()}"
                 self.logger.error(content)
                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', "Error occured in update_fundingrate.", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
@@ -635,7 +632,7 @@ class InitCore:
         while True:
             try:
                 start = time.time()
-                mongo_db_conn = self.db_client.get_conn()
+                mongo_db_conn = self.mongo_conn
                 # First fetch from the mongodb
                 # fetch from mongodb
                 mongo_db = mongo_db_conn["wallet_status"]
@@ -659,7 +656,7 @@ class InitCore:
                             collection.update_one({'asset':row['asset'], 'network_type':row['network_type']}, {'$set':{k: row[k] for k in row.keys() if k not in ['asset','network_type']}})
                         else:
                             collection.insert_one(row.to_dict())
-                mongo_db_conn.close()
+                # mongo_db_conn.close()
                 error_count = 0
                 self.logger.info(f"update_wallet_status|{exchange_name} update_wallet_status took {time.time()-start} secs.")
             except Exception as e:

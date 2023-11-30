@@ -490,7 +490,7 @@ class InitOkxAdaptor:
             if x.split('-')[1] in okx_wallet_status_df['name'].unique():
                 return okx_wallet_status_df[okx_wallet_status_df['name']==x.split('-')[1]]['asset'].values[0]
             else:
-                return x.split('-')[1]
+                return '-'.join(x.split('-')[1:]).upper()
         okx_wallet_status_df['network_type'] = okx_wallet_status_df['chain'].apply(lambda x: convert_full_name_to_symbol(okx_wallet_status_df, x))
         okx_wallet_status_df['network_type'] = okx_wallet_status_df['network_type'].replace('TRC20', 'TRX')
         okx_wallet_status_df['network_type'] = okx_wallet_status_df['network_type'].replace('ERC20', 'ETH')
