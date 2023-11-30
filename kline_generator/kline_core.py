@@ -41,6 +41,7 @@ class InitKlineCore:
         self._start_generating_kline()
         # subscribe_kline_channel_proc = Process(target=self.subscribe_kline_channel, daemon=True)
         # subscribe_kline_channel_proc.start()
+        self.register_enabled_market_klines()
 
     def _start_generating_kline(self):
         # Start generating kline
@@ -153,7 +154,10 @@ class InitKlineCore:
                     pickled_ohlc_df = pickle.dumps(new_ohlc_1T_kline)
                     self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
                     # Publish to redis pubsub
-                    self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
+                    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
+                    # Directly insert into the DB
+                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(new_ohlc_1T_kline, f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline"))
+                    insert_db_thread.start()
                     appended_premium_df = appended_premium_df[appended_premium_df['datetime_now'] >= adjusted_datetime_now]
                 else:
                     # Save into redis db for current data
@@ -209,7 +213,7 @@ class InitKlineCore:
         # Publish to redis pubsub
         # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
         # Directly insert into the DB
-        insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+        insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline"))
         insert_db_thread.start()
         self.kline_logger.info(f"ohlc_day_resample_loader has started. {target_market_code}:{origin_market_code}_{resample_period}_kline, initial generating and storing resampled_ohlc_history_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
 
@@ -242,7 +246,7 @@ class InitKlineCore:
                     # Publish to redis pubsub
                     # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
                     # Directly insert into the DB
-                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline"))
                     insert_db_thread.start()
                     # self.kline_logger.info(f"redis saving {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}")
                     if sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique()):
@@ -301,7 +305,7 @@ class InitKlineCore:
         # Publish to redis pubsub
         # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
         # Directly insert into the DB
-        insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+        insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline"))
         insert_db_thread.start()
         self.kline_logger.info(f"ohlc_hour_resample_loader has started. {target_market_code}:{origin_market_code}_{resample_period}_kline, initial generating and storing resampled_ohlc_history_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
 
@@ -334,7 +338,7 @@ class InitKlineCore:
                     # Publish to redis pubsub
                     # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
                     # Directly insert into the DB
-                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline"))
                     insert_db_thread.start()
                     # self.kline_logger.info(f"redis saving {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}")
                     if sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique()):
@@ -394,7 +398,7 @@ class InitKlineCore:
         # Publish to redis pubsub
         # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
         # Directly insert into the DB
-        insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+        insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline"))
         insert_db_thread.start()
         self.kline_logger.info(f"ohlc_min_resample_loader has started. {target_market_code}:{origin_market_code}_{resample_period}_kline, initial generating and storing resampled_ohlc_history_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
 
@@ -429,7 +433,7 @@ class InitKlineCore:
                     start = time.time() # TEST
                     # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
                     # Directly insert into the DB
-                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline"))
                     insert_db_thread.start()
                     self.kline_logger.info(f"redis publishing {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}") # TEST
                     if sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique()):
@@ -534,6 +538,7 @@ class InitKlineCore:
             self.kline_logger.error(f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}")
             self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"insert_kline_to_db", content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}", code=None, sent_switch=0, send_counts=1, remark=None)
 
+    # Deprecated
     def subscribe_kline_channel(self):
         self.kline_logger.info(f"subscribe_kline_channel|Subscribing to kline channels Started..")
         def message_handler(message):
@@ -579,6 +584,17 @@ class InitKlineCore:
         # Thread(target=keep_alive_check, daemon=True).start()
         keep_alive_check()
 
+    def register_enabled_market_klines(self):
+        self.kline_logger.info(f"register_enabled_market_klines|Registering enabled market klines:{register_enabled_market_klines_to_redis} to redis Started..")
+        def register_enabled_market_klines_to_redis():
+            while True:
+                try:
+                    for each_enabled_market_klines in self.enabled_market_klines:
+                        self.redis_client_db0.redis_conn.set(f"INFO_CORE|{each_enabled_market_klines}", datetime.datetime.utcnow().timestamp(), ex=35)
+                except Exception as e:
+                    self.kline_logger.error(f"register_enabled_market_klines|Error in register_enabled_market_klines_to_redis: {traceback.format_exc()}")
+                time.sleep(30)
+        Thread(target=register_enabled_market_klines_to_redis, daemon=True).start()
     def unsubscribe_kline_channel(self):
         self.pubsub.unsubscribe() 
 
