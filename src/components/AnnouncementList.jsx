@@ -183,7 +183,6 @@ export default function AnnouncementList({ filters, timezone, onUnreadData }) {
           'Airdrop',
         ].map((category) => (
           <Chip
-            // clickable
             key={category}
             size="small"
             label={CATEGORIES[category].label}

@@ -24,14 +24,6 @@ const api = drfApi.injectEndpoints({
         url: '/infocore/funding-rate/',
         params,
       }),
-      transformResponse: (response) =>
-        response?.reduce(
-          (acc, value) => ({
-            ...acc,
-            [value.base_asset]: { ...value },
-          }),
-          {}
-        ),
     }),
     getHistoricalKline: builder.query({
       keepUnusedDataFor: 5,
@@ -43,6 +35,13 @@ const api = drfApi.injectEndpoints({
     getMarketCodes: builder.query({
       keepUnusedDataFor: 5,
       query: () => '/infocore/market-codes/',
+    }),
+    getWalletStatus: builder.query({
+      keepUnusedDataFor: 0,
+      query: (params) => ({
+        url: '/infocore/wallet-status/',
+        params,
+      }),
     }),
     postAsset: builder.mutation({
       query: (body) => ({
@@ -61,5 +60,6 @@ export const {
   useGetFundingRateQuery,
   useGetHistoricalKlineQuery,
   useGetMarketCodesQuery,
+  useGetWalletStatusQuery,
   usePostAssetMutation,
 } = api;

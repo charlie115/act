@@ -197,6 +197,7 @@ function ReactTable({
                         sx={{ mx: 1 }}
                         width={
                           index > 0 &&
+                          index !== 2 &&
                           index < table.getVisibleFlatColumns().length - 1
                             ? item
                             : 0

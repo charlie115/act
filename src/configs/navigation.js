@@ -5,7 +5,7 @@ import i18n from 'configs/i18n';
 const Account = lazy(() => import('pages/Account'));
 const Arbitrage = lazy(() => import('pages/Arbitrage'));
 const Home = lazy(() => import('pages/Home'));
-const Investment = lazy(() => import('pages/Investment'));
+// const Investment = lazy(() => import('pages/Investment'));
 const Login = lazy(() => import('pages/Login'));
 const News = lazy(() => import('pages/News'));
 const Register = lazy(() => import('pages/Register'));
@@ -29,14 +29,14 @@ const main = [
     getTitle: () => i18n.t('Arbitrage'),
     ref: createRef(),
   },
-  {
-    name: 'investment',
-    path: '/investment',
-    element: Investment,
-    displayChat: true,
-    getTitle: () => i18n.t('Investment'),
-    ref: createRef(),
-  },
+  // {
+  //   name: 'investment',
+  //   path: '/investment',
+  //   element: Investment,
+  //   displayChat: true,
+  //   getTitle: () => i18n.t('Investment'),
+  //   ref: createRef(),
+  // },
   {
     name: 'news',
     path: '/news',

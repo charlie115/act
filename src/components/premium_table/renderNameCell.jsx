@@ -25,30 +25,28 @@ export default function renderNameCell({
 
   return (
     <>
-      <Stack
-        direction="row"
-        spacing={{ xs: 0.5, sm: 1 }}
-        sx={{ alignItems: 'center' }}
-      >
-        <Box>
-          {row.original.icon ? (
-            <img
-              loading="lazy"
-              width={isMobile ? '10' : '15'}
-              src={row.original.icon}
-              alt={row.original.name}
+      <Box>
+        <Stack alignItems="center" direction="row" spacing={{ xs: 0.5, sm: 1 }}>
+          <Box>
+            {row.original.icon ? (
+              <img
+                loading="lazy"
+                width={isMobile ? '10' : '15'}
+                src={row.original.icon}
+                alt={row.original.name}
+              />
+            ) : (
+              <BlockIcon color="secondary" sx={{ fontSize: 12 }} />
+            )}
+          </Box>
+          <Box sx={{ fontSize: { xs: 11, sm: 12 } }}>
+            <Highlighter
+              searchWords={[searchWord]}
+              textToHighlight={cell.getValue()}
             />
-          ) : (
-            <BlockIcon color="secondary" sx={{ fontSize: 12 }} />
-          )}
-        </Box>
-        <Box sx={{ fontSize: { xs: 11, sm: 12 } }}>
-          <Highlighter
-            searchWords={[searchWord]}
-            textToHighlight={cell.getValue()}
-          />
-        </Box>
-      </Stack>
+          </Box>
+        </Stack>
+      </Box>
       {isMobile && (
         <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }}>
           <Box>

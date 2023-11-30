@@ -45,16 +45,17 @@ import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
 import formatIntlNumber from 'utils/formatIntlNumber';
 import formatShortNumber from 'utils/formatShortNumber';
 
+import ExchangeWalletNetworks from 'components/ExchangeWalletNetworks';
 import IntervalSelector from 'components/IntervalSelector';
 import KlineDataSelector from 'components/KlineDataSelector';
 
 import { DATE_FORMAT_API_QUERY } from 'constants';
-import { INTERVAL_LIST } from 'constants/lists';
+import { INTERVAL_LIST, MARKET_CODE_LIST } from 'constants/lists';
 
 const CHART_HEIGHT = 250;
 
 function LightWeightKlineChart({
-  baseAsset,
+  baseAssetData,
   marketCodes,
   isKimpExchange,
   isTetherPriceView,
@@ -63,6 +64,13 @@ function LightWeightKlineChart({
   queryKey,
 }) {
   const navigate = useNavigate();
+
+  const {
+    name: baseAsset,
+    favoriteAssetId,
+    walletNetworks,
+    walletStatus,
+  } = baseAssetData;
 
   const { loggedin, user } = useSelector((state) => state.auth);
   const { timezone } = useSelector((state) => state.app);
@@ -117,8 +125,8 @@ function LightWeightKlineChart({
   } = useGetHistoricalKlineQuery(
     {
       ...marketCodes,
+      baseAsset,
       interval: klineInterval,
-      baseAsset: baseAsset?.name,
       tz: timezone,
     },
     { skip: !marketCodes }
@@ -130,10 +138,10 @@ function LightWeightKlineChart({
   } = useGetHistoricalKlineQuery(
     {
       ...marketCodes,
+      baseAsset,
       startTime,
       endTime,
       interval: klineInterval,
-      baseAsset: baseAsset?.name,
       tz: timezone,
     },
     {
@@ -146,7 +154,7 @@ function LightWeightKlineChart({
   );
 
   const chartRealTimeData = useMemo(() => {
-    const value = data?.[baseAsset.name];
+    const value = data?.[baseAsset];
     if (!value || !klineDataType) return null;
 
     const time = value.datetime_now;
@@ -171,7 +179,7 @@ function LightWeightKlineChart({
       candlestick: { time, open, high, low, close },
       line: value.tp !== null ? { time, value: value.tp } : undefined,
     };
-  }, [data?.[baseAsset.name], isTetherPriceView, klineDataType]);
+  }, [data?.[baseAsset], isTetherPriceView, klineDataType]);
 
   const chartHistoricalData = useMemo(() => {
     const candlestick = [];
@@ -201,6 +209,18 @@ function LightWeightKlineChart({
     });
     return { candlestick, line };
   }, [currentData, isTetherPriceView, klineDataType]);
+
+  const { targetMarketCode, originMarketCode } = useMemo(
+    () => ({
+      targetMarketCode: MARKET_CODE_LIST.find(
+        (o) => o.value === marketCodes?.targetMarketCode
+      ),
+      originMarketCode: MARKET_CODE_LIST.find(
+        (o) => o.value === marketCodes?.originMarketCode
+      ),
+    }),
+    [marketCodes]
+  );
 
   const onVisibleLogicalRangeChange = (newVisibleLogicalRange) => {
     const newBarsInfo = candlestickSeriesRef.current.barsInLogicalRange(
@@ -327,8 +347,8 @@ function LightWeightKlineChart({
 
   useEffect(() => {
     if (!klineDataType) {
-      if (data?.[baseAsset.name]) {
-        const { tp } = data[baseAsset.name];
+      if (data?.[baseAsset]) {
+        const { tp } = data[baseAsset];
         if (tp && !isNaN(tp)) setKlineDataType('tp');
         else {
           setKlineDataType('LS');
@@ -336,7 +356,7 @@ function LightWeightKlineChart({
         }
       }
     }
-  }, [data?.[baseAsset.name], klineDataType]);
+  }, [data?.[baseAsset], klineDataType]);
 
   useEffect(() => {
     setLoadedHistoricalData((state) => [...(historicalData || []), ...state]);
@@ -419,13 +439,13 @@ function LightWeightKlineChart({
     }
   }, [chartRealTimeData, isFetchingHistoricalData, isFetchingInitialData]);
 
-  const prevTimestamp = usePrevious(data?.[baseAsset.name]?.datetime_now);
+  const prevTimestamp = usePrevious(data?.[baseAsset]?.datetime_now);
   useEffect(() => {
     if (
       isAuthorized &&
       !isUninitializedInitialData &&
       prevTimestamp &&
-      prevTimestamp !== data?.[baseAsset.name]?.datetime_now
+      prevTimestamp !== data?.[baseAsset]?.datetime_now
     )
       refetchTimeoutRef.current = setTimeout(() => {
         try {
@@ -437,7 +457,7 @@ function LightWeightKlineChart({
   }, [
     isAuthorized,
     isUninitializedInitialData,
-    data?.[baseAsset.name]?.datetime_now,
+    data?.[baseAsset]?.datetime_now,
   ]);
 
   useEffect(() => {
@@ -446,7 +466,7 @@ function LightWeightKlineChart({
 
   useEffect(() => {
     const value = marketCodes?.targetMarketCode;
-    setTitle(`${baseAsset.name} / ${value?.split('/').pop()}`);
+    setTitle(`${baseAsset} / ${value?.split('/').pop()}`);
     if (marketCodes) setKlineInterval('1T');
   }, [marketCodes]);
 
@@ -494,9 +514,7 @@ function LightWeightKlineChart({
     });
   }, [isMobile, isTetherPriceView, i18n.language]);
 
-  const isFavorite = !isUndefined(baseAsset.favoriteAssetId);
-
-  // if (!klineDataType) return null;
+  const isFavorite = !isUndefined(favoriteAssetId);
 
   return (
     <Card
@@ -505,6 +523,35 @@ function LightWeightKlineChart({
       sx={{ borderRadius: 0 }}
     >
       <Box sx={{ bgcolor: 'background.paper' }}>
+        {(targetMarketCode.value.includes('SPOT') ||
+          originMarketCode.value.includes('SPOT')) && (
+          <Box sx={{ p: 2 }}>
+            <ExchangeWalletNetworks
+              direction={
+                targetMarketCode.value.includes('SPOT') &&
+                originMarketCode.value.includes('SPOT') &&
+                targetMarketCode.exchange !== originMarketCode.exchange
+                  ? 'right'
+                  : 'all'
+              }
+              targetMarketCode={targetMarketCode}
+              originMarketCode={originMarketCode}
+              walletNetworks={walletNetworks}
+              walletStatus={walletStatus}
+            />
+            {targetMarketCode.value.includes('SPOT') &&
+              originMarketCode.value.includes('SPOT') &&
+              targetMarketCode.exchange !== originMarketCode.exchange && (
+                <ExchangeWalletNetworks
+                  direction="left"
+                  targetMarketCode={targetMarketCode}
+                  originMarketCode={originMarketCode}
+                  walletNetworks={walletNetworks}
+                  walletStatus={walletStatus}
+                />
+              )}
+          </Box>
+        )}
         <Grid container sx={{ p: 1 }}>
           <Grid
             item
@@ -521,9 +568,8 @@ function LightWeightKlineChart({
                 color={isFavorite ? 'accent' : 'secondary'}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (isFavorite)
-                    onRemoveFavoriteAsset(baseAsset.favoriteAssetId);
-                  else onAddFavoriteAsset(baseAsset.name);
+                  if (isFavorite) onRemoveFavoriteAsset(favoriteAssetId);
+                  else onAddFavoriteAsset(baseAsset);
                 }}
                 sx={{
                   '& :hover': {

@@ -8,6 +8,8 @@ import React, {
 
 import Box from '@mui/material/Box';
 
+import WalletIcon from '@mui/icons-material/Wallet';
+
 import { useDispatch, useSelector } from 'react-redux';
 
 import {
@@ -17,6 +19,7 @@ import {
 import {
   useGetAssetsQuery,
   useGetFundingRateQuery,
+  useGetWalletStatusQuery,
   usePostAssetMutation,
 } from 'redux/api/drf/infocore';
 import {
@@ -32,11 +35,16 @@ import { usePrevious, useVisibilityChange } from '@uidotdev/usehooks';
 
 import { DateTime } from 'luxon';
 
+import concat from 'lodash/concat';
+import intersection from 'lodash/intersection';
 import isEqual from 'lodash/isEqual';
 import isUndefined from 'lodash/isUndefined';
 import orderBy from 'lodash/orderBy';
+import union from 'lodash/union';
 
 import LightWeightKlineChart from 'components/charts/LightWeightKlineChart';
+
+import { REGEX } from 'constants';
 
 import ReactTable from './ReactTable';
 
@@ -50,6 +58,7 @@ import renderPriceCell from './renderPriceCell';
 import renderSpreadCell from './renderSpreadCell';
 import renderStarCell from './renderStarCell';
 import renderVolumeCell from './renderVolumeCell';
+import renderWalletStatusCell from './renderWalletStatusCell';
 
 export default function PremiumTable({
   marketCodes,
@@ -70,8 +79,8 @@ export default function PremiumTable({
   const [ready, setReady] = useState(false);
 
   const [assets, setAssets] = useState([]);
-  const [fundingRateAssets, setFundingRateAssets] = useState();
-  const [fundingRateMarketCodes, setFundingRateMarketCodes] = useState();
+  const [assetsParam, setAssetsParam] = useState();
+  const [marketCodesParam, setMarketCodesParam] = useState();
 
   const localFavoriteAssets = useSelector(
     (state) =>
@@ -107,33 +116,48 @@ export default function PremiumTable({
 
   const { data: targetFundingRate } = useGetFundingRateQuery(
     {
-      baseAsset: fundingRateAssets,
-      marketCode: fundingRateMarketCodes?.targetMarketCode,
+      baseAsset: assetsParam,
+      marketCode: marketCodesParam?.targetMarketCode,
     },
     {
       pollingInterval: 1000 * 60,
       skip:
         !ready ||
-        !fundingRateAssets ||
-        !fundingRateMarketCodes ||
-        fundingRateMarketCodes?.targetMarketCode.includes('SPOT'),
+        !assetsParam ||
+        !marketCodesParam ||
+        marketCodesParam?.targetMarketCode.includes('SPOT'),
     }
   );
   const { data: originFundingRate } = useGetFundingRateQuery(
     {
-      baseAsset: fundingRateAssets,
-      marketCode: fundingRateMarketCodes?.originMarketCode,
+      baseAsset: assetsParam,
+      marketCode: marketCodesParam?.originMarketCode,
     },
     {
       pollingInterval: 1000 * 60,
       skip:
         !ready ||
-        !fundingRateAssets ||
-        !fundingRateMarketCodes ||
-        fundingRateMarketCodes?.originMarketCode.includes('SPOT'),
+        !assetsParam ||
+        !marketCodesParam ||
+        marketCodesParam?.originMarketCode.includes('SPOT'),
     }
   );
 
+  const { data: walletStatus, isLoading: isWalletStatusLoading } =
+    useGetWalletStatusQuery(
+      { baseAsset: assetsParam, ...marketCodesParam },
+      {
+        pollingInterval: 1000 * 60,
+        skip:
+          !ready ||
+          !assetsParam ||
+          !marketCodesParam ||
+          !(
+            marketCodesParam?.targetMarketCode.includes('SPOT') ||
+            marketCodesParam?.originMarketCode.includes('SPOT')
+          ),
+      }
+    );
   const [createFavoriteAsset, createFavoriteRes] =
     useCreateFavoriteAssetMutation();
   const [deleteFavoriteAsset, deleteFavoriteRes] =
@@ -169,10 +193,23 @@ export default function PremiumTable({
       {
         accessorKey: 'name',
         enableGlobalFilter: true,
-        size: isMobile ? 40 : 50,
+        size: isMobile ? 40 : 45,
         header: t('Name'),
         cell: renderNameCell,
       },
+      ...(marketCodes?.targetMarketCode.includes('SPOT') ||
+      marketCodes?.originMarketCode.includes('SPOT')
+        ? [
+            {
+              accessorKey: 'walletStatus',
+              enableGlobalFilter: false,
+              enableSorting: false,
+              size: 25,
+              header: <WalletIcon fontSize="small" />,
+              cell: isWalletStatusLoading ? '...' : renderWalletStatusCell,
+            },
+          ]
+        : []),
       {
         accessorKey: 'tp',
         enableGlobalFilter: false,
@@ -246,7 +283,14 @@ export default function PremiumTable({
         header: <span />,
       },
     ],
-    [i18n.language, loggedin, marketCodes, isTetherPriceView, isMobile]
+    [
+      i18n.language,
+      loggedin,
+      marketCodes,
+      isTetherPriceView,
+      isWalletStatusLoading,
+      isMobile,
+    ]
   );
 
   const data = useMemo(
@@ -260,8 +304,34 @@ export default function PremiumTable({
             const index = localFavoriteAssets?.indexOf(name);
             favoriteAssetId = index < 0 ? undefined : index;
           }
-          const targetFR = targetFundingRate?.[name];
-          const originFR = originFundingRate?.[name];
+          const targetFR = targetFundingRate?.[name]?.[0];
+          const originFR = originFundingRate?.[name]?.[0];
+
+          const target = marketCodes?.targetMarketCode.replace(
+            REGEX.spotMarketSuffix,
+            ''
+          );
+          const origin = marketCodes?.originMarketCode.replace(
+            REGEX.spotMarketSuffix,
+            ''
+          );
+          const walletStatusSummary = {
+            right: intersection(
+              walletStatus?.[name]?.[target]?.withdraw,
+              walletStatus?.[name]?.[origin]?.deposit
+            ),
+            left: intersection(
+              walletStatus?.[name]?.[target]?.deposit,
+              walletStatus?.[name]?.[origin]?.withdraw
+            ),
+            all: union(
+              walletStatus?.[name]?.[target]?.deposit,
+              walletStatus?.[name]?.[target]?.withdraw,
+              walletStatus?.[name]?.[origin]?.deposit,
+              walletStatus?.[name]?.[origin]?.withdraw
+            ),
+          };
+
           return {
             name,
             favoriteAssetId,
@@ -280,6 +350,8 @@ export default function PremiumTable({
                 }
               : {}),
             ...asset,
+            walletStatus: walletStatusSummary,
+            walletNetworks: walletStatus?.[name],
             chart: true,
           };
         }) ?? [],
@@ -287,9 +359,11 @@ export default function PremiumTable({
         'desc'
       ),
     [
+      marketCodes,
       realTimeDataList,
       targetFundingRate,
       originFundingRate,
+      walletStatus,
       assetsData,
       favoriteAssets,
       localFavoriteAssets,
@@ -320,12 +394,12 @@ export default function PremiumTable({
   }, [isSuccess, realTimeDataList]);
 
   useEffect(() => {
-    if (!isEqual(prevAssets, assets)) setFundingRateAssets(assets.join(','));
+    if (!isEqual(prevAssets, assets)) setAssetsParam(assets.join(','));
   }, [assets]);
 
   useEffect(() => {
-    setFundingRateAssets();
-    setFundingRateMarketCodes(marketCodes);
+    setAssetsParam();
+    setMarketCodesParam(marketCodes);
   }, [marketCodes]);
 
   useEffect(() => {
@@ -360,7 +434,7 @@ export default function PremiumTable({
   const renderSubComponent = useCallback(
     ({ row, contextData }) => (
       <Box>
-        <LightWeightKlineChart baseAsset={row.original} {...contextData} />
+        <LightWeightKlineChart baseAssetData={row.original} {...contextData} />
       </Box>
     ),
     []

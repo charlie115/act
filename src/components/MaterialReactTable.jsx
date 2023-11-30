@@ -4,9 +4,9 @@ import React, { useMemo, useRef } from 'react';
 
 import {
   MaterialReactTable,
+  MRT_FullScreenToggleButton,
   MRT_ShowHideColumnsButton,
   MRT_ToggleDensePaddingButton,
-  MRT_ToggleFullScreenButton,
 } from 'material-react-table';
 import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -106,7 +106,7 @@ export default function MRTable({
           <>
             <MRT_ShowHideColumnsButton table={table} />
             <MRT_ToggleDensePaddingButton table={table} />
-            <MRT_ToggleFullScreenButton table={table} />
+            <MRT_FullScreenToggleButton table={table} />
           </>
         )}
         {...tableProps}
