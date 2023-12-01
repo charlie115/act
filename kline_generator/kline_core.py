@@ -38,10 +38,10 @@ class InitKlineCore:
         self.db_client = db_client
         self.mongo_db = self.db_client.get_conn()
         # self.enaled_market_combination_list = []
+        self.register_enabled_market_klines()
         self._start_generating_kline()
         # subscribe_kline_channel_proc = Process(target=self.subscribe_kline_channel, daemon=True)
         # subscribe_kline_channel_proc.start()
-        self.register_enabled_market_klines()
 
     def _start_generating_kline(self):
         # Start generating kline
@@ -585,12 +585,12 @@ class InitKlineCore:
         keep_alive_check()
 
     def register_enabled_market_klines(self):
-        self.kline_logger.info(f"register_enabled_market_klines|Registering enabled market klines:{register_enabled_market_klines_to_redis} to redis Started..")
+        self.kline_logger.info(f"register_enabled_market_klines|Registering enabled market klines:{self.enabled_market_klines} to redis Started..")
         def register_enabled_market_klines_to_redis():
             while True:
                 try:
                     for each_enabled_market_klines in self.enabled_market_klines:
-                        self.redis_client_db0.redis_conn.set(f"INFO_CORE|{each_enabled_market_klines}", datetime.datetime.utcnow().timestamp(), ex=35)
+                        self.redis_client_db0.redis_conn.set(f"INFO_CORE|ACTIVATED|{each_enabled_market_klines}", datetime.datetime.utcnow().timestamp(), ex=35)
                 except Exception as e:
                     self.kline_logger.error(f"register_enabled_market_klines|Error in register_enabled_market_klines_to_redis: {traceback.format_exc()}")
                 time.sleep(30)
