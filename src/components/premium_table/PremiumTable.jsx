@@ -7,8 +7,14 @@ import React, {
 } from 'react';
 
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import WalletIcon from '@mui/icons-material/Wallet';
+
+import { useTheme } from '@mui/material/styles';
 
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -35,7 +41,6 @@ import { usePrevious, useVisibilityChange } from '@uidotdev/usehooks';
 
 import { DateTime } from 'luxon';
 
-import concat from 'lodash/concat';
 import intersection from 'lodash/intersection';
 import isEqual from 'lodash/isEqual';
 import isUndefined from 'lodash/isUndefined';
@@ -43,10 +48,9 @@ import orderBy from 'lodash/orderBy';
 import union from 'lodash/union';
 
 import LightWeightKlineChart from 'components/charts/LightWeightKlineChart';
+import ReactTableUI from 'components/ReactTableUI';
 
 import { REGEX } from 'constants';
-
-import ReactTable from './ReactTable';
 
 import renderFundingRateHeader from './renderFundingRateHeader';
 
@@ -60,7 +64,9 @@ import renderStarCell from './renderStarCell';
 import renderVolumeCell from './renderVolumeCell';
 import renderWalletStatusCell from './renderWalletStatusCell';
 
-export default function PremiumTable({
+const DEFAULT_PAGE_SIZE = 50;
+
+function PremiumTable({
   marketCodes,
   searchKeyword,
   loggedin,
@@ -70,6 +76,8 @@ export default function PremiumTable({
 }) {
   const dispatch = useDispatch();
   const { i18n, t } = useTranslation();
+
+  const theme = useTheme();
 
   const timeoutRef = useRef();
 
@@ -431,34 +439,138 @@ export default function PremiumTable({
     if (createFavoriteRes?.isSuccess) window.scrollTo(0, 0);
   }, [createFavoriteRes?.isSuccess]);
 
+  const [columnVisibility, setColumnVisibility] = useState({});
+  const [expanded, setExpanded] = useState({});
+  const [globalFilter, setGlobalFilter] = React.useState('');
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+
+  const sortWithStarred = useCallback((rowA, rowB, columnId) => {
+    if (
+      !isUndefined(rowA.original.favoriteAssetId) &&
+      isUndefined(rowB.original.favoriteAssetId)
+    )
+      return -1;
+    if (
+      !isUndefined(rowB.original.favoriteAssetId) &&
+      isUndefined(rowA.original.favoriteAssetId)
+    )
+      return 0;
+    if (rowA.original[columnId] > rowB.original[columnId]) return 1;
+    if (rowA.original[columnId] < rowB.original[columnId]) return -1;
+    return 0;
+  }, []);
+
   const renderSubComponent = useCallback(
-    ({ row, contextData }) => (
+    ({ row, extraData }) => (
       <Box>
-        <LightWeightKlineChart baseAssetData={row.original} {...contextData} />
+        <LightWeightKlineChart baseAssetData={row.original} {...extraData} />
       </Box>
     ),
     []
   );
 
+  useEffect(() => {
+    setGlobalFilter(searchKeyword);
+  }, [searchKeyword]);
+
+  useEffect(() => {
+    setColumnVisibility({
+      chart: !isMobile,
+      spread: !isMobile,
+      favoriteAssetId: !isMobile,
+    });
+  }, [isMobile]);
+
+  const tableRef = useRef();
+  const rows = tableRef.current?.getRowModel().rows;
+
   return (
-    <ReactTable
-      key={`${marketCodes?.targetMarketCode}-${marketCodes?.originMarketCode}`}
-      columns={columns}
-      data={data}
-      isLoading={!ready}
-      showProgressBar={
-        isLoading || createFavoriteRes.isLoading || deleteFavoriteRes.isLoading
-      }
-      contextData={{
-        marketCodes,
-        queryKey,
-        isKimpExchange,
-        isTetherPriceView,
-        handleAddFavoriteAsset,
-        handleRemoveFavoriteAsset,
-      }}
-      searchKeyword={searchKeyword}
-      renderSubComponent={renderSubComponent}
-    />
+    <Box sx={{ boxShadow: 2 }}>
+      <ReactTableUI
+        ref={tableRef}
+        columns={columns}
+        data={data}
+        extraData={{
+          marketCodes,
+          queryKey,
+          isKimpExchange,
+          isTetherPriceView,
+          handleAddFavoriteAsset,
+          handleRemoveFavoriteAsset,
+        }}
+        options={{
+          getRowId: (row) => row.name,
+          defaultColumn: { sortingFn: sortWithStarred },
+          state: {
+            columnVisibility,
+            expanded,
+            globalFilter,
+            pagination,
+          },
+
+          onExpandedChange: (newExpanded) => setExpanded(newExpanded()),
+          onPaginationChange: setPagination,
+        }}
+        renderSubComponent={renderSubComponent}
+        getCellProps={() => ({ sx: { height: 50 } })}
+        getRowProps={(row) => ({
+          onClick: () => row.toggleExpanded(!row.getIsExpanded()),
+          sx: {
+            cursor: 'pointer',
+            ...(row.getIsExpanded()
+              ? { bgcolor: theme.palette.background.paper }
+              : {}),
+          },
+        })}
+        showProgressBar={
+          isLoading ||
+          createFavoriteRes.isLoading ||
+          deleteFavoriteRes.isLoading
+        }
+        isLoading={!ready}
+      />
+      {ready && (
+        <Box sx={{ textAlign: 'center' }}>
+          {rows?.length >= DEFAULT_PAGE_SIZE && (
+            <Button
+              color={
+                tableRef.current?.getCanNextPage() ? 'primary' : 'secondary'
+              }
+              endIcon={
+                tableRef.current?.getCanNextPage() ? (
+                  <ExpandMoreIcon />
+                ) : (
+                  <ExpandLessIcon />
+                )
+              }
+              onClick={() => {
+                tableRef.current?.setPageSize(
+                  tableRef.current?.getCanNextPage()
+                    ? pagination.pageSize + DEFAULT_PAGE_SIZE
+                    : DEFAULT_PAGE_SIZE
+                );
+                if (!tableRef.current?.getCanNextPage()) window.scrollTo(0, 0);
+              }}
+              sx={{
+                fontSize: '0.85rem',
+                fontStyle: 'italic',
+                letterSpacing: '0.085em',
+                textTransform: 'none',
+                ':hover': { backgroundColor: 'unset' },
+              }}
+            >
+              {tableRef.current?.getCanNextPage()
+                ? t('See more')
+                : t('See less')}
+            </Button>
+          )}
+        </Box>
+      )}
+    </Box>
   );
 }
+
+export default React.memo(PremiumTable);

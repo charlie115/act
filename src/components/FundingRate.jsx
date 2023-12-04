@@ -4,13 +4,12 @@ import Box from '@mui/material/Box';
 
 import { DateTime } from 'luxon';
 
-import formatIntlNumber from 'utils/formatIntlNumber';
-
 import Countdown from 'react-countdown';
 
+import formatIntlNumber from 'utils/formatIntlNumber';
 import i18n from 'configs/i18n';
 
-function FundingRate({ diff, fundingRate, value, isMobile }) {
+function FundingRate({ diff, fundingTime, value, decimal = 3, isMobile }) {
   return (
     <>
       <Box
@@ -20,12 +19,12 @@ function FundingRate({ diff, fundingRate, value, isMobile }) {
           fontSize: { xs: 11, sm: 12 },
         }}
       >
-        {formatIntlNumber(value, 3, 1)} <small>%</small>
+        {formatIntlNumber(value, decimal, 1)} <small>%</small>
       </Box>
       {diff && (
         <Box sx={{ color: 'secondary.main', fontStyle: 'italic' }}>
           <Countdown
-            date={DateTime.fromISO(fundingRate.funding_time).toJSDate()}
+            date={DateTime.fromISO(fundingTime).toJSDate()}
             renderer={({ hours, minutes, seconds }) => (
               <Box component="small">
                 {isMobile

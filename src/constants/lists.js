@@ -6,6 +6,34 @@ import BybitSvg from 'assets/svg/bybit.svg';
 import OkxSvg from 'assets/svg/okx.svg';
 import UPbitSvg from 'assets/svg/upbit.svg';
 
+export const EXCHANGE_LIST = [
+  {
+    getLabel: () => i18n.t('UPbit'),
+    value: 'UPBIT',
+    icon: UPbitSvg,
+  },
+  {
+    getLabel: () => i18n.t('Bithumb'),
+    value: 'BITHUMB',
+    icon: BithumbSvg,
+  },
+  {
+    getLabel: () => i18n.t('Binance'),
+    value: 'BINANCE',
+    icon: BinanceSvg,
+  },
+  {
+    getLabel: () => i18n.t('Bybit'),
+    value: 'BYBIT',
+    icon: BybitSvg,
+  },
+  {
+    getLabel: () => i18n.t('OKX'),
+    value: 'OKX',
+    icon: OkxSvg,
+  },
+];
+
 export const KLINE_DATA_TYPE = [
   {
     getKimpLabel: () => i18n.t('KIMP'),

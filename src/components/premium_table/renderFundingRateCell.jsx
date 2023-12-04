@@ -31,11 +31,7 @@ export default function renderFundingRateCell({ cell, column, row, isMobile }) {
     <FundingRate
       diff={diff}
       value={value}
-      fundingRate={
-        column.id === 'targetFundingRate'
-          ? row.original.targetFR
-          : row.original.originFR
-      }
+      fundingTime={fundingRate?.funding_time}
       isMobile={isMobile}
     />
   );

@@ -25,6 +25,13 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    getFundingRateDiff: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/infocore/funding-rate/diff/',
+        params,
+      }),
+    }),
     getHistoricalKline: builder.query({
       keepUnusedDataFor: 5,
       query: (params) => ({
@@ -58,6 +65,7 @@ export default api;
 export const {
   useGetAssetsQuery,
   useGetFundingRateQuery,
+  useGetFundingRateDiffQuery,
   useGetHistoricalKlineQuery,
   useGetMarketCodesQuery,
   useGetWalletStatusQuery,

@@ -19,38 +19,24 @@ import { DateTime } from 'luxon';
 
 import { useWindowScroll } from '@uidotdev/usehooks';
 
+import a11yProps from 'utils/a11yProps';
+
 import AnnouncementList from 'components/AnnouncementList';
 import CollapsibleSearch from 'components/CollapsibleSearch';
 import DateRangePicker from 'components/DateRangePicker';
 import NewsList from 'components/NewsList';
 import SocMedPostList from 'components/SocMedPostList';
+import StyledTab from 'components/StyledTab';
+import StyledTabs from 'components/StyledTabs';
 import TabPanel from 'components/TabPanel';
 
 import { DATE_FORMAT_API_QUERY } from 'constants';
 
-const StyledTab = styled(Tab)(({ theme }) => ({
-  color: theme.palette.text.main,
-  opacity: 0.7,
-  textTransform: 'none',
-  '&.Mui-selected': {
-    color: theme.palette.text.main,
-    fontWeight: 700,
-    opacity: 1,
-  },
-}));
-
-const NEWS_TYPE = {
+const NEWS_TAB = {
   allNews: 0,
   socialMedia: 1,
   announcements: 2,
 };
-
-function a11yProps(id) {
-  return {
-    id: `news-tab-${id}`,
-    'aria-controls': `news-tabpanel-${id}`,
-  };
-}
 
 export default function News() {
   const theme = useTheme();
@@ -61,7 +47,7 @@ export default function News() {
 
   const { timezone } = useSelector((state) => state.app);
 
-  const [currentTab, setCurrentTab] = useState(NEWS_TYPE.allNews);
+  const [currentTab, setCurrentTab] = useState(NEWS_TAB.allNews);
 
   const [search, setSearch] = useState([]);
 
@@ -78,13 +64,13 @@ export default function News() {
     scrollTo({ left: 0, top: 0, behavior: 'smooth' });
     setUnreadMessage();
     switch (currentTab) {
-      case NEWS_TYPE.allNews:
+      case NEWS_TAB.allNews:
         setNewsBadge(false);
         break;
-      case NEWS_TYPE.socialMedia:
+      case NEWS_TAB.socialMedia:
         setSocialMediaBadge(false);
         break;
-      case NEWS_TYPE.announcements:
+      case NEWS_TAB.announcements:
         setAnnouncementsBadge(false);
         break;
       default:
@@ -127,13 +113,10 @@ export default function News() {
           mb: 3,
         }}
       >
-        <Tabs
+        <StyledTabs
           aria-label="news-tabs"
           value={currentTab}
           onChange={(e, newValue) => setCurrentTab(newValue)}
-          sx={{
-            '& .MuiTabs-indicator': { bgcolor: 'text.main', height: '1px' },
-          }}
         >
           <StyledTab
             label={
@@ -141,8 +124,8 @@ export default function News() {
                 {t('All News')}
               </Badge>
             }
-            value={NEWS_TYPE.allNews}
-            {...a11yProps(NEWS_TYPE.allNews)}
+            value={NEWS_TAB.allNews}
+            {...a11yProps({ name: 'news', id: NEWS_TAB.allNews })}
           />
           <StyledTab
             label={
@@ -150,8 +133,8 @@ export default function News() {
                 {t('Social Media')}
               </Badge>
             }
-            value={NEWS_TYPE.socialMedia}
-            {...a11yProps(NEWS_TYPE.socialMedia)}
+            value={NEWS_TAB.socialMedia}
+            {...a11yProps({ name: 'news', id: NEWS_TAB.socialMedia })}
           />
           <StyledTab
             label={
@@ -163,10 +146,10 @@ export default function News() {
                 {t('Exchange Notice')}
               </Badge>
             }
-            value={NEWS_TYPE.announcements}
-            {...a11yProps(NEWS_TYPE.announcements)}
+            value={NEWS_TAB.announcements}
+            {...a11yProps({ name: 'news', id: NEWS_TAB.announcements })}
           />
-        </Tabs>
+        </StyledTabs>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', px: 1 }}>
           <Box sx={{ p: 1 }}>
             <DateRangePicker
@@ -201,16 +184,16 @@ export default function News() {
         onChangeIndex={(newIndex) => setCurrentTab(newIndex)}
       >
         <TabPanel
-          index={NEWS_TYPE.allNews}
+          index={NEWS_TAB.allNews}
           dir={theme.direction}
           value={currentTab}
         >
           <NewsList
             filters={{ search, startTime, endTime }}
             timezone={timezone}
-            isActive={currentTab === NEWS_TYPE.allNews}
+            isActive={currentTab === NEWS_TAB.allNews}
             onUnreadData={(unread) => {
-              if (currentTab === NEWS_TYPE.allNews)
+              if (currentTab === NEWS_TAB.allNews)
                 if (y > 150 && unread) setUnreadMessage(t('See latest news'));
                 else setUnreadMessage();
               else setNewsBadge(unread > 0);
@@ -221,9 +204,9 @@ export default function News() {
           <SocMedPostList
             filters={{ search, startTime, endTime }}
             timezone={timezone}
-            isActive={currentTab === NEWS_TYPE.socialMedia}
+            isActive={currentTab === NEWS_TAB.socialMedia}
             onUnreadData={(unread) => {
-              if (currentTab === NEWS_TYPE.socialMedia)
+              if (currentTab === NEWS_TAB.socialMedia)
                 if (y > 150 && unread) setUnreadMessage(t('See latest posts'));
                 else setUnreadMessage();
               else setSocialMediaBadge(unread > 0);
@@ -234,9 +217,9 @@ export default function News() {
           <AnnouncementList
             filters={{ search, startTime, endTime }}
             timezone={timezone}
-            isActive={currentTab === NEWS_TYPE.announcements}
+            isActive={currentTab === NEWS_TAB.announcements}
             onUnreadData={(unread) => {
-              if (currentTab === NEWS_TYPE.announcements)
+              if (currentTab === NEWS_TAB.announcements)
                 if (y > 150 && unread)
                   setUnreadMessage(t('See latest announcements'));
                 else setUnreadMessage();

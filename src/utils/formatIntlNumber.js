@@ -1,4 +1,6 @@
 /* eslint-disable prefer-template */
+import isUndefined from 'lodash/isUndefined';
+
 import i18n from 'configs/i18n';
 
 export default (number, decimal = 0, min = 0) => {
@@ -9,7 +11,7 @@ export default (number, decimal = 0, min = 0) => {
   if (pos < 1) {
     const leadingZeros = -Math.floor(Math.log10(pos) + 1);
     if (leadingZeros >= 4) maximumFractionDigits = 9;
-    else maximumFractionDigits = 3;
+    else maximumFractionDigits = isUndefined(decimal) ? 3 : decimal;
   }
 
   return number

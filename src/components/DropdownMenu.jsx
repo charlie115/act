@@ -12,6 +12,8 @@ import Paper from '@mui/material/Paper';
 import Popper from '@mui/material/Popper';
 import Tooltip from '@mui/material/Tooltip';
 
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
@@ -20,9 +22,8 @@ import { usePrevious } from '@uidotdev/usehooks';
 function DropdownMenu({
   options = [],
   value,
-  disabledValue,
-  tooltipTitle,
   onSelectItem,
+  tooltipTitle,
   buttonStyle,
   containerStyle,
 }) {
@@ -64,13 +65,14 @@ function DropdownMenu({
     <Box sx={{ ...containerStyle }}>
       <Tooltip title={tooltipTitle}>
         <Button
-          fullWidth
+          // fullWidth
           ref={anchorRef}
           aria-controls={open ? 'dropdown-menu' : undefined}
           aria-expanded={open ? 'true' : undefined}
           aria-haspopup="true"
           size={isMobile ? 'medium' : 'large'}
           variant="outlined"
+          endIcon={<ArrowDropDownIcon fontSize="small" />}
           startIcon={value?.icon}
           onClick={handleToggle}
           sx={{
@@ -90,10 +92,11 @@ function DropdownMenu({
                 lg: '0.95rem',
               },
             },
+            minWidth: 150,
             ...buttonStyle,
           }}
         >
-          {value?.label}
+          <Box sx={{ mr: 'auto' }}>{value?.label}</Box>
         </Button>
       </Tooltip>
       <Popper
@@ -123,9 +126,7 @@ function DropdownMenu({
                   {options.map((item) => (
                     <MenuItem
                       key={item.value}
-                      disabled={
-                        item.disabled || disabledValue?.value === item.value
-                      }
+                      disabled={item.disabled}
                       selected={item.value === value.value}
                       onClick={(e) => handleSelect(e, item)}
                     >
