@@ -24,14 +24,14 @@ class InitRedis:
         self.redis_pool = redis.ConnectionPool(host=host, port=port, db=db, password=passwd, decode_responses=False, max_connections=20)
         self.redis_conn = redis.Redis(connection_pool=self.redis_pool)
 
-    def set_data(self, key_name, value):
-        self.redis_conn.set(key_name, value)
+    def set_data(self, key_name, value, ex=None):
+        self.redis_conn.set(key_name, value, ex=ex)
 
     def get_data(self, key_name):
         return self.redis_conn.get(key_name)
 
-    def set_dict(self, key_name, dict_obj):
-        self.redis_conn.set(key_name, json.dumps(dict_obj, ensure_ascii=False).encode('utf-8'))
+    def set_dict(self, key_name, dict_obj, ex=None):
+        self.redis_conn.set(key_name, json.dumps(dict_obj, ensure_ascii=False).encode('utf-8'), ex=ex)
     
     def get_dict(self, key_name):
         dumped_json = self.redis_conn.get(key_name)

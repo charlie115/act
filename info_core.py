@@ -248,6 +248,24 @@ class InitCore:
         error_count = 0
         while True:
             try:
+                # Check whether the market is in maintenance or not
+                server_check = False
+                registered_server_check_list = [x.decode('utf-8') for x in self.redis_client_db0.redis_conn.keys() if 'INFO_CORE|SERVER_CHECK' in x.decode('utf-8')]
+                for each_market_server_check in registered_server_check_list:
+                    market_name = each_market_server_check.replace('INFO_CORE|SERVER_CHECK|', '')
+                    if market_name in data_name.upper():
+                        server_check_dict = self.redis_client_db0.get_dict(each_market_server_check)
+                        server_check_start_timestamp_utc = server_check_dict['start']
+                        server_check_end_timestamp_utc = server_check_dict['end']
+                        now_timestamp_utc = datetime.datetime.utcnow().timestamp()
+                        if server_check_start_timestamp_utc <= now_timestamp_utc <= server_check_end_timestamp_utc:
+                            server_check = True
+                            break
+                if server_check is True:
+                    # TEST
+                    self.logger.info(f"update_exchange_info_as_df|name:{data_name} has been skipped due to server check.")
+                    time.sleep(loop_time_secs)
+                    continue
                 start_time = time.time()
                 if data_name == "upbit_spot_info_df":
                     self.info_dict[data_name] = self.upbit_adaptor.spot_exchange_info()
@@ -667,6 +685,25 @@ class InitCore:
         error_count = 0
         while True:
             try:
+                # Check whether the market is in maintenance or not
+                server_check = False
+                registered_server_check_list = [x.decode('utf-8') for x in self.redis_client_db0.redis_conn.keys() if 'INFO_CORE|SERVER_CHECK' in x.decode('utf-8')]
+                for each_market_server_check in registered_server_check_list:
+                    market_name = each_market_server_check.replace('INFO_CORE|SERVER_CHECK|', '')
+                    if 'SPOT' in market_name and exchange_name in market_name:
+                        server_check_dict = self.redis_client_db0.get_dict(each_market_server_check)
+                        server_check_start_timestamp_utc = server_check_dict['start']
+                        server_check_end_timestamp_utc = server_check_dict['end']
+                        now_timestamp_utc = datetime.datetime.utcnow().timestamp()
+                        if server_check_start_timestamp_utc <= now_timestamp_utc <= server_check_end_timestamp_utc:
+                            server_check = True
+                            break
+                if server_check is True:
+                    # TEST
+                    self.logger.info(f"update_wallet_status|name:{exchange_name} has been skipped due to server check.")
+                    time.sleep(loop_time_secs)
+                    continue
+
                 read_time = 0
                 write_time = 0
                 calculate_time = 0

@@ -482,7 +482,25 @@ class InitKlineCore:
             market_code_combination = '_'.join(market_kline_name.split('_')[:-2])
             converted_market_code_combination = market_code_combination.replace(':', '-').replace('/', '__')
             kline_type = market_kline_name.split('_')[-2]
-            
+
+            # Check whether the market is in maintenance or not
+            server_check = False
+            registered_server_check_list = [x.decode('utf-8') for x in self.redis_client_db0.redis_conn.keys() if 'INFO_CORE|SERVER_CHECK' in x.decode('utf-8')]
+            for each_market_server_check in registered_server_check_list:
+                market_name = each_market_server_check.replace('INFO_CORE|SERVER_CHECK|', '')
+                if market_name in market_code_combination:
+                    server_check_dict = self.redis_client_db0.get_dict(each_market_server_check)
+                    server_check_start_timestamp_utc = server_check_dict['start']
+                    server_check_end_timestamp_utc = server_check_dict['end']
+                    now_timestamp_utc = datetime.datetime.utcnow().timestamp()
+                    if server_check_start_timestamp_utc <= now_timestamp_utc <= server_check_end_timestamp_utc:
+                        server_check = True
+                        break
+            if server_check is True:
+                # TEST
+                self.kline_logger.info(f"insert_kline_to_db|channel_name:{channel_name}, kline_type:{kline_type} has been skipped due to server check.")
+                return
+
             # mongo_client = self.db_client.get_conn()
             mongo_client = self.mongo_db
             db = mongo_client[converted_market_code_combination]
@@ -530,11 +548,6 @@ class InitKlineCore:
                 # print(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds") # TEST
             # mongo_client.close()
         except:
-            try:
-                # mongo_client.close()
-                pass
-            except:
-                pass
             self.kline_logger.error(f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}")
             self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"insert_kline_to_db", content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}", code=None, sent_switch=0, send_counts=1, remark=None)
 

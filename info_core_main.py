@@ -87,7 +87,7 @@ if __name__ == '__main__':
 
     # Initiate TelegramBot with Trigger engine
     if master_flag:
-        admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list)
+        admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list, total_enabled_market_klines)
         admin_telegram_bot.updater.idle()
     else:
         while True:

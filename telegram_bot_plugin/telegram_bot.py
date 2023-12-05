@@ -14,6 +14,7 @@ from threading import Thread
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from loggers.logger import KimpBotLogger
+from etc.redis_connector.redis_connector import InitRedis
 
 ####################################################################################################################################
 
@@ -92,7 +93,7 @@ class MyTelegramBot(telegram.Bot):
 ####################################################################################################################################
 
 class InitTelegramBot:
-    def __init__(self, bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list):
+    def __init__(self, bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list, total_enabled_market_klines):
         self.node = node
         # self.encryption_key = encryption_key
         self.core = core
@@ -104,17 +105,24 @@ class InitTelegramBot:
         self.telegram_bot_logger = KimpBotLogger("telegram_bot_logger", logging_dir).logger
         self.updater = Updater(token=bot_token, request_kwargs={'read_timeout': 30, 'connect_timeout': 30})
         self.dispatcher = self.updater.dispatcher
+        self.total_enabled_market_klines = total_enabled_market_klines
+        self.total_enabled_markets = []
+        self._get_total_enabled_markets()
         request_object = telegram.utils.request.Request(connect_timeout=30.0, read_timeout=30.0)
         # self.bot = telegram.Bot(token=bot_token, request=request_object)
         self.bot = MyTelegramBot(logger=self.telegram_bot_logger, token=bot_token, request=request_object)
-        # self.email_smtp_dict = email_smtp_dict
-        self.db_dict = db_dict
+        self.redis_client_db0 = InitRedis()
+        # self.db_dict = db_dict
 
         # dispatching handlers
         start_handler = CommandHandler('start', self.start)
         self.dispatcher.add_handler(start_handler)
         help_handler = CommandHandler('help', self.help)
         self.dispatcher.add_handler(help_handler)
+        server_check_handler = CommandHandler('server_check', self.server_check)
+        self.dispatcher.add_handler(server_check_handler)
+        cancel_server_check_handler = CommandHandler('cancel_server_check', self.cancel_server_check)
+        self.dispatcher.add_handler(cancel_server_check_handler)
 
         ##### Functions for management############################
         rec_message_handler = CommandHandler('rec', self.rec)
@@ -147,6 +155,15 @@ class InitTelegramBot:
         # start polling
         self.updater.start_polling()
 
+    def _get_total_enabled_markets(self):
+        for each_market_combi_code in self.total_enabled_market_klines:
+            target_market_code, origin_market_code = each_market_combi_code.split(':')
+            target_market = target_market_code.split('/')[0]
+            origin_market = origin_market_code.split('/')[0]
+            self.total_enabled_markets.append(target_market)
+            self.total_enabled_markets.append(origin_market)
+        self.total_enabled_markets = list(set(self.total_enabled_markets))
+
 ######### telegram chat functions####################################################################################################
 
     def start(self, update, context):
@@ -161,9 +178,113 @@ class InitTelegramBot:
     def help(self, update, context):
         def help_thread():
             body = f"info_core 관리용 봇 입니다.."
+            body += f"\n/status"
+            body += f"\n/server_check"
+            body += f"\n/cancel_server_check"
             self.bot.send_thread(update.effective_chat.id, body, parse_mode='html')
         help_thread_th = Thread(target=help_thread, daemon=True)
         help_thread_th.start()
+
+    def server_check(self, update, context):
+        def server_check_thread():
+            user_id = update.effective_chat.id
+            if user_id in self.admin_id_list:
+                try:
+                    if context.args == []:
+                        body = f"서버 점검 등록 명령어 입니다."
+                        body += f"\n/server_check 마켓이름, 시작시간, 종료시간 순으로 입력해주세요. 시간은 UTC 기준입니다."
+                        body += f"\nex)/server_check BINANCE_USD_M, 2023-12-01T00:00, 2023-12-01T09:00"
+                        body += f"\n마켓 목록: {self.total_enabled_markets}"
+                        self.bot.send_thread(chat_id=user_id, text=body)
+                        return
+                    input_msg = ''.join(context.args).split(',')
+                    if len(input_msg) != 3:
+                        body = f"잘못된 입력입니다.\n"
+                        body += f"/server_check 마켓이름, 시작시간, 종료시간 순으로 입력해주세요. 시간은 UTC 기준입니다."
+                        body += f"\nex)/server_check BINANCE_USD_M, 2023-12-01T00:00, 2023-12-01T09:00"
+                        body += f"\n마켓 목록: {self.total_enabled_markets}"
+                        self.bot.send_thread(chat_id=user_id, text=body)
+                        return
+                    if input_msg[0].upper() not in self.total_enabled_markets:
+                        body = f"잘못된 입력입니다.\n"
+                        body += f"지원하지 않는 마켓 입니다. 지원되는 마켓목록은 {self.total_enabled_markets} 입니다."
+                        self.bot.send_thread(chat_id=user_id, text=body)
+                        return
+                    market = input_msg[0].upper()
+                    utc_now_timestamp = datetime.datetime.utcnow().timestamp()
+                    start_utc_timestamp = datetime.datetime.strptime(input_msg[1], '%Y-%m-%dT%H:%M').timestamp()
+                    end_utc_timestamp = datetime.datetime.strptime(input_msg[2], '%Y-%m-%dT%H:%M').timestamp()
+                    if start_utc_timestamp < utc_now_timestamp:
+                        body = f"시작시간이 현재시간보다 이전입니다."
+                        self.bot.send_thread(chat_id=user_id, text=body)
+                        return
+                    if end_utc_timestamp < start_utc_timestamp:
+                        body = f"종료시간이 시작시간보다 이전입니다."
+                        self.bot.send_thread(chat_id=user_id, text=body)
+                        return
+                    # Passed validation
+                    # Register in Redis db
+                    self.redis_client_db0.set_dict(f"INFO_CORE|SERVER_CHECK|{market}", {"start": start_utc_timestamp, "end": end_utc_timestamp}, ex=int(end_utc_timestamp-utc_now_timestamp+5))
+                    body = f"예약된 {market} 마켓의 서버점검 시작시간은"
+                    body += f"\nKST:{datetime.datetime.fromtimestamp(start_utc_timestamp)+datetime.timedelta(hours=9)}~{datetime.datetime.fromtimestamp(end_utc_timestamp)+datetime.timedelta(hours=9)}이며,"
+                    body += f"\nUTC:{datetime.datetime.fromtimestamp(start_utc_timestamp)}~{datetime.datetime.fromtimestamp(end_utc_timestamp)}입니다."
+                    body += f"\n현재시간은 KST:{datetime.datetime.fromtimestamp(utc_now_timestamp)+datetime.timedelta(hours=9)}, UTC:{datetime.datetime.fromtimestamp(utc_now_timestamp)}이므로,"
+                    body += f"\n서버점검 시작시간까지 {int((start_utc_timestamp-utc_now_timestamp)/3600)}시간 {int(((start_utc_timestamp-utc_now_timestamp)%3600)/60)}분,"
+                    body += f"\n서버점검 종료시간까지 {int((end_utc_timestamp-utc_now_timestamp)/3600)}시간 {int(((end_utc_timestamp-utc_now_timestamp)%3600)/60)}분 남았습니다."
+                    self.bot.send_thread(chat_id=user_id, text=body)
+                    return
+                except Exception as e:
+                    self.telegram_bot_logger.error(f"server_check|{traceback.format_exc()}")
+                    body = f"서비스에 불편을 드려 죄송합니다. 일시적인 오류가 발생했습니다. 관리자에게 문의 해 주세요. (@charlie1155)\n"
+                    body += f"error: {e}"
+                    self.bot.send_thread(chat_id=user_id, text=body)
+                    return
+        server_check_thread_th = Thread(target=server_check_thread, daemon=True)
+        server_check_thread_th.start()
+    
+    def cancel_server_check(self, update, context):
+        def cancel_server_check_thread():
+            user_id = update.effective_chat.id
+            if user_id in self.admin_id_list:
+                try:
+                    registered_server_check_list = [x.decode('utf-8') for x in self.redis_client_db0.redis_conn.keys() if 'INFO_CORE|SERVER_CHECK' in x.decode('utf-8')]
+                    if context.args == []:
+                        body = f"서버 점검 등록 취소 명령어 입니다."
+                        body += f"\n/server_check 마켓이름 으로 입력해주세요."
+                        body += f"\nex)/server_check BINANCE_USD_M"
+                        body += f"\nRedis 에 등록된 서버 점검 목록: {registered_server_check_list}"
+                        self.bot.send_thread(chat_id=user_id, text=body)
+                        return
+                    input_msg = ''.join(context.args).split(',')
+                    if len(input_msg) != 1:
+                        body = f"잘못된 입력입니다.\n"
+                        body += f"/server_check 마켓이름 형식으로 입력해주세요."
+                        body += f"\nex)/server_check BINANCE_USD_M"
+                        body += f"\nRedis 에 등록된 서버 점검 목록: {registered_server_check_list}"
+                        self.bot.send_thread(chat_id=user_id, text=body)
+                        return
+                    # Passed validation
+                    market = input_msg[0].upper()
+                    selected_server_check_list = [x for x in registered_server_check_list if market in x]
+                    if selected_server_check_list == []:
+                        body = f"{market}에 대한 서버점검 예약이 없습니다."
+                        self.bot.send_thread(chat_id=user_id, text=body)
+                        return
+                    else:
+                        for each_server_check in selected_server_check_list:
+                            self.redis_client_db0.redis_conn.delete(each_server_check)
+                            body = f"{market}에 대한 서버점검 예약({each_server_check})이 취소되었습니다."
+                            self.bot.send_thread(chat_id=user_id, text=body)
+                        return
+                except Exception as e:
+                    self.telegram_bot_logger.error(f"cancel_server_check_thread_th|{traceback.format_exc()}")
+                    body = f"서비스에 불편을 드려 죄송합니다. 일시적인 오류가 발생했습니다. 관리자에게 문의 해 주세요. (@charlie1155)\n"
+                    body += f"error: {e}"
+                    self.bot.send_thread(chat_id=user_id, text=body)
+                    return
+        cancel_server_check_thread_th = Thread(target=cancel_server_check_thread, daemon=True)
+        cancel_server_check_thread_th.start()
+
 
 ############# Functions for management ###########################################################################
     def rec(self, update, context):
