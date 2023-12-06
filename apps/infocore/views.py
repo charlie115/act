@@ -4,7 +4,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django_redis import get_redis_connection
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import exceptions, response, views
-from pymongo import MongoClient, ASCENDING, DESCENDING
+from pymongo import MongoClient, DESCENDING
 from pytz import timezone
 
 from infocore.models import Asset
@@ -246,53 +246,11 @@ class FundingRateDataView(views.APIView):
 
         coll = db.get_collection(collection)
 
-        if past:
-            query_filter = {
-                "base_asset": {"$in": base_assets},
-                "quote_asset": quote_asset,
-                "perpetual": True,
-            }
-        else:
-            latest_dates = coll.aggregate(
-                [
-                    {
-                        "$match": {
-                            "base_asset": {"$in": base_assets},
-                            "quote_asset": quote_asset,
-                        }
-                    },
-                    {"$sort": {"datetime_now": ASCENDING}},
-                    {
-                        "$group": {
-                            "_id": "$base_asset",
-                            "datetime_now": {"$last": "$datetime_now"},
-                        }
-                    },
-                ]
-            )
-            latest_dates = {item["_id"]: item["datetime_now"] for item in latest_dates}
-
-            # Prepare parameters
-            and_cond = list()
-            for base_asset, datetime_now in latest_dates.items():
-                query = {
-                    "$and": [
-                        {
-                            "base_asset": base_asset,
-                            "quote_asset": quote_asset,
-                            "perpetual": True,
-                            "datetime_now": {"$eq": datetime_now},
-                        }
-                    ]
-                }
-                and_cond.append(query)
-
-            if not and_cond:
-                return []
-
-            query_filter = {
-                "$or": and_cond,
-            }
+        query_filter = {
+            "base_asset": {"$in": base_assets},
+            "quote_asset": quote_asset,
+            "perpetual": True,
+        }
 
         projection = {
             "_id": False,
@@ -305,11 +263,22 @@ class FundingRateDataView(views.APIView):
         )
 
         # Serialize
-        results = {base_asset: [] for base_asset in base_assets}
+        cursor_results = {base_asset: [] for base_asset in base_assets}
         for item in cursor:
-            results[item["base_asset"]].append(
+            cursor_results[item["base_asset"]].append(
                 FundingRateDataSerializer(item, context={"tz": tz}).data
             )
+
+        if past:
+            results = cursor_results
+        else:
+            results = {base_asset: [] for base_asset in base_assets}
+            for key, value in cursor_results.items():
+                results[key] = sorted(
+                    value,
+                    key=lambda v: v["datetime_now"],
+                    reverse=True,
+                )[:1]
 
         return results
 
