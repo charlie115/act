@@ -78,18 +78,17 @@ class AssetViewSet(BaseViewSet):
 class MarketCodesView(views.APIView):
     permission_classes = []
     page_size = 200
+    _prefix = "INFO_CORE|ACTIVATED|"
 
     def get(self, request):
-        channels = REDIS_CLI.pubsub_channels()
-
         market_codes = {}
-        for channel in channels:
-            channel = channel.decode()
+        for redis_key in REDIS_CLI.keys():
+            redis_key = redis_key.decode()
 
-            if channel.startswith("INFO_CORE|") and channel.endswith("_1T_kline"):
-                channel = channel.replace("INFO_CORE|", "").replace("_1T_kline", "")
+            if redis_key.startswith(self._prefix):
+                redis_key = redis_key.replace(self._prefix, "")
 
-                target_market, origin_market = channel.split(":")
+                target_market, origin_market = redis_key.split(":")
                 if target_market in market_codes:
                     market_codes[target_market].append(origin_market)
                 else:
