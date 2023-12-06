@@ -3,7 +3,7 @@ from django.utils.timezone import now
 
 
 class Asset(models.Model):
-    symbol = models.CharField(max_length=10, unique=True)
+    symbol = models.CharField(max_length=30, unique=True)
     icon = models.ImageField(upload_to="assets/icons/")
     note = models.CharField(max_length=300, blank=True)
     last_update = models.DateTimeField(default=now)

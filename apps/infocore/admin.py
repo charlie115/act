@@ -22,13 +22,14 @@ class AssetAdmin(AssetMixin, ModelAdmin):
         "last_update",
     ]
     search_fields = ["symbol"]
+    readonly_fields = ["symbol", "last_update"]
     fieldsets = (
         (
             None,
             {
                 "fields": (
                     "symbol",
-                    "get_icon",
+                    "icon",
                     "note",
                     "last_update",
                 )
@@ -69,12 +70,6 @@ class AssetAdmin(AssetMixin, ModelAdmin):
     get_icon.short_description = "Icon"
 
     def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
         return False
 
 

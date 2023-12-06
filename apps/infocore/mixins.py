@@ -1,5 +1,6 @@
 import json
 import requests
+import string
 
 from django_rq import job
 from django.conf import settings
@@ -36,6 +37,22 @@ class AssetMixin(object):
                 data = content["data"][symbol][0]
             else:
                 data["note"] = content["status"]["error_message"]
+
+                if "Invalid value" in content["status"]["error_message"] and any(
+                    char.isdigit() for char in symbol
+                ):
+                    cleaned_symbol = symbol.rstrip(string.digits).lstrip(string.digits)
+
+                    response = requests.get(
+                        url=settings.COINMARKETCAP_CRYPTO_INFO_API,
+                        headers={"X-CMC_PRO_API_KEY": settings.COINMARKETCAP_API_KEY},
+                        params={"symbol": cleaned_symbol},
+                    )
+                    content = json.loads(response.content)
+
+                    if response.status_code == HTTP_200_OK and "data" in content:
+                        data = content["data"][cleaned_symbol][0]
+                        data["note"] = f"Icon was pulled based on {cleaned_symbol}"
 
         except Exception as err:
             data["note"] = str(err)
