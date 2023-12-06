@@ -306,12 +306,11 @@ class AverageFundingRateDataView(views.APIView):
         data = self.get_data(
             n=query.get("n", ""),
             market_code=query.get("market_code", ""),
-            base_assets=query.get("base_asset", ""),
         )
 
         return response.Response(data)
 
-    def get_data(self, n, market_code, base_assets):
+    def get_data(self, n, market_code):
         # Get database
         db = MONGODB_CLI.get_database("arbitrage_fundingrate")
 
@@ -322,8 +321,6 @@ class AverageFundingRateDataView(views.APIView):
         query_filter = dict()
         if market_code:
             query_filter["market_code"] = market_code
-        if base_assets:
-            query_filter["base_asset"] = {"$in": base_assets}
 
         projection = {
             "_id": False,
@@ -336,11 +333,7 @@ class AverageFundingRateDataView(views.APIView):
         )
 
         # Serialize
-        results = {base_asset: [] for base_asset in base_assets}
-        for item in cursor:
-            results[item["base_asset"]].append(
-                AverageFundingRateDataSerializer(item).data
-            )
+        results = [AverageFundingRateDataSerializer(item).data for item in cursor]
 
         return results
 
@@ -366,7 +359,6 @@ class FundingRateDiffDataView(views.APIView):
         query = query_params.validated_data
 
         data = self.get_data(
-            base_assets=query.get("base_asset", ""),
             market_code_x=query.get("market_code_x", ""),
             exchange_x=query.get("exchange_x", ""),
             market_code_y=query.get("market_code_y", ""),
@@ -376,9 +368,7 @@ class FundingRateDiffDataView(views.APIView):
 
         return response.Response(data)
 
-    def get_data(
-        self, base_assets, market_code_x, exchange_x, market_code_y, exchange_y, tz
-    ):
+    def get_data(self, market_code_x, exchange_x, market_code_y, exchange_y, tz):
         # Get database
         db = MONGODB_CLI.get_database("arbitrage_fundingrate")
 
@@ -387,8 +377,6 @@ class FundingRateDiffDataView(views.APIView):
 
         # Prepare parameters
         query_filter = dict()
-        if base_assets:
-            query_filter["base_asset"] = {"$in": base_assets}
         if market_code_x:
             query_filter["market_code_x"] = market_code_x
         if exchange_x:
@@ -409,11 +397,10 @@ class FundingRateDiffDataView(views.APIView):
         )
 
         # Serialize
-        results = {base_asset: [] for base_asset in base_assets}
-        for item in cursor:
-            results[item["base_asset"]].append(
-                FundingRateDiffDataSerializer(item, context={"tz": tz}).data
-            )
+        results = [
+            FundingRateDiffDataSerializer(item, context={"tz": tz}).data
+            for item in cursor
+        ]
 
         return results
 

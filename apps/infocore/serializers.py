@@ -102,7 +102,6 @@ class AverageFundingRateDataQueryParamsSerializer(serializers.Serializer):
         required=True, validators=[MinValueValidator(1), MaxValueValidator(100)]
     )
     market_code = serializers.CharField(required=False)
-    base_asset = CharacterSeparatedField()
 
 
 class AverageFundingRateDataSerializer(serializers.Serializer):
@@ -114,7 +113,6 @@ class AverageFundingRateDataSerializer(serializers.Serializer):
 
 
 class FundingRateDiffDataQueryParamsSerializer(serializers.Serializer):
-    base_asset = CharacterSeparatedField()
     market_code_x = serializers.CharField(required=False)
     exchange_x = serializers.CharField(required=False)
     market_code_y = serializers.CharField(required=False)
