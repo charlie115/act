@@ -32,6 +32,7 @@ MONGODB_CLI = MongoClient(
     port=settings.MONGODB["PORT"],
     username=settings.MONGODB["USERNAME"],
     password=settings.MONGODB["PASSWORD"],
+    appname="django-infocore-api",
 )
 
 
