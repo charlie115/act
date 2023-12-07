@@ -2,7 +2,6 @@ from multiprocessing import Process, Manager, Queue, Event
 from threading import Thread
 import pandas as pd
 import datetime
-import websocket
 from binance import ThreadedWebsocketManager
 from binance.enums import FuturesType
 import traceback
@@ -27,9 +26,6 @@ class BinanceWebsocket:
         self.register_monitor_msg = register_monitor_msg
         self.get_symbol_list = get_symbol_list
         self.info_dict = info_dict
-        self.spot_websocket_url = "wss://stream.binance.com/ws"
-        self.usd_m_websocket_url = "wss://fstream.binance.com/ws"
-        self.coin_m_websocket_url = "wss://dstream.binance.com/ws"
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
         manager = Manager()
@@ -43,12 +39,6 @@ class BinanceWebsocket:
         self.liquidation_list = manager.list()
         self.redis_client_db1 = InitRedis(db=1)
         self._start_websocket()
-        while True:
-            if self.bookticker_dict.values() == [] or self.ticker_dict.values() == []:
-                self.websocket_logger.info(f"[BINANCE {self.market_type}]waiting for websocket data to be loaded..")
-                time.sleep(2)
-            else:
-                break
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
         self.monitor_websocket_last_update_thread = Thread(target=self.monitor_websocket_last_update, daemon=True)
@@ -56,47 +46,61 @@ class BinanceWebsocket:
         
     def __del__(self):
         self.terminate_websocket()
-    
-    def binance_websocket(self, store_dict, data, error_event, proc_name):
-        def on_message(ws, message):
-            if error_event.is_set():
-                ws.close()
-                raise Exception(f"binance_websocket|{proc_name} error_event is set. closing websocket..")
-            msg = json.loads(message)
-            # print(msg)                                # test
-            if 's' in msg.keys():
-                store_dict[msg['s']] = {**msg, "last_update_timestamp": int(datetime.datetime.utcnow().timestamp()*1000000)}
 
-        def on_error(ws, error):
-            # print(f'binance_websocket on_error executed!')
-            self.websocket_logger.error(f'binance_websocket|{proc_name} on_error executed!\n Error: {error}')
-            pass
-
-        def on_close(ws, close_status_code, close_msg):
-            # print(f"\n\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
-            self.websocket_logger.info(f"binance_websocket|\n\n{proc_name}### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
-
-        def on_open(ws):
-            # print(f"data: {data}") # test
-            # print(f'binance_websocket started')
-            # self.websocket_logger.info(f'binance_websocket|binance_websocket started')
-            ws.send(json.dumps(data))
-
-        websocket.enableTrace(False)
-        if self.market_type == "SPOT":
-            wss_url = self.spot_websocket_url
-        elif self.market_type == "USD_M":
-            wss_url = self.usd_m_websocket_url
-        elif self.market_type == "COIN_M":
-            wss_url = self.coin_m_websocket_url
+    # For fetching ticker, bookticker data for usdm, coinm, spot
+    def price_websocket(self, store_dict, symbol_list, error_event, proc_name, data_name):
+        if symbol_list == []:
+            raise Exception(f"price_websocket|symbol_list should not be empty")
+        def handle_bookticker_streams(msg):
+            try:
+                # event_type = msg['stream']
+                # print(msg['data']) # test
+                # if msg['data']['s'] == 'ETHUSDT': # test
+                #     print(msg['data']['T']) # test
+                store_dict[msg['data']['s']] = {**msg['data'], "last_update_timestamp": int(datetime.datetime.utcnow().timestamp()*1000000)}
+                # self.redis_client_db1.set_data(f"INFO_CORE|BINANCE_{self.market_type}|{data_name}|{msg['data']['s']}", json.dumps({**msg['data'], "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)}))
+                # self.redis_client_db1.set_data(f"INFO_CORE|BINANCE_{self.market_type}|{data_name}", pickle.dumps(dict(store_dict)))
+            except Exception:
+                self.websocket_logger.error(f"handle_bookticker_streams|{proc_name}, {traceback.format_exc()}, msg:{msg}")
+                error_event.set()
+        def handle_ticker_streams(msg):
+            try:
+                store_dict[msg['data']['s']] = {**msg['data'], "last_update_timestamp": int(datetime.datetime.utcnow().timestamp()*1000000)}
+                # self.redis_client_db1.set_data(f"INFO_CORE|BINANCE_{self.market_type}|{data_name}|{msg['data']['s']}", json.dumps({**msg['data'], "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)}))
+                # self.redis_client_db1.set_data(f"INFO_CORE|BINANCE_{self.market_type}|{data_name}", pickle.dumps(dict(store_dict)))
+            except Exception:
+                self.websocket_logger.error(f"handle_ticker_streams|{proc_name}, {traceback.format_exc()}, msg:{msg}")
+                error_event.set()
+        twm = ThreadedWebsocketManager()
+        twm.daemon = True
+        twm.start()
+        if 'bookticker' in proc_name:
+            stream_list = [x.lower()+'@bookTicker' for x in symbol_list]
+            if self.market_type == "SPOT":
+                twm.start_multiplex_socket(callback=handle_bookticker_streams, streams=stream_list)
+            elif self.market_type == "USD_M":
+                twm.start_futures_multiplex_socket(callback=handle_bookticker_streams, streams=stream_list)
+            elif self.market_type == "COIN_M":
+                twm.start_futures_multiplex_socket(callback=handle_bookticker_streams, streams=stream_list, futures_type=FuturesType.COIN_M)
+            else:
+                raise Exception(f"price_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
         else:
-            raise Exception(f"binance_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
-        ws = websocket.WebSocketApp(wss_url,
-                                on_open=on_open,
-                                on_message=on_message,
-                                on_error=on_error,
-                                on_close=on_close)
-        ws.run_forever(ping_interval=30)
+            stream_list = [x.lower()+'@ticker' for x in symbol_list]
+            if self.market_type == "SPOT":
+                twm.start_multiplex_socket(callback=handle_ticker_streams, streams=stream_list)
+            elif self.market_type == "USD_M":
+                twm.start_futures_multiplex_socket(callback=handle_ticker_streams, streams=stream_list)
+            elif self.market_type == "COIN_M":
+                twm.start_futures_multiplex_socket(callback=handle_ticker_streams, streams=stream_list, futures_type=FuturesType.COIN_M)
+            else:
+                raise Exception(f"price_websocket|market_type should be SPOT, USD_M or COIN_M, not {self.market_type}")
+        # twm.join()
+        while not error_event.is_set():
+            time.sleep(0.1)
+        twm.stop_socket(stream_list)
+        twm.stop()
+        self.websocket_logger.info(f"[BINANCE {self.market_type}]{proc_name} websocket has been terminated. (twm.stop() has been executed)")
+        raise Exception(f"[BINANCE {self.market_type}]{proc_name} websocket has been terminated. (twm.stop() has been executed)")
 
     def _start_websocket(self):
         def handle_price_procs():
@@ -122,12 +126,7 @@ class BinanceWebsocket:
                                 error_event = Event()
                                 self.price_proc_event_list.append(error_event)
                                 symbol_list = self.sliced_symbol_list[i]
-                                bookticker_data = {
-                                    "method": "SUBSCRIBE",
-                                    "params":[x.lower()+"@bookTicker" for x in symbol_list],
-                                    "id": i+1
-                                }
-                                self.websocket_proc_dict[f"{i+1}th_bookticker_proc"] = Process(target=self.binance_websocket, args=(self.bookticker_dict, bookticker_data, error_event, f"{i+1}th_bookticker_proc"), daemon=True)
+                                self.websocket_proc_dict[f"{i+1}th_bookticker_proc"] = Process(target=self.price_websocket, args=(self.bookticker_dict, symbol_list, error_event, f"{i+1}th_bookticker_proc", "bookticker"), daemon=True)
                                 self.websocket_symbol_dict[f"{i+1}th_bookticker_symbol"] = symbol_list
                                 self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].start()
                                 self.websocket_logger.info(f"[BINANCE {self.market_type}]started {i+1}th_bookticker_proc websocket proc..")
@@ -153,12 +152,7 @@ class BinanceWebsocket:
                             error_event = Event()
                             self.price_proc_event_list.append(error_event)
                             symbol_list = self.before_symbol_list
-                            ticker_data = {
-                                "method": "SUBSCRIBE",
-                                "params":[x.lower()+"@ticker" for x in symbol_list],
-                                "id": 0
-                            }
-                            self.websocket_proc_dict["ticker_proc"] = Process(target=self.binance_websocket, args=(self.ticker_dict, ticker_data, error_event, "ticker_proc"), daemon=True)
+                            self.websocket_proc_dict["ticker_proc"] = Process(target=self.price_websocket, args=(self.ticker_dict, symbol_list, error_event, "ticker_proc", "ticker"), daemon=True)
                             self.websocket_symbol_dict["ticker_symbol"] = symbol_list
                             self.websocket_proc_dict["ticker_proc"].start()
                             self.websocket_logger.info(f"[BINANCE {self.market_type}]started ticker_proc websocket proc..")

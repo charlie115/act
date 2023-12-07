@@ -47,7 +47,7 @@ class InitUpbitAdaptor:
     # Private API
     def wallet_status(self):
         wallet_status = pd.DataFrame(self.my_client.Account.Account_wallet()['result'])
-        wallet_status = wallet_status.rename(columns={"currency": "asset"})
+        wallet_status = wallet_status.rename(columns={"currency": "asset", "net_type": "network_type"})
         wallet_status['deposit'] = wallet_status['wallet_state'].apply(lambda x: True if x in ["working", "deposit_only"] else False)
         wallet_status['withdraw'] = wallet_status['wallet_state'].apply(lambda x: True if x in ["working", "withdraw_only"] else False)
         return wallet_status

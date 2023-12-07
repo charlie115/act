@@ -13,7 +13,7 @@ from loggers.logger import KimpBotLogger
 
 class InitBinanceAdaptor:
     def __init__(self, my_binance_access_key=None, my_binance_secret_key=None, info_dict=None, recvWindow=45000, logging_dir=None):
-        self.my_bi_client = Client(my_binance_access_key, my_binance_secret_key)
+        self.my_client = Client(my_binance_access_key, my_binance_secret_key)
         self.pub_client = Client()
         self.info_dict = info_dict
         self.recvWindow = recvWindow
@@ -22,7 +22,7 @@ class InitBinanceAdaptor:
 
     # Admin
     def get_deposit(self, asset='EOS'):
-        deposit = pd.DataFrame(self.my_bi_client.get_deposit_history(asset=asset))
+        deposit = pd.DataFrame(self.my_client.get_deposit_history(asset=asset))
         deposit.loc[:,'insertTime'] = deposit['insertTime'].apply(lambda x: datetime.datetime.fromtimestamp(x/1000))
         deposit.loc[:, 'amount'] = deposit['amount'].astype(float)
         return deposit
@@ -136,4 +136,11 @@ class InitBinanceAdaptor:
             return binance_fund
         else:
             raise Exception(f"Invalid futures_type: {futures_type}")
+        
+    def wallet_status(self):
+        binance_network_list = [x['networkList'] for x in self.my_client.get_all_coins_info()]
+        binance_network_list = [item for sublist in binance_network_list for item in sublist]
+        binance_wallet_status_df = pd.DataFrame(binance_network_list)
+        binance_wallet_status_df = binance_wallet_status_df.rename(columns={"network": "network_type", "coin": "asset", "withdrawEnable": "withdraw", "depositEnable": "deposit"})
+        return binance_wallet_status_df
         

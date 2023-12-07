@@ -23,8 +23,7 @@ import mplfinance as mpf
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
-from kp_info_loader.etc.db_handler.postgres_client import InitDBClient
-from kp_info_loader.etc.register_monitor_msg import register
+from info_core.etc.db_handler.postgres_client import InitDBClient
 from loggers.logger import KimpBotLogger
 
 def mean_norm(df_input):

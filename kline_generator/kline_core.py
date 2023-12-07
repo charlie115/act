@@ -15,81 +15,73 @@ from threading import Thread
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from loggers.logger import KimpBotLogger
-from etc.register_monitor_msg import RegisterMonitorMsg
 # from etc.db_handler.create_schema_tables import InitDBClient
 from etc.redis_connector.redis_connector import InitRedis
 
 
 class InitKlineCore:
-    def __init__(self, admin_id, node, get_premium_df, get_market_code_list, register_monitor_msg, redis_client, db_client, logging_dir):
+    def __init__(self, admin_id, node, get_premium_df, enabled_market_klines, register_monitor_msg, redis_client, db_client, logging_dir):
         self.node = node
         self.admin_id = admin_id
         self.get_premium_df = get_premium_df
         self.register_monitor_msg = register_monitor_msg
         self.kline_logger = KimpBotLogger("kline_core", logging_dir).logger
         self.kline_logger.info(f"InitKlineCore started.")
-        self.redis_client = InitRedis()
-        self.market_code_list = get_market_code_list()
-        self.market_combination_list = self.get_market_combination_list()
-        self.enabled_kline_types = ['1T', '5T', '15T', '30T', '1H', '4H', '1D']
+        self.redis_client_db0 = InitRedis()
+        self.local_redis_client = InitRedis(host='localhost', port=6379, db=0, passwd=None)
+        # self.market_code_list = get_market_code_list()
+        # self.market_combination_list = self.get_market_combination_list()
+        self.enabled_market_klines = enabled_market_klines
+        self.enabled_kline_types = ['1T', '5T', '15T', '30T', '1H', '4H']
         self.kline_proc_dict = {}
-        self.redis_client = redis_client
-        self.pubsub = self.redis_client.redis_conn.pubsub()
+        self.pubsub = self.redis_client_db0.redis_conn.pubsub()
         self.db_client = db_client
-        self.enaled_market_combination_list = []
+        self.mongo_db = self.db_client.get_conn()
+        # self.enaled_market_combination_list = []
+        self.register_enabled_market_klines()
         self._start_generating_kline()
-        self.subscribe_kline_channel()
+        # subscribe_kline_channel_proc = Process(target=self.subscribe_kline_channel, daemon=True)
+        # subscribe_kline_channel_proc.start()
 
     def _start_generating_kline(self):
         # Start generating kline
-        for market_combination_tuple in self.market_combination_list:
-            if (("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "BINANCE_SPOT/USDT" in market_combination_tuple[1])
-                or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "BINANCE_USD_M/USDT" in market_combination_tuple[1])
-                # or ("BINANCE_COIN_M/USD" in market_combination_tuple[0] and "BINANCE_USD_M/USDT" in market_combination_tuple[1])
-                or ("BINANCE_USD_M/USDT" in market_combination_tuple[0] and "BINANCE_COIN_M/USDT" in market_combination_tuple[1])
-                or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "OKX_SPOT/USDT" in market_combination_tuple[1])
-                or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "OKX_USD_M/USDT" in market_combination_tuple[1])
-                or ("UPBIT_SPOT/KRW" in market_combination_tuple[0] and "OKX_COIN_M/USDT" in market_combination_tuple[1])
-                or ("BINANCE_USD_M/USDT" in market_combination_tuple[0] and "OKX_USD_M/USDT" in market_combination_tuple[1])
-                ):
-                target_market_code = market_combination_tuple[0]
-                origin_market_code = market_combination_tuple[1]
-                self.enaled_market_combination_list.append((target_market_code, origin_market_code))
-
-                for i, each_kline_type in enumerate(self.enabled_kline_types):
-                    if each_kline_type.endswith('T'):
-                        if each_kline_type == '1T':
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_loader"] = Process(target=self.ohlc_1T_loader, args=(self.get_premium_df, target_market_code, origin_market_code), daemon=True)
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_loader"].start()
-                        else:
-                            count = int(each_kline_type[:-1]) / int(self.enabled_kline_types[i-1][:-1])
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_min_resample_loader, args=(target_market_code, origin_market_code, self.enabled_kline_types[i-1], each_kline_type, count), daemon=True)
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"].start()
-                    elif each_kline_type.endswith('H'):
-                        if each_kline_type == '1H':
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_hour_resample_loader, args=(target_market_code, origin_market_code, "30T", "1H", 2), daemon=True)
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"].start()
-                        else:
-                            count = int(each_kline_type[:-1]) / int(self.enabled_kline_types[i-1][:-1])
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_hour_resample_loader, args=(target_market_code, origin_market_code, self.enabled_kline_types[i-1], each_kline_type, count), daemon=True)
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"].start()
-                    elif each_kline_type.endswith('D'):
-                        if each_kline_type == "1D":
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_day_resample_loader, args=(target_market_code, origin_market_code, "4H", "1D", 6), daemon=True)
-                            self.kline_proc_dict[f"{target_market_code}:{origin_market_code}_{each_kline_type}_reample_loader"].start()
-                        else:
-                            pass
+        for market_combination in self.enabled_market_klines:
+            target_market_code = market_combination.split(':')[0]
+            origin_market_code = market_combination.split(':')[1]
+            for i, each_kline_type in enumerate(self.enabled_kline_types):
+                if each_kline_type.endswith('T'):
+                    if each_kline_type == '1T':
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"] = Process(target=self.ohlc_1T_loader, args=(self.get_premium_df, target_market_code, origin_market_code), daemon=True)
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].start()
                     else:
-                        raise ValueError(f"Invalid kline_type: {each_kline_type}")
-                    time.sleep(1)
+                        count = int(each_kline_type[:-1]) / int(self.enabled_kline_types[i-1][:-1])
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_min_resample_loader, args=(target_market_code, origin_market_code, self.enabled_kline_types[i-1], each_kline_type, count), daemon=True)
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"].start()
+                elif each_kline_type.endswith('H'):
+                    if each_kline_type == '1H':
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_hour_resample_loader, args=(target_market_code, origin_market_code, "30T", "1H", 2), daemon=True)
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"].start()
+                    else:
+                        count = int(each_kline_type[:-1]) / int(self.enabled_kline_types[i-1][:-1])
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_hour_resample_loader, args=(target_market_code, origin_market_code, self.enabled_kline_types[i-1], each_kline_type, count), daemon=True)
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"].start()
+                elif each_kline_type.endswith('D'):
+                    if each_kline_type == "1D":
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"] = Process(target=self.ohlc_day_resample_loader, args=(target_market_code, origin_market_code, "4H", "1D", 6), daemon=True)
+                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"].start()
+                    else:
+                        pass
+                else:
+                    raise ValueError(f"Invalid kline_type: {each_kline_type}")
+                time.sleep(1)
 
-    def get_market_combination_list(self):
-        market_combination_list = []
-        for market_one in self.market_code_list:
-            for market_two in self.market_code_list:
-                if market_one != market_two:
-                    market_combination_list.append((market_one, market_two))
-        return market_combination_list
+    # def get_market_combination_list(self):
+    #     market_combination_list = []
+    #     for market_one in self.market_code_list:
+    #         for market_two in self.market_code_list:
+    #             if market_one != market_two:
+    #                 market_combination_list.append((market_one, market_two))
+    #     return market_combination_list
 
     def generate_ohlc_df(self, appended_df, freq='1T'):
         df = appended_df.set_index(['base_asset', 'datetime_now'])
@@ -121,11 +113,11 @@ class InitKlineCore:
         try:
             ohlc_df['record_count'] = appended_df.groupby('base_asset')['base_asset'].count().values
         except Exception as e:
-            content = f"Error in generate_ohlc_df: {traceback.format_exc()}\n ohlc_df:{ohlc_df}, appended_df.groupby('base_asset'):{appended_df.groupby('base_asset')}"
+            content = f"Error in generate_ohlc_df: {traceback.format_exc()}\n ohlc_df:{ohlc_df}, appended_df.groupby('base_asset'):{appended_df.groupby('base_asset')}\n appended_df:{appended_df}"
             self.kline_logger.error(content)
         return ohlc_df
 
-    def ohlc_1T_loader(self, get_premium_df, target_market_code, origin_market_code, loop_downtime_sec=0.01, max_length=300):
+    def ohlc_1T_loader(self, get_premium_df, target_market_code, origin_market_code, loop_downtime_sec=0.02, max_length=300):
         columns_to_merge = ['base_asset', 'tp', 'scr', 'atp24h', 'converted_tp']
         appended_premium_df = pd.DataFrame()
         datetime_now = datetime.datetime.utcnow()
@@ -147,11 +139,11 @@ class InitKlineCore:
                     ohlc_df = ohlc_df.merge(premium_df[columns_to_merge], on=['base_asset'], how='inner')
                     pickled_ohlc_df = pickle.dumps(ohlc_df)
                     # Save into redis db for current data
-                    self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
+                    self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
                     # Publish to redis pubsub
-                    self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
+                    self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
                     # Append into redis db for historical data
-                    old_ohlc_1T_kline = self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline')
+                    old_ohlc_1T_kline = self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline')
                     if old_ohlc_1T_kline is None:
                         old_ohlc_1T_kline = pd.DataFrame()
                     else:
@@ -160,20 +152,23 @@ class InitKlineCore:
                     new_ohlc_1T_kline = pd.concat([old_ohlc_1T_kline, ohlc_df], axis=0).tail(max_length*ohlc_df['base_asset'].nunique())
                     new_ohlc_1T_kline['closed'] = True
                     pickled_ohlc_df = pickle.dumps(new_ohlc_1T_kline)
-                    self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
+                    self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
                     # Publish to redis pubsub
-                    self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
+                    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
+                    # Directly insert into the DB
+                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(new_ohlc_1T_kline, f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline"))
+                    insert_db_thread.start()
                     appended_premium_df = appended_premium_df[appended_premium_df['datetime_now'] >= adjusted_datetime_now]
                 else:
                     # Save into redis db for current data
                     ohlc_df = self.generate_ohlc_df(appended_premium_df)
                     ohlc_df = ohlc_df.merge(premium_df[columns_to_merge], on=['base_asset'], how='inner')
                     pickled_ohlc_df = pickle.dumps(ohlc_df)
-                    self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
+                    self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
                     # Publish to redis pubsub
-                    self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
+                    self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
             except Exception as e:
-                content = f"ohlc_1T_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_1T_loader: {traceback.format_exc()}"
+                content = f"ohlc_1T_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_1T_loader: {traceback.format_exc()}\n appended_premium_df:{appended_premium_df}, premium_df:{premium_df}"
                 self.kline_logger.error(content)
                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"ohlc_1T_loader got an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
                 time.sleep(3)
@@ -204,19 +199,22 @@ class InitKlineCore:
     def ohlc_day_resample_loader(self, target_market_code, origin_market_code, original_period, resample_period, resample_closed_count, loop_downtime_sec=0.1, max_length=300):
         columns_to_merge = ['base_asset', 'tp', 'scr', 'atp24h', 'converted_tp']
         while True:
-            original_ohlc_kline_df = self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')
+            original_ohlc_kline_df = self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')
             if original_ohlc_kline_df is not None:
                 break
             time.sleep(5)
 
         start = time.time()
-        original_ohlc_1T_now = pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
+        original_ohlc_1T_now = pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
         resampled_ohlc_history_df = self.resample_ohlc_df(pickle.loads(original_ohlc_kline_df), resample_period, closed_count=resample_closed_count)
         resampled_ohlc_history_df = resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
         pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-        self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+        self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
         # Publish to redis pubsub
-        self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+        # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+        # Directly insert into the DB
+        insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+        insert_db_thread.start()
         self.kline_logger.info(f"ohlc_day_resample_loader has started. {target_market_code}:{origin_market_code}_{resample_period}_kline, initial generating and storing resampled_ohlc_history_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
 
         datetime_now = datetime.datetime.utcnow()        
@@ -224,29 +222,32 @@ class InitKlineCore:
             time.sleep(loop_downtime_sec)
             try:
                 datetime_before = datetime_now
-                original_ohlc_1T_now = pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
+                original_ohlc_1T_now = pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
                 try:
-                    original_ohlc_history_last_datetime = pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')).iloc[-1]['datetime_now']
+                    original_ohlc_history_last_datetime = pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')).iloc[-1]['datetime_now']
                 except TypeError:
                     print(f"original_ohlc_history_last_datetime is None")
                     continue
-                resampled_ohlc_history_df = pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline'))
+                resampled_ohlc_history_df = pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline'))
                 datetime_now = datetime.datetime.utcnow()
                 if ((datetime_before.hour // int(resample_period[:-1]) != datetime_now.hour // int(resample_period[:-1])) or
                     sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique())):
                     # concatenate fetched resampled_ohlc_history_df and newly generated resampled_ohlc_history_df
                     start = time.time()
-                    new_resampled_ohlc_history_df = self.resample_ohlc_df(pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')), resample_period, closed_count=resample_closed_count)
+                    new_resampled_ohlc_history_df = self.resample_ohlc_df(pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')), resample_period, closed_count=resample_closed_count)
                     new_resampled_ohlc_history_df = new_resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
                     resampled_ohlc_history_df = pd.concat([resampled_ohlc_history_df, new_resampled_ohlc_history_df], axis=0, ignore_index=True)
                     resampled_ohlc_history_df = resampled_ohlc_history_df.drop_duplicates(subset=['base_asset', 'datetime_now'], keep='last').groupby('base_asset').tail(max_length)
-                    print(f"resampling ohlc_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
+                    # print(f"resampling ohlc_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
                     # Save into the Redis DB
                     # start = time.time()
                     pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-                    self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+                    self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
                     # Publish to redis pubsub
-                    self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+                    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+                    # Directly insert into the DB
+                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+                    insert_db_thread.start()
                     # self.kline_logger.info(f"redis saving {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}")
                     if sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique()):
                         removed_list = [x for x in resampled_ohlc_history_df['base_asset'].unique() if x not in original_ohlc_1T_now['base_asset'].unique()]
@@ -256,7 +257,7 @@ class InitKlineCore:
                             # remove the removed base_asset from resampled_ohlc_history_df and overwrite it
                             resampled_ohlc_history_df = resampled_ohlc_history_df[~resampled_ohlc_history_df['base_asset'].isin(removed_list)]
                             pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-                            self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+                            self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
                             self.kline_logger.info(f"resampled_ohlc_history_df has been overwritten. removed_list: {removed_list}")
                         time.sleep(5)
                 else:
@@ -278,7 +279,7 @@ class InitKlineCore:
                         # # Save into the Redis DB
                         # self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
                         # PUBSUB
-                        self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
+                        self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
                     except Exception as e:
                         self.kline_logger.error(f"Exception: {e}, \nError in ohlc_day_resample_loader: {e}, resampled_ohlc_last_df: {resampled_ohlc_last_df}, original_ohlc_1T_now: {original_ohlc_1T_now}")
                         time.sleep(3)
@@ -290,19 +291,22 @@ class InitKlineCore:
     def ohlc_hour_resample_loader(self, target_market_code, origin_market_code, original_period, resample_period, resample_closed_count, loop_downtime_sec=0.1, max_length=300):
         columns_to_merge = ['base_asset', 'tp', 'scr', 'atp24h', 'converted_tp']
         while True:
-            original_ohlc_kline_df = self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')
+            original_ohlc_kline_df = self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')
             if original_ohlc_kline_df is not None:
                 break
             time.sleep(5)
 
         start = time.time()
-        original_ohlc_1T_now = pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
+        original_ohlc_1T_now = pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
         resampled_ohlc_history_df = self.resample_ohlc_df(pickle.loads(original_ohlc_kline_df), resample_period, closed_count=resample_closed_count)
         resampled_ohlc_history_df = resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
         pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-        self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+        self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
         # Publish to redis pubsub
-        self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+        # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+        # Directly insert into the DB
+        insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+        insert_db_thread.start()
         self.kline_logger.info(f"ohlc_hour_resample_loader has started. {target_market_code}:{origin_market_code}_{resample_period}_kline, initial generating and storing resampled_ohlc_history_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
 
         datetime_now = datetime.datetime.utcnow()
@@ -310,19 +314,19 @@ class InitKlineCore:
             time.sleep(loop_downtime_sec)
             try:
                 datetime_before = datetime_now
-                original_ohlc_1T_now = pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
+                original_ohlc_1T_now = pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
                 try:
-                    original_ohlc_history_last_datetime = pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')).iloc[-1]['datetime_now']
+                    original_ohlc_history_last_datetime = pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')).iloc[-1]['datetime_now']
                 except TypeError:
                     print(f"original_ohlc_history_last_datetime is None")
                     continue
-                resampled_ohlc_history_df = pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline'))
+                resampled_ohlc_history_df = pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline'))
                 datetime_now = datetime.datetime.utcnow()
                 if ((datetime_before.hour // int(resample_period[:-1]) != datetime_now.hour // int(resample_period[:-1])) or
                     sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique())):
                     # concatenate fetched resampled_ohlc_history_df and newly generated resampled_ohlc_history_df
                     start = time.time()
-                    new_resampled_ohlc_history_df = self.resample_ohlc_df(pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')), resample_period, closed_count=resample_closed_count)
+                    new_resampled_ohlc_history_df = self.resample_ohlc_df(pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')), resample_period, closed_count=resample_closed_count)
                     new_resampled_ohlc_history_df = new_resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
                     resampled_ohlc_history_df = pd.concat([resampled_ohlc_history_df, new_resampled_ohlc_history_df], axis=0, ignore_index=True)
                     resampled_ohlc_history_df = resampled_ohlc_history_df.drop_duplicates(subset=['base_asset', 'datetime_now'], keep='last').groupby('base_asset').tail(max_length)
@@ -330,9 +334,12 @@ class InitKlineCore:
                     # Save into the Redis DB
                     # start = time.time()
                     pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-                    self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+                    self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
                     # Publish to redis pubsub
-                    self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+                    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+                    # Directly insert into the DB
+                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+                    insert_db_thread.start()
                     # self.kline_logger.info(f"redis saving {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}")
                     if sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique()):
                         removed_list = [x for x in resampled_ohlc_history_df['base_asset'].unique() if x not in original_ohlc_1T_now['base_asset'].unique()]
@@ -342,7 +349,7 @@ class InitKlineCore:
                             # remove the removed base_asset from resampled_ohlc_history_df and overwrite it
                             resampled_ohlc_history_df = resampled_ohlc_history_df[~resampled_ohlc_history_df['base_asset'].isin(removed_list)]
                             pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-                            self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+                            self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
                             self.kline_logger.info(f"resampled_ohlc_history_df has been overwritten. removed_list: {removed_list}")
                         time.sleep(5)
                 else:
@@ -364,7 +371,7 @@ class InitKlineCore:
                         # # Save into the Redis DB
                         # self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
                         # PUBSUB
-                        self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
+                        self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
                     except Exception as e:
                         self.kline_logger.error(f"Exception: {e}, \nError in ohlc_hour_resample_loader: {e}, resampled_ohlc_last_df: {resampled_ohlc_last_df}, original_ohlc_1T_now: {original_ohlc_1T_now}")
                         time.sleep(3)
@@ -377,19 +384,22 @@ class InitKlineCore:
         columns_to_merge = ['base_asset', 'tp', 'scr', 'atp24h', 'converted_tp']
 
         while True:
-            original_ohlc_kline_df = self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')
+            original_ohlc_kline_df = self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')
             if original_ohlc_kline_df is not None:
                 break
             time.sleep(5)
 
         start = time.time()
-        original_ohlc_1T_now = pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
+        original_ohlc_1T_now = pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
         resampled_ohlc_history_df = self.resample_ohlc_df(pickle.loads(original_ohlc_kline_df), resample_period, closed_count=resample_closed_count)
         resampled_ohlc_history_df = resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
         pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-        self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+        self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
         # Publish to redis pubsub
-        self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+        # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+        # Directly insert into the DB
+        insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+        insert_db_thread.start()
         self.kline_logger.info(f"ohlc_min_resample_loader has started. {target_market_code}:{origin_market_code}_{resample_period}_kline, initial generating and storing resampled_ohlc_history_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
 
         datetime_now = datetime.datetime.utcnow()
@@ -397,19 +407,19 @@ class InitKlineCore:
             time.sleep(loop_downtime_sec)
             try:
                 datetime_before = datetime_now
-                original_ohlc_1T_now = pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
+                original_ohlc_1T_now = pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
                 try:
-                    original_ohlc_history_last_datetime = pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')).iloc[-1]['datetime_now']
+                    original_ohlc_history_last_datetime = pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')).iloc[-1]['datetime_now']
                 except TypeError:
                     print(f"original_ohlc_history_last_datetime is None")
                     continue
-                resampled_ohlc_history_df = pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline'))
+                resampled_ohlc_history_df = pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline'))
                 datetime_now = datetime.datetime.utcnow()
                 if ((datetime_before.minute // int(resample_period[:-1]) != datetime_now.minute // int(resample_period[:-1])) or
                     sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique())):
                     # concatenate fetched resampled_ohlc_history_df and newly generated resampled_ohlc_history_df
                     start = time.time()
-                    new_resampled_ohlc_history_df = self.resample_ohlc_df(pickle.loads(self.redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')), resample_period, closed_count=resample_closed_count)
+                    new_resampled_ohlc_history_df = self.resample_ohlc_df(pickle.loads(self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')), resample_period, closed_count=resample_closed_count)
                     new_resampled_ohlc_history_df = new_resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
                     resampled_ohlc_history_df = pd.concat([resampled_ohlc_history_df, new_resampled_ohlc_history_df], axis=0, ignore_index=True)
                     resampled_ohlc_history_df = resampled_ohlc_history_df.drop_duplicates(subset=['base_asset', 'datetime_now'], keep='last').groupby('base_asset').tail(max_length)
@@ -417,11 +427,14 @@ class InitKlineCore:
                     # Save into the Redis DB
                     start = time.time()
                     pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-                    self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+                    self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
                     self.kline_logger.info(f"redis saving {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}")
                     # Publish to redis pubsub
                     start = time.time() # TEST
-                    self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+                    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+                    # Directly insert into the DB
+                    insert_db_thread = Thread(target=self.insert_kline_to_db, args=(resampled_ohlc_history_df, f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline"))
+                    insert_db_thread.start()
                     self.kline_logger.info(f"redis publishing {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}") # TEST
                     if sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique()):
                         removed_list = [x for x in resampled_ohlc_history_df['base_asset'].unique() if x not in original_ohlc_1T_now['base_asset'].unique()]
@@ -431,7 +444,7 @@ class InitKlineCore:
                             # remove the removed base_asset from resampled_ohlc_history_df and overwrite it
                             resampled_ohlc_history_df = resampled_ohlc_history_df[~resampled_ohlc_history_df['base_asset'].isin(removed_list)]
                             pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-                            self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
+                            self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
                             self.kline_logger.info(f"resampled_ohlc_history_df has been overwritten. removed_list: {removed_list}")
                         time.sleep(5)
                 else:
@@ -453,7 +466,7 @@ class InitKlineCore:
                         # # Save into the Redis DB
                         # self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{converted_resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
                         # PUBSUB
-                        self.redis_client.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
+                        self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
                     except Exception as e:
                         self.kline_logger.error(f"Exception: {e}, \nError in ohlc_min_resample_loader: {e}, resampled_ohlc_last_df: {resampled_ohlc_last_df}, original_ohlc_1T_now: {original_ohlc_1T_now}")
                         time.sleep(3)
@@ -462,45 +475,83 @@ class InitKlineCore:
                 self.kline_logger.error(content)
                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"ohlc_min_resample_loader got an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
 
-    def insert_kline_to_db(self, kline_df, channel_name):    
-        service_name = channel_name.split('|')[0].lower()
-        market_kline_name = channel_name.split('|')[1]
-        market_code_combination = '_'.join(market_kline_name.split('_')[:-2])
-        converted_market_code_combination = market_code_combination.replace(':', '-').replace('/', '__')
-        kline_type = market_kline_name.split('_')[-2]
-        
-        mongo_client = self.db_client.get_conn()
-        db = mongo_client[converted_market_code_combination]
+    def insert_kline_to_db(self, kline_df, channel_name):
+        try:
+            service_name = channel_name.split('|')[0].lower()
+            market_kline_name = channel_name.split('|')[1]
+            market_code_combination = '_'.join(market_kline_name.split('_')[:-2])
+            converted_market_code_combination = market_code_combination.replace(':', '-').replace('/', '__')
+            kline_type = market_kline_name.split('_')[-2]
 
-        closed_kline_df = kline_df[kline_df['closed']==True]
-        if len(closed_kline_df) == 0:
-            self.kline_logger.info(f'insert_kline_to_db|{channel_name} No klines to be inserted')
-            # print(f'insert_kline_to_db|{channel_name} No klines to be inserted') # TEST
-        else:
-            # Filter the klines to be inserted
-            start = time.time()
-            base_asset_list = closed_kline_df['base_asset'].unique()
-            count = 0
-            inserted_coin_list = []
-            for each_base_asset in base_asset_list:
-                # start2 = time.time()
-                collection_name = f"{each_base_asset}_{kline_type}"
-                collection = db[collection_name]
-                document_count = collection.count_documents({})
-                if document_count == 0:
-                    df_to_insert = closed_kline_df[closed_kline_df['base_asset']==each_base_asset]
-                else:
-                    df_to_insert = closed_kline_df[(closed_kline_df['base_asset']==each_base_asset)&(closed_kline_df['datetime_now']>collection.find_one(sort=[("datetime_now", -1)])['datetime_now'])]
-                if len(df_to_insert) != 0:                
-                    collection.insert_many(df_to_insert.to_dict('records'))
-                    count += len(df_to_insert)
-                    inserted_coin_list.append(each_base_asset)
-                    # self.kline_logger.info(f"insert_kline_to_db|database: {market_code_combination}, collection:{collection_name}, Inserting {len(df_to_insert)} klines took {time.time() - start2} seconds")
-            if count != 0:
-                self.kline_logger.info(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds")
-            # print(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds") # TEST
-        mongo_client.close()
+            # Check whether the market is in maintenance or not
+            server_check = False
+            registered_server_check_list = [x.decode('utf-8') for x in self.redis_client_db0.redis_conn.keys() if 'INFO_CORE|SERVER_CHECK' in x.decode('utf-8')]
+            for each_market_server_check in registered_server_check_list:
+                market_name = each_market_server_check.replace('INFO_CORE|SERVER_CHECK|', '')
+                if market_name in market_code_combination:
+                    server_check_dict = self.redis_client_db0.get_dict(each_market_server_check)
+                    server_check_start_timestamp_utc = server_check_dict['start']
+                    server_check_end_timestamp_utc = server_check_dict['end']
+                    now_timestamp_utc = datetime.datetime.utcnow().timestamp()
+                    if server_check_start_timestamp_utc <= now_timestamp_utc <= server_check_end_timestamp_utc:
+                        server_check = True
+                        break
+            if server_check is True:
+                # TEST
+                self.kline_logger.info(f"insert_kline_to_db|channel_name:{channel_name}, kline_type:{kline_type} has been skipped due to server check.")
+                return
 
+            # mongo_client = self.db_client.get_conn()
+            mongo_client = self.mongo_db
+            db = mongo_client[converted_market_code_combination]
+
+            closed_kline_df = kline_df[kline_df['closed']==True]
+            if len(closed_kline_df) == 0:
+                self.kline_logger.info(f'insert_kline_to_db|{channel_name} No klines to be inserted')
+                # print(f'insert_kline_to_db|{channel_name} No klines to be inserted') # TEST
+            else:
+                # Filter the klines to be inserted
+                start = time.time()
+                base_asset_list = closed_kline_df['base_asset'].unique()
+                count = 0
+                inserted_coin_list = []
+                filtering_time = 0 # TEST
+                insert_time = 0 # TEST
+                for each_base_asset in base_asset_list:
+                    # start2 = time.time()
+                    collection_name = f"{each_base_asset}_{kline_type}"
+                    collection = db[collection_name]
+                    document_count = collection.count_documents({})
+                    if document_count == 0:
+                        df_to_insert = closed_kline_df[closed_kline_df['base_asset']==each_base_asset]
+                    else:
+                        # TEST
+                        start_filter = time.time()
+                        df_to_insert = closed_kline_df[(closed_kline_df['base_asset']==each_base_asset)&(closed_kline_df['datetime_now']>collection.find_one(sort=[("datetime_now", -1)])['datetime_now'])]
+                        # TEST
+                        filtering_time += (time.time() - start_filter)
+                    if len(df_to_insert) != 0:
+                        # TEST
+                        start_insert = time.time()       
+                        collection.insert_many(df_to_insert.to_dict('records'))
+                        # TEST
+                        insert_time += (time.time() - start_insert)
+                        count += len(df_to_insert)
+                        inserted_coin_list.append(each_base_asset)
+                        # self.kline_logger.info(f"insert_kline_to_db|database: {market_code_combination}, collection:{collection_name}, Inserting {len(df_to_insert)} klines took {time.time() - start2} seconds")
+                if count != 0:
+                    # TEST
+                    self.kline_logger.info(f"insert_kline_to_db|database: {market_code_combination}, Filtering {count} klines for {len(inserted_coin_list)} unique base_assets took {filtering_time} seconds")
+                    self.kline_logger.info(f"insert_kline_to_db|database: {market_code_combination}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {insert_time} seconds")
+                    # TEST
+                    self.kline_logger.info(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds")
+                # print(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds") # TEST
+            # mongo_client.close()
+        except:
+            self.kline_logger.error(f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}")
+            self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"insert_kline_to_db", content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}", code=None, sent_switch=0, send_counts=1, remark=None)
+
+    # Deprecated
     def subscribe_kline_channel(self):
         self.kline_logger.info(f"subscribe_kline_channel|Subscribing to kline channels Started..")
         def message_handler(message):
@@ -513,9 +564,9 @@ class InitKlineCore:
                 self.kline_logger.error(f"subscribe_kline_channel|Error in message_handler: {traceback.format_exc()}")
 
         channels_dict = {}
-        for market_combination_tuple in self.enaled_market_combination_list:
+        for market_combination in self.enabled_market_klines:
             for each_kline_type in self.enabled_kline_types:
-                channel_name = f'INFO_CORE|{market_combination_tuple[0]}:{market_combination_tuple[1]}_{each_kline_type}_kline'
+                channel_name = f'INFO_CORE|{market_combination}_{each_kline_type}_kline'
                 channels_dict[channel_name] = message_handler
                 self.kline_logger.info(f"subscribe_kline_channel|Subscribing to {channel_name}")
 
@@ -528,24 +579,37 @@ class InitKlineCore:
                     content = f"subscribe_kline_channel|Connection lost. Attempting to reconnect..., error:{traceback.format_exc()}"
                     self.kline_logger.error(content)
                     self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"subscribe_kline_channel", content, code=None, sent_switch=0, send_counts=1, remark=None)
+                    self.pubsub = self.redis_client_db0.redis_conn.pubsub()
                     subscribe_to_channels()
 
         def subscribe_to_channels():
             while True:
                 try:
                     self.pubsub.subscribe(**channels_dict)
-                    self.pubsub.run_in_thread(sleep_time=0.025, daemon=True)
+                    self.pubsub.run_in_thread(sleep_time=0.05, daemon=True)
                     break
                 except Exception as e:
                     self.kline_logger.error(f"subscribe_kline_channel|Error in subscription: {traceback.format_exc()}")
                     time.sleep(5)
 
         subscribe_to_channels()
-        # Start the keep_alive_check in another thread
-        Thread(target=keep_alive_check, daemon=True).start()
+        # # Start the keep_alive_check in another thread
+        # Thread(target=keep_alive_check, daemon=True).start()
+        keep_alive_check()
 
+    def register_enabled_market_klines(self):
+        self.kline_logger.info(f"register_enabled_market_klines|Registering enabled market klines:{self.enabled_market_klines} to redis Started..")
+        def register_enabled_market_klines_to_redis():
+            while True:
+                try:
+                    for each_enabled_market_klines in self.enabled_market_klines:
+                        self.redis_client_db0.redis_conn.set(f"INFO_CORE|ACTIVATED|{each_enabled_market_klines}", datetime.datetime.utcnow().timestamp(), ex=35)
+                except Exception as e:
+                    self.kline_logger.error(f"register_enabled_market_klines|Error in register_enabled_market_klines_to_redis: {traceback.format_exc()}")
+                time.sleep(30)
+        Thread(target=register_enabled_market_klines_to_redis, daemon=True).start()
     def unsubscribe_kline_channel(self):
-        self.pubsub.unsubscribe()
+        self.pubsub.unsubscribe() 
 
         
 
