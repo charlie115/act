@@ -1,5 +1,5 @@
 {
-    "node": "info_core",
+    "node": "kline_generator1",
     "node_settings":
     {
         "info_core":
@@ -42,6 +42,22 @@
                 "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT",
                 "BINANCE_USD_M/USDT:OKX_USD_M/USDT",
                 "BINANCE_USD_M/USDT:BINANCE_COIN_M/USD"
+            ]
+        },
+        "kline_generator2":
+        {
+            "MASTER": false,
+            "db_settings": "mongodb_remote",
+            "redis_settings": "redis_remote",
+            "telegram_bot_name": null,
+            "reference_node": "info_core",
+            "enabled_market_klines": [
+                "BYBIT_USD_M/USDT:BYBIT_COIN_M/USD",
+                "BYBIT_SPOT/USDT:BYBIT_USD_M/USDT",
+                "BYBIT_SPOT/USDT:BYBIT_COIN_M/USD",
+                "OKX_USD_M/USDT:OKX_COIN_M/USD",
+                "OKX_SPOT/USDT:OKX_USD_M/USDT",
+                "OKX_SPOT/USDT:OKX_COIN_M/USD"
             ]
         }
     },
