@@ -8,7 +8,6 @@ import React, {
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
 
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -441,8 +440,8 @@ function PremiumTable({
 
   const [columnVisibility, setColumnVisibility] = useState({});
   const [expanded, setExpanded] = useState({});
-  const [globalFilter, setGlobalFilter] = React.useState('');
-  const [pagination, setPagination] = React.useState({
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
@@ -510,7 +509,6 @@ function PremiumTable({
             globalFilter,
             pagination,
           },
-
           onExpandedChange: (newExpanded) => setExpanded(newExpanded()),
           onPaginationChange: setPagination,
         }}

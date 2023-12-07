@@ -10,7 +10,7 @@ export default function renderIconCell({ cell, row, isMobile }) {
       {cell.getValue() ? (
         <img
           loading="lazy"
-          width={isMobile ? '15' : '20'}
+          width={isMobile ? '12' : '20'}
           src={cell.getValue()}
           alt={row.original.name}
         />

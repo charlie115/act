@@ -10,18 +10,23 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import OutlinedInput from '@mui/material/OutlinedInput';
 import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { useTheme } from '@mui/material/styles';
+import { alpha, styled, useTheme } from '@mui/material/styles';
 
 import {
   useGetAssetsQuery,
-  useGetFundingRateDiffQuery,
+  useGetAverageFundingRateQuery,
   usePostAssetMutation,
 } from 'redux/api/drf/infocore';
 
@@ -29,9 +34,9 @@ import { useTranslation } from 'react-i18next';
 
 import { usePrevious } from '@uidotdev/usehooks';
 
+import debounce from 'lodash/debounce';
 import isEqual from 'lodash/isEqual';
 import orderBy from 'lodash/orderBy';
-import uniq from 'lodash/uniq';
 import uniqBy from 'lodash/uniqBy';
 
 import DropdownMenu from 'components/DropdownMenu';
@@ -40,13 +45,12 @@ import ReactTableUI from 'components/ReactTableUI';
 import { EXCHANGE_LIST } from 'constants/lists';
 
 import renderFundingRateCell from './renderFundingRateCell';
-import renderFundingRateDiffCell from './renderFundingRateDiffCell';
 import renderIconCell from './renderIconCell';
 import renderMarketCell from './renderMarketCell';
 
-const DEFAULT_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 50;
 
-export default function FundingRateDiffTable() {
+export default function AvgFundingRateTable() {
   const tableRef = useRef();
 
   const { i18n, t } = useTranslation();
@@ -56,19 +60,29 @@ export default function FundingRateDiffTable() {
 
   const [assets, setAssets] = useState([]);
 
-  const [exchangeList, setExchangeList] = useState([]);
-  const [selectedExchange, setSelectedExchange] = useState();
+  const [marketList, setMarketList] = useState([]);
+  const [selectedMarket, setSelectedMarket] = useState();
 
-  const [sameExchangeChecked, setSameExchangeChecked] = useState(false);
+  const [avgFundingRateParams, setAvgFundingRateParams] = useState({ n: 100 });
+  const [n, setN] = useState(100);
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
 
-  const { data, isLoading } = useGetFundingRateDiffQuery(
-    {},
-    { pollingInterval: 1000 * 60 }
+  const handleParamsChange = (newValue) => setAvgFundingRateParams(newValue);
+  const debouncedHandleParamsChange = useCallback(
+    debounce(handleParamsChange, 1000, {
+      leading: false,
+      trailing: true,
+    }),
+    []
+  );
+
+  const { data, isLoading } = useGetAverageFundingRateQuery(
+    avgFundingRateParams,
+    { pollingInterval: 1000 * 60, skip: !avgFundingRateParams }
   );
 
   const { data: assetsData, isSuccess: isAssetsDataSuccess } =
@@ -77,24 +91,21 @@ export default function FundingRateDiffTable() {
 
   useEffect(() => {
     setAssets(uniqBy(data, 'base_asset').map((item) => item.base_asset));
-  }, [data]);
-
-  useEffect(() => {
-    const exchanges = [
-      { label: t('All Exchanges'), value: 'ALL', icon: <CheckBoxIcon /> },
+    const markets = [
+      { label: t('All Markets'), value: 'ALL', icon: <CheckBoxIcon /> },
     ].concat(
-      uniq(
-        data?.reduce((acc, v) => acc.concat([v.exchange_x, v.exchange_y]), [])
-      ).map((item) => {
-        const exchange = EXCHANGE_LIST.find((o) => o.value === item);
+      uniqBy(data, 'market_code').map((item) => {
+        const icon = EXCHANGE_LIST.find(
+          (exchange) => exchange.value === item.market_code.split('_')?.[0]
+        )?.icon;
         return {
-          label: exchange?.getLabel() || item,
-          value: exchange?.value || item,
+          label: item.market_code,
+          value: item.market_code,
           icon: (
             <Box
               component="img"
-              src={exchange?.icon}
-              alt={exchange?.label || item}
+              src={icon}
+              alt={item.market_code}
               sx={{
                 height: { xs: 16, md: 18 },
                 width: { xs: 16, md: 18 },
@@ -104,9 +115,13 @@ export default function FundingRateDiffTable() {
         };
       })
     );
-    setExchangeList(exchanges);
-    if (!selectedExchange) setSelectedExchange(exchanges[0]);
-  }, [data, selectedExchange, i18n.language]);
+    setMarketList(markets);
+    if (!selectedMarket) setSelectedMarket(markets[0]);
+  }, [data, selectedMarket, i18n.language]);
+
+  useEffect(() => {
+    debouncedHandleParamsChange({ n });
+  }, [n]);
 
   const prevAssets = usePrevious(assets);
   const prevIsAssetsDataSuccess = usePrevious(isAssetsDataSuccess);
@@ -124,89 +139,56 @@ export default function FundingRateDiffTable() {
         accessorKey: 'icon',
         enableGlobalFilter: false,
         enableSorting: false,
-        size: isMobile ? 25 : 80,
+        size: isMobile ? 20 : 40,
         header: <span />,
         cell: renderIconCell,
-        props: { rowSpan: 2 },
       },
       {
         accessorKey: 'symbol',
-        size: isMobile ? 75 : 180,
+        size: isMobile ? 110 : 180,
         header: t('Symbol'),
         props: isMobile ? { sx: { fontSize: 10 } } : undefined,
       },
       {
         accessorKey: 'market',
-        size: isMobile ? 95 : 250,
+        size: isMobile ? 120 : 250,
         header: t('Market'),
         cell: renderMarketCell,
       },
       {
         accessorKey: 'fundingRate',
-        size: isMobile ? 65 : 180,
-        header: t('Funding Rate'),
+        size: isMobile ? 80 : 180,
+        header: `${t('Avg. of the Last {{n}} Funding Rates', {
+          n: avgFundingRateParams?.n,
+        })} (N)`,
         cell: renderFundingRateCell,
       },
-      {
-        accessorKey: 'fundingRateDiff',
-        size: isMobile ? 60 : undefined,
-        header: t('Funding Rate Difference'),
-        cell: renderFundingRateDiffCell,
-        props: { rowSpan: 2 },
-      },
     ],
-    [isMobile, i18n.language]
+    [avgFundingRateParams?.n, i18n.language, isMobile]
   );
 
   const tableData = useMemo(
     () =>
       orderBy(
-        data?.filter((item) => {
-          let flag = selectedExchange.value === 'ALL';
-          if (selectedExchange.value !== 'ALL')
-            flag =
-              item.exchange_x === selectedExchange?.value &&
-              item.exchange_y === selectedExchange?.value;
-          if (sameExchangeChecked)
-            flag = flag && item.exchange_x === item.exchange_y;
-          return flag;
-        }),
-        'funding_rate_diff',
+        data?.filter(
+          (item) =>
+            selectedMarket?.value === 'ALL' ||
+            item.market_code === selectedMarket?.value
+        ),
+        'funding_rate',
         'desc'
       ).map((item, idx) => ({
         rowId: `${item.base_asset}-${idx}`,
         name: item.base_asset,
         icon: assetsData?.[item.base_asset]?.icon,
-        exchange: item.exchange_x,
-        quote_asset: item.quote_asset_x,
-        market: item.market_code_x,
-        symbol: item.symbol_x,
-        fundingTime: item.funding_time_x,
-        fundingRate: item.funding_rate_x * 100,
-        fundingRateDiff: item.funding_rate_diff * 100,
-        subRows: [
-          {
-            rowId: `${item.base_asset}-${idx}-sub`,
-            icon: false,
-            name: item.base_asset,
-            exchange: item.exchange_y,
-            quote_asset: item.quote_asset_y,
-            market: item.market_code_y,
-            symbol: item.symbol_y,
-            fundingTime: item.funding_time_y,
-            fundingRate: item.funding_rate_y * 100,
-            fundingRateDiff: false,
-            ...item,
-          },
-        ],
+        market: item.market_code,
+        symbol: item.symbol,
+        exchange: item.market_code.split('_')?.[0],
+        fundingRate: item.funding_rate * 100,
         ...item,
       })) || [],
-    [data, assetsData, sameExchangeChecked, selectedExchange?.value]
+    [data, assetsData, selectedMarket?.value]
   );
-
-  useEffect(() => {
-    tableRef.current.toggleAllRowsExpanded(true);
-  }, [tableData]);
 
   const rows = tableRef.current?.getRowModel().rows;
 
@@ -214,15 +196,27 @@ export default function FundingRateDiffTable() {
     <>
       <Stack direction="row" spacing={{ xs: 1, sm: 2 }} sx={{ mb: 2 }}>
         <DropdownMenu
-          value={selectedExchange}
-          options={exchangeList}
-          onSelectItem={setSelectedExchange}
-          buttonStyle={{ justifyContent: 'flex-start' }}
+          value={selectedMarket}
+          options={marketList}
+          onSelectItem={setSelectedMarket}
+          buttonStyle={{
+            justifyContent: 'flex-start',
+            minWidth: isMobile ? 190 : 220,
+          }}
         />
-        <FormControlLabel
-          control={<Checkbox />}
-          label={t('Within the same exchange')}
-          onChange={(e) => setSameExchangeChecked(e.target.checked)}
+        <TextField
+          id="n-value"
+          label="N (1~100)"
+          variant="outlined"
+          type="number"
+          value={`${n}`}
+          onChange={(e) => {
+            const value = parseInt(e.target.value, 10);
+            if (value >= 1 && value <= 100) setN(value);
+            else setN(value > 100 ? 100 : 1);
+          }}
+          inputProps={{ min: '1', max: '100' }}
+          sx={{ minWidth: isMobile ? 100 : 120 }}
         />
       </Stack>
       <Box sx={{ boxShadow: 2 }}>
@@ -231,12 +225,13 @@ export default function FundingRateDiffTable() {
           columns={columns}
           data={tableData}
           options={{
-            getRowId: (row) => row.rowId,
             state: { pagination },
             onPaginationChange: setPagination,
           }}
+          getCellProps={() => ({ sx: { height: 40 } })}
           showProgressBar={isLoading}
           isLoading={isLoading}
+          // renderRow={(props) => <CustomRow {...props} />}
         />
         {rows?.length >= DEFAULT_PAGE_SIZE && (
           <Box sx={{ textAlign: 'center' }}>

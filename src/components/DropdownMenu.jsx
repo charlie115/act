@@ -65,7 +65,6 @@ function DropdownMenu({
     <Box sx={{ ...containerStyle }}>
       <Tooltip title={tooltipTitle}>
         <Button
-          // fullWidth
           ref={anchorRef}
           aria-controls={open ? 'dropdown-menu' : undefined}
           aria-expanded={open ? 'true' : undefined}
@@ -78,8 +77,7 @@ function DropdownMenu({
           sx={{
             alignSelf: 'stretch',
             fontSize: {
-              xs: '0.5rem',
-              sm: '0.65rem',
+              xs: '0.7rem',
               md: '0.5rem',
               lg: '0.85rem',
             },
@@ -92,7 +90,7 @@ function DropdownMenu({
                 lg: '0.95rem',
               },
             },
-            minWidth: 150,
+            minWidth: isMobile ? 120 : 150,
             ...buttonStyle,
           }}
         >
@@ -122,6 +120,7 @@ function DropdownMenu({
                   aria-labelledby="dropdown-button"
                   autoFocusItem={open}
                   onKeyDown={handleListKeyDown}
+                  sx={{ minWidth: 150 }}
                 >
                   {options.map((item) => (
                     <MenuItem

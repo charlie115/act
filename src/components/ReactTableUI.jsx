@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useEffect } from 'react';
 
 import {
   flexRender,
@@ -163,15 +163,8 @@ const ReactTableUI = forwardRef(
                         <Skeleton
                           animation="wave"
                           variant="text"
-                          sx={{ mx: 1 }}
-                          width={column.getSize() + index / 5}
-                          // width={
-                          //   index > 0 &&
-                          //   index !== 2 &&
-                          //   index < table.getVisibleFlatColumns().length - 1
-                          //     ? item
-                          //     : 0
-                          // }
+                          sx={{ mx: 2 }}
+                          width={(column.getSize() - index) / 2}
                         />
                       </Td>
                     ))}

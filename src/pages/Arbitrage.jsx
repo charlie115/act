@@ -18,12 +18,13 @@ import { useTranslation } from 'react-i18next';
 import a11yProps from 'utils/a11yProps';
 
 import ArbitrageTable from 'components/ArbitrageTable';
+import AvgFundingRateTable from 'components/funding_rate/AvgFundingRateTable';
 import FundingRateDiffTable from 'components/funding_rate/FundingRateDiffTable';
 import StyledTab from 'components/StyledTab';
 import StyledTabs from 'components/StyledTabs';
 import TabPanel from 'components/TabPanel';
 
-const ARBITRAGE_TAB = { fundingRateDifference: 0 };
+const ARBITRAGE_TAB = { fundingRateDifference: 0, averageFundingRate: 1 };
 
 export default function Arbitrage() {
   const { t } = useTranslation();
@@ -60,6 +61,14 @@ export default function Arbitrage() {
               id: ARBITRAGE_TAB.fundingRateDifference,
             })}
           />
+          <StyledTab
+            label={t('Average Funding Rate')}
+            value={ARBITRAGE_TAB.averageFundingRate}
+            {...a11yProps({
+              name: 'arbitrage',
+              id: ARBITRAGE_TAB.averageFundingRate,
+            })}
+          />
         </StyledTabs>
       </Stack>
       <SwipeableViews
@@ -72,9 +81,22 @@ export default function Arbitrage() {
           dir={theme.direction}
           value={currentTab}
         >
-          <Box sx={{ overflowX: 'hidden', mb: 2, p: 1 }}>
-            <FundingRateDiffTable />
-          </Box>
+          {currentTab === ARBITRAGE_TAB.fundingRateDifference && (
+            <Box sx={{ overflowX: 'hidden', mb: 2, p: 1 }}>
+              <FundingRateDiffTable />
+            </Box>
+          )}
+        </TabPanel>
+        <TabPanel
+          index={ARBITRAGE_TAB.averageFundingRate}
+          dir={theme.direction}
+          value={currentTab}
+        >
+          {currentTab === ARBITRAGE_TAB.averageFundingRate && (
+            <Box sx={{ overflowX: 'hidden', mb: 2, p: 1 }}>
+              <AvgFundingRateTable />
+            </Box>
+          )}
         </TabPanel>
       </SwipeableViews>
     </Box>

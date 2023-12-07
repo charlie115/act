@@ -18,6 +18,13 @@ const api = drfApi.injectEndpoints({
           {}
         ),
     }),
+    getAverageFundingRate: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/infocore/funding-rate/average/',
+        params,
+      }),
+    }),
     getFundingRate: builder.query({
       keepUnusedDataFor: 1,
       query: (params) => ({
@@ -64,6 +71,7 @@ const api = drfApi.injectEndpoints({
 export default api;
 export const {
   useGetAssetsQuery,
+  useGetAverageFundingRateQuery,
   useGetFundingRateQuery,
   useGetFundingRateDiffQuery,
   useGetHistoricalKlineQuery,

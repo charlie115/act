@@ -163,8 +163,8 @@ export const MARKET_CODE_LIST = [
     icon: BinanceSvg,
   },
   {
-    getLabel: () => i18n.t('Bybit (KRW)'),
-    value: 'BYBIT_SPOT/KRW',
+    getLabel: () => i18n.t('Bybit (USDT)'),
+    value: 'BYBIT_SPOT/USDT',
     exchange: 'BYBIT',
     icon: BybitSvg,
   },
