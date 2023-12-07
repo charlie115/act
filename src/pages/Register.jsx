@@ -64,11 +64,7 @@ export default function Register() {
 
   return (
     <Box sx={{ m: 'auto', textAlign: 'center', width: 300 }}>
-      <BrandLogo
-        iconSize={30}
-        titleVariant="h4"
-        sx={{ justifyContent: 'center', mb: 5 }}
-      />
+      <BrandLogo size={180} sx={{ justifyContent: 'center', mb: 5 }} />
       <Typography gutterBottom variant="h5">
         <Trans>
           Welcome,{' '}

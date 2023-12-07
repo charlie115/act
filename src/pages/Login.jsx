@@ -41,11 +41,7 @@ export default function Login() {
   return (
     <Box sx={{ m: 'auto', textAlign: 'center' }}>
       <Paper elevation={2} sx={{ bgcolor: 'background.default', p: 5 }}>
-        <BrandLogo
-          iconSize={30}
-          titleVariant="h4"
-          sx={{ justifyContent: 'center', mb: 2 }}
-        />
+        <BrandLogo size={180} sx={{ justifyContent: 'center', mb: 2 }} />
         <Typography gutterBottom color="secondary" variant="h6" sx={{ mb: 3 }}>
           {t('Sign in using Google to get quick access')}
         </Typography>

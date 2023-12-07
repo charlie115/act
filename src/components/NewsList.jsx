@@ -85,7 +85,7 @@ export default function NewsList({ filters, timezone, onUnreadData }) {
         key={item}
         direction={{ xs: 'column', md: 'row' }}
         spacing={2}
-        sx={{ alignItems: 'center' }}
+        sx={{ alignItems: 'center', mb: 1, mx: 1 }}
       >
         <Skeleton
           variant="rectangular"

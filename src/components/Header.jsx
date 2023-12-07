@@ -95,7 +95,6 @@ export default function Header() {
           </Box>
           <BrandLogo
             onClick={() => navigate('/')}
-            iconProps={{ color: 'white' }}
             sx={{ flexGrow: { xs: 1, md: 0 } }}
           />
           <Box sx={{ flexGrow: 1, ml: 3, display: { xs: 'none', md: 'flex' } }}>
