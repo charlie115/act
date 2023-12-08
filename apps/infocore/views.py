@@ -216,12 +216,16 @@ class FundingRateDataView(views.APIView):
             market_code=query.get("market_code", ""),
             base_assets=query.get("base_asset", ""),
             past=query.get("past", ""),
+            start_funding_time=query.get("start_funding_time", None),
+            end_funding_time=query.get("end_funding_time", None),
             tz=query.get("tz"),
         )
 
         return response.Response(data)
 
-    def get_data(self, market_code, base_assets, past, tz):
+    def get_data(
+        self, market_code, base_assets, past, start_funding_time, end_funding_time, tz
+    ):
         try:
             market_code, quote_asset = market_code.split("/")
         except ValueError as err:
@@ -251,6 +255,12 @@ class FundingRateDataView(views.APIView):
             "quote_asset": quote_asset,
             "perpetual": True,
         }
+
+        if start_funding_time and end_funding_time:
+            query_filter["funding_time"] = {
+                "$gte": start_funding_time,
+                "$lte": end_funding_time,
+            }
 
         projection = {
             "_id": False,

@@ -78,6 +78,14 @@ class FundingRateDataQueryParamsSerializer(serializers.Serializer):
     market_code = serializers.CharField(required=True)
     base_asset = CharacterSeparatedField()
     past = serializers.BooleanField(default=False)
+    start_funding_time = serializers.DateTimeField(
+        required=False,
+        input_formats=[DATE_TIME_FORMAT],
+    )
+    end_funding_time = serializers.DateTimeField(
+        required=False,
+        input_formats=[DATE_TIME_FORMAT],
+    )
     tz = TimezoneField(default=UTC)
 
 
