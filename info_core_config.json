@@ -1,5 +1,5 @@
 {
-    "node": "kline_generator2",
+    "node": "info_core",
     "node_settings":
     {
         "info_core":
@@ -153,38 +153,71 @@
             "user":"root",
             "passwd":"13245dh!!"
         },
-        "postgres_docker":
+        "dev_postgres_docker":
         {
             "host":"postgres",
-            "port":5432,
+            "port":25432,
             "user":"test",
             "passwd":"CommunityPostgres123!"
         },
-        "mongodb_docker":
+        "dev_mongodb_docker":
         {
             "host":"mongodb",
             "port":27017,
             "user": "test",
             "passwd": "CommunityMongodb123!"
         },
-        "redis_docker":
+        "dev_redis_docker":
         {
             "host": "redis",
             "port": 6379,
             "passwd": "CommunityRedis123!"
         },
-        "mongodb_remote":
+        "dev_mongodb_remote":
         {
             "host": "221.148.128.212",
             "port": 27018,
             "user": "test",
             "passwd": "CommunityMongodb123!"
         },
-        "redis_remote":
+        "dev_redis_remote":
         {
             "host": "221.148.128.212",
             "port": 26379,
             "passwd": "CommunityRedis123!"
+        },
+        "postgres_docker":
+        {
+            "host":"acw",
+            "port":5432,
+            "user":"test",
+            "passwd":"9b_D2yf£2N3c"
+        },
+        "mongodb_docker":
+        {
+            "host":"mongodb",
+            "port":27017,
+            "user": "acw",
+            "passwd": "o,hOL6M11zg,"
+        },
+        "redis_docker":
+        {
+            "host": "redis",
+            "port": 6379,
+            "passwd": "lZ-B-P236_n>"
+        },
+        "mongodb_remote":
+        {
+            "host": "221.148.128.212",
+            "port": 27017,
+            "user": "acw",
+            "passwd": "o,hOL6M11zg,"
+        },
+        "redis_remote":
+        {
+            "host": "221.148.128.212",
+            "port": 6379,
+            "passwd": "lZ-B-P236_n>"
         }
     },
 
