@@ -8,8 +8,9 @@ then
     source $ENV_FILE
 
     echo "Setting up redis.conf ..."
-    cat $WORKING_DIR/redis/conf/redis.conf >> $HOME/community-redis/conf/redis.conf
-    bash -c 'cat <<EOF >>'$HOME/community-redis/conf/redis.conf'
+    mkdir -p $HOME/prod-community-redis/conf/
+    cat $WORKING_DIR/redis/conf/redis.conf >> $HOME/prod-community-redis/conf/redis.conf
+    bash -c 'cat <<EOF >>'$HOME/prod-community-redis/conf/redis.conf'
 
 # Credentials
 requirepass '$REDIS_PASSWORD'

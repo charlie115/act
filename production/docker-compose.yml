@@ -13,9 +13,9 @@ services:
     image: community-nginx
     build:
       context: "nginx/"
-    container_name: community-nginx
+    container_name: prod-community-nginx
     volumes:
-      - $HOME/community-web/build/:/opt/community_frontend/build/
+      - $HOME/prod-community-web/build/:/opt/community_frontend/build/
       - $HOME/certbot/conf:/etc/letsencrypt
       - $HOME/certbot/www:/var/www/certbot
     ports:
@@ -24,23 +24,23 @@ services:
     depends_on:
      - drf
     networks:
-      - community-network
+      - prod-community-network
     restart: always
   
   postgres:
     image: postgres:16rc1-alpine
-    container_name: community-postgres
+    container_name: prod-community-postgres
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DATABASE_COMMUNITY}
       - PGDATA=/var/lib/postgresql/data/
     volumes:
-      - $HOME/community-postgres/data/:/var/lib/postgresql/data/
+      - $HOME/prod-community-postgres/data/:/var/lib/postgresql/data/
     expose:
       - "5432"
     networks:
-      - community-network
+      - prod-community-network
     healthcheck:
       test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "${POSTGRES_USER}" ]
       interval: 5s
@@ -50,34 +50,34 @@ services:
   
   redis:
     image: redis:7-alpine
-    container_name: community-redis
+    container_name: prod-community-redis
     command: ["redis-server", "/etc/redis/redis.conf"]
     volumes:
-      - $HOME/community-redis/data/:/data/
-      - $HOME/community-redis/conf/redis.conf:/etc/redis/redis.conf
+      - $HOME/prod-community-redis/data/:/data/
+      - $HOME/prod-community-redis/conf/redis.conf:/etc/redis/redis.conf
     ports:
       - "6379:6379"
     expose:
       - "6379"
     networks:
-      - community-network
+      - prod-community-network
     restart: always
   
   mongodb:
     image: mongo:6.0
-    container_name: community-mongodb
+    container_name: prod-community-mongodb
     command: ["--auth"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
-      - $HOME/community-mongodb/data/:/data/
+      - $HOME/prod-community-mongodb/data/:/data/
     ports:
       - "27017:27017"
     expose:
       - "27017"
     networks:
-      - community-network
+      - prod-community-network
     restart: always
   
   drf:
@@ -85,22 +85,22 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    container_name: community-drf
+    container_name: prod-community-drf
     volumes:
-      - $HOME/community-drf/media:/home/django/community_drf/media
+      - $HOME/prod-community-drf/media:/home/django/community_drf/media
     expose:
       - "8000"
     networks:
-      - community-network
+      - prod-community-network
     restart: always
   
   # news-core:
   #   image: $LOCAL_REGISTRY_URL/news-core
-  #   container_name: news-core
+  #   container_name: prod-news-core
   #   networks:
-  #     - community-network
+  #     - prod-community-network
   #   restart: always
 
 networks:
-  community-network:
+  prod-community-network:
     driver: bridge
