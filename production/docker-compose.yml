@@ -1,0 +1,106 @@
+version: '3'
+services:
+  
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - $HOME/certbot/conf:/etc/letsencrypt
+      - $HOME/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  nginx:
+    image: community-nginx
+    build:
+      context: "nginx/"
+    container_name: community-nginx
+    volumes:
+      - $HOME/community-web/build/:/opt/community_frontend/build/
+      - $HOME/certbot/conf:/etc/letsencrypt
+      - $HOME/certbot/www:/var/www/certbot
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+     - drf
+    networks:
+      - community-network
+    restart: always
+  
+  postgres:
+    image: postgres:16rc1-alpine
+    container_name: community-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DATABASE_COMMUNITY}
+      - PGDATA=/var/lib/postgresql/data/
+    volumes:
+      - $HOME/community-postgres/data/:/var/lib/postgresql/data/
+    expose:
+      - "5432"
+    networks:
+      - community-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "${POSTGRES_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+  
+  redis:
+    image: redis:7-alpine
+    container_name: community-redis
+    command: ["redis-server", "/etc/redis/redis.conf"]
+    volumes:
+      - $HOME/community-redis/data/:/data/
+      - $HOME/community-redis/conf/redis.conf:/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    expose:
+      - "6379"
+    networks:
+      - community-network
+    restart: always
+  
+  mongodb:
+    image: mongo:6.0
+    container_name: community-mongodb
+    command: ["--auth"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - $HOME/community-mongodb/data/:/data/
+    ports:
+      - "27017:27017"
+    expose:
+      - "27017"
+    networks:
+      - community-network
+    restart: always
+  
+  drf:
+    image: $LOCAL_REGISTRY_URL/community-drf
+    depends_on:
+      postgres:
+        condition: service_healthy
+    container_name: community-drf
+    volumes:
+      - $HOME/community-drf/media:/home/django/community_drf/media
+    expose:
+      - "8000"
+    networks:
+      - community-network
+    restart: always
+  
+  # news-core:
+  #   image: $LOCAL_REGISTRY_URL/news-core
+  #   container_name: news-core
+  #   networks:
+  #     - community-network
+  #   restart: always
+
+networks:
+  community-network:
+    driver: bridge
