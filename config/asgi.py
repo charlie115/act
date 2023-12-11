@@ -19,11 +19,13 @@ sys.path.append(str(BASE_DIR / "apps"))
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.prod")
 
+asgi_application = get_asgi_application()
+
 from . import routing  # noqa: E402
 
 application = ProtocolTypeRouter(
     {
-        "http": get_asgi_application(),
+        "http": asgi_application,
         "websocket": routing.websocket_urlpatterns,
     }
 )
