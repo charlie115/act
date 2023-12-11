@@ -22,8 +22,10 @@ COPY --chown=django:django ./apps apps/
 RUN pip install --no-cache-dir -r requirements/base.txt
 
 RUN mkdir -p /home/django/community_drf/media
+RUN mkdir -p /home/django/community_drf/static
 
-RUN chown django:django /home/django/community_drf/media
+RUN chown -R django:django /home/django/community_drf/media
+RUN chown -R django:django /home/django/community_drf/static
 
 USER django
 
