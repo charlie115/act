@@ -57,6 +57,7 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "role",
             "is_active",
+            "date_joined",
             "profile",
             "favorite_assets",
             "arbot_config",
