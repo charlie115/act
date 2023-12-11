@@ -490,47 +490,49 @@ class WalletStatusView(views.APIView):
 
         # Serialize
         results = {asset: dict() for asset in base_assets}
+
         if target_market == "SPOT":
             for item in target_cursor:
-                asset = item.pop("asset")
-                network = item.pop("network_type")
+                asset = item["asset"]
+                network = item["network_type"]
 
                 if target_exchange not in results[asset]:
                     results[asset][target_exchange] = dict()
 
                 if item["deposit"] is True:
-                    if "deposit" in results[asset][target_exchange]:
-                        results[asset][target_exchange]["deposit"].append(network)
-                    else:
+                    if "deposit" not in results[asset][target_exchange]:
                         results[asset][target_exchange]["deposit"] = [network]
+                    elif network not in results[asset][target_exchange]["deposit"]:
+                        results[asset][target_exchange]["deposit"].append(network)
 
                 if item["withdraw"] is True:
-                    if "withdraw" in results[asset][target_exchange]:
-                        results[asset][target_exchange]["withdraw"].append(network)
-                    else:
+                    if "withdraw" not in results[asset][target_exchange]:
                         results[asset][target_exchange]["withdraw"] = [network]
+                    elif network not in results[asset][target_exchange]["withdraw"]:
+                        results[asset][target_exchange]["withdraw"].append(network)
 
         # If target and origin exchanges are the same (e.g UPBIT_SPOT/KRW, UPBIT_SPOT/BTC),
         # results won't get repeated since cursor was already exhausted in above
         # because origin cursor = target cursor
         if origin_market == "SPOT":
+            # Temporary fix for huge duplicate records, source data must be fixed
             for item in origin_cursor:
-                asset = item.pop("asset")
-                network = item.pop("network_type")
+                asset = item["asset"]
+                network = item["network_type"]
 
                 if origin_exchange not in results[asset]:
                     results[asset][origin_exchange] = dict()
 
                 if item["deposit"] is True:
-                    if "deposit" in results[asset][origin_exchange]:
-                        results[asset][origin_exchange]["deposit"].append(network)
-                    else:
+                    if "deposit" not in results[asset][origin_exchange]:
                         results[asset][origin_exchange]["deposit"] = [network]
+                    elif network not in results[asset][origin_exchange]["deposit"]:
+                        results[asset][origin_exchange]["deposit"].append(network)
 
                 if item["withdraw"] is True:
-                    if "withdraw" in results[asset][origin_exchange]:
-                        results[asset][origin_exchange]["withdraw"].append(network)
-                    else:
+                    if "withdraw" not in results[asset][origin_exchange]:
                         results[asset][origin_exchange]["withdraw"] = [network]
+                    elif network not in results[asset][origin_exchange]["withdraw"]:
+                        results[asset][origin_exchange]["withdraw"].append(network)
 
         return results
