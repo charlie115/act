@@ -1,5 +1,5 @@
 {
-    "node": "kline_generator1",
+    "node": "kline_generator2",
     "node_settings":
     {
         "info_core":
@@ -57,7 +57,10 @@
                 "BYBIT_SPOT/USDT:BYBIT_COIN_M/USD",
                 "OKX_USD_M/USDT:OKX_COIN_M/USD",
                 "OKX_SPOT/USDT:OKX_USD_M/USDT",
-                "OKX_SPOT/USDT:OKX_COIN_M/USD"
+                "OKX_SPOT/USDT:OKX_COIN_M/USD",
+                "BYBIT_USD_M/USDT:OKX_COIN_M/USD",
+                "OKX_USD_M/USDT:BYBIT_COIN_M/USD",
+                "BYBIT_SPOT/USDT:OKX_SPOT/USDT"
             ]
         }
     },

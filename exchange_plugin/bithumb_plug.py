@@ -10,6 +10,8 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
@@ -53,7 +55,7 @@ class Bithumb:
         options.add_argument('--no-sandbox')
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko")
         # chrome_options.add_argument("--disable-dev-shm-usage")
-        driver = webdriver.Chrome(service=service, options=options)
+        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
         # Get a webpage
         driver.get(url)
