@@ -17,6 +17,7 @@ from django.utils.translation import gettext_lazy as _
 from environ import Env
 from os.path import join
 from pathlib import Path
+from urllib.parse import urljoin
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -37,6 +38,10 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 SILENCED_SYSTEM_CHECKS = ["security.W019"]
 
 # Application definition
+
+# Manually setting SCRIPT_NAME in urls because
+# FORCE_SCRIPT_NAME doesn't work on admin urls
+SCRIPT_NAME = env("DJANGO_SCRIPT_NAME", default="")
 
 SITE_ID = 1
 
@@ -315,13 +320,13 @@ SPECTACULAR_SETTINGS = {
 
 STATIC_ROOT = os.path.normpath(os.path.join(os.path.dirname(BASE_DIR), "static"))
 
-STATIC_URL = "static/"
+STATIC_URL = urljoin(SCRIPT_NAME, "static/")
 
 STATICFILES_DIRS = []
 
 MEDIA_ROOT = join(os.path.dirname(BASE_DIR), "media")
 
-MEDIA_URL = "media/"
+MEDIA_URL = urljoin(SCRIPT_NAME, "media/")
 
 TEMPLATES = [
     {

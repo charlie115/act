@@ -14,6 +14,7 @@ from drf_spectacular.views import (
 from rest_framework.response import Response
 
 from lib.views import BaseEndpointListView
+from lib.url import mkpath
 
 
 class EndpointListView(BaseEndpointListView):
@@ -33,20 +34,33 @@ class EndpointListView(BaseEndpointListView):
 
 
 urlpatterns = [
-    path("", EndpointListView.as_view(), name="endpoint list"),
-    path("admin/", admin.site.urls),
-    path("auth/", include("authentication.urls"), name="authentication urls"),
-    path("arbot/", include("arbot.urls"), name="arbot urls"),
-    path("chat/", include("chat.urls"), name="chat urls"),
-    path("infocore/", include("infocore.urls.urls"), name="infocore urls"),
-    path("newscore/", include("newscore.urls"), name="newscore urls"),
-    path("users/", include("users.urls"), name="users urls"),
+    path(mkpath(""), EndpointListView.as_view(), name="endpoint list"),
+    path(mkpath("admin/"), admin.site.urls),
+    path(mkpath("auth/"), include("authentication.urls"), name="authentication urls"),
+    path(mkpath("arbot/"), include("arbot.urls"), name="arbot urls"),
+    path(mkpath("chat/"), include("chat.urls"), name="chat urls"),
+    path(mkpath("infocore/"), include("infocore.urls.urls"), name="infocore urls"),
+    path(mkpath("newscore/"), include("newscore.urls"), name="newscore urls"),
+    path(mkpath("users/"), include("users.urls"), name="users urls"),
+    # redis queue
+    path(mkpath("django-rq/"), include("django_rq.urls")),
     # docs
-    path("docs/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
-    path("schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("swagger/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger"),
+    path(
+        mkpath("docs/"),
+        SpectacularRedocView.as_view(url_name="schema"),
+        name="redoc",
+    ),
+    path(
+        mkpath("schema/"),
+        SpectacularAPIView.as_view(),
+        name="schema",
+    ),
+    path(
+        mkpath("swagger/"),
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger",
+    ),
 ]
 
 if os.environ["DJANGO_SETTINGS_MODULE"] == "config.settings.dev":
-    urlpatterns += [path("django-rq/", include("django_rq.urls"))]
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
