@@ -73,7 +73,7 @@ services:
     restart: always
 
   drf:
-    image: $LOCAL_REGISTRY_URL/community-drf:test
+    image: community-drf:test
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,7 +87,7 @@ services:
     restart: always
   
   news-core:
-    image: $LOCAL_REGISTRY_URL/news-core:test
+    image: news-core:test
     container_name: test-news-core
     networks:
       - test-community-network

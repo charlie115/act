@@ -83,7 +83,7 @@ services:
     restart: always
   
   drf:
-    image: $LOCAL_REGISTRY_URL/community-drf
+    image: community-drf
     depends_on:
       postgres:
         condition: service_healthy
