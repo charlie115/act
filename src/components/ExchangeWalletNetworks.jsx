@@ -52,7 +52,7 @@ export default function ExchangeWalletNetworks({
       direction="row"
       flexWrap="wrap"
       spacing={{ xs: 2, md: 3 }}
-      sx={{ mb: { xs: 3, md: 1 } }}
+      sx={{ mb: { xs: 3, md: 3 } }}
     >
       {targetMarketCode.value.includes('SPOT') && (
         <Stack alignItems="center" direction="row" spacing={1}>
@@ -86,7 +86,9 @@ export default function ExchangeWalletNetworks({
                   ? { bgcolor: 'success.main' }
                   : { bgcolor: 'secondary.main', opacity: 0.5 }),
                 fontWeight: 700,
+                height: 20,
                 px: 0.5,
+                whiteSpace: 'nowrap',
               }}
             >
               {network}
@@ -136,7 +138,9 @@ export default function ExchangeWalletNetworks({
                     ? { bgcolor: 'success.main' }
                     : { bgcolor: 'secondary.main', opacity: 0.5 }),
                   fontWeight: 700,
+                  height: 20,
                   px: 0.5,
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {network}

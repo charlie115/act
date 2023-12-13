@@ -2,7 +2,7 @@ import React from 'react';
 
 import Box from '@mui/material/Box';
 
-import logo from 'assets/png/logo-no-background.png';
+import noBgLogo from 'assets/png/logo-no-background.png';
 
 export default function BrandLogo({ onClick, size = 140, sx }) {
   return (
@@ -15,7 +15,12 @@ export default function BrandLogo({ onClick, size = 140, sx }) {
         ...sx,
       }}
     >
-      <Box component="img" src={logo} alt="ArbiCrypto" sx={{ width: size }} />
+      <Box
+        component="img"
+        src={noBgLogo}
+        alt="ArbiCrypto"
+        sx={{ width: size }}
+      />
     </Box>
   );
 }

@@ -13,7 +13,11 @@ export default {
         backgroundColor:
           theme.palette.mode === 'dark'
             ? 'transparent'
-            : alpha(theme.palette[ownerState.color].main, 0.15),
+            : alpha(
+                theme.palette[ownerState.color]?.main ||
+                  theme.palette.primary.main,
+                0.15
+              ),
         color:
           theme.palette.mode === 'dark'
             ? theme.palette[ownerState.color]?.main || ownerState.color

@@ -4,12 +4,12 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 // eslint-disable-next-line func-names
 module.exports = function (app) {
   app.use(
-    '/api',
+    '/api/',
     createProxyMiddleware({
-      target: 'http://localhost:5000',
+      target: 'https://arbicrypto.net',
       changeOrigin: true,
       pathRewrite: {
-        '^/api': '/', // rewrite path
+        '^/api/': '/api/', // rewrite path
       },
     })
   );

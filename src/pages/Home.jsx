@@ -25,7 +25,7 @@ import debounce from 'lodash/debounce';
 import isKoreanMarket from 'utils/isKoreanMarket';
 
 import MarketCodeMenu from 'components/MarketCodeMenu';
-import PremiumTable from 'components/premium_table/PremiumTable';
+import PremiumTable from 'components/tables/premium/PremiumTable';
 
 function Home() {
   const { t } = useTranslation();

@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
@@ -6,19 +6,16 @@ import { CSSTransition, SwitchTransition } from 'react-transition-group';
 
 import { Helmet } from 'react-helmet';
 
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
-import Snackbar from '@mui/material/Snackbar';
 
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { useUserQuery } from 'redux/api/drf/auth';
-import { setSnackbar } from 'redux/reducers/app';
 
 import { useTranslation } from 'react-i18next';
 
@@ -29,9 +26,7 @@ import { routes } from 'configs/navigation';
 import ChatWidget from 'components/chat_widget/ChatWidget';
 import Header from 'components/Header';
 
-const SnackbarAlert = forwardRef((props, ref) => (
-  <Alert ref={ref} elevation={6} {...props} />
-));
+import { GlobalSnackbarProvider } from 'hooks/useGlobalSnackbar';
 
 const TVTickerWidget = React.lazy(() =>
   import('components/trading_view/TVTickerWidget')
@@ -88,41 +83,21 @@ export function MainLayout() {
     scrollTo({ left: 0, top: 0, behavior: 'smooth' });
   }, [location.pathname]);
 
-  const onSnackbarClose = () => {
-    dispatch(setSnackbar({}));
-    if (snackbar?.closeCallback) snackbar.closeCallback();
-  };
-
   return (
     <>
       <Helmet>
         <title>{currentRoute.getTitle()} — Ar-Kimp</title>
       </Helmet>
-      <Snackbar
-        autoHideDuration={6000}
-        open={false}
-        onClose={onSnackbarClose}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        {...snackbar?.snackbarProps}
-      >
-        <SnackbarAlert
-          onClose={onSnackbarClose}
-          severity="info"
-          sx={{ width: '100%' }}
-          {...snackbar?.alertProps}
-        >
-          {snackbar?.message}
-        </SnackbarAlert>
-      </Snackbar>
-      <Box>
-        <Header />
-        <Box sx={{ mb: 4, p: 1 }}>
-          <React.Suspense fallback={<LinearProgress />}>
-            <TVTickerWidget isVisible={currentRoute.displayTicker} />
-          </React.Suspense>
-          <Grid container ref={currentRoute.ref} spacing={1}>
-            <Grid item xs={12} lg={2}>
-              <Box
+      <GlobalSnackbarProvider>
+        <Box>
+          <Header />
+          <Box sx={{ mb: 4, p: 1 }}>
+            <React.Suspense fallback={<LinearProgress />}>
+              <TVTickerWidget isVisible={currentRoute.displayTicker} />
+            </React.Suspense>
+            <Grid container ref={currentRoute.ref} spacing={1}>
+              <Grid item xs={12} lg={1}>
+                {/* <Box
                 component={Paper}
                 sx={{
                   p: 1,
@@ -131,24 +106,25 @@ export function MainLayout() {
                 }}
               >
                 AD???
-              </Box>
-            </Grid>
-            <Grid
-              item
-              xs={12}
-              lg={8}
-              sx={{
-                display: 'flex',
-                minHeight: { xs: '45vh', lg: '90vh' },
-                position: 'relative',
-              }}
-            >
-              <Box
-                component={Paper}
-                sx={{ display: 'flex', flex: 1, overflowX: 'clip' }}
+              </Box> */}
+              </Grid>
+              <Grid
+                item
+                xs={12}
+                lg={10}
+                // lg={8}
+                sx={{
+                  display: 'flex',
+                  minHeight: { xs: '45vh', lg: '90vh' },
+                  position: 'relative',
+                }}
               >
-                <Outlet />
-                {/* <SwitchTransition>
+                <Box
+                  component={Paper}
+                  sx={{ display: 'flex', flex: 1, overflowX: 'clip' }}
+                >
+                  <Outlet />
+                  {/* <SwitchTransition>
                   <CSSTransition
                     unmountOnExit
                     key={location.pathname}
@@ -159,10 +135,10 @@ export function MainLayout() {
                     {() => <Outlet />}
                   </CSSTransition>
                 </SwitchTransition> */}
-              </Box>
-            </Grid>
-            <Grid item xs={12} lg={2}>
-              <Box
+                </Box>
+              </Grid>
+              <Grid item xs={12} lg={1}>
+                {/* <Box
                 component={Paper}
                 sx={{
                   p: 1,
@@ -171,31 +147,34 @@ export function MainLayout() {
                 }}
               >
                 AD???
-              </Box>
+              </Box> */}
+              </Grid>
             </Grid>
-          </Grid>
-        </Box>
-        {y > 500 && (
-          <Box
-            sx={{
-              position: 'fixed',
-              bottom: 15,
-              right: '50%',
-              transform: 'translateX(50%)',
-              zIndex: 1501,
-            }}
-          >
-            <IconButton
-              size="medium"
-              onClick={() => scrollTo({ left: 0, top: 0, behavior: 'smooth' })}
-              sx={{ bgcolor: 'grey.900', color: 'light.main' }}
-            >
-              <KeyboardArrowUpIcon fontSize="large" />
-            </IconButton>
           </Box>
-        )}
-        <ChatWidget isVisible={currentRoute.displayChat} />
-      </Box>
+          {y > 500 && (
+            <Box
+              sx={{
+                position: 'fixed',
+                bottom: 15,
+                right: '50%',
+                transform: 'translateX(50%)',
+                zIndex: 1501,
+              }}
+            >
+              <IconButton
+                size="medium"
+                onClick={() =>
+                  scrollTo({ left: 0, top: 0, behavior: 'smooth' })
+                }
+                sx={{ bgcolor: 'grey.900', color: 'light.main' }}
+              >
+                <KeyboardArrowUpIcon fontSize="large" />
+              </IconButton>
+            </Box>
+          )}
+          <ChatWidget isVisible={currentRoute.displayChat} />
+        </Box>
+      </GlobalSnackbarProvider>
     </>
   );
 }

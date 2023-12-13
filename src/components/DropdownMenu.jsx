@@ -78,7 +78,7 @@ function DropdownMenu({
             alignSelf: 'stretch',
             fontSize: {
               xs: '0.7rem',
-              md: '0.5rem',
+              md: '0.8rem',
               lg: '0.85rem',
             },
             height: '100%',
@@ -90,7 +90,7 @@ function DropdownMenu({
                 lg: '0.95rem',
               },
             },
-            minWidth: isMobile ? 120 : 150,
+            minWidth: isMobile ? 120 : 215,
             ...buttonStyle,
           }}
         >

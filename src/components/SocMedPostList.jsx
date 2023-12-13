@@ -36,12 +36,11 @@ import uniqBy from 'lodash/uniqBy';
 
 import { DateTime } from 'luxon';
 
-import { useDispatch } from 'react-redux';
-import { setSnackbar } from 'redux/reducers/app';
-
 import formatShortNumber from 'utils/formatShortNumber';
 
 import LinkPreview from 'components/LinkPreview';
+
+import useGlobalSnackbar from 'hooks/useGlobalSnackbar';
 
 import { ReactComponent as CommentSvg } from 'assets/icons/font-awesome/comment-solid.svg';
 import { ReactComponent as HeartSvg } from 'assets/icons/font-awesome/heart-solid.svg';
@@ -199,10 +198,11 @@ const getContentElements = (content, item) => {
 };
 
 export default function SocMedPostList({ filters, timezone, onUnreadData }) {
-  const dispatch = useDispatch();
   const { t } = useTranslation();
 
   const theme = useTheme();
+
+  const { openSnackbar } = useGlobalSnackbar();
 
   const [filteredPostList, setFilteredPostList] = useState([]);
   const [latestPostList, setLatestPostList] = useState([]);
@@ -468,15 +468,15 @@ export default function SocMedPostList({ filters, timezone, onUnreadData }) {
                   onClick={(e) => {
                     e.stopPropagation();
                     copy(item.url);
-                    dispatch(
-                      setSnackbar({
-                        message: t(
-                          "The URL to {{username}}'s post has been copied to clipboard.",
-                          { username: `${item.username}` }
-                        ),
-                        snackbarProps: { autoHideDuration: 1500, open: true },
+                    openSnackbar(
+                      t(
+                        "The URL to {{username}}'s post has been copied to clipboard.",
+                        { username: `${item.username}` }
+                      ),
+                      {
                         alertProps: { severity: 'success' },
-                      })
+                        snackbarProps: { autoHideDuration: 1500 },
+                      }
                     );
                   }}
                 >

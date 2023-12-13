@@ -4,8 +4,6 @@ const initialState = {
   language: 'ko',
   theme: 'dark',
   timezone: 'Asia/Seoul',
-
-  snackbar: {},
 };
 
 export const appSlice = createSlice({
@@ -14,9 +12,6 @@ export const appSlice = createSlice({
   reducers: {
     changeLanguage: (state, { payload }) => {
       state.language = payload;
-    },
-    setSnackbar: (state, { payload }) => {
-      state.snackbar = payload;
     },
     setTimezone: (state, { payload }) => {
       state.timezone = payload;
@@ -27,7 +22,6 @@ export const appSlice = createSlice({
   },
 });
 
-export const { changeLanguage, setSnackbar, setTimezone, toggleTheme } =
-  appSlice.actions;
+export const { changeLanguage, setTimezone, toggleTheme } = appSlice.actions;
 
 export default appSlice.reducer;

@@ -1,25 +1,18 @@
-import React, { useMemo, useState } from 'react';
-
-import { useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
 
 import SwipeableViews from 'react-swipeable-views';
 
-import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
-import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
 
-import { styled, useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 
 import { useTranslation } from 'react-i18next';
 
 import a11yProps from 'utils/a11yProps';
 
-import ArbitrageTable from 'components/ArbitrageTable';
-import AvgFundingRateTable from 'components/funding_rate/AvgFundingRateTable';
-import FundingRateDiffTable from 'components/funding_rate/FundingRateDiffTable';
+import AvgFundingRateTable from 'components/tables/funding_rate/AvgFundingRateTable';
+import FundingRateDiffTable from 'components/tables/funding_rate/FundingRateDiffTable';
 import StyledTab from 'components/StyledTab';
 import StyledTabs from 'components/StyledTabs';
 import TabPanel from 'components/TabPanel';
@@ -28,7 +21,6 @@ const ARBITRAGE_TAB = { fundingRateDifference: 0, averageFundingRate: 1 };
 
 export default function Arbitrage() {
   const { t } = useTranslation();
-  const location = useLocation();
   const theme = useTheme();
 
   const [currentTab, setCurrentTab] = useState(

@@ -16,7 +16,7 @@ const api = websocketApi.injectEndpoints({
         args,
         { cacheDataLoaded, cacheEntryRemoved, updateCachedData }
       ) => {
-        const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/kline/`);
+        const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/api/kline/`);
         url.searchParams.set('target_market_code', args.targetMarketCode);
         url.searchParams.set('origin_market_code', args.originMarketCode);
         url.searchParams.set('interval', args.interval);

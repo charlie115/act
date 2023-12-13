@@ -51,9 +51,8 @@ import ReactTableUI from 'components/ReactTableUI';
 
 import { REGEX } from 'constants';
 
+import renderChartExpandCell from 'components/tables/common/renderChartExpandCell';
 import renderFundingRateHeader from './renderFundingRateHeader';
-
-import renderChartExpandCell from './renderChartExpandCell';
 import renderFundingRateCell from './renderFundingRateCell';
 import renderNameCell from './renderNameCell';
 import renderPremiumCell from './renderPremiumCell';
@@ -149,22 +148,25 @@ function PremiumTable({
         marketCodesParam?.originMarketCode.includes('SPOT'),
     }
   );
+  const {
+    data: walletStatus,
+    isLoading: isWalletStatusLoading,
+    isSuccess: isWalletStatusSuccess,
+  } = useGetWalletStatusQuery(
+    { baseAsset: assetsParam, ...marketCodesParam },
+    {
+      pollingInterval: 1000 * 60,
+      skip:
+        !ready ||
+        !assetsParam ||
+        !marketCodesParam ||
+        !(
+          marketCodesParam?.targetMarketCode.includes('SPOT') ||
+          marketCodesParam?.originMarketCode.includes('SPOT')
+        ),
+    }
+  );
 
-  const { data: walletStatus, isLoading: isWalletStatusLoading } =
-    useGetWalletStatusQuery(
-      { baseAsset: assetsParam, ...marketCodesParam },
-      {
-        pollingInterval: 1000 * 60,
-        skip:
-          !ready ||
-          !assetsParam ||
-          !marketCodesParam ||
-          !(
-            marketCodesParam?.targetMarketCode.includes('SPOT') ||
-            marketCodesParam?.originMarketCode.includes('SPOT')
-          ),
-      }
-    );
   const [createFavoriteAsset, createFavoriteRes] =
     useCreateFavoriteAssetMutation();
   const [deleteFavoriteAsset, deleteFavoriteRes] =
@@ -213,7 +215,7 @@ function PremiumTable({
               enableSorting: false,
               size: 25,
               header: <WalletIcon fontSize="small" />,
-              cell: isWalletStatusLoading ? '...' : renderWalletStatusCell,
+              cell: renderWalletStatusCell,
             },
           ]
         : []),
@@ -290,14 +292,7 @@ function PremiumTable({
         header: <span />,
       },
     ],
-    [
-      i18n.language,
-      loggedin,
-      marketCodes,
-      isTetherPriceView,
-      isWalletStatusLoading,
-      isMobile,
-    ]
+    [i18n.language, loggedin, marketCodes, isTetherPriceView, isMobile]
   );
 
   const data = useMemo(
@@ -357,8 +352,8 @@ function PremiumTable({
                 }
               : {}),
             ...asset,
-            walletStatus: walletStatusSummary,
-            walletNetworks: walletStatus?.[name],
+            walletStatus: isWalletStatusSuccess ? walletStatusSummary : null,
+            walletNetworks: isWalletStatusSuccess ? walletStatus?.[name] : null,
             chart: true,
           };
         }) ?? [],
@@ -374,6 +369,7 @@ function PremiumTable({
       assetsData,
       favoriteAssets,
       localFavoriteAssets,
+      isWalletStatusSuccess,
       loggedin,
     ]
   );
@@ -381,15 +377,15 @@ function PremiumTable({
   const prevAssets = usePrevious(assets);
   useEffect(() => {
     if (isSuccess) {
-      if (realTimeDataList.length > 0) {
+      if (realTimeDataList.length) {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         const realTimeAssets = realTimeDataList
           .map((item) => item.base_asset)
           .sort();
         if (!isEqual(prevAssets, realTimeAssets)) {
           setAssets(realTimeAssets);
+          setReady(true);
         }
-        setReady(true);
       } else {
         setReady(false);
         timeoutRef.current = setTimeout(() => {
@@ -486,6 +482,12 @@ function PremiumTable({
   const tableRef = useRef();
   const rows = tableRef.current?.getRowModel().rows;
 
+  const getRowId = useCallback((row) => row.name, []);
+  const onExpandedChange = useCallback(
+    (newExpanded) => setExpanded(newExpanded()),
+    []
+  );
+
   return (
     <Box sx={{ boxShadow: 2 }}>
       <ReactTableUI
@@ -501,7 +503,7 @@ function PremiumTable({
           handleRemoveFavoriteAsset,
         }}
         options={{
-          getRowId: (row) => row.name,
+          getRowId,
           defaultColumn: { sortingFn: sortWithStarred },
           state: {
             columnVisibility,
@@ -509,7 +511,7 @@ function PremiumTable({
             globalFilter,
             pagination,
           },
-          onExpandedChange: (newExpanded) => setExpanded(newExpanded()),
+          onExpandedChange,
           onPaginationChange: setPagination,
         }}
         renderSubComponent={renderSubComponent}

@@ -8,21 +8,15 @@ import React, {
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import IconButton from '@mui/material/IconButton';
-import InputAdornment from '@mui/material/InputAdornment';
-import OutlinedInput from '@mui/material/OutlinedInput';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
 
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { alpha, styled, useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 
 import {
   useGetAssetsQuery,
@@ -40,10 +34,12 @@ import orderBy from 'lodash/orderBy';
 import uniqBy from 'lodash/uniqBy';
 
 import DropdownMenu from 'components/DropdownMenu';
+import LightWeightFundingRateChart from 'components/charts/LightWeightFundingRateChart';
 import ReactTableUI from 'components/ReactTableUI';
 
 import { EXCHANGE_LIST } from 'constants/lists';
 
+import renderChartExpandCell from 'components/tables/common/renderChartExpandCell';
 import renderFundingRateCell from './renderFundingRateCell';
 import renderIconCell from './renderIconCell';
 import renderMarketCell from './renderMarketCell';
@@ -59,6 +55,7 @@ export default function AvgFundingRateTable() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [assets, setAssets] = useState([]);
+  const [expanded, setExpanded] = useState({});
 
   const [marketList, setMarketList] = useState([]);
   const [selectedMarket, setSelectedMarket] = useState();
@@ -120,7 +117,7 @@ export default function AvgFundingRateTable() {
   }, [data, selectedMarket, i18n.language]);
 
   useEffect(() => {
-    debouncedHandleParamsChange({ n });
+    if (n) debouncedHandleParamsChange({ n });
   }, [n]);
 
   const prevAssets = usePrevious(assets);
@@ -145,7 +142,7 @@ export default function AvgFundingRateTable() {
       },
       {
         accessorKey: 'symbol',
-        size: isMobile ? 110 : 180,
+        size: isMobile ? 110 : 200,
         header: t('Symbol'),
         props: isMobile ? { sx: { fontSize: 10 } } : undefined,
       },
@@ -162,6 +159,14 @@ export default function AvgFundingRateTable() {
           n: avgFundingRateParams?.n,
         })} (N)`,
         cell: renderFundingRateCell,
+      },
+      {
+        accessorKey: 'chart',
+        enableGlobalFilter: false,
+        enableSorting: false,
+        size: 11,
+        cell: renderChartExpandCell,
+        header: <span />,
       },
     ],
     [avgFundingRateParams?.n, i18n.language, isMobile]
@@ -182,6 +187,7 @@ export default function AvgFundingRateTable() {
         name: item.base_asset,
         icon: assetsData?.[item.base_asset]?.icon,
         market: item.market_code,
+        quoteAsset: item.quote_asset,
         symbol: item.symbol,
         exchange: item.market_code.split('_')?.[0],
         fundingRate: item.funding_rate * 100,
@@ -189,6 +195,17 @@ export default function AvgFundingRateTable() {
       })) || [],
     [data, assetsData, selectedMarket?.value]
   );
+
+  const renderSubComponent = useCallback(({ row, extraData }) => (
+    <Box>
+      <LightWeightFundingRateChart
+        symbol={row.original.symbol}
+        baseAsset={row.original.name}
+        marketCode={`${row.original.market}/${row.original.quoteAsset}`}
+        {...extraData}
+      />
+    </Box>
+  ));
 
   const rows = tableRef.current?.getRowModel().rows;
 
@@ -206,17 +223,18 @@ export default function AvgFundingRateTable() {
         />
         <TextField
           id="n-value"
-          label="N (1~100)"
+          label="N"
           variant="outlined"
           type="number"
+          error={!n}
           value={`${n}`}
           onChange={(e) => {
-            const value = parseInt(e.target.value, 10);
-            if (value >= 1 && value <= 100) setN(value);
-            else setN(value > 100 ? 100 : 1);
+            if (e.target.value) {
+              const value = parseInt(e.target.value, 10);
+              setN(value);
+            } else setN();
           }}
-          inputProps={{ min: '1', max: '100' }}
-          sx={{ minWidth: isMobile ? 100 : 120 }}
+          sx={{ width: isMobile ? 80 : 120 }}
         />
       </Stack>
       <Box sx={{ boxShadow: 2 }}>
@@ -225,13 +243,23 @@ export default function AvgFundingRateTable() {
           columns={columns}
           data={tableData}
           options={{
-            state: { pagination },
+            state: { expanded, pagination },
+            onExpandedChange: (newExpanded) => setExpanded(newExpanded()),
             onPaginationChange: setPagination,
           }}
+          renderSubComponent={renderSubComponent}
           getCellProps={() => ({ sx: { height: 40 } })}
+          getRowProps={(row) => ({
+            onClick: () => row.toggleExpanded(!row.getIsExpanded()),
+            sx: {
+              cursor: 'pointer',
+              ...(row.getIsExpanded()
+                ? { bgcolor: theme.palette.background.paper }
+                : {}),
+            },
+          })}
           showProgressBar={isLoading}
           isLoading={isLoading}
-          // renderRow={(props) => <CustomRow {...props} />}
         />
         {rows?.length >= DEFAULT_PAGE_SIZE && (
           <Box sx={{ textAlign: 'center' }}>
@@ -253,6 +281,13 @@ export default function AvgFundingRateTable() {
                     : DEFAULT_PAGE_SIZE
                 );
                 if (!tableRef.current?.getCanNextPage()) window.scrollTo(0, 0);
+              }}
+              sx={{
+                fontSize: '0.85rem',
+                fontStyle: 'italic',
+                letterSpacing: '0.085em',
+                textTransform: 'none',
+                ':hover': { backgroundColor: 'unset' },
               }}
             >
               {tableRef.current?.getCanNextPage()

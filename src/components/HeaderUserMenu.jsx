@@ -15,20 +15,21 @@ import SvgIcon from '@mui/material/SvgIcon';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
 
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useLogoutMutation } from 'redux/api/drf/auth';
-import { setSnackbar } from 'redux/reducers/app';
 
 import { useTranslation } from 'react-i18next';
+
+import useGlobalSnackbar from 'hooks/useGlobalSnackbar';
 
 import { ReactComponent as RobotSvg } from 'assets/icons/font-awesome/robot.svg';
 
 export default function HeaderUserMenu({ iconStyle }) {
-  const dispatch = useDispatch();
-
   const navigate = useNavigate();
 
   const { t } = useTranslation();
+
+  const { openSnackbar } = useGlobalSnackbar();
 
   const { loggedin, user } = useSelector((state) => state.auth);
 
@@ -44,16 +45,10 @@ export default function HeaderUserMenu({ iconStyle }) {
 
   useEffect(() => {
     if (isSuccess) {
-      dispatch(
-        setSnackbar({
-          message: t('You have been logged out!'),
-          closeCallback: reset,
-          snackbarProps: {
-            autoHideDuration: 1500,
-            open: true,
-          },
-        })
-      );
+      openSnackbar(t('You have been logged out!'), {
+        onClose: reset,
+        snackbarProps: { autoHideDuration: 1500 },
+      });
       handleClose();
     }
   }, [isSuccess]);
@@ -67,7 +62,10 @@ export default function HeaderUserMenu({ iconStyle }) {
       >
         <Avatar
           src={user?.profile?.picture}
-          alt={`${user?.first_name} ${user?.last_name}`}
+          alt={t('userFullName', {
+            firstName: user?.first_name,
+            lastName: user?.last_name,
+          })}
           sx={{ bgcolor: user ? 'primary.main' : null }}
         />
       </IconButton>
@@ -81,12 +79,13 @@ export default function HeaderUserMenu({ iconStyle }) {
           sx: {
             overflow: 'visible',
             filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            minWidth: 150,
             mt: 1.5,
             '& .MuiAvatar-root': {
-              width: 32,
-              height: 32,
+              width: 24,
+              height: 24,
               ml: -0.5,
-              mr: 1,
+              mr: 2,
             },
             '&:before': {
               content: '""',
@@ -107,28 +106,28 @@ export default function HeaderUserMenu({ iconStyle }) {
       >
         <MenuItem
           onClick={() => {
-            navigate('/account');
+            navigate('/my-page');
             handleClose();
           }}
         >
           <Avatar />
-          {t('Account')}
+          {t('My Page')}
         </MenuItem>
-        <MenuItem onClick={handleClose}>
+        {/* <MenuItem onClick={handleClose}>
           <Avatar>
             <SvgIcon>
               <RobotSvg />
             </SvgIcon>
           </Avatar>
           {t('Ar-Bot Settings')}
-        </MenuItem>
+        </MenuItem> */}
         <Divider />
-        <MenuItem onClick={handleClose}>
+        {/* <MenuItem onClick={handleClose}>
           <ListItemIcon>
             <SettingsIcon />
           </ListItemIcon>
           {t('Settings')}
-        </MenuItem>
+        </MenuItem> */}
         <MenuItem onClick={logout}>
           <ListItemIcon>
             <LogoutIcon />

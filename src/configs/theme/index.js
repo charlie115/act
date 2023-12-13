@@ -1,6 +1,6 @@
 import { createTheme } from '@mui/material/styles';
 
-import colors from './colors';
+import colors, { darkColors } from './colors';
 import components from './components';
 
 // https://github.com/app-generator/react-soft-ui-dashboard/tree/main/src/assets/theme
@@ -10,13 +10,7 @@ export const SIDEBAR_WIDTH =
 
 export const darkTheme = createTheme({
   components,
-  palette: {
-    ...colors,
-    background: { default: '#000000', paper: '#0e1114' },
-    text: { main: '#ffffff' },
-    divider: 'rgba(255, 255, 255, 0.12)',
-    mode: 'dark',
-  },
+  palette: { ...darkColors },
   typography: { fontSize: 12 },
   breakpoints: {
     values: {

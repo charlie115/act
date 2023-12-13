@@ -2,11 +2,11 @@ import { createRef, lazy } from 'react';
 
 import i18n from 'configs/i18n';
 
-const Account = lazy(() => import('pages/Account'));
 const Arbitrage = lazy(() => import('pages/Arbitrage'));
 const Home = lazy(() => import('pages/Home'));
 // const Investment = lazy(() => import('pages/Investment'));
 const Login = lazy(() => import('pages/Login'));
+const MyPage = lazy(() => import('pages/MyPage'));
 const News = lazy(() => import('pages/News'));
 const Register = lazy(() => import('pages/Register'));
 
@@ -49,10 +49,10 @@ const main = [
 
 const protectedRoutes = [
   {
-    name: 'account',
-    path: '/account',
-    element: Account,
-    getTitle: () => i18n.t('Account'),
+    name: 'my-page',
+    path: '/my-page',
+    element: MyPage,
+    getTitle: () => i18n.t('My Page'),
     ref: createRef(),
   },
 ];

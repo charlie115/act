@@ -16,14 +16,13 @@ import Image from 'mui-image';
 
 import { alpha, styled, useTheme } from '@mui/material/styles';
 
-import { useDispatch } from 'react-redux';
-import { setSnackbar } from 'redux/reducers/app';
-
 import { useTranslation } from 'react-i18next';
 import { DateTime } from 'luxon';
 
 import copy from 'copy-to-clipboard';
 import truncate from 'lodash/truncate';
+
+import useGlobalSnackbar from 'hooks/useGlobalSnackbar';
 
 const NewsItemContainer = styled((props) => (
   <Stack
@@ -52,11 +51,11 @@ export default function NewsItem({
   slotProps,
   ...props
 }) {
-  const dispatch = useDispatch();
-
   const theme = useTheme();
 
   const { t } = useTranslation();
+
+  const { openSnackbar } = useGlobalSnackbar();
 
   return (
     <NewsItemContainer
@@ -135,15 +134,14 @@ export default function NewsItem({
           onClick={(e) => {
             e.stopPropagation();
             copy(url);
-            dispatch(
-              setSnackbar({
-                message: t(
-                  'The URL to "{{title}}" has been copied to clipboard.',
-                  { title }
-                ),
-                snackbarProps: { autoHideDuration: 1500, open: true },
+            openSnackbar(
+              t('The URL to "{{title}}" has been copied to clipboard.', {
+                title,
+              }),
+              {
                 alertProps: { severity: 'success' },
-              })
+                snackbarProps: { autoHideDuration: 1500 },
+              }
             );
           }}
         >

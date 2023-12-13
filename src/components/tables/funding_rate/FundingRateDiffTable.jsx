@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -124,35 +118,38 @@ export default function FundingRateDiffTable() {
         accessorKey: 'icon',
         enableGlobalFilter: false,
         enableSorting: false,
-        size: isMobile ? 25 : 80,
+        maxSize: isMobile ? 25 : 80,
         header: <span />,
         cell: renderIconCell,
         props: { rowSpan: 2 },
       },
       {
         accessorKey: 'symbol',
-        size: isMobile ? 75 : 180,
+        maxSize: isMobile ? 75 : 180,
         header: t('Symbol'),
         props: isMobile ? { sx: { fontSize: 10 } } : undefined,
       },
       {
         accessorKey: 'market',
-        size: isMobile ? 95 : 250,
+        maxSize: isMobile ? 95 : 250,
         header: t('Market'),
         cell: renderMarketCell,
       },
       {
         accessorKey: 'fundingRate',
-        size: isMobile ? 65 : 180,
+        maxSize: isMobile ? 65 : 180,
         header: t('Funding Rate'),
         cell: renderFundingRateCell,
       },
       {
         accessorKey: 'fundingRateDiff',
-        size: isMobile ? 60 : undefined,
+        maxSize: isMobile ? 60 : undefined,
         header: t('Funding Rate Difference'),
         cell: renderFundingRateDiffCell,
-        props: { rowSpan: 2 },
+        props: {
+          rowSpan: 2,
+          sx: { justifyContent: 'center', textAlign: 'center' },
+        },
       },
     ],
     [isMobile, i18n.language]
@@ -162,8 +159,8 @@ export default function FundingRateDiffTable() {
     () =>
       orderBy(
         data?.filter((item) => {
-          let flag = selectedExchange.value === 'ALL';
-          if (selectedExchange.value !== 'ALL')
+          let flag = selectedExchange?.value === 'ALL';
+          if (selectedExchange?.value !== 'ALL')
             flag =
               item.exchange_x === selectedExchange?.value &&
               item.exchange_y === selectedExchange?.value;
@@ -258,6 +255,13 @@ export default function FundingRateDiffTable() {
                     : DEFAULT_PAGE_SIZE
                 );
                 if (!tableRef.current?.getCanNextPage()) window.scrollTo(0, 0);
+              }}
+              sx={{
+                fontSize: '0.85rem',
+                fontStyle: 'italic',
+                letterSpacing: '0.085em',
+                textTransform: 'none',
+                ':hover': { backgroundColor: 'unset' },
               }}
             >
               {tableRef.current?.getCanNextPage()

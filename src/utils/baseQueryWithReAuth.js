@@ -8,7 +8,11 @@ import snakeCase from 'lodash/snakeCase';
 const mutex = new Mutex();
 
 export const baseQuery = fetchBaseQuery({
-  baseUrl: process.env.REACT_APP_DRF_URL,
+  baseUrl:
+    process.env.NODE_ENV === 'development'
+      ? process.env.REACT_APP_DRF_URL
+      : '/api',
+  // baseUrl: process.env.REACT_APP_DRF_URL,
   prepareHeaders: (headers, { getState }) => {
     const { id } = getState().auth;
     if (id?.accessToken)

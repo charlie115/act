@@ -274,7 +274,7 @@ export default function ChatWidget({ isVisible }) {
                     <ChatMenu />
                     <IconButton
                       aria-label="close-chat"
-                      color="white"
+                      color="light"
                       onClick={() => {
                         setAnchorEl(null);
                         setOpen(false);
@@ -356,7 +356,7 @@ export default function ChatWidget({ isVisible }) {
                     </Box>
                   ))}
                   <Box
-                    key={renderMessages[renderMessages.length - 1].id}
+                    key={renderMessages[renderMessages.length - 1]?.id}
                     ref={lastVisibleMessagePlaceholderRef}
                     sx={{
                       scrollMarginBottom: '2em',

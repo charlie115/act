@@ -1,4 +1,4 @@
-export default {
+const colors = {
   background: {
     default: '#f7fbfc',
     paper: '#fff',
@@ -152,3 +152,13 @@ export default {
     indicator: { boxShadow: '#ddd' },
   },
 };
+
+export const darkColors = {
+  ...colors,
+  background: { default: '#000000', paper: '#0e1114' },
+  text: { main: '#ffffff' },
+  divider: 'rgba(255, 255, 255, 0.12)',
+  mode: 'dark',
+};
+
+export default colors;

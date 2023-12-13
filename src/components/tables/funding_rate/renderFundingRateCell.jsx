@@ -27,6 +27,7 @@ export default function renderFundingRateCell({ cell, row, isMobile }) {
         decimal={5}
         fundingTime={row.original.fundingTime}
         isMobile={isMobile}
+        sx={{ fontSize: { xs: 12, sm: 14 } }}
       />
     </Box>
   );

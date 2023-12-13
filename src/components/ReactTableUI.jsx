@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect } from 'react';
+import React, { forwardRef, useCallback } from 'react';
 
 import {
   flexRender,
@@ -45,6 +45,8 @@ const ReactTableUI = forwardRef(
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+    const getSubRows = useCallback((row) => row.subRows, []);
+
     const table = useReactTable({
       data,
       columns,
@@ -56,7 +58,7 @@ const ReactTableUI = forwardRef(
       getFilteredRowModel: getFilteredRowModel(),
       getPaginationRowModel: getPaginationRowModel(),
       getSortedRowModel: getSortedRowModel(),
-      getSubRows: (row) => row.subRows,
+      getSubRows,
     });
 
     const { rows } = table.getRowModel();
@@ -84,8 +86,11 @@ const ReactTableUI = forwardRef(
                         onClick={header.column.getToggleSortingHandler()}
                         sx={
                           header.column.getCanSort()
-                            ? { cursor: 'pointer' }
-                            : {}
+                            ? {
+                                cursor: 'pointer',
+                                ...header.column.columnDef.props?.sx,
+                              }
+                            : { ...header.column.columnDef.props?.sx }
                         }
                       >
                         <Box
@@ -164,7 +169,8 @@ const ReactTableUI = forwardRef(
                           animation="wave"
                           variant="text"
                           sx={{ mx: 2 }}
-                          width={(column.getSize() - index) / 2}
+                          width={column.getSize() * 0.9}
+                          // width={(column.getSize() - index) / 2}
                         />
                       </Td>
                     ))}

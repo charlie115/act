@@ -77,6 +77,8 @@ function LightWeightKlineChart({
   const isAuthorized = loggedin && user.role !== 'visitor';
 
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const { i18n, t } = useTranslation();
 
   const chartRef = useRef();
@@ -87,8 +89,6 @@ function LightWeightKlineChart({
   const lineSeriesRef = useRef();
 
   const refetchTimeoutRef = useRef();
-
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [title, setTitle] = useState();
 
@@ -291,7 +291,6 @@ function LightWeightKlineChart({
     chartRef.current
       .timeScale()
       .subscribeVisibleLogicalRangeChange(debouncedOnVisibleLogicalRangeChange);
-
     candlestickSeriesRef.current = chartRef.current.addCandlestickSeries({
       priceScaleId: 'right',
       downColor: theme.palette.error.main,
@@ -511,6 +510,7 @@ function LightWeightKlineChart({
             ? formatShortNumber(price, 2)
             : formatIntlNumber(price, 2, 1),
       },
+      title: t('Price'),
     });
   }, [isMobile, isTetherPriceView, i18n.language]);
 
@@ -629,7 +629,6 @@ function LightWeightKlineChart({
             <Button
               color="error"
               size="large"
-              // variant="contained"
               onClick={() => navigate('/login')}
               sx={{
                 position: 'absolute',

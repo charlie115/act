@@ -9,7 +9,7 @@ import Countdown from 'react-countdown';
 import formatIntlNumber from 'utils/formatIntlNumber';
 import i18n from 'configs/i18n';
 
-function FundingRate({ diff, fundingTime, value, decimal = 3, isMobile }) {
+function FundingRate({ diff, fundingTime, value, decimal = 3, isMobile, sx }) {
   return (
     <>
       <Box
@@ -17,6 +17,7 @@ function FundingRate({ diff, fundingTime, value, decimal = 3, isMobile }) {
         sx={{
           color: value < 0 ? 'error.main' : undefined,
           fontSize: { xs: 11, sm: 12 },
+          ...sx,
         }}
       >
         {formatIntlNumber(value, decimal, 1)} <small>%</small>

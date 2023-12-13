@@ -29,6 +29,8 @@ import { useUserRegisterMutation } from 'redux/api/drf/auth';
 
 import BrandLogo from 'components/BrandLogo';
 
+import { REGEX } from 'constants';
+
 export default function Register() {
   const theme = useTheme();
 
@@ -64,7 +66,10 @@ export default function Register() {
 
   return (
     <Box sx={{ m: 'auto', textAlign: 'center', width: 300 }}>
-      <BrandLogo size={180} sx={{ justifyContent: 'center', mb: 5 }} />
+      <BrandLogo
+        size={180}
+        sx={{ bgcolor: 'dark.main', justifyContent: 'center', mb: 5, p: 1 }}
+      />
       <Typography gutterBottom variant="h5">
         <Trans>
           Welcome,{' '}
@@ -88,29 +93,43 @@ export default function Register() {
           control={control}
           rules={{
             required: t('Please enter a username'),
-            minLength: {
-              value: 6,
-              message: t('Username must have {{min}}~{{max}} characters', {
-                min: 6,
-                max: 25,
-              }),
-            },
-            maxLength: {
-              value: 25,
-              message: t('Username must have {{min}}~{{max}} characters', {
-                min: 6,
-                max: 25,
-              }),
-            },
+            // minLength: {
+            //   value: 6,
+            //   message: t('Username must have {{min}}~{{max}} characters', {
+            //     min: 6,
+            //     max: 25,
+            //   }),
+            // },
+            // maxLength: {
+            //   value: 25,
+            //   message: t('Username must have {{min}}~{{max}} characters', {
+            //     min: 6,
+            //     max: 25,
+            //   }),
+            // },
             validate: {
               matchPattern: (value) => {
-                if (!/^[a-z]/i.test(value))
+                if (!REGEX.usernameFirstCharacter.test(value))
                   return t('Username must start with a letter');
-                if (!/^[a-z0-9_.]+$/i.test(value))
+                if (!REGEX.usernameFull.test(value))
                   return t(
-                    'Username must only include letters (a-z), numbers (0-9), underscores (_), and periods (.)'
+                    'Username must only include letters (A-Z or 한글), numbers (0-9), underscores (_), and periods (.)'
                   );
                 return true;
+              },
+              validate: (value) => {
+                if (value.match(REGEX.koreanCharacters)) {
+                  if (value.length >= 2 && value.length <= 12) return true;
+                  return t('Username must have {{min}}~{{max}} characters', {
+                    min: 2,
+                    max: 12,
+                  });
+                }
+                if (value.length >= 6 && value.length <= 25) return true;
+                return t('Username must have {{min}}~{{max}} characters', {
+                  min: 6,
+                  max: 25,
+                });
               },
             },
           }}
