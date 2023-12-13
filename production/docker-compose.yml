@@ -97,12 +97,12 @@ services:
       - prod-community-network
     restart: always
   
-  # news-core:
-  #   image: $LOCAL_REGISTRY_URL/news-core
-  #   container_name: prod-news-core
-  #   networks:
-  #     - prod-community-network
-  #   restart: always
+  news-core:
+    image: news-core
+    container_name: prod-news-core
+    networks:
+      - prod-community-network
+    restart: always
 
 networks:
   prod-community-network:
