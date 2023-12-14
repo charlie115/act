@@ -38,6 +38,7 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 SILENCED_SYSTEM_CHECKS = ["security.W019"]
 
 # Application definition
+INFOCORE_IPS = env.list("INFOCORE_IPS", default=["localhost", "127.0.0.1"])
 
 # Manually setting SCRIPT_NAME in urls because
 # FORCE_SCRIPT_NAME doesn't work on admin urls

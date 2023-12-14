@@ -1,6 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
+from lib.authentication import CoreIPAuthentication
 from lib.filters import CharArrayFilter, UserUuidFilter
 from lib.permissions import IsDjangoAdmin, IsAdminOrIsSelf
 from lib.views import BaseViewSet, UserOwnedViewSet, UserOwned1To1ViewSet
@@ -77,6 +78,9 @@ class UserViewSet(UserOwnedViewSet):
         "role",
         "is_active",
     )
+
+    def get_authenticators(self):
+        return [CoreIPAuthentication] + super().get_authenticators()
 
     def get_permissions(self):
         permission_classes = self.permission_classes
