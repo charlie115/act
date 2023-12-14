@@ -2,6 +2,7 @@ from django.db.models import Q
 from rest_framework import routers, viewsets
 from rest_framework.utils.serializer_helpers import ReturnList
 
+from lib.authentication import CoreIPAuthentication
 from lib.permissions import IsAuthenticatedOwner, IsDjangoAdmin, IsACWAdmin, IsUser
 from users.models import User
 
@@ -26,6 +27,9 @@ class UserOwnedViewSet(BaseViewSet):
     permission_classes = [IsAuthenticatedOwner]
 
     def get_queryset(self):
+        if type(self.request._authenticator) is CoreIPAuthentication:
+            return self.queryset
+
         query = (
             Q(id=self.request.user.id)
             if self.queryset.model == User
