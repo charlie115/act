@@ -72,6 +72,7 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
         "last_name",
         "is_staff",
         "role",
+        "node",
     )
     search_fields = [
         "email",
@@ -102,12 +103,13 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
                     ("username", "email"),
                     "password",
                     ("date_joined", "last_login", "last_username_change"),
+                    "node",
                 )
             },
         ),
         (
             _("Personal info"),
-            {"fields": ("first_name", "last_name", "telegram_id")},
+            {"fields": ("first_name", "last_name", "telegram_chat_id")},
         ),
         (
             _("Permissions"),

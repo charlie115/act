@@ -3,15 +3,15 @@ from django.contrib import admin
 
 from unfold.admin import ModelAdmin
 
-from arbot.mixins import ArbotNodeValidatorMixin
-from arbot.models import ArbotNode, ArbotUserConfig
+from tradecore.mixins import NodeValidatorMixin
+from tradecore.models import Node, UserConfig
 
 
-class ArbotNodeForm(ArbotNodeValidatorMixin, forms.ModelForm):
+class NodeForm(NodeValidatorMixin, forms.ModelForm):
     pass
 
 
-class ArbotNodeAdmin(ModelAdmin):
+class NodeAdmin(ModelAdmin):
     list_display = [
         "name",
         "domain",
@@ -19,10 +19,10 @@ class ArbotNodeAdmin(ModelAdmin):
         "description",
     ]
     search_fields = ["name", "domain"]
-    form = ArbotNodeForm
+    form = NodeForm
 
 
-class ArbotUserConfigAdmin(ModelAdmin):
+class UserConfigAdmin(ModelAdmin):
     list_display = [
         "user",
         "node",
@@ -38,5 +38,5 @@ class ArbotUserConfigAdmin(ModelAdmin):
     ]
 
 
-admin.site.register(ArbotNode, ArbotNodeAdmin)
-admin.site.register(ArbotUserConfig, ArbotUserConfigAdmin)
+admin.site.register(Node, NodeAdmin)
+admin.site.register(UserConfig, UserConfigAdmin)

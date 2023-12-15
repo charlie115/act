@@ -2,15 +2,15 @@ from datetime import datetime, timezone
 from django.db.models import Count
 from rest_framework import exceptions, serializers
 
-from arbot.mixins import ArbotNodeValidatorMixin
-from arbot.models import ArbotNode, ArbotUserConfig
 from lib.datetime import ONE_DAY_IN_SECONDS
+from tradecore.mixins import NodeValidatorMixin
+from tradecore.models import Node, UserConfig
 from users.mixins import UserUUIDSerializerMixin
 
 
-class ArbotNodeSerializer(ArbotNodeValidatorMixin, serializers.ModelSerializer):
+class NodeSerializer(NodeValidatorMixin, serializers.ModelSerializer):
     class Meta:
-        model = ArbotNode
+        model = Node
         fields = (
             "id",
             "name",
@@ -19,14 +19,10 @@ class ArbotNodeSerializer(ArbotNodeValidatorMixin, serializers.ModelSerializer):
             "telegram_bot_id",
             "telegram_bot_token",
             "description",
-            "user_configs",
         )
-        extra_kwargs = {
-            "user_configs": {"read_only": True},
-        }
 
 
-class ArbotUserConfigSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
+class UserConfigSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
     def validate_service_expiry_date(self, service_expiry_date):
         if service_expiry_date <= datetime.now(tz=timezone.utc):
             raise exceptions.ValidationError(
@@ -43,7 +39,7 @@ class ArbotUserConfigSerializer(UserUUIDSerializerMixin, serializers.ModelSerial
 
     def validate(self, attrs):
         nodes = (
-            ArbotNode.objects.all()
+            Node.objects.all()
             .annotate(config_count=Count("user_configs"))
             .order_by("config_count", "id")
         )
@@ -58,7 +54,7 @@ class ArbotUserConfigSerializer(UserUUIDSerializerMixin, serializers.ModelSerial
         return super().validate(attrs)
 
     class Meta:
-        model = ArbotUserConfig
+        model = UserConfig
         fields = (
             "id",
             "node",

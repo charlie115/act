@@ -3,7 +3,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 
-class ArbotNode(models.Model):
+class Node(models.Model):
     name = models.CharField(max_length=150)
     domain = models.CharField(max_length=200)
     port = models.IntegerField(
@@ -17,7 +17,7 @@ class ArbotNode(models.Model):
         return self.name
 
 
-class ArbotUserConfig(models.Model):
+class UserConfig(models.Model):
     BINANCE_MARGIN_MODE_ISOLATED = False
     BINANCE_MARGIN_MODE_CROSS = True
 
@@ -31,13 +31,13 @@ class ArbotUserConfig(models.Model):
     )
 
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="arbot_config"
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trade_config"
     )
     node = models.ForeignKey(
-        ArbotNode,
+        Node,
         on_delete=models.RESTRICT,
         related_name="user_configs",
-        help_text="This is the server where the user's' trade settings will be executed.",
+        help_text="This is the server where the user's trade settings will be executed.",
     )
 
     service_expiry_date = models.DateTimeField(

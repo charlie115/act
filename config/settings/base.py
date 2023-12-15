@@ -85,12 +85,12 @@ THIRD_PARTY_APPS = (
 )
 
 LOCAL_APPS = (
-    "arbot",
     "authentication",
     "chat",
+    "users",
     "infocore",
     "newscore",
-    "users",
+    "tradecore",
 )
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -283,16 +283,16 @@ SPECTACULAR_SETTINGS = {
     "EXTENSIONS_ROOT": {
         "x-tagGroups": [
             {
-                "name": "ARBOT",
-                "tags": ["ArbotNode", "ArbotUserConfig"],
-            },
-            {
                 "name": "AUTHORIZATION",
                 "tags": ["Auth"],
             },
             {
                 "name": "CHAT",
                 "tags": ["PastChatMessages", "RandomUsername"],
+            },
+            {
+                "name": "USER",
+                "tags": ["User", "UserProfile", "UserBlocklist", "UserFavoriteAssets"],
             },
             {
                 "name": "INFO CORE",
@@ -309,8 +309,8 @@ SPECTACULAR_SETTINGS = {
                 "tags": ["Announcements", "News", "SNS Posts"],
             },
             {
-                "name": "USER",
-                "tags": ["User", "UserProfile", "UserBlocklist", "UserFavoriteAssets"],
+                "name": "TRADE CORE",
+                "tags": ["Node"],
             },
         ],
     },

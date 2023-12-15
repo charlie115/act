@@ -74,7 +74,7 @@ class UserViewSet(UserOwnedViewSet):
         "username",
         "first_name",
         "last_name",
-        "telegram_id",
+        "telegram_chat_id",
         "role",
         "is_active",
     )

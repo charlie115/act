@@ -1,9 +1,9 @@
 from rest_framework import serializers
 
-from arbot.serializers import ArbotUserConfigSerializer
 from lib.datetime import DATE_TIME_FORMAT
 from users.mixins import UserFavoriteAssetsValidatorMixin, UserUUIDSerializerMixin
 from users.models import User, UserBlocklist, UserFavoriteAssets, UserProfile
+from tradecore.serializers import UserConfigSerializer
 
 
 class UserFavoriteAssetsSerializer(
@@ -34,7 +34,7 @@ class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
     favorite_assets = UserFavoriteAssetsSerializer(many=True, read_only=True)
-    arbot_config = ArbotUserConfigSerializer(read_only=True)
+    trade_config = UserConfigSerializer(read_only=True)
 
     def create(self, validated_data):
         validated_data.pop("username", None)
@@ -60,7 +60,7 @@ class UserSerializer(serializers.ModelSerializer):
             "date_joined",
             "profile",
             "favorite_assets",
-            "arbot_config",
+            "trade_config",
         )
         read_only_fields = ("role", "is_active")
         extra_kwargs = {

@@ -1,6 +1,7 @@
 from django.apps import AppConfig
 
 
-class ArbotConfig(AppConfig):
+class TradecoreConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "arbot"
+    name = "tradecore"
+    verbose_name = "Trade Core"

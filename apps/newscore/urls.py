@@ -6,7 +6,7 @@ from newscore.views import AnnouncementViewSet, NewsViewSet, PostViewSet
 
 class NewsCoreAPIListView(BaseEndpointListView):
     """
-    List of User APIs
+    List of NewsCore APIs
     """
 
     pass

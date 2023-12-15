@@ -19,7 +19,7 @@ COPY --chown=django:django ./config config/
 COPY --chown=django:django ./lib lib/
 COPY --chown=django:django ./apps apps/
 
-RUN pip install --no-cache-dir -r requirements/base.txt
+RUN pip install -r requirements/base.txt
 
 RUN mkdir -p /home/django/community_drf/media
 RUN mkdir -p /home/django/community_drf/static
@@ -42,7 +42,7 @@ COPY --chown=django:django ./requirements/dev.txt requirements/dev.txt
 COPY --chown=django:django ./docker/start-dev-server.sh /usr/local/bin/start-dev-server.sh
 
 RUN chmod +x /usr/local/bin/start-dev-server.sh
-RUN pip install --no-cache-dir -r requirements/dev.txt
+RUN pip install -r requirements/dev.txt
 
 USER django
 
@@ -72,7 +72,7 @@ COPY --chown=django:django ./requirements/prod.txt requirements/prod.txt
 COPY --chown=django:django ./docker/start-prod-server.sh /usr/local/bin/start-prod-server.sh
 
 RUN chmod +x /usr/local/bin/start-prod-server.sh
-RUN pip install --no-cache-dir -r requirements/prod.txt
+RUN pip install -r requirements/prod.txt
 
 USER django
 
