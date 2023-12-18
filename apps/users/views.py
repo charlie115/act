@@ -80,7 +80,9 @@ class UserViewSet(UserOwnedViewSet):
     )
 
     def get_authenticators(self):
-        return [CoreIPAuthentication()] + super().get_authenticators()
+        authentication_classes = self.authentication_classes + [CoreIPAuthentication]
+
+        return [auth() for auth in authentication_classes]
 
     def get_permissions(self):
         permission_classes = self.permission_classes
