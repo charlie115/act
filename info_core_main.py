@@ -67,6 +67,7 @@ if __name__ == '__main__':
     total_enabled_market_klines = []
     for each_market_code_list in config['node_settings'].values():
         total_enabled_market_klines += each_market_code_list['enabled_market_klines']
+    total_enabled_market_klines = list(set(total_enabled_market_klines))
 
     # idle
 

@@ -27,7 +27,6 @@ class Bybit:
         wallet_df = wallet_df.drop(['name','chains'], axis=1).reset_index(drop=True).rename(columns={'coin':'asset', 'chainDeposit':'deposit', 'chainWithdraw':'withdraw', 'chain': 'network_type'})
         wallet_df.loc[:, 'deposit'] = wallet_df['deposit'].replace('1', True).replace('0', False)
         wallet_df.loc[:, 'withdraw'] = wallet_df['withdraw'].replace('1', True).replace('0', False)
-        wallet_df = wallet_df.drop_duplicates().reset_index(drop=True)
         return wallet_df
 
     def spot_exchange_info(self):

@@ -22,6 +22,7 @@ import time
 import datetime
 import os
 import traceback
+from functools import partial
 
 current_file_dir = os.path.realpath(__file__)
 current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
@@ -119,27 +120,27 @@ class InitCore:
         self.exchange_websocket_dict = {}
         for enabled_websocket_name in self.enabled_websocket_list:
             if enabled_websocket_name == "UPBIT_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = UpbitWebsocket(self.admin_id, self.node, self.proc_n, self.get_upbit_symbol_list, self.register_monitor_msg, self.logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = UpbitWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.register_monitor_msg, self.logging_dir)
             elif enabled_websocket_name == "BITHUMB_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = BithumbWebsocket(self.admin_id, self.node, self.proc_n, self.get_bithumb_symbol_list, self.register_monitor_msg, self.logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BithumbWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.register_monitor_msg, self.logging_dir)
             elif enabled_websocket_name == "BINANCE_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "SPOT", self.info_dict, logging_dir)
             elif enabled_websocket_name == "BINANCE_USD_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "USD_M", self.info_dict, logging_dir)
             elif enabled_websocket_name == "BINANCE_COIN_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
             elif enabled_websocket_name == "OKX_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = OkxWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_spot_symbol_list, register_monitor_msg, "SPOT", logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = OkxWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "SPOT", logging_dir)
             elif enabled_websocket_name == "OKX_USD_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = OkxUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_usd_m_symbol_list, register_monitor_msg, "USD_M", logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = OkxUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "USD_M", logging_dir)
             elif enabled_websocket_name == "OKX_COIN_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = OkxCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_coin_m_symbol_list, register_monitor_msg, "COIN_M", logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = OkxCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "COIN_M", logging_dir)
             elif enabled_websocket_name == "BYBIT_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = BybitWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "SPOT", self.info_dict, logging_dir)
             elif enabled_websocket_name == "BYBIT_USD_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BybitUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "USD_M", self.info_dict, logging_dir)
             elif enabled_websocket_name == "BYBIT_COIN_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
             else:
                 self.logger.error(f"InitCore|{enabled_websocket_name} is not valid.")
                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"InitCore|{enabled_websocket_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
@@ -175,6 +176,13 @@ class InitCore:
             ## Start arbitrage core
             self.arbitrage_generator = InitAbitrageCore(self.admin_id, self.node, self.info_dict, self.register_monitor_msg, self.total_enabled_market_klines, self.db_client, logging_dir)
 
+        # Loading convert rate
+        self.convert_rate_dict = {}
+        self.convert_rate_initialized = False
+        self.update_convert_rate_dict_thread = Thread(target=self.update_convert_rate_dict, daemon=True)
+        self.update_convert_rate_dict_thread.start()
+        while self.convert_rate_initialized is False:
+            time.sleep(0.2)
         # Start kline generator
         self.kline_generator = InitKlineCore(self.admin_id, node, self.get_premium_df, self.enabled_market_klines, register_monitor_msg, self.redis_client_db0, self.db_client, logging_dir)
 
@@ -426,50 +434,6 @@ class InitCore:
         # total_df.reset_index(drop=True, inplace=True)
         # return total_df['symbol'].to_list()
         return final_symbol_list
-
-    def get_upbit_symbol_list(self):
-        symbol_list = self.get_symbol_list('UPBIT_SPOT')
-        return [x for x in symbol_list if x not in (['KRW-'+y for y in self.upbit_symbols_to_exclude]+['BTC-'+y for y in self.upbit_symbols_to_exclude])]
-    
-    def get_bithumb_symbol_list(self):
-        symbol_list = self.get_symbol_list('BITHUMB_SPOT')
-        return symbol_list
-    
-    def get_binance_spot_symbol_list(self):
-        symbol_list = self.get_symbol_list('BINANCE_SPOT')
-        return symbol_list
-
-    def get_binance_usd_m_symbol_list(self):
-        symbol_list = self.get_symbol_list('BINANCE_USD_M')
-        return [x for x in symbol_list if x not in [y+'USDT' for y in self.binance_usd_m_symbols_to_exclude]]
-
-    def get_binance_coin_m_symbol_list(self):
-        symbol_list = self.get_symbol_list('BINANCE_COIN_M')
-        return symbol_list
-
-    def get_okx_spot_symbol_list(self):
-        symbol_list = self.get_symbol_list('OKX_SPOT')
-        return symbol_list
-    
-    def get_okx_usd_m_symbol_list(self):
-        symbol_list = self.get_symbol_list('OKX_USD_M')
-        return symbol_list
-    
-    def get_okx_coin_m_symbol_list(self):
-        symbol_list = self.get_symbol_list('OKX_COIN_M')
-        return symbol_list
-    
-    def get_bybit_spot_symbol_list(self):
-        symbol_list = self.get_symbol_list('BYBIT_SPOT')
-        return symbol_list
-    
-    def get_bybit_usd_m_symbol_list(self):
-        symbol_list = self.get_symbol_list('BYBIT_USD_M')
-        return symbol_list
-    
-    def get_bybit_coin_m_symbol_list(self):
-        symbol_list = self.get_symbol_list('BYBIT_COIN_M')
-        return symbol_list
     
     def check_status(self, print_result=False, include_text=False):
         exchange_proc_status_tup_list = [x.check_status(include_text=True) for x in self.exchange_websocket_dict.values()]
@@ -530,6 +494,47 @@ class InitCore:
                 raise Exception(f"Cannot find the convert rate for {title}")
         return convert_rate
 
+    def update_convert_rate_dict(self, loop_time_secs=30):
+        while True:
+            try:
+                for each_market_combi in self.enabled_market_klines:
+                    target_market_code, origin_market_code = each_market_combi.split(':')
+                    target_market, target_quote_asset = target_market_code.split('/')
+                    origin_market, origin_quote_asset = origin_market_code.split('/')
+                    self.convert_rate_dict[each_market_combi] = self.convert_asset_rate(origin_market, origin_quote_asset, target_market, target_quote_asset)
+                if self.convert_rate_initialized is False:
+                    self.convert_rate_initialized = True
+            except Exception as e:
+                self.logger.error(f"update_convert_rate_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_convert_rate_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+            time.sleep(loop_time_secs)
+
+    def get_shared_base_asset_list(self, origin_market_code, target_market_code):
+        origin_market = origin_market_code.split('/')[0]
+        quote_asset_one = origin_market_code.split('/')[1]
+        target_market = target_market_code.split('/')[0]
+        quote_asset_two = target_market_code.split('/')[1]
+
+        origin_market_df = self.exchange_websocket_dict[origin_market].get_price_df()
+        origin_market_df = origin_market_df[origin_market_df['quote_asset'] == quote_asset_one]
+        target_market_df = self.exchange_websocket_dict[target_market].get_price_df()
+        target_market_df = target_market_df[target_market_df['quote_asset'] == quote_asset_two]
+        shared_base_asset_list = list(set(origin_market_df['base_asset'].values).intersection(set(target_market_df['base_asset'].values)))
+        return shared_base_asset_list
+
+    def update_shared_base_asset_dict(self, loop_time_secs=1):
+        while True:
+            try:
+                for each_market_combi in self.enabled_market_klines:
+                    target_market_code, origin_market_code = each_market_combi.split(':')
+                    self.shared_base_asset_dict[each_market_combi] = self.get_shared_base_asset_list(origin_market_code, target_market_code)
+                if self.shared_base_asset_initialized is False:
+                    self.shared_base_asset_initialized = True
+            except Exception as e:
+                self.logger.error(f"update_shared_base_asset_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_shared_base_asset_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+            time.sleep(loop_time_secs)
+
     def get_premium_df(self, target_market_code, origin_market_code):
         try:
             # POSSIBLE quote_assets: USDT, BUSD, BTC, KRW
@@ -543,13 +548,12 @@ class InitCore:
             target_market_df = self.exchange_websocket_dict[target_market].get_price_df()
             target_market_df = target_market_df[target_market_df['quote_asset'] == quote_asset_two]
 
-            shared_bass_asset_list = list(set(origin_market_df['base_asset'].values).intersection(set(target_market_df['base_asset'].values)))
-            origin_market_df = origin_market_df[origin_market_df['base_asset'].isin(shared_bass_asset_list)].sort_values('base_asset').reset_index(drop=True)
-            target_market_df = target_market_df[target_market_df['base_asset'].isin(shared_bass_asset_list)].sort_values('base_asset').reset_index(drop=True)
+            shared_base_asset_list = list(set(origin_market_df['base_asset'].values).intersection(set(target_market_df['base_asset'].values)))
+            origin_market_df = origin_market_df[origin_market_df['base_asset'].isin(shared_base_asset_list)].sort_values('base_asset').reset_index(drop=True)
+            target_market_df = target_market_df[target_market_df['base_asset'].isin(shared_base_asset_list)].sort_values('base_asset').reset_index(drop=True)
 
-            convert_rate = self.convert_asset_rate(origin_market, quote_asset_one, target_market, quote_asset_two)
+            convert_rate = self.convert_rate_dict[f"{target_market_code}:{origin_market_code}"]
             origin_market_df[['converted_tp','converted_ap','converted_bp']] = origin_market_df[['tp','ap','bp']] * convert_rate
-            # target_market_df[['converted_tp','converted_ap','converted_bp']] = target_market_df[['tp','ap','bp']]
 
             # divide by target_market_df[['tp','ap','bp']]
             premium_df = pd.DataFrame((target_market_df[['tp','ap','bp']].values - origin_market_df[['converted_tp','converted_bp','converted_ap']].values)/

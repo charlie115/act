@@ -1,5 +1,5 @@
 {
-    "node": "info_core",
+    "node": "info_core_dev",
     "node_settings":
     {
         "info_core":
@@ -15,11 +15,12 @@
         "info_core_dev":
         {
             "MASTER": true,
-            "db_settings": "mongodb_docker",
-            "redis_settings": "redis_docker",
+            "db_settings": "dev_mongodb_docker",
+            "redis_settings": "dev_redis_docker",
             "telegram_bot_name": "info_core_dev_bot",
             "reference_node": null,
             "enabled_market_klines": [
+                "OKX_USD_M/USDT:OKX_COIN_M/USD"
             ]
         },
         "kline_generator1":
@@ -153,71 +154,38 @@
             "user":"root",
             "passwd":"13245dh!!"
         },
-        "dev_postgres_docker":
+        "postgres_docker":
         {
             "host":"postgres",
-            "port":25432,
+            "port":5432,
             "user":"test",
             "passwd":"CommunityPostgres123!"
         },
-        "dev_mongodb_docker":
+        "mongodb_docker":
         {
             "host":"mongodb",
             "port":27017,
             "user": "test",
             "passwd": "CommunityMongodb123!"
         },
-        "dev_redis_docker":
+        "redis_docker":
         {
             "host": "redis",
             "port": 6379,
             "passwd": "CommunityRedis123!"
         },
-        "dev_mongodb_remote":
+        "mongodb_remote":
         {
             "host": "221.148.128.212",
             "port": 27018,
             "user": "test",
             "passwd": "CommunityMongodb123!"
         },
-        "dev_redis_remote":
+        "redis_remote":
         {
             "host": "221.148.128.212",
             "port": 26379,
             "passwd": "CommunityRedis123!"
-        },
-        "postgres_docker":
-        {
-            "host":"acw",
-            "port":5432,
-            "user":"test",
-            "passwd":"9b_D2yf£2N3c"
-        },
-        "mongodb_docker":
-        {
-            "host":"mongodb",
-            "port":27017,
-            "user": "acw",
-            "passwd": "o,hOL6M11zg,"
-        },
-        "redis_docker":
-        {
-            "host": "redis",
-            "port": 6379,
-            "passwd": "lZ-B-P236_n>"
-        },
-        "mongodb_remote":
-        {
-            "host": "221.148.128.212",
-            "port": 27017,
-            "user": "acw",
-            "passwd": "o,hOL6M11zg,"
-        },
-        "redis_remote":
-        {
-            "host": "221.148.128.212",
-            "port": 6379,
-            "passwd": "lZ-B-P236_n>"
         }
     },
 
