@@ -13,8 +13,12 @@ export default function renderFundingRateCell({ cell, row, isMobile }) {
 
   if (isUndefined(value)) return '...';
 
-  const diff = row.original.fundingTime
-    ? DateTime.fromISO(row.original.fundingTime)
+  const fundingTime = cell.column.getIsVisible()
+    ? row.original.fundingTimeX
+    : row.original.fundingTimeY;
+
+  const diff = fundingTime
+    ? DateTime.fromISO(fundingTime)
         .diff(DateTime.now(), ['hours', 'minutes', 'seconds'])
         .toObject()
     : null;
@@ -25,7 +29,7 @@ export default function renderFundingRateCell({ cell, row, isMobile }) {
         diff={diff}
         value={value}
         decimal={5}
-        fundingTime={row.original.fundingTime}
+        fundingTime={fundingTime}
         isMobile={isMobile}
         sx={{ fontSize: { xs: 12, sm: 14 } }}
       />

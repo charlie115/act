@@ -9,7 +9,7 @@ const mutex = new Mutex();
 
 export const baseQuery = fetchBaseQuery({
   baseUrl:
-    process.env.NODE_ENV === 'development'
+    process.env.REACT_APP_ENV !== 'production'
       ? process.env.REACT_APP_DRF_URL
       : '/api',
   // baseUrl: process.env.REACT_APP_DRF_URL,

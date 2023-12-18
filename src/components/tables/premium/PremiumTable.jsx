@@ -104,6 +104,8 @@ function PremiumTable({
     { skip: !marketCodes }
   );
 
+  if (realTimeData?.status) console.log('realTimeData: ', realTimeData);
+
   const realTimeDataList = useMemo(
     () => orderBy(Object.values(realTimeData ?? {}), 'atp24h', 'desc'),
     [realTimeData]
@@ -148,24 +150,21 @@ function PremiumTable({
         marketCodesParam?.originMarketCode.includes('SPOT'),
     }
   );
-  const {
-    data: walletStatus,
-    isLoading: isWalletStatusLoading,
-    isSuccess: isWalletStatusSuccess,
-  } = useGetWalletStatusQuery(
-    { baseAsset: assetsParam, ...marketCodesParam },
-    {
-      pollingInterval: 1000 * 60,
-      skip:
-        !ready ||
-        !assetsParam ||
-        !marketCodesParam ||
-        !(
-          marketCodesParam?.targetMarketCode.includes('SPOT') ||
-          marketCodesParam?.originMarketCode.includes('SPOT')
-        ),
-    }
-  );
+  const { data: walletStatus, isSuccess: isWalletStatusSuccess } =
+    useGetWalletStatusQuery(
+      { baseAsset: assetsParam, ...marketCodesParam },
+      {
+        pollingInterval: 1000 * 60,
+        skip:
+          !ready ||
+          !assetsParam ||
+          !marketCodesParam ||
+          !(
+            marketCodesParam?.targetMarketCode.includes('SPOT') ||
+            marketCodesParam?.originMarketCode.includes('SPOT')
+          ),
+      }
+    );
 
   const [createFavoriteAsset, createFavoriteRes] =
     useCreateFavoriteAssetMutation();

@@ -71,9 +71,9 @@ const ReactTableUI = forwardRef(
         <Table>
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <Tr key={headerGroup.id}>
+              <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <Th
+                  <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
                     sx={{ width: header.getSize() }}
@@ -125,9 +125,9 @@ const ReactTableUI = forwardRef(
                         )}
                       </Stack>
                     )}
-                  </Th>
+                  </TableHead>
                 ))}
-              </Tr>
+              </TableRow>
             ))}
           </thead>
           <tbody>
@@ -157,9 +157,9 @@ const ReactTableUI = forwardRef(
                   )
                 )
               : [...Array(10).keys()].map((item) => (
-                  <Tr key={item}>
-                    {table.getVisibleFlatColumns().map((column, index) => (
-                      <Td
+                  <TableRow key={item}>
+                    {table.getVisibleFlatColumns().map((column) => (
+                      <TableCell
                         key={`${item}-${column.id}`}
                         align="center"
                         height={40}
@@ -172,9 +172,9 @@ const ReactTableUI = forwardRef(
                           width={column.getSize() * 0.9}
                           // width={(column.getSize() - index) / 2}
                         />
-                      </Td>
+                      </TableCell>
                     ))}
-                  </Tr>
+                  </TableRow>
                 ))}
           </tbody>
         </Table>
@@ -210,31 +210,28 @@ const MemoizedRow = React.memo(
     isMobile,
   }) => (
     <>
-      <Tr {...(getRowProps ? getRowProps(row) : {})}>
-        {row
-          .getVisibleCells()
-          .filter((cell) => cell.getValue() !== false)
-          .map((cell) => (
-            <Td
-              key={cell.id}
-              {...(getCellProps ? getCellProps(cell) : {})}
-              {...cell.column.columnDef.props}
-            >
-              {flexRender(cell.column.columnDef.cell, {
-                ...cell.getContext(),
-                ...extraData,
-                isMobile,
-                theme,
-              })}
-            </Td>
-          ))}
-      </Tr>
+      <TableRow {...(getRowProps ? getRowProps(row) : {})}>
+        {row.getVisibleCells().map((cell) => (
+          <TableCell
+            key={cell.id}
+            {...(getCellProps ? getCellProps(cell) : {})}
+            {...cell.column.columnDef.props}
+          >
+            {flexRender(cell.column.columnDef.cell, {
+              ...cell.getContext(),
+              ...extraData,
+              isMobile,
+              theme,
+            })}
+          </TableCell>
+        ))}
+      </TableRow>
       {row.getIsExpanded() && renderSubComponent && (
-        <Tr key={`${row.id}-expand-panel`}>
-          <Td colSpan={row.getVisibleCells().length}>
+        <TableRow key={`${row.id}-expand-panel`}>
+          <TableCell colSpan={row.getVisibleCells().length}>
             {renderSubComponent({ row, extraData })}
-          </Td>
-        </Tr>
+          </TableCell>
+        </TableRow>
       )}
     </>
   )
@@ -247,16 +244,16 @@ export const Table = styled('table')(() => ({
   tableLayout: 'fixed',
   width: '100%',
 }));
-export const Td = styled('td')(() => ({
+export const TableCell = styled('td')(() => ({
   // height: 50,
   textAlign: 'left',
 }));
-export const Th = styled('th')(({ theme }) => ({
+export const TableHead = styled('th')(({ theme }) => ({
   backgroundColor: alpha(theme.palette.background.paper, 0.5),
   height: 30,
   textAlign: 'left',
 }));
-export const Tr = styled('tr')(({ theme }) => ({
+export const TableRow = styled('tr')(({ theme }) => ({
   borderBottom: `1px solid ${
     theme.palette.mode === 'dark'
       ? theme.palette.grey['900']

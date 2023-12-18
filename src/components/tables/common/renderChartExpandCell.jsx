@@ -2,7 +2,8 @@ import React from 'react';
 
 import InsightsIcon from '@mui/icons-material/Insights';
 
-export default function renderChartExpandCell({ row }) {
+export default function renderChartExpandCell({ cell, row }) {
+  if (cell.getValue() === false) return null;
   return (
     <InsightsIcon
       color={row.getIsExpanded() ? 'info' : ''}

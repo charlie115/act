@@ -66,13 +66,12 @@ export function MainLayout() {
   );
 
   const { loggedin } = useSelector((state) => state.auth);
-  const { snackbar } = useSelector((state) => state.app);
 
   useUserQuery({}, { skip: !loggedin });
 
   useEffect(() => {
     const handleContextmenu = (e) =>
-      process.env.NODE_ENV === 'development' ? null : e.preventDefault();
+      process.env.REACT_APP_ENV !== 'production' ? null : e.preventDefault();
     document.addEventListener('contextmenu', handleContextmenu);
     return () => {
       document.removeEventListener('contextmenu', handleContextmenu);

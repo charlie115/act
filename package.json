@@ -24,6 +24,7 @@
     "copy-to-clipboard": "^3.3.3",
     "emoji-mart": "^5.5.2",
     "emoji-picker-react": "^4.5.2",
+    "env-cmd": "^10.1.0",
     "i18next": "^23.4.4",
     "jwt-decode": "^3.1.2",
     "lightweight-charts": "^4.0.1",
@@ -60,7 +61,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "GENERATE_SOURCEMAP=false react-scripts build",
+    "build:production": "REACT_APP_ENV=production react-scripts build",
+    "build:staging": "env-cmd -f .env.staging react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint --fix --ext .js,.jsx .",

@@ -16,7 +16,11 @@ const api = websocketApi.injectEndpoints({
         args,
         { cacheDataLoaded, cacheEntryRemoved, updateCachedData }
       ) => {
-        const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/api/kline/`);
+        const url = new URL(
+          `${process.env.REACT_APP_DRF_WS_URL}${
+            process.env.REACT_APP_ENV !== 'production' ? '' : '/api'
+          }/kline/`
+        );
         url.searchParams.set('target_market_code', args.targetMarketCode);
         url.searchParams.set('origin_market_code', args.originMarketCode);
         url.searchParams.set('interval', args.interval);
@@ -45,13 +49,20 @@ const api = websocketApi.injectEndpoints({
           }
         });
 
-        // const throttled = throttle(onMessage, 500);
-
-        // const listener = args.throttle ? throttled : onMessage;
-
+        const onClose = memoize(() => {
+          console.log('here');
+          try {
+            updateCachedData((draft) => {
+              draft.status = 'DISCONNECTED';
+            });
+          } catch {
+            /* empty */
+          }
+        });
         try {
           await cacheDataLoaded;
           socket.addEventListener('message', onMessage);
+          socket.addEventListener('close', onClose);
         } catch {
           // no-op in case `cacheEntryRemoved` resolves before `cacheDataLoaded`,
           // in which case `cacheDataLoaded` will throw

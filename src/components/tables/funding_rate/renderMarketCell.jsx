@@ -8,7 +8,10 @@ import { EXCHANGE_LIST } from 'constants/lists';
 export default function renderMarketCell({ cell, row, isMobile }) {
   const value = cell.getValue();
 
-  const exchange = EXCHANGE_LIST.find((o) => o.value === row.original.exchange);
+  const origExchange = cell.column.getIsVisible()
+    ? row.original.exchangeX
+    : row.original.exchangeY;
+  const exchange = EXCHANGE_LIST.find((o) => o.value === origExchange);
 
   return (
     <Stack alignItems="center" direction="row" spacing={0.5} sx={{ pr: 1 }}>

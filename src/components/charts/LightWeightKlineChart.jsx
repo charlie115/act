@@ -14,10 +14,12 @@ import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
+import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import ArrowRightAltIcon from '@mui/icons-material/ArrowRightAlt';
 import StarIcon from '@mui/icons-material/Star';
 
 import { alpha, useTheme } from '@mui/material/styles';
@@ -62,6 +64,7 @@ function LightWeightKlineChart({
   onAddFavoriteAsset,
   onRemoveFavoriteAsset,
   queryKey,
+  showMarketCodes,
 }) {
   const navigate = useNavigate();
 
@@ -523,8 +526,8 @@ function LightWeightKlineChart({
       sx={{ borderRadius: 0 }}
     >
       <Box sx={{ bgcolor: 'background.paper' }}>
-        {(targetMarketCode.value.includes('SPOT') ||
-          originMarketCode.value.includes('SPOT')) && (
+        {(targetMarketCode?.value.includes('SPOT') ||
+          originMarketCode?.value.includes('SPOT')) && (
           <Box sx={{ p: 2 }}>
             <ExchangeWalletNetworks
               direction={
@@ -552,33 +555,37 @@ function LightWeightKlineChart({
               )}
           </Box>
         )}
-        <Grid container sx={{ p: 1 }}>
+        <Grid container sx={{ p: 1, pt: 2 }}>
           <Grid
             item
             xs={6}
             sm={3}
             sx={{ display: 'flex', alignItems: 'center' }}
           >
-            <Tooltip
-              title={
-                isFavorite ? t('Remove from favorites') : t('Add to favorites')
-              }
-            >
-              <StarIcon
-                color={isFavorite ? 'accent' : 'secondary'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isFavorite) onRemoveFavoriteAsset(favoriteAssetId);
-                  else onAddFavoriteAsset(baseAsset);
-                }}
-                sx={{
-                  '& :hover': {
-                    color: theme.palette.accent.main,
-                    opacity: 0.5,
-                  },
-                }}
-              />
-            </Tooltip>
+            {onAddFavoriteAsset && onRemoveFavoriteAsset && (
+              <Tooltip
+                title={
+                  isFavorite
+                    ? t('Remove from favorites')
+                    : t('Add to favorites')
+                }
+              >
+                <StarIcon
+                  color={isFavorite ? 'accent' : 'secondary'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isFavorite) onRemoveFavoriteAsset(favoriteAssetId);
+                    else onAddFavoriteAsset(baseAsset);
+                  }}
+                  sx={{
+                    '& :hover': {
+                      color: theme.palette.accent.main,
+                      opacity: 0.5,
+                    },
+                  }}
+                />
+              </Tooltip>
+            )}
             <Typography sx={{ fontWeight: 700, ml: 2 }}>{title}</Typography>
           </Grid>
           <Grid
@@ -620,6 +627,31 @@ function LightWeightKlineChart({
         {(isLoadingInitialData ||
           (isFetchingInitialData && preloadedData.length === 0) ||
           isFetchingHistoricalData) && <LinearProgress />}
+        {showMarketCodes && (
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="center"
+            spacing={1}
+            mt={2}
+          >
+            <Box
+              component="img"
+              src={targetMarketCode.icon}
+              alt={targetMarketCode.getLabel()}
+              sx={{ height: { xs: 16, md: 18 }, width: { xs: 16, md: 18 } }}
+            />
+            <Box>{targetMarketCode.getLabel()}</Box>
+            <ArrowRightAltIcon />
+            <Box
+              component="img"
+              src={originMarketCode.icon}
+              alt={originMarketCode.getLabel()}
+              sx={{ height: { xs: 16, md: 18 }, width: { xs: 16, md: 18 } }}
+            />
+            <Box>{originMarketCode.getLabel()}</Box>
+          </Stack>
+        )}
         <Box
           ref={chartContainerRef}
           sx={{ position: 'relative', pt: 2 }}

@@ -8,7 +8,11 @@ import {
   websocketDisconnected,
 } from 'redux/reducers/websocket';
 
-const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/api/chat/`);
+const url = new URL(
+  `${process.env.REACT_APP_DRF_WS_URL}${
+    process.env.REACT_APP_ENV !== 'production' ? '' : '/api'
+  }/chat/`
+);
 let ws;
 
 const getConnection = async () => {
