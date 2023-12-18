@@ -26,7 +26,7 @@ current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
 logging_dir = f"{current_folder_dir}/loggers/logs/"
 
 class InitCore:
-    def __init__(self, logging_dir, master_flag, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_markets, db_dict):
+    def __init__(self, logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_markets, db_dict):
         # Inital value setting
         self.logger = KimpBotLogger("info_core", logging_dir).logger
         self.price_websocket_logger = KimpBotLogger("price_websocket", logging_dir).logger
@@ -141,13 +141,23 @@ class InitCore:
                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"InitCore|{enabled_websocket_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
                 break
 
+        # Loading convert rate
+        self.convert_rate_dict = {}
+        self.convert_rate_initialized = False
+        self.update_convert_rate_dict_thread = Thread(target=self.update_convert_rate_dict, daemon=True)
+        self.update_convert_rate_dict_thread.start()
+        while self.convert_rate_initialized is False:
+            time.sleep(0.2)
+
         self.logger.info(f"InitCore|exchange_websocket_dict, {self.exchange_websocket_dict.keys()} has been initiated.")
         time.sleep(10)
 
     def generate_enabled_websocket_list(self):
         market_list = []
-        for each_market in self.enabled_markets:
-            market_list.append(each_market.split('/')[0])
+        for each_market_combi in self.enabled_markets:
+            market_code1, market_code2 = each_market_combi.split(':')
+            market_list.append(market_code1.split('/')[0])
+            market_list.append(market_code2.split('/')[0])
         market_list = list(set(market_list))
         return market_list
     
@@ -165,19 +175,21 @@ class InitCore:
                 if product not in organized_markets[market][product_type]["PERPETUAL"]:
                     organized_markets[market][product_type]["PERPETUAL"].append(product)
 
-        # Process each entry in the enabled_market_klines
+        # Process each entry in the enabled_markets
         for entry in self.enabled_markets:
-            market, quote_asset = entry.split("/")
-            # Handle different market types
-            if "USD_M" in market:
-                market_name = market.replace("_USD_M", "")
-                market_type = "USD_M"
-            elif "COIN_M" in market:
-                market_name = market.replace("_COIN_M", "")
-                market_type = "COIN_M"
-            else:
-                market_name, market_type = market.split("_")
-            add_market_product(market_name, market_type, quote_asset)
+            pairs = entry.split(":")
+            for pair in pairs:
+                market, quote_asset = pair.split("/")
+                # Handle different market types
+                if "USD_M" in market:
+                    market_name = market.replace("_USD_M", "")
+                    market_type = "USD_M"
+                elif "COIN_M" in market:
+                    market_name = market.replace("_COIN_M", "")
+                    market_type = "COIN_M"
+                else:
+                    market_name, market_type = market.split("_")
+                add_market_product(market_name, market_type, quote_asset)
         return organized_markets
     
     def get_enabled_data_name_list(self):
@@ -452,6 +464,21 @@ class InitCore:
                 title = f"target_market: {target_market}, target_quote_asset: {target_quote_asset}, origin_market:{origin_market}, origin_quote_asset: {origin_quote_asset}"
                 raise Exception(f"Cannot find the convert rate for {title}")
         return convert_rate
+    
+    def update_convert_rate_dict(self, loop_time_secs=30):
+        while True:
+            try:
+                for each_market_combi in self.enabled_markets:
+                    target_market_code, origin_market_code = each_market_combi.split(':')
+                    target_market, target_quote_asset = target_market_code.split('/')
+                    origin_market, origin_quote_asset = origin_market_code.split('/')
+                    self.convert_rate_dict[each_market_combi] = self.convert_asset_rate(origin_market, origin_quote_asset, target_market, target_quote_asset)
+                if self.convert_rate_initialized is False:
+                    self.convert_rate_initialized = True
+            except Exception as e:
+                self.logger.error(f"update_convert_rate_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_convert_rate_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+            time.sleep(loop_time_secs)
 
     def get_premium_df(self, target_market_code, origin_market_code):
         try:
@@ -466,19 +493,21 @@ class InitCore:
             target_market_df = self.exchange_websocket_dict[target_market].get_price_df()
             target_market_df = target_market_df[target_market_df['quote_asset'] == quote_asset_two]
 
-            shared_bass_asset_list = list(set(origin_market_df['base_asset'].values).intersection(set(target_market_df['base_asset'].values)))
-            origin_market_df = origin_market_df[origin_market_df['base_asset'].isin(shared_bass_asset_list)].sort_values('base_asset').reset_index(drop=True)
-            target_market_df = target_market_df[target_market_df['base_asset'].isin(shared_bass_asset_list)].sort_values('base_asset').reset_index(drop=True)
+            shared_base_asset_list = list(set(origin_market_df['base_asset'].values).intersection(set(target_market_df['base_asset'].values)))
+            origin_market_df = origin_market_df[origin_market_df['base_asset'].isin(shared_base_asset_list)].sort_values('base_asset').reset_index(drop=True)
+            target_market_df = target_market_df[target_market_df['base_asset'].isin(shared_base_asset_list)].sort_values('base_asset').reset_index(drop=True)
 
-            convert_rate = self.convert_asset_rate(origin_market, quote_asset_one, target_market, quote_asset_two)
-            origin_market_df[['converted_ap','converted_bp']] = origin_market_df[['ap','bp']] * convert_rate
+            convert_rate = self.convert_rate_dict[f"{target_market_code}:{origin_market_code}"]
+            origin_market_df[['converted_tp','converted_ap','converted_bp']] = origin_market_df[['tp','ap','bp']] * convert_rate
 
             # divide by target_market_df[['tp','ap','bp']]
-            premium_df = pd.DataFrame((target_market_df[['ap','bp']].values - origin_market_df[['converted_bp','converted_ap']].values)/
-                                    origin_market_df[['converted_bp','converted_ap']].values, columns=['LS_premium','SL_premium'])
-            premium_df[['base_asset','quote_asset','ap','bp','scr','atp24h']] = target_market_df[['base_asset','quote_asset','ap','bp','scr','atp24h']]
-            premium_df[['converted_ap','converted_bp']] = origin_market_df[['converted_ap', 'converted_bp']]
-            premium_df.loc[:, ['LS_premium','SL_premium']] = premium_df[['LS_premium','SL_premium']] * 100
+            premium_df = pd.DataFrame((target_market_df[['tp','ap','bp']].values - origin_market_df[['converted_tp','converted_bp','converted_ap']].values)/
+                                    origin_market_df[['converted_tp','converted_bp','converted_ap']].values, columns=['tp_premium','LS_premium','SL_premium'])
+            premium_df['LS_SL_spread'] = premium_df['LS_premium'] - premium_df['SL_premium']
+            premium_df[['base_asset','quote_asset','tp','ap','bp','scr','atp24h']] = target_market_df[['base_asset','quote_asset','tp','ap','bp','scr','atp24h']]
+            premium_df[['converted_tp','converted_ap','converted_bp']] = origin_market_df[['converted_tp','converted_ap', 'converted_bp']]
+            premium_df.loc[:, ['tp_premium','LS_premium','SL_premium','LS_SL_spread']] = premium_df[['tp_premium','LS_premium','SL_premium','LS_SL_spread']] * 100
+            premium_df = premium_df.sort_values('atp24h', ascending=False).reset_index(drop=True)
             # TEST
             premium_df['dollar'] = self.get_dollar_dict()['price']
             # TEST

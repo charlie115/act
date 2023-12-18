@@ -4,19 +4,12 @@
     {
         "trade_core1":
         {
-            "MASTER": true,
-            "db_settings": "postgres_remote",
-            "redis_settings": "redis_localhost",
+            "db_settings": "dev_postgres_docker",
+            "redis_settings": "redis_remote",
             "telegram_bot_name": "test_bot",
             "reference_node": null,
             "enabled_markets": [
-                "UPBIT_SPOT/KRW",
-                "BYBIT_USD_M/USDT",
-                "UPBIT_SPOT/BTC",
-                "OKX_SPOT/USDT",
-                "OKX_USD_M/USDT",
-                "BINANCE_USD_M/USDT",
-                "BINANCE_SPOT/USDT"
+                "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT"
             ]
         }
     },
@@ -39,121 +32,71 @@
     },
     "database_setting":
     {
-        "mycore":
-        {
-            "host":"121.129.140.175",
-            "port":3312,
-            "user":"root",
-            "passwd":"13245dh"
-        },
-        "mycore_local":
-        {
-            "host":"localhost",
-            "port":3306,
-            "user":"root",
-            "passwd":"13245dh"
-        },
-        "mycore2":
-        {
-            "host":"203.210.53.251",
-            "port":3306,
-            "user":"root",
-            "passwd":"13245dh"
-        },
-        "mycore2_local":
-        {
-            "host":"localhost",
-            "port":3306,
-            "user":"root",
-            "passwd":"13245dh"
-        },
-        "core1":
-        {
-            "host":"222.106.173.213",
-            "port":22153,
-            "user":"root",
-            "passwd":"13245dh!!"
-        },
-        "core1_local":
-        {
-            "host":"localhost",
-            "port":3306,
-            "user":"root",
-            "passwd":"13245dh!!"
-        },
-        "core2":
-        {
-            "host":"222.106.173.216",
-            "port":22153,
-            "user":"root",
-            "passwd":"13245dh!!"
-        },
-        "core2_local":
-        {
-            "host":"localhost",
-            "port":22153,
-            "user":"root",
-            "passwd":"13245dh!!"
-        },
-        "hcore1_local":
-        {
-            "host":"localhost",
-            "port":22153,
-            "user":"root",
-            "passwd":"13245dh!!"
-        },
-        "hcore1":
-        {
-            "host":"218.153.174.26",
-            "port":22153,
-            "user":"root",
-            "passwd":"13245dh!!"
-        },
-        "postgres_docker":
+        "dev_postgres_docker":
         {
             "host":"postgres",
             "port":5432,
             "user":"test",
-            "passwd":"CommunityPostgres123!"
+            "passwd":"TradePostgres123!"
         },
-        "mongodb_docker":
+        "dev_mongodb_docker":
         {
             "host":"mongodb",
             "port":27017,
             "user": "test",
             "passwd": "CommunityMongodb123!"
         },
-        "redis_docker":
+        "dev_redis_docker":
         {
             "host": "redis",
             "port": 6379,
             "passwd": "CommunityRedis123!"
         },
-        "postgres_remote":
-        {
-            "host": "221.148.128.212",
-            "port": 25432,
-            "user": "test",
-            "passwd": "CommunityPostgres123!"
-        },
-        "mongodb_remote":
+        "dev_mongodb_remote":
         {
             "host": "221.148.128.212",
             "port": 27018,
             "user": "test",
             "passwd": "CommunityMongodb123!"
         },
-        "redis_remote":
+        "dev_redis_remote":
         {
             "host": "221.148.128.212",
             "port": 26379,
             "passwd": "CommunityRedis123!"
         },
-        "redis_localhost":
+        "postgres_docker":
         {
-            "host": "localhost",
+            "host":"acw",
+            "port":5432,
+            "user":"test",
+            "passwd":"9b_D2yf£2N3c"
+        },
+        "mongodb_docker":
+        {
+            "host":"mongodb",
+            "port":27017,
+            "user": "acw",
+            "passwd": "o,hOL6M11zg,"
+        },
+        "redis_docker":
+        {
+            "host": "redis",
             "port": 6379,
-            "passwd": null
+            "passwd": "lZ-B-P236_n>"
+        },
+        "mongodb_remote":
+        {
+            "host": "221.148.128.212",
+            "port": 27017,
+            "user": "acw",
+            "passwd": "o,hOL6M11zg,"
+        },
+        "redis_remote":
+        {
+            "host": "221.148.128.212",
+            "port": 6379,
+            "passwd": "lZ-B-P236_n>"
         }
     },
 

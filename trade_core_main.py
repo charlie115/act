@@ -73,19 +73,14 @@ if __name__ == '__main__':
         telegram_bot_token = config['telegram_bot_setting'][telegram_bot_name]
     else:
         telegram_bot_token = None
-    master_flag = config['node_settings'][node]['MASTER']
     db_dict = config['database_setting'][config['node_settings'][node]['db_settings']]
     
     # Initiate Kimp core (Websocket engine)
-    core = InitCore(logging_dir, master_flag, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_markets, db_dict)
+    core = InitCore(logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_markets, db_dict)
 
     time.sleep(5)
 
     # Initiate TelegramBot with Trigger engine
-    if master_flag:
-        admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list)
-        admin_telegram_bot.updater.idle()
-    else:
-        while True:
-            time.sleep(1)
+    admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list)
+    admin_telegram_bot.updater.idle()
 
