@@ -34,9 +34,10 @@ class User(AbstractUser):
     node = models.ForeignKey(
         Node,
         null=True,
+        blank=True,
         on_delete=models.RESTRICT,
         related_name="users",
-        help_text="Node where the user transactions are processed",
+        help_text="Node where the user's trades are executed",
     )
 
     managers = models.ManyToManyField(
@@ -72,6 +73,7 @@ class User(AbstractUser):
         return True
 
     class Meta:
+        verbose_name = "User"
         verbose_name_plural = "Users"
 
 
@@ -93,7 +95,7 @@ class UserManagers(models.Model):
         return f"{self.manager.username} manages {self.managed_user.username}"
 
     class Meta:
-        verbose_name_plural = "User managers"
+        verbose_name = "User Manager"
 
 
 class UserProfile(models.Model):
@@ -112,7 +114,7 @@ class UserProfile(models.Model):
         return self.user.__str__()
 
     class Meta:
-        verbose_name_plural = "User profiles"
+        verbose_name = "User Profile"
 
 
 class UserFavoriteAssets(models.Model):
@@ -134,7 +136,8 @@ class UserFavoriteAssets(models.Model):
                 name="unique__user__base_asset__market_codes",
             )
         ]
-        verbose_name_plural = "User favorite assets"
+        verbose_name = "User Favorite Assets"
+        verbose_name_plural = "User Favorite Assets"
 
 
 class UserBlocklist(models.Model):
@@ -146,4 +149,5 @@ class UserBlocklist(models.Model):
         return self.target_username
 
     class Meta:
-        verbose_name_plural = "User blocklist"
+        verbose_name = "User Blocklist"
+        verbose_name_plural = "User Blocklist"

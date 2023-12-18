@@ -33,12 +33,6 @@ class UserConfig(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trade_config"
     )
-    node = models.ForeignKey(
-        Node,
-        on_delete=models.RESTRICT,
-        related_name="user_configs",
-        help_text="This is the server where the user's trade settings will be executed.",
-    )
 
     service_expiry_date = models.DateTimeField(
         help_text="If a user makes a payment for the subscription, the `service_expiry_date` will be extended."
@@ -100,4 +94,7 @@ class UserConfig(models.Model):
     )
 
     def __str__(self):
-        return f"{self.user.username} @ {self.node.name}"
+        return f"{self.user.username} config"
+
+    class Meta:
+        verbose_name = "User Config"

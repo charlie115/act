@@ -25,7 +25,6 @@ class NodeAdmin(ModelAdmin):
 class UserConfigAdmin(ModelAdmin):
     list_display = [
         "user",
-        "node",
         "service_expiry_date",
     ]
     search_fields = [
@@ -33,8 +32,6 @@ class UserConfigAdmin(ModelAdmin):
         "user__username",
         "user__first_name",
         "user__last_name",
-        "node__name",
-        "node__domain",
     ]
 
 

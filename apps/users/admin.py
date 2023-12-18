@@ -1,11 +1,9 @@
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.sites.models import Site
 from django.utils.translation import gettext_lazy as _
 
-from allauth.account.models import EmailAddress
-from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
+from allauth.socialaccount.models import SocialAccount
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
 
 from users.mixins import UserFavoriteAssetsValidatorMixin
@@ -102,8 +100,8 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
                     "uuid",
                     ("username", "email"),
                     "password",
-                    ("date_joined", "last_login", "last_username_change"),
                     "node",
+                    ("date_joined", "last_login", "last_username_change"),
                 )
             },
         ),
@@ -193,10 +191,3 @@ admin.site.register(UserBlocklist, UserBlocklistAdmin)
 admin.site.register(User, CustomUserAdmin)
 admin.site.register(UserManagers, UserManagersAdmin)
 admin.site.register(UserFavoriteAssets, UserFavoriteAssetsAdmin)
-
-admin.site.unregister(EmailAddress)
-admin.site.unregister(SocialAccount)
-admin.site.unregister(SocialApp)
-admin.site.unregister(SocialToken)
-
-admin.site.unregister(Site)

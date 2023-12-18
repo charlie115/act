@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from django.db.models import Count
 from rest_framework import exceptions, serializers
 
 from lib.datetime import ONE_DAY_IN_SECONDS
@@ -23,6 +22,11 @@ class NodeSerializer(NodeValidatorMixin, serializers.ModelSerializer):
 
 
 class UserConfigSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
+    node = serializers.SerializerMethodField()
+
+    def get_node(self, obj):
+        return obj.user.node.id
+
     def validate_service_expiry_date(self, service_expiry_date):
         if service_expiry_date <= datetime.now(tz=timezone.utc):
             raise exceptions.ValidationError(
@@ -37,26 +41,27 @@ class UserConfigSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer)
             )
         return service_expiry_date
 
-    def validate(self, attrs):
-        nodes = (
-            Node.objects.all()
-            .annotate(config_count=Count("user_configs"))
-            .order_by("config_count", "id")
-        )
-
-        if len(nodes) > 0:
-            attrs["node"] = nodes.first()
-        else:
+    def create(self, validated_data):
+        if (
+            hasattr(validated_data["user"], "trade_config")
+            and validated_data["user"].trade_config
+        ):
             raise exceptions.ValidationError(
-                {"detail": "There is no Node to create configurations!"}
+                {
+                    "user": f"{validated_data['user']} already has a trade configuration set."
+                }
             )
-
-        return super().validate(attrs)
+        if validated_data["user"].node is None:
+            raise exceptions.ValidationError(
+                {"user": f"{validated_data['user']} is not assigned to a Node yet."}
+            )
+        return super().create(validated_data)
 
     class Meta:
         model = UserConfig
         fields = (
             "id",
+            "user",
             "node",
             "service_expiry_date",
             "addcir_limit",
@@ -70,5 +75,5 @@ class UserConfigSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer)
             "alarm_term_sec",
         )
         extra_kwargs = {
-            "node": {"read_only": True},
+            "user": {"read_only": True},
         }

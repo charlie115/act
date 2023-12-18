@@ -1,8 +1,10 @@
-from rest_framework import serializers
+from django.db.models import Count
+from rest_framework import exceptions, serializers
 
 from lib.datetime import DATE_TIME_FORMAT
 from users.mixins import UserFavoriteAssetsValidatorMixin, UserUUIDSerializerMixin
 from users.models import User, UserBlocklist, UserFavoriteAssets, UserProfile
+from tradecore.models import Node
 from tradecore.serializers import UserConfigSerializer
 
 
@@ -36,6 +38,22 @@ class UserSerializer(serializers.ModelSerializer):
     favorite_assets = UserFavoriteAssetsSerializer(many=True, read_only=True)
     trade_config = UserConfigSerializer(read_only=True)
 
+    def validate(self, attrs):
+        nodes = (
+            Node.objects.all()
+            .annotate(user_count=Count("users"))
+            .order_by("user_count", "id")
+        )
+
+        if len(nodes) > 0:
+            attrs["node"] = nodes.first()
+        else:
+            raise exceptions.ValidationError(
+                {"detail": "There is no Node to assign user!"}
+            )
+
+        return super().validate(attrs)
+
     def create(self, validated_data):
         validated_data.pop("username", None)
         password = validated_data.pop("password")
@@ -60,6 +78,7 @@ class UserSerializer(serializers.ModelSerializer):
             "date_joined",
             "profile",
             "favorite_assets",
+            "node",
             "trade_config",
         )
         read_only_fields = ("role", "is_active")
@@ -69,6 +88,8 @@ class UserSerializer(serializers.ModelSerializer):
                 "write_only": True,
                 "style": {"input_type": "password", "placeholder": "Password"},
             },
+            "date_joined": {"read_only": True},
+            "node": {"read_only": True},
         }
 
 
