@@ -1,6 +1,13 @@
-from django.conf import settings
+import hashlib
+import hmac
+import time
 
+from allauth.socialaccount import providers
+from allauth.socialaccount.models import SocialLogin
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from allauth.socialaccount.providers.telegram.provider import TelegramProvider
+from django.conf import settings
+from django.db.models import Count
 from dj_rest_auth.registration.views import SocialLoginView
 from dj_rest_auth.views import (
     LoginView,
@@ -12,9 +19,12 @@ from dj_rest_auth.views import (
 )
 from dj_rest_auth.jwt_auth import get_refresh_view
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework import exceptions, permissions, response
 from rest_framework_simplejwt.views import TokenVerifyView
 
 from authentication.adapters import CustomGoogleOAuth2Adapter
+from socialaccounts.models import ProxySocialAccount, ProxySocialApp
+from users.models import User, UserSocialApps
 
 
 @extend_schema(tags=["Auth"])
@@ -27,6 +37,87 @@ from authentication.adapters import CustomGoogleOAuth2Adapter
 class AuthGoogleLoginView(SocialLoginView):
     adapter_class = CustomGoogleOAuth2Adapter
     client_class = OAuth2Client
+
+
+@extend_schema(tags=["Auth"])
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Telegram login",
+        description="Login via Telegram",
+    ),
+)
+class AuthTelegramLoginView(LoginView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        if "user" not in request.data:
+            raise exceptions.ValidationError({"user": ["This field is required."]})
+
+        # allauth/socialaccount/providers/telegram/views.py
+        telegram_provider = providers.registry.by_id(TelegramProvider.id, request)
+        data = dict(request.data.items())
+        user = User.objects.get(uuid=data["user"])
+        hash = data.pop("hash")
+        payload = "\n".join(sorted(["{}={}".format(k, v) for k, v in data.items()]))
+
+        # Get user's social app to get Telegram bot token
+        try:
+            user_telegram_socialapp = user.socialapps.get(
+                socialapp__provider=telegram_provider.id
+            )
+
+        except UserSocialApps.DoesNotExist:
+            telegram_socialapps = (
+                ProxySocialApp.objects.filter(provider=telegram_provider.id)
+                .annotate(user_count=Count("users"))
+                .order_by("user_count", "id")
+            )
+
+            if len(telegram_socialapps) < 1:
+                raise exceptions.ValidationError(
+                    {
+                        "detail": "There is no Social App with Telegram provider to allocate user."
+                    }
+                )
+
+            user_telegram_socialapp = UserSocialApps.objects.create(
+                socialapp=telegram_socialapps.first(),
+                user=user,
+            )
+
+        token = user_telegram_socialapp.socialapp.secret
+        token_sha256 = hashlib.sha256(token.encode()).digest()
+        expected_hash = hmac.new(
+            token_sha256, payload.encode(), hashlib.sha256
+        ).hexdigest()
+        auth_date = int(data.pop("auth_date"))
+        if hash != expected_hash or time.time() - auth_date > 30:
+            raise exceptions.ValidationError({"detail": "Telegram data is not valid."})
+
+        # allauth/socialaccount/providers/base/provider.py: sociallogin_from_response
+        uid = telegram_provider.extract_uid(data)
+        extra_data = telegram_provider.extract_extra_data(data)
+
+        socialaccount = ProxySocialAccount(
+            user=user,
+            extra_data=extra_data,
+            uid=uid,
+            provider=telegram_provider.id,
+        )
+        sociallogin = SocialLogin(account=socialaccount, email_addresses=[])
+
+        telegram_socialaccount = user.socialaccount_set.filter(
+            provider=telegram_provider.id
+        )
+        if telegram_socialaccount:
+            response_data = {"detail": "Telegram account already connected."}
+        else:
+            sociallogin.connect(request, user)
+            user.telegram_chat_id = uid
+            user.save()
+            response_data = {"detail": "Telegram account successfully connected!"}
+
+        return response.Response(response_data)
 
 
 @extend_schema(tags=["Auth"])

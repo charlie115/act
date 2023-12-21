@@ -6,6 +6,7 @@ from rest_framework import response
 
 from authentication.views import (
     AuthGoogleLoginView,
+    AuthTelegramLoginView,
     AuthBasicLoginView,
     AuthLogoutView,
     AuthPasswordChangeView,
@@ -29,6 +30,8 @@ class AuthAPIListView(BaseEndpointListView):
             str(url.pattern).strip("/"): request.build_absolute_uri(url.pattern)
             for url in dj_rest_auth_urls
         }
+        api_list["login/telegram"] = request.build_absolute_uri("login/telegram/")
+
         if os.environ["DJANGO_SETTINGS_MODULE"] == "config.settings.dev":
             api_list["login/basic"] = request.build_absolute_uri("login/basic/")
 
@@ -40,6 +43,7 @@ class AuthAPIListView(BaseEndpointListView):
 urlpatterns = [
     path("", AuthAPIListView.as_view(), name="auth api list"),
     path("login/", AuthGoogleLoginView.as_view(), name="google login"),
+    path("login/telegram/", AuthTelegramLoginView.as_view(), name="telegram login"),
     path("logout/", AuthLogoutView.as_view(), name="logout"),
     path("password/change/", AuthPasswordChangeView.as_view(), name="password change"),
     path("password/reset/", AuthPasswordResetView.as_view(), name="password reset"),
