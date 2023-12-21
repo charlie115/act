@@ -11,8 +11,9 @@ from users.models import (
     User,
     UserBlocklist,
     UserFavoriteAssets,
-    UserProfile,
     UserManagers,
+    UserProfile,
+    UserSocialApps,
 )
 
 
@@ -33,6 +34,7 @@ class ManagersInline(TabularInline):
     model = UserManagers
     extra = 0
     verbose_name = "Manager"
+    classes = ("collapse",)
 
     def has_change_permission(self, request, obj=None):
         return False
@@ -43,14 +45,31 @@ class ManagedInline(TabularInline):
     model = UserManagers
     extra = 0
     verbose_name = "Managed user"
+    classes = ("collapse",)
 
     def has_change_permission(self, request, obj=None):
+        return False
+
+
+class SocialAppInline(TabularInline):
+    model = UserSocialApps
+    extra = 0
+    verbose_name = "Social app"
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False
 
 
 class SocialAccountInline(StackedInline):
     model = SocialAccount
     verbose_name = "Social account"
+    classes = ("collapse",)
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -87,19 +106,21 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
     )
     inlines = (
         ProfileInline,
+        SocialAppInline,
+        SocialAccountInline,
         ManagersInline,
         ManagedInline,
-        SocialAccountInline,
     )
     fieldsets = (
         (
-            None,
+            _("Account info"),
             {
                 "fields": (
                     "is_active",
                     "uuid",
                     ("username", "email"),
                     "password",
+                    "telegram_chat_id",
                     "node",
                     ("date_joined", "last_login", "last_username_change"),
                 )
@@ -107,7 +128,12 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
         ),
         (
             _("Personal info"),
-            {"fields": ("first_name", "last_name", "telegram_chat_id")},
+            {
+                "fields": (
+                    "first_name",
+                    "last_name",
+                )
+            },
         ),
         (
             _("Permissions"),

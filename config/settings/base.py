@@ -44,7 +44,7 @@ INFOCORE_IPS = env.list("INFOCORE_IPS", default=["localhost", "127.0.0.1"])
 # FORCE_SCRIPT_NAME doesn't work on admin urls
 SCRIPT_NAME = env("DJANGO_SCRIPT_NAME", default="")
 
-SITE_ID = 1
+SITE_ID = 2
 
 ROOT_URLCONF = "config.urls"
 
@@ -73,6 +73,7 @@ THIRD_PARTY_APPS = (
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
+    "allauth.socialaccount.providers.telegram",
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_simplejwt",
@@ -87,6 +88,7 @@ THIRD_PARTY_APPS = (
 LOCAL_APPS = (
     "authentication",
     "chat",
+    "socialaccounts",
     "users",
     "infocore",
     "newscore",

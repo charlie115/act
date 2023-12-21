@@ -11,6 +11,7 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
 from users.managers import UserManager
+from socialaccounts.models import ProxySocialApp
 from tradecore.models import Node
 
 
@@ -75,6 +76,32 @@ class User(AbstractUser):
     class Meta:
         verbose_name = "User"
         verbose_name_plural = "Users"
+
+
+class UserSocialApps(models.Model):
+    socialapp = models.ForeignKey(
+        ProxySocialApp,
+        on_delete=models.RESTRICT,
+        related_name="users",
+        verbose_name="social app",
+        help_text="The Telegram bot to allocate to the user.<br>"
+        "<em>The social apps available currently are telegram bots.<br>"
+        "Google is also available, but is used for login.</em>",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="socialapps",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["socialapp", "user"],
+                name="unique__socialapp__user",
+            )
+        ]
+        verbose_name = "User Social App"
 
 
 class UserManagers(models.Model):
