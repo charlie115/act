@@ -87,7 +87,10 @@ class UserViewSet(UserOwnedViewSet):
     def get_permissions(self):
         permission_classes = self.permission_classes
 
-        if type(self.request._authenticator) is CoreIPAuthentication:
+        if (
+            hasattr(self.request, "_authenticator")
+            and type(self.request._authenticator) is CoreIPAuthentication
+        ):
             permission_classes = []
         elif self.action == "create":
             permission_classes = [IsDjangoAdmin]

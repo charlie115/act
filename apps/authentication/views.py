@@ -41,8 +41,8 @@ class AuthGoogleLoginView(SocialLoginView):
 
 @extend_schema(tags=["Auth"])
 @extend_schema_view(
-    get=extend_schema(
-        operation_id="Telegram login",
+    post=extend_schema(
+        operation_id="Link Telegram account",
         description="Login via Telegram",
     ),
 )

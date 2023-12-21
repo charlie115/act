@@ -285,7 +285,7 @@ SPECTACULAR_SETTINGS = {
     "EXTENSIONS_ROOT": {
         "x-tagGroups": [
             {
-                "name": "AUTHORIZATION",
+                "name": "AUTHENTICATION AND AUTHORIZATION",
                 "tags": ["Auth"],
             },
             {
@@ -312,7 +312,7 @@ SPECTACULAR_SETTINGS = {
             },
             {
                 "name": "TRADE CORE",
-                "tags": ["Node"],
+                "tags": ["Node", "UserConfig"],
             },
         ],
     },
