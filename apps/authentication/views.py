@@ -7,7 +7,6 @@ from allauth.socialaccount.models import SocialLogin
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from allauth.socialaccount.providers.telegram.provider import TelegramProvider
 from django.conf import settings
-from django.db.models import Count
 from dj_rest_auth.registration.views import SocialLoginView
 from dj_rest_auth.views import (
     LoginView,
@@ -23,7 +22,7 @@ from rest_framework import exceptions, permissions, response
 from rest_framework_simplejwt.views import TokenVerifyView
 
 from authentication.adapters import CustomGoogleOAuth2Adapter
-from socialaccounts.models import ProxySocialAccount, ProxySocialApp
+from socialaccounts.models import ProxySocialAccount
 from users.models import User, UserSocialApps
 
 
@@ -67,22 +66,8 @@ class AuthTelegramLoginView(LoginView):
             )
 
         except UserSocialApps.DoesNotExist:
-            telegram_socialapps = (
-                ProxySocialApp.objects.filter(provider=telegram_provider.id)
-                .annotate(user_count=Count("users"))
-                .order_by("user_count", "id")
-            )
-
-            if len(telegram_socialapps) < 1:
-                raise exceptions.ValidationError(
-                    {
-                        "detail": "There is no Social App with Telegram provider to allocate user."
-                    }
-                )
-
-            user_telegram_socialapp = UserSocialApps.objects.create(
-                socialapp=telegram_socialapps.first(),
-                user=user,
+            raise exceptions.ValidationError(
+                {"detail": "User has no telegram bot allocated yet."}
             )
 
         token = user_telegram_socialapp.socialapp.secret
@@ -90,6 +75,7 @@ class AuthTelegramLoginView(LoginView):
         expected_hash = hmac.new(
             token_sha256, payload.encode(), hashlib.sha256
         ).hexdigest()
+
         auth_date = int(data.pop("auth_date"))
         if hash != expected_hash or time.time() - auth_date > 30:
             raise exceptions.ValidationError({"detail": "Telegram data is not valid."})

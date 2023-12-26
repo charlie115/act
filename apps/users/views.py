@@ -1,5 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework import exceptions
 
 from lib.authentication import CoreIPAuthentication
 from lib.filters import CharArrayFilter, UserUuidFilter
@@ -10,6 +11,7 @@ from users.models import (
     UserBlocklist,
     UserFavoriteAssets,
     UserProfile,
+    UserSocialApps,
 )
 from users.serializers import (
     UserSerializer,
@@ -78,6 +80,36 @@ class UserViewSet(UserOwnedViewSet):
         "role",
         "is_active",
     )
+
+    def partial_update(self, request, *args, **kwargs):
+        telegram_bot = request.data.pop("telegram_bot", None)
+        if telegram_bot:
+            try:
+                uuid = kwargs.pop("uuid", None)
+                user = User.objects.get(uuid=uuid)
+                user_telegram_socialapps = user.socialapps.filter(
+                    socialapp__provider="telegram"
+                )
+                if len(user_telegram_socialapps) < 1:
+                    telegram_socialapps = UserSerializer().get_telegram_bots()
+                    if len(telegram_socialapps) > 0:
+                        UserSocialApps.objects.create(
+                            socialapp=telegram_socialapps.first(),
+                            user=user,
+                        )
+                    else:
+                        raise exceptions.ValidationError(
+                            {"detail": "There is no telegram socialapp to allocate."}
+                        )
+                else:
+                    raise exceptions.ValidationError(
+                        {"detail": "A telegram bot is already allocated to the user."}
+                    )
+
+            except User.DoesNotExist:
+                pass
+
+        return super().partial_update(request, *args, **kwargs)
 
     def get_authenticators(self):
         authentication_classes = self.authentication_classes + [CoreIPAuthentication]

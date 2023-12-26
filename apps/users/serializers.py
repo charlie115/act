@@ -3,7 +3,14 @@ from rest_framework import exceptions, serializers
 
 from lib.datetime import DATE_TIME_FORMAT
 from users.mixins import UserFavoriteAssetsValidatorMixin, UserUUIDSerializerMixin
-from users.models import User, UserBlocklist, UserFavoriteAssets, UserProfile
+from users.models import (
+    User,
+    UserBlocklist,
+    UserFavoriteAssets,
+    UserProfile,
+    UserSocialApps,
+)
+from socialaccounts.models import ProxySocialApp
 from socialaccounts.serializers import ProxySocialAppSerializer
 from tradecore.models import Node
 from tradecore.serializers import UserConfigSerializer
@@ -63,6 +70,21 @@ class UserSerializer(serializers.ModelSerializer):
 
         return super().validate(attrs)
 
+    def get_telegram_bots(self):
+        """Get social apps with telegram provider
+
+        Returns:
+            Telegram bots starting from the least number of users allocated
+        """
+
+        telegram_socialapps = (
+            ProxySocialApp.objects.filter(provider="telegram")
+            .annotate(user_count=Count("users"))
+            .order_by("user_count", "id")
+        )
+
+        return telegram_socialapps
+
     def create(self, validated_data):
         validated_data.pop("username", None)
         password = validated_data.pop("password")
@@ -70,6 +92,14 @@ class UserSerializer(serializers.ModelSerializer):
         user = User(**validated_data)
         user.set_password(password)
         user.save()
+
+        # Telegram authentication (unlike node, socialapps don't need to be validated)
+        telegram_socialapps = self.get_telegram_bots()
+        if len(telegram_socialapps) > 0:
+            UserSocialApps.objects.create(
+                socialapp=telegram_socialapps.first(),
+                user=user,
+            )
 
         return user
 
@@ -100,6 +130,7 @@ class UserSerializer(serializers.ModelSerializer):
                 "style": {"input_type": "password", "placeholder": "Password"},
             },
             "date_joined": {"read_only": True},
+            "telegram_chat_id": {"read_only": True},
             "node": {"read_only": True},
         }
 
