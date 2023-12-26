@@ -4,6 +4,7 @@ from rest_framework import exceptions, serializers
 from lib.datetime import DATE_TIME_FORMAT
 from users.mixins import UserFavoriteAssetsValidatorMixin, UserUUIDSerializerMixin
 from users.models import User, UserBlocklist, UserFavoriteAssets, UserProfile
+from socialaccounts.serializers import ProxySocialAppSerializer
 from tradecore.models import Node
 from tradecore.serializers import UserConfigSerializer
 
@@ -37,6 +38,14 @@ class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
     favorite_assets = UserFavoriteAssetsSerializer(many=True, read_only=True)
     trade_config = UserConfigSerializer(read_only=True)
+    socialapps = serializers.SerializerMethodField()
+
+    def get_socialapps(self, instance):
+        socialapps = [
+            ProxySocialAppSerializer(socialapps.socialapp).data
+            for socialapps in instance.socialapps.all()
+        ]
+        return socialapps
 
     def validate(self, attrs):
         nodes = (
@@ -80,6 +89,8 @@ class UserSerializer(serializers.ModelSerializer):
             "favorite_assets",
             "node",
             "trade_config",
+            "telegram_chat_id",
+            "socialapps",
         )
         read_only_fields = ("role", "is_active")
         extra_kwargs = {

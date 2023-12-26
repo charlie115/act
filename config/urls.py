@@ -40,6 +40,7 @@ urlpatterns = [
     path(mkpath("chat/"), include("chat.urls"), name="chat urls"),
     path(mkpath("users/"), include("users.urls"), name="users urls"),
     path(mkpath("infocore/"), include("infocore.urls.urls"), name="infocore urls"),
+    path(mkpath("messagecore/"), include("messagecore.urls"), name="messagecore urls"),
     path(mkpath("newscore/"), include("newscore.urls"), name="newscore urls"),
     path(mkpath("tradecore/"), include("tradecore.urls"), name="tradecore urls"),
     # redis queue

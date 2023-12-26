@@ -2,6 +2,7 @@
 
 echo "Running migrations..."
 python manage.py migrate --settings=config.settings.prod
+python manage.py migrate --settings=config.settings.prod --database=messagecore
 
 echo "Running collectstatic..."
 python manage.py collectstatic --settings=config.settings.prod --noinput

@@ -91,6 +91,7 @@ LOCAL_APPS = (
     "socialaccounts",
     "users",
     "infocore",
+    "messagecore",
     "newscore",
     "tradecore",
 )
@@ -116,9 +117,12 @@ DATABASES = {
     "newscore": dj_database_url.config(
         default=env("NEWSCORE_DB_URL"), conn_max_age=600
     ),
+    "messagecore": dj_database_url.config(
+        default=env("MESSAGECORE_DB_URL"), conn_max_age=600
+    ),
 }
 
-DATABASE_ROUTERS = ["apps.newscore.dbrouter.NewsCoreDBRouter"]
+DATABASE_ROUTERS = ["config.dbrouter.DBRouter"]
 
 MONGODB = {
     "HOST": env("MONGODB_HOST", default="mongodb"),
@@ -305,6 +309,10 @@ SPECTACULAR_SETTINGS = {
                     "MarketCodes",
                     "WalletStatus",
                 ],
+            },
+            {
+                "name": "MESSAGE CORE",
+                "tags": ["Message"],
             },
             {
                 "name": "NEWS CORE",
