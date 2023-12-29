@@ -24,6 +24,7 @@ from rest_framework_simplejwt.views import TokenVerifyView
 from authentication.adapters import CustomGoogleOAuth2Adapter
 from socialaccounts.models import ProxySocialAccount
 from users.models import User, UserSocialApps
+from users.serializers import UserSerializer
 
 
 @extend_schema(tags=["Auth"])
@@ -205,7 +206,29 @@ class AuthTokenVerifyView(TokenVerifyView):
     ),
 )
 class AuthUserDetailsView(UserDetailsView):
-    pass
+    def partial_update(self, request, *args, **kwargs):
+        telegram_bot = request.data.pop("telegram_bot", None)
+        if telegram_bot:
+            user_telegram_socialapps = self.request.user.socialapps.filter(
+                socialapp__provider="telegram"
+            )
+            if len(user_telegram_socialapps) < 1:
+                telegram_socialapps = UserSerializer().get_telegram_bots()
+                if len(telegram_socialapps) > 0:
+                    UserSocialApps.objects.create(
+                        socialapp=telegram_socialapps.first(),
+                        user=self.request.user,
+                    )
+                else:
+                    raise exceptions.ValidationError(
+                        {"detail": "There is no telegram socialapp to allocate."}
+                    )
+            else:
+                raise exceptions.ValidationError(
+                    {"detail": "A telegram bot is already allocated to the user."}
+                )
+
+        return super().partial_update(request, *args, **kwargs)
 
 
 @extend_schema(tags=["Auth"])
