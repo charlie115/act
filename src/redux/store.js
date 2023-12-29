@@ -15,7 +15,7 @@ import {
 import { encryptTransform } from 'redux-persist-transform-encrypt';
 import { validate, v4 } from 'uuid';
 
-import { createLogger } from 'redux-logger';
+// import { createLogger } from 'redux-logger';
 
 import drfApi from './api/drf';
 import websocketApi from './api/websocket';
@@ -81,11 +81,11 @@ const reducers = combineReducers({
 
 const persistedReducer = persistReducer(rootPersistConfig, reducers);
 
-const loggerMiddleware = createLogger({
-  predicate: (getState, action) =>
-    action.type !== 'websocketApi/queries/queryResultPatched' &&
-    action.type !== 'websocketApi/invalidation/updateProvidedBy',
-});
+// const loggerMiddleware = createLogger({
+//   predicate: (getState, action) =>
+//     action.type !== 'websocketApi/queries/queryResultPatched' &&
+//     action.type !== 'websocketApi/invalidation/updateProvidedBy',
+// });
 
 export default configureStore({
   reducer: persistedReducer,

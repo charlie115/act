@@ -46,7 +46,7 @@ import isUndefined from 'lodash/isUndefined';
 import orderBy from 'lodash/orderBy';
 import union from 'lodash/union';
 
-import LightWeightKlineChart from 'components/charts/LightWeightKlineChart';
+import PremiumDataChartViewer from 'components/PremiumDataChartViewer';
 import ReactTableUI from 'components/ReactTableUI';
 
 import { REGEX } from 'constants';
@@ -103,8 +103,6 @@ function PremiumTable({
     { ...marketCodes, interval: '1T', queryKey },
     { skip: !marketCodes }
   );
-
-  if (realTimeData?.status) console.log('realTimeData: ', realTimeData);
 
   const realTimeDataList = useMemo(
     () => orderBy(Object.values(realTimeData ?? {}), 'atp24h', 'desc'),
@@ -171,7 +169,7 @@ function PremiumTable({
   const [deleteFavoriteAsset, deleteFavoriteRes] =
     useDeleteFavoriteAssetMutation();
 
-  const handleAddFavoriteAsset = useCallback(
+  const onAddFavoriteAsset = useCallback(
     (baseAsset) => {
       const marketCodeKey = `${marketCodes?.targetMarketCode}:${marketCodes?.originMarketCode}`;
       if (loggedin) createFavoriteAsset({ baseAsset, ...marketCodes });
@@ -179,7 +177,7 @@ function PremiumTable({
     },
     [loggedin, marketCodes]
   );
-  const handleRemoveFavoriteAsset = useCallback(
+  const onRemoveFavoriteAsset = useCallback(
     (id) => {
       const marketCodeKey = `${marketCodes?.targetMarketCode}:${marketCodes?.originMarketCode}`;
       if (loggedin) deleteFavoriteAsset(id);
@@ -351,8 +349,8 @@ function PremiumTable({
                 }
               : {}),
             ...asset,
-            walletStatus: isWalletStatusSuccess ? walletStatusSummary : null,
-            walletNetworks: isWalletStatusSuccess ? walletStatus?.[name] : null,
+            walletStatus: walletStatusSummary,
+            walletNetworks: walletStatus?.[name],
             chart: true,
           };
         }) ?? [],
@@ -460,7 +458,12 @@ function PremiumTable({
   const renderSubComponent = useCallback(
     ({ row, extraData }) => (
       <Box>
-        <LightWeightKlineChart baseAssetData={row.original} {...extraData} />
+        <PremiumDataChartViewer
+          showFundingRate
+          showFundingRateDiff
+          baseAssetData={row.original}
+          {...extraData}
+        />
       </Box>
     ),
     []
@@ -498,8 +501,8 @@ function PremiumTable({
           queryKey,
           isKimpExchange,
           isTetherPriceView,
-          handleAddFavoriteAsset,
-          handleRemoveFavoriteAsset,
+          onAddFavoriteAsset,
+          onRemoveFavoriteAsset,
         }}
         options={{
           getRowId,

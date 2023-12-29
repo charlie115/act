@@ -13,7 +13,6 @@ import { useGetFundingRateQuery } from 'redux/api/drf/infocore';
 import { useSelector } from 'react-redux';
 
 import orderBy from 'lodash/orderBy';
-import uniqBy from 'lodash/uniqBy';
 
 import { DateTime } from 'luxon';
 
@@ -25,10 +24,11 @@ import { DATE_FORMAT_API_QUERY } from 'constants';
 
 import LightWeightBaseChart from './LightWeightBaseChart';
 
-export default function LightWeightFundingRateChart({
+export default function LightWeightFundingRateDiffChart({
   symbol,
   baseAsset,
-  marketCode,
+  marketCodes,
+  subtrahend,
 }) {
   const chartRef = useRef();
 
@@ -40,38 +40,76 @@ export default function LightWeightFundingRateChart({
   const { i18n, t } = useTranslation();
 
   const { timezone: tz } = useSelector((state) => state.app);
+  const { loggedin, user } = useSelector((state) => state.auth);
+  const isAuthorized = loggedin && user.role !== 'visitor';
 
-  const [data, setData] = useState([]);
+  const [data, setData] = useState();
   const [startFundingTime, setStartFundingTime] = useState();
   const [endFundingTime, setEndFundingTime] = useState();
 
-  const { data: apiData, isFetching } = useGetFundingRateQuery({
-    baseAsset,
-    marketCode,
-    startFundingTime,
-    endFundingTime,
-    tz,
-    past: true,
-  });
+  const { data: apiTargetData, isFetching: isFetchingTarget } =
+    useGetFundingRateQuery({
+      baseAsset,
+      startFundingTime,
+      endFundingTime,
+      tz,
+      marketCode: marketCodes.targetMarketCode,
+      past: true,
+    });
+  const { data: apiOriginData, isFetching: isFetchingOrigin } =
+    useGetFundingRateQuery({
+      baseAsset,
+      startFundingTime,
+      endFundingTime,
+      tz,
+      marketCode: marketCodes.originMarketCode,
+      past: true,
+    });
 
   const chartData = useMemo(
     () =>
-      data.map((item) => ({
-        time: DateTime.fromISO(item.funding_time).toMillis(),
-        value: item.funding_rate * 100,
-      })) ?? [],
-    [data]
+      orderBy(
+        Object.keys(data ?? {}),
+        (o) => DateTime.fromISO(o).toMillis(),
+        'asc'
+      ).map((item) => {
+        let value;
+        if (subtrahend === 'origin')
+          value =
+            (data[item].target.funding_rate - data[item].origin.funding_rate) *
+            100;
+        else
+          value =
+            (data[item].origin.funding_rate - data[item].target.funding_rate) *
+            100;
+        return {
+          time: DateTime.fromISO(data[item].target.funding_time).toMillis(),
+          value,
+        };
+      }),
+    [data, subtrahend]
   );
 
   useEffect(() => {
-    setData((state) =>
-      orderBy(
-        uniqBy([...(apiData?.[baseAsset] || []), ...state], 'funding_time'),
-        (o) => DateTime.fromISO(o.funding_time).toMillis(),
-        'asc'
-      )
-    );
-  }, [apiData?.[baseAsset]]);
+    if (apiTargetData?.[baseAsset] && apiOriginData?.[baseAsset]) {
+      setData((state) => {
+        apiTargetData?.[baseAsset]?.forEach((target) => {
+          if (!state) state = {};
+          if (!state[target.funding_time]) {
+            const origin = apiOriginData?.[baseAsset]?.find(
+              (o) => o.funding_time === target.funding_time
+            );
+            if (origin)
+              state[target.funding_time] = {
+                target,
+                origin,
+              };
+          }
+        });
+        return state;
+      });
+    }
+  }, [apiTargetData?.[baseAsset], apiOriginData?.[baseAsset]]);
 
   useEffect(() => {
     lineSeriesRef.current.setData(chartData);
@@ -83,7 +121,7 @@ export default function LightWeightFundingRateChart({
   }, [isMobile, i18n.language]);
 
   useEffect(() => {
-    lineSeriesRef.current.applyOptions({ title: t('Price') });
+    lineSeriesRef.current.applyOptions({ title: t('Funding Rate Difference') });
   }, [i18n.language]);
 
   return (
@@ -94,16 +132,11 @@ export default function LightWeightFundingRateChart({
           baseSeriesRef={lineSeriesRef}
           chartOptions={{
             crosshair: {
-              // hide the horizontal crosshair line
-              horzLine: {
-                visible: false,
-                labelVisible: false,
-              },
-              // hide the vertical crosshair label
-              vertLine: {
-                labelVisible: false,
-              },
+              horzLine: { visible: false, labelVisible: false },
+              vertLine: { labelVisible: false },
             },
+            handleScale: isAuthorized,
+            handleScroll: isAuthorized,
           }}
           tooltipOptions={{
             enabled: true,
@@ -119,9 +152,9 @@ export default function LightWeightFundingRateChart({
               }">${DateTime.fromMillis(date).toFormat('DD HH:mm:ss')}</div>`,
           }}
           interval={{ quantity: 3600, unit: 'seconds' }}
-          isLoading={isFetching}
+          isLoading={isFetchingTarget || isFetchingOrigin}
           onBarsInfoChanged={({ start, end }) => {
-            if (!isFetching) {
+            if (!(isFetchingTarget || isFetchingOrigin)) {
               setEndFundingTime(end.toFormat(DATE_FORMAT_API_QUERY));
               setStartFundingTime(
                 start.startOf('minute').toFormat(DATE_FORMAT_API_QUERY)
@@ -142,7 +175,7 @@ export default function LightWeightFundingRateChart({
                 type: 'custom',
                 formatter: (price) => `${formatIntlNumber(price, 3, 1)}%`,
               },
-              title: t('Funding Rate'),
+              title: t('Funding Rate Diff'),
             });
           }}
         />

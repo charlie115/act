@@ -39,7 +39,7 @@ import uniq from 'lodash/uniq';
 import uniqBy from 'lodash/uniqBy';
 
 import DropdownMenu from 'components/DropdownMenu';
-import LightWeightKlineChart from 'components/charts/LightWeightKlineChart';
+import PremiumDataChartViewer from 'components/PremiumDataChartViewer';
 import ReactTableUI, { TableCell, TableRow } from 'components/ReactTableUI';
 
 import { EXCHANGE_LIST } from 'constants/lists';
@@ -331,26 +331,23 @@ export default function FundingRateDiffTable() {
   const renderSubComponent = useCallback(
     ({ row, extraData }) => (
       <Box>
-        {marketCodes ? (
-          <LightWeightKlineChart
-            showMarketCodes
-            baseAssetData={row.original}
-            marketCodes={marketCodes}
-            {...extraData}
-          />
-        ) : (
-          <Box
-            sx={{
-              bgcolor: 'background.paper',
-              fontStyle: 'italic',
-              fontWeight: 700,
-              py: 3,
-              textAlign: 'center',
-            }}
-          >
-            {t('Data unavailable')}
-          </Box>
-        )}
+        <PremiumDataChartViewer
+          showFundingRate
+          showFundingRateDiff
+          showMarketCodes
+          baseAssetData={row.original}
+          marketCodes={
+            marketCodes ?? {
+              targetMarketCode: `${row.original.marketX}/${row.original.quoteAssetX}`,
+              originMarketCode: `${row.original.marketY}/${row.original.quoteAssetY}`,
+            }
+          }
+          defaultDChartDataType={!marketCodes ? 'FR' : undefined}
+          defaultDisabledChartDataType={
+            !marketCodes ? { tp: true, LS: true, SL: true } : null
+          }
+          {...extraData}
+        />
       </Box>
     ),
     [marketCodes]

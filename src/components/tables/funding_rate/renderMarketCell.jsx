@@ -11,7 +11,9 @@ export default function renderMarketCell({ cell, row, isMobile }) {
   const origExchange = cell.column.getIsVisible()
     ? row.original.exchangeX
     : row.original.exchangeY;
-  const exchange = EXCHANGE_LIST.find((o) => o.value === origExchange);
+  const exchange = EXCHANGE_LIST.find(
+    (o) => o.value === (origExchange ?? row.original.exchange)
+  );
 
   return (
     <Stack alignItems="center" direction="row" spacing={0.5} sx={{ pr: 1 }}>

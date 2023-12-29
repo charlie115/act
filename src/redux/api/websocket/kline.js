@@ -50,9 +50,9 @@ const api = websocketApi.injectEndpoints({
         });
 
         const onClose = memoize(() => {
-          console.log('here');
           try {
             updateCachedData((draft) => {
+              draft = {};
               draft.status = 'DISCONNECTED';
             });
           } catch {

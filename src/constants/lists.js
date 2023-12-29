@@ -6,6 +6,42 @@ import BybitSvg from 'assets/svg/bybit.svg';
 import OkxSvg from 'assets/svg/okx.svg';
 import UPbitSvg from 'assets/svg/upbit.svg';
 
+export const CHART_DATA_TYPE = [
+  {
+    getKimpLabel: () => i18n.t('KIMP'),
+    getTetherLabel: () => i18n.t('Tether'),
+    getLabel: () => 'TP',
+    label: 'TP',
+    value: 'tp',
+  },
+  {
+    getKimpLabel: () => i18n.t('Enter KIMP'),
+    getTetherLabel: () => i18n.t('Enter Tether'),
+    getLabel: () => 'LS',
+    label: 'LS',
+    value: 'LS',
+  },
+  {
+    getKimpLabel: () => i18n.t('Exit KIMP'),
+    getTetherLabel: () => i18n.t('Exit Tether'),
+    getLabel: () => 'SL',
+    label: 'SL',
+    value: 'SL',
+  },
+  {
+    getKimpLabel: () => i18n.t('Funding Rate'),
+    getTetherLabel: () => i18n.t('Funding Rate'),
+    getLabel: () => i18n.t('Funding Rate'),
+    value: 'FR',
+  },
+  {
+    getKimpLabel: () => i18n.t('Funding Rate Difference'),
+    getTetherLabel: () => i18n.t('Funding Rate Difference'),
+    getLabel: () => i18n.t('Funding Rate Difference'),
+    value: 'FRD',
+  },
+];
+
 export const EXCHANGE_LIST = [
   {
     getLabel: () => i18n.t('UPbit'),
@@ -31,27 +67,6 @@ export const EXCHANGE_LIST = [
     getLabel: () => i18n.t('OKX'),
     value: 'OKX',
     icon: OkxSvg,
-  },
-];
-
-export const KLINE_DATA_TYPE = [
-  {
-    getKimpLabel: () => i18n.t('KIMP'),
-    getTetherLabel: () => i18n.t('Tether'),
-    label: 'TP',
-    value: 'tp',
-  },
-  {
-    getKimpLabel: () => i18n.t('Enter KIMP'),
-    getTetherLabel: () => i18n.t('Enter Tether'),
-    label: 'LS',
-    value: 'LS',
-  },
-  {
-    getKimpLabel: () => i18n.t('Exit KIMP'),
-    getTetherLabel: () => i18n.t('Exit Tether'),
-    label: 'SL',
-    value: 'SL',
   },
 ];
 
@@ -93,12 +108,12 @@ export const INTERVAL_LIST = [
     quantity: 4,
     unit: 'hours',
   },
-  {
-    getLabel: () => i18n.t('{{value}}D', { value: 1 }),
-    value: '1D',
-    quantity: 1,
-    unit: 'days',
-  },
+  // {
+  //   getLabel: () => i18n.t('{{value}}D', { value: 1 }),
+  //   value: '1D',
+  //   quantity: 1,
+  //   unit: 'days',
+  // },
 ];
 
 export const MARKET_CODE_LIST = [

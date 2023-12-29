@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
-import { CSSTransition, SwitchTransition } from 'react-transition-group';
+// import { CSSTransition, SwitchTransition } from 'react-transition-group';
 
 import { Helmet } from 'react-helmet';
 
@@ -14,7 +14,7 @@ import Paper from '@mui/material/Paper';
 
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useUserQuery } from 'redux/api/drf/auth';
 
 import { useTranslation } from 'react-i18next';
@@ -54,7 +54,6 @@ export function PublicLayout() {
 }
 
 export function MainLayout() {
-  const dispatch = useDispatch();
   const location = useLocation();
   const { i18n } = useTranslation();
 

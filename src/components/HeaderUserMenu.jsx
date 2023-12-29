@@ -10,10 +10,8 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import SvgIcon from '@mui/material/SvgIcon';
 
 import LogoutIcon from '@mui/icons-material/Logout';
-import SettingsIcon from '@mui/icons-material/Settings';
 
 import { useSelector } from 'react-redux';
 import { useLogoutMutation } from 'redux/api/drf/auth';
@@ -21,8 +19,6 @@ import { useLogoutMutation } from 'redux/api/drf/auth';
 import { useTranslation } from 'react-i18next';
 
 import useGlobalSnackbar from 'hooks/useGlobalSnackbar';
-
-import { ReactComponent as RobotSvg } from 'assets/icons/font-awesome/robot.svg';
 
 export default function HeaderUserMenu({ iconStyle }) {
   const navigate = useNavigate();

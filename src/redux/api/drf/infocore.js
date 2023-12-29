@@ -40,7 +40,7 @@ const api = drfApi.injectEndpoints({
       }),
     }),
     getHistoricalKline: builder.query({
-      keepUnusedDataFor: 5,
+      keepUnusedDataFor: 0,
       query: (params) => ({
         url: '/infocore/kline/',
         params,

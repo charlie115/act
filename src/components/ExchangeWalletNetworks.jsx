@@ -77,7 +77,7 @@ export default function ExchangeWalletNetworks({
               </Typography>
             )}
           </Typography>
-          {targetNetworks.map((network) => (
+          {targetNetworks?.map((network) => (
             <Typography
               key={network}
               sx={{
@@ -129,7 +129,7 @@ export default function ExchangeWalletNetworks({
                 </Typography>
               )}
             </Box>
-            {originNetworks.map((network) => (
+            {originNetworks?.map((network) => (
               <Typography
                 key={network}
                 sx={{

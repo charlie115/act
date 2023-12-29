@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import debounce from 'lodash/debounce';
 import isPlainObject from 'lodash/isPlainObject';
 
-import { KLINE_DATA_TYPE } from 'constants/lists';
+import { CHART_DATA_TYPE } from 'constants/lists';
 
 const ToggleBtn = styled(ToggleButton)(() => ({
   fontSize: 11,
@@ -22,22 +22,24 @@ const ToggleBtn = styled(ToggleButton)(() => ({
   textTransform: 'none',
 }));
 
-function KlineDataSelector({
+function ChartDataTypeSelector({
   defaultValue,
   disabled,
   isKimpExchange,
   isTetherPriceView,
+  showFundingRate,
+  showFundingRateDiff,
   onChange,
 }) {
   const { i18n, t } = useTranslation();
 
   const [selectedIdx, setSelectedIdx] = useState(
     defaultValue
-      ? KLINE_DATA_TYPE.findIndex((o) => o.value === defaultValue)
+      ? CHART_DATA_TYPE.findIndex((o) => o.value === defaultValue)
       : null
   );
 
-  const [kLineData, setKLineData] = useState([]);
+  const [chartData, setChartData] = useState([]);
 
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -51,21 +53,25 @@ function KlineDataSelector({
 
   useEffect(() => {
     if (selectedIdx !== null && onChange)
-      debouncedOnChange(KLINE_DATA_TYPE[selectedIdx].value);
+      debouncedOnChange(CHART_DATA_TYPE[selectedIdx].value);
   }, [selectedIdx]);
 
   useEffect(() => {
-    setKLineData(
-      KLINE_DATA_TYPE.map((datum) => ({
+    setChartData(
+      CHART_DATA_TYPE.filter((datum) => {
+        if (!showFundingRate && datum.value === 'FR') return false;
+        if (!showFundingRateDiff && datum.value === 'FRD') return false;
+        return true;
+      }).map((datum) => ({
         ...datum,
         label: isKimpExchange
           ? [isTetherPriceView ? datum.getTetherLabel() : datum.getKimpLabel()]
-          : datum.label,
+          : datum.getLabel(),
       }))
     );
-  }, [i18n.language, isKimpExchange, isTetherPriceView]);
+  }, [i18n.language, isKimpExchange, isTetherPriceView, showFundingRate]);
 
-  if (kLineData.length === 0) return null;
+  if (chartData.length === 0) return null;
 
   return (
     <Box>
@@ -81,7 +87,7 @@ function KlineDataSelector({
         size="small"
         sx={{ display: { xs: 'none', md: 'inline-flex' } }}
       >
-        {kLineData.map((item, idx) => (
+        {chartData.map((item, idx) => (
           <ToggleBtn
             key={item.value}
             disabled={disabled?.[item.value]}
@@ -108,7 +114,7 @@ function KlineDataSelector({
           py: 0,
         }}
       >
-        {selectedIdx !== null ? kLineData[selectedIdx].label : t('Intervals')}
+        {selectedIdx !== null ? chartData[selectedIdx].label : t('Kline Data')}
       </Button>
       <Menu
         anchorEl={anchorEl}
@@ -116,7 +122,7 @@ function KlineDataSelector({
         onClose={() => setAnchorEl(null)}
         sx={{ display: { xs: 'inline-flex', md: 'none' } }}
       >
-        {kLineData.map((item, idx) => (
+        {chartData.map((item, idx) => (
           <MenuItem
             key={item.value}
             disabled={selectedIdx === idx || disabled?.[item.value]}
@@ -134,4 +140,4 @@ function KlineDataSelector({
   );
 }
 
-export default React.memo(KlineDataSelector);
+export default React.memo(ChartDataTypeSelector);
