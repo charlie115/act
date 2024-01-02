@@ -55,9 +55,11 @@ class AuthTelegramLoginView(LoginView):
 
         # allauth/socialaccount/providers/telegram/views.py
         telegram_provider = providers.registry.by_id(TelegramProvider.id, request)
+
         data = dict(request.data.items())
-        user = User.objects.get(uuid=data["user"])
         hash = data.pop("hash")
+        uuid = data.pop("user")
+        user = User.objects.get(uuid=uuid)
         payload = "\n".join(sorted(["{}={}".format(k, v) for k, v in data.items()]))
 
         # Get user's social app to get Telegram bot token
