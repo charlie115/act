@@ -5,7 +5,7 @@
         "trade_core1":
         {
             "db_settings": "dev_postgres_docker",
-            "redis_settings": "redis_remote",
+            "redis_settings": "dev_redis_remote",
             "telegram_bot_name": "test_bot",
             "reference_node": null,
             "enabled_markets": [

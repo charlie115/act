@@ -11,8 +11,9 @@ from exchange_websocket.okx_websocket import OkxWebsocket, OkxUSDMWebsocket, Okx
 from exchange_websocket.bithumb_websocket import BithumbWebsocket
 from exchange_websocket.bybit_websocket import BybitWebsocket, BybitUSDMWebsocket, BybitCOINMWebsocket
 from loggers.logger import KimpBotLogger
-# from etc.redis_connector.redis_connector import InitRedis
-from etc.db_handler.mongodb_client import InitDBClient
+from etc.redis_connector.redis_connector import InitRedis
+from etc.db_handler.mongodb_client import InitDBClient as InitMongoDBClient
+from etc.db_handler.postgres_client import InitDBClient as InitPostgresDBClient
 import _pickle as pickle
 from threading import Thread
 from multiprocessing import Process
@@ -28,7 +29,7 @@ logging_dir = f"{current_folder_dir}/loggers/logs/"
 class InitCore:
     def __init__(self, logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_markets, db_dict):
         # Inital value setting
-        self.logger = KimpBotLogger("info_core", logging_dir).logger
+        self.logger = KimpBotLogger("trade_core", logging_dir).logger
         self.price_websocket_logger = KimpBotLogger("price_websocket", logging_dir).logger
         self.update_dollar_logger = KimpBotLogger("update_dollar", logging_dir).logger
         self.logging_dir = logging_dir
@@ -42,14 +43,25 @@ class InitCore:
         self.enabled_markets = enabled_markets
         self.enabled_websocket_list = self.generate_enabled_websocket_list()
         self.enabled_markets_dict = self.generate_enabled_market_code_dict()
-        self.db_client = InitDBClient(**db_dict)
+        self.db_dict = db_dict
+        self.mongo_client = InitMongoDBClient(**db_dict)
+        self.postgres_client = InitPostgresDBClient(**{**db_dict, 'database': 'trade_core'})
+        self.postgres_client.create_all_tables()
         # TESTTEST
         self.upbit_symbols_to_exclude = []
         self.binance_usd_m_symbols_to_exclude = []
         # For redis connesction
-        # self.local_client_db0 = InitRedis()
-        # self.redis_client_db1 = InitRedis(db=1)
+        self.remote_redis_client = InitRedis()
 
+        # Initiate server check info
+        self.server_check_status_list = None
+        self.server_check_status_initiated = False
+        update_server_check_status_thread = Thread(target=self.update_server_check_status, daemon=True)
+        update_server_check_status_thread.start()
+        while self.server_check_status_initiated is False:
+            time.sleep(0.2)
+        self.logger.info(f"InitCore|server_check_status_list has been initiated.")
+        
         self.logger.info(f"InitCore|InitCore initiated with proc_n={proc_n}")
 
         self.update_dollar_return_dict = {}
@@ -198,7 +210,12 @@ class InitCore:
             for each_data_name in self.total_data_name_list:
                 if each_market.lower() in each_data_name:
                     enabled_data_name_list.append(each_data_name)
-        return enabled_data_name_list
+            exchange_name = each_market.split('_')[0].lower()
+            if f"{exchange_name}_spot_info_df" not in enabled_data_name_list:
+                enabled_data_name_list.append(f"{exchange_name}_spot_info_df")
+            if f"{exchange_name}_spot_ticker_df" not in enabled_data_name_list:
+                enabled_data_name_list.append(f"{exchange_name}_spot_ticker_df")
+        return list(set(enabled_data_name_list))
 
     def update_exchange_info_as_df(self, data_name, error_count_limit=1, loop_time_secs=30):
         error_count = 0
@@ -504,10 +521,9 @@ class InitCore:
             premium_df = pd.DataFrame((target_market_df[['tp','ap','bp']].values - origin_market_df[['converted_tp','converted_bp','converted_ap']].values)/
                                     origin_market_df[['converted_tp','converted_bp','converted_ap']].values, columns=['tp_premium','LS_premium','SL_premium'])
             premium_df['LS_SL_spread'] = premium_df['LS_premium'] - premium_df['SL_premium']
-            premium_df[['base_asset','quote_asset','tp','ap','bp','scr','atp24h']] = target_market_df[['base_asset','quote_asset','tp','ap','bp','scr','atp24h']]
+            premium_df[['base_asset','quote_asset','tp','ap','bp','scr']] = target_market_df[['base_asset','quote_asset','tp','ap','bp','scr']]
             premium_df[['converted_tp','converted_ap','converted_bp']] = origin_market_df[['converted_tp','converted_ap', 'converted_bp']]
             premium_df.loc[:, ['tp_premium','LS_premium','SL_premium','LS_SL_spread']] = premium_df[['tp_premium','LS_premium','SL_premium','LS_SL_spread']] * 100
-            premium_df = premium_df.sort_values('atp24h', ascending=False).reset_index(drop=True)
             # TEST
             premium_df['dollar'] = self.get_dollar_dict()['price']
             # TEST
@@ -569,3 +585,34 @@ class InitCore:
             self.binance_usd_m_symbols_to_exclude.remove(base_asset)
         else:
             raise Exception(f"market: {market} is not supported.")
+
+    def get_server_check_status(self):
+        # Check whether the market is in maintenance or not
+        registered_server_check_list = [x.decode('utf-8') for x in self.remote_redis_client.redis_conn.keys() if 'INFO_CORE|SERVER_CHECK' in x.decode('utf-8')]
+        if len(registered_server_check_list) == 0:
+            self.server_check_status_list = []
+        else:
+            temp_server_check_status_list = []
+            for each_market_server_check in registered_server_check_list:
+                market_name = each_market_server_check.replace('INFO_CORE|SERVER_CHECK|', '')
+                server_check_dict = self.remote_redis_client.get_dict(each_market_server_check)
+                server_check_start_timestamp_utc = server_check_dict['start']
+                server_check_end_timestamp_utc = server_check_dict['end']
+                now_timestamp_utc = datetime.datetime.utcnow().timestamp()
+                if server_check_start_timestamp_utc <= now_timestamp_utc <= server_check_end_timestamp_utc:
+                    temp_server_check_status_list.append(market_name)
+            self.server_check_status_list = temp_server_check_status_list
+        if self.server_check_status_initiated is False:
+            self.server_check_status_initiated = True
+
+    def update_server_check_status(self, loop_interval_secs=1):
+        while True:
+            try:
+                self.get_server_check_status()
+                time.sleep(loop_interval_secs)
+            except Exception as e:
+                self.logger.error(f"update_server_check_status|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_server_check_status|Exception occured! Error: {e}, traceback: {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                time.sleep(10)
+
+    

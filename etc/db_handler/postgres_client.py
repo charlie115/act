@@ -41,9 +41,10 @@ class InitDBClient:
         conn = psycopg2.connect(host=self.host, port=self.port, user=self.user, password=self.passwd, database=self.database)
         return conn
 
-    def create_all_table(self):
+    def create_all_tables(self):
         self.create_user_info()
         self.create_exchange_config()
+        self.create_trade()
 
     def check_table_exist(self, table_name):
         query = f"""
@@ -156,7 +157,8 @@ class InitDBClient:
             (
                 id SERIAL PRIMARY KEY,
                 user_uuid TEXT NOT NULL,
-                last_update_datetime TIMESTAMP,
+                registered_datetime TIMESTAMP,
+                last_updated_datetime TIMESTAMP,
                 uuid TEXT NOT NULL,
                 connected_repeat_uuid TEXT,
                 base_asset TEXT NOT NULL,
@@ -172,7 +174,7 @@ class InitDBClient:
                 enter_origin_market_order_id TEXT,
                 exit_target_market_order_id TEXT,
                 exit_origin_market_order_id TEXT,
-                status TEXT NOT NULL,
+                status TEXT,
                 remark TEXT,
                 FOREIGN KEY (user_uuid) REFERENCES user_info(user_uuid)
                     ON DELETE CASCADE
