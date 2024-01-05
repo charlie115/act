@@ -4,6 +4,7 @@ import datetime
 import traceback
 import pandas as pd
 import time
+import numpy as np
 from okx.Account import AccountAPI
 from okx.BlockTrading import BlockTradingAPI
 from okx.Convert import ConvertAPI
@@ -472,6 +473,7 @@ class InitOkxAdaptor:
             time.sleep(0.25)
 
         funding_df = pd.DataFrame(funding_data_list)
+        funding_df.replace('', np.nan, inplace=True)
         funding_df[["fundingRate", "fundingTime", "nextFundingRate", "nextFundingTime"]] = funding_df[["fundingRate", "fundingTime", "nextFundingRate", "nextFundingTime"]].astype(float)
         funding_df[["fundingTime", "nextFundingTime"]] = funding_df.loc[:, ["fundingTime", "nextFundingTime"]].applymap(lambda x: pd.to_datetime(x, unit='ms', utc=True))
         funding_df.loc[:, "fundingTime"] = funding_df["fundingTime"].dt.tz_localize(None)
