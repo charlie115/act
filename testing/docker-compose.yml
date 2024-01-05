@@ -82,7 +82,7 @@ services:
         condition: service_healthy
     container_name: test-community-drf
     volumes:
-      - $HOME/test-community-drf/media:/home/django/community_drf/media
+      - $HOME/test-community-drf/media:/opt/community_drf/media
     expose:
       - "8000"
     networks:
