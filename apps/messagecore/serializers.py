@@ -23,7 +23,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
         if user_telegram_socialapps.first():
             telegram_bot = user_telegram_socialapps.first().socialapp
-            attrs["telegram_bot_name"] = telegram_bot.name
+            attrs["telegram_bot_username"] = telegram_bot.name
         else:
             raise exceptions.ValidationError(
                 {
@@ -39,5 +39,5 @@ class MessageSerializer(serializers.ModelSerializer):
         model = Message
         fields = "__all__"
         extra_kwargs = {
-            "telegram_bot_name": {"read_only": True},
+            "telegram_bot_username": {"read_only": True},
         }

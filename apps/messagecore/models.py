@@ -1,3 +1,4 @@
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils.timezone import now
 
@@ -15,7 +16,7 @@ class Message(models.Model):
     )
 
     datetime = models.DateTimeField(default=now)
-    telegram_bot_name = models.CharField(max_length=150)
+    telegram_bot_username = models.CharField(max_length=150)
     telegram_chat_id = models.BigIntegerField()
     title = models.CharField(max_length=300)
     content = models.TextField(null=True)
@@ -24,7 +25,15 @@ class Message(models.Model):
     type = models.CharField(default=INFO, choices=MessageTypes)
     code = models.IntegerField(null=True)
     sent = models.BooleanField(default=False)
-    send_count = models.IntegerField(default=1)
+    send_times = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(20)],
+    )
+    send_term = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(30)],
+        help_text="Term between the repeating message in seconds",
+    )
 
     def __str__(self):
         return self.title

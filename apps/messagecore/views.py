@@ -48,6 +48,6 @@ class MessageViewSet(BaseViewSet):
         "type",
         "code",
         "telegram_chat_id",
-        "telegram_bot_name",
+        "telegram_bot_username",
         "sent",
     )

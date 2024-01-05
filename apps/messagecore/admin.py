@@ -9,16 +9,17 @@ class MessageAdmin(ModelAdmin):
     list_display = [
         "title",
         "datetime",
-        "telegram_bot_name",
+        "telegram_bot_username",
         "telegram_chat_id",
         "origin",
         "type",
         "code",
         "sent",
-        "send_count",
+        "send_times",
+        "send_term",
     ]
     list_filter = [
-        "telegram_bot_name",
+        "telegram_bot_username",
         "origin",
         "type",
         "code",
@@ -27,7 +28,7 @@ class MessageAdmin(ModelAdmin):
     search_fields = [
         "title",
         "datetime",
-        "telegram_bot_name",
+        "telegram_bot_username",
         "telegram_chat_id",
     ]
 
