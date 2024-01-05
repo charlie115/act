@@ -7,6 +7,9 @@ services:
       context: "nginx/"
     container_name: test-community-nginx
     volumes:
+      - $HOME/test-community-nginx/dhparam.pem:/etc/nginx/dhparam.pem
+      - $HOME/test-community-nginx/certs/:/etc/ssl/certs/
+      - $HOME/test-community-nginx/private/:/etc/ssl/private/
       - $HOME/test-community-web/build/:/opt/community_frontend/build/
     ports:
       - "20080:20080"
