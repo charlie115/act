@@ -103,6 +103,13 @@ services:
     networks:
       - prod-community-network
     restart: always
+  
+  info-core:
+    image: info-core
+    container_name: prod-info-core
+    networks:
+      - prod-community-network
+    restart: always
 
 networks:
   prod-community-network:

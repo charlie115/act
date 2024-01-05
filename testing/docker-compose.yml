@@ -96,6 +96,13 @@ services:
   #     - test-community-network
   #   restart: always
   
+  info-core:
+    image: info-core
+    container_name: test-info-core
+    networks:
+      - test-community-network
+    restart: always
+  
 networks:
   test-community-network:
     driver: bridge
