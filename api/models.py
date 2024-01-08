@@ -1,7 +1,9 @@
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, ForeignKey, Integer, SmallInteger, Text, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from .database import Base
+import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from database import Base
 
 class UserInfo(Base):
     __tablename__ = 'user_info'
