@@ -49,7 +49,7 @@ export const authSlice = createSlice({
             const telegramBot = payload?.socialapps?.find(
               (o) => o.provider === 'telegram'
             );
-            state.telegramBot = telegramBot?.name;
+            state.telegramBot = telegramBot?.client_id;
           }
         }
       )
@@ -60,7 +60,7 @@ export const authSlice = createSlice({
           const telegramBot = payload?.socialapps?.find(
             (o) => o.provider === 'telegram'
           );
-          state.telegramBot = telegramBot?.name;
+          state.telegramBot = telegramBot?.client_id;
         }
       )
       .addMatcher(
@@ -72,7 +72,7 @@ export const authSlice = createSlice({
             const telegramBot = payload?.socialapps?.find(
               (o) => o.provider === 'telegram'
             );
-            state.telegramBot = telegramBot?.name;
+            state.telegramBot = telegramBot?.client_id;
           }
         }
       );
