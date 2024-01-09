@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
-// import { CSSTransition, SwitchTransition } from 'react-transition-group';
+import { CSSTransition, SwitchTransition } from 'react-transition-group';
 
 import { Helmet } from 'react-helmet';
 
@@ -15,7 +15,7 @@ import Paper from '@mui/material/Paper';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
 import { useSelector } from 'react-redux';
-import { useUserQuery } from 'redux/api/drf/auth';
+import { useUserQuery, useUserPatchMutation } from 'redux/api/drf/auth';
 
 import { useTranslation } from 'react-i18next';
 
@@ -64,9 +64,10 @@ export function MainLayout() {
     [location.pathname, i18n.language]
   );
 
-  const { loggedin } = useSelector((state) => state.auth);
+  const { loggedin, telegramBot, user } = useSelector((state) => state.auth);
 
-  useUserQuery({}, { skip: !loggedin });
+  const { isSuccess } = useUserQuery({}, { skip: !loggedin });
+  const [patchUser] = useUserPatchMutation();
 
   useEffect(() => {
     const handleContextmenu = (e) =>
@@ -78,8 +79,17 @@ export function MainLayout() {
   }, []);
 
   useEffect(() => {
+    if (isSuccess) {
+      const telegram = user?.socialapps?.find((o) => o.provider === 'telegram');
+      if (!telegram) patchUser({ telegram_bot: true });
+    }
+  }, [isSuccess, user?.socialapps]);
+
+  useEffect(() => {
     scrollTo({ left: 0, top: 0, behavior: 'smooth' });
   }, [location.pathname]);
+
+  if (loggedin && !telegramBot && !user) return null;
 
   return (
     <>
@@ -121,18 +131,19 @@ export function MainLayout() {
                   component={Paper}
                   sx={{ display: 'flex', flex: 1, overflowX: 'clip' }}
                 >
-                  <Outlet />
-                  {/* <SwitchTransition>
-                  <CSSTransition
-                    unmountOnExit
-                    key={location.pathname}
-                    nodeRef={currentRoute.ref}
-                    timeout={3000}
-                    classNames="pages"
-                  >
-                    {() => <Outlet />}
-                  </CSSTransition>
-                </SwitchTransition> */}
+                  {/* <Outlet /> */}
+
+                  <SwitchTransition>
+                    <CSSTransition
+                      unmountOnExit
+                      key={location.pathname}
+                      nodeRef={currentRoute.ref}
+                      timeout={3000}
+                      classNames="pages"
+                    >
+                      {() => <Outlet />}
+                    </CSSTransition>
+                  </SwitchTransition>
                 </Box>
               </Grid>
               <Grid item xs={12} lg={1}>

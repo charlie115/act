@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
@@ -14,16 +14,52 @@ import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
 import DomainVerificationIcon from '@mui/icons-material/DomainVerification';
 import GoogleIcon from '@mui/icons-material/Google';
 import PersonIcon from '@mui/icons-material/Person';
+import TelegramIcon from '@mui/icons-material/Telegram';
+
+import { useTheme } from '@mui/material/styles';
 
 import { useSelector } from 'react-redux';
-import { useTranslation } from 'react-i18next';
+
+import { useLoginTelegramMutation } from 'redux/api/drf/auth';
+
+import { Trans, useTranslation } from 'react-i18next';
 
 import { DateTime } from 'luxon';
+
+import useScript from 'hooks/useScript';
 
 export default function MyPage() {
   const { t } = useTranslation();
 
-  const { user } = useSelector((state) => state.auth);
+  const theme = useTheme();
+
+  const [loginTelegram] = useLoginTelegramMutation();
+
+  const { telegramBot, user } = useSelector((state) => state.auth);
+
+  const dataOnAuth = (telegramUser) => {
+    loginTelegram({ user: user?.uuid, ...telegramUser });
+  };
+
+  useEffect(() => {
+    window.TelegramWidget = { dataOnAuth };
+  }, []);
+
+  useScript(
+    telegramBot && user && !user?.telegram_chat_id
+      ? 'https://telegram.org/js/telegram-widget.js?22'
+      : null,
+    {
+      nodeId: 'telegram-button',
+      attributes: {
+        'data-onauth': 'TelegramWidget.dataOnAuth(user)',
+        'data-request-access': 'write',
+        'data-telegram-login': telegramBot,
+        'data-size': 'medium',
+      },
+    },
+    []
+  );
 
   return (
     <Box sx={{ m: 'auto' }}>
@@ -61,6 +97,33 @@ export default function MyPage() {
                   })}
                 </Box>
               </Stack>
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell align="right" sx={{ p: 0 }}>
+              <TelegramIcon />
+            </TableCell>
+            <TableCell sx={{ fontSize: 16 }}>
+              {t('Telegram Integration')}
+            </TableCell>
+            <TableCell>
+              {telegramBot && !user?.telegram_chat_id ? (
+                <Box id="telegram-button" />
+              ) : (
+                <Box sx={{ fontSize: 16 }}>
+                  <Trans>
+                    Connected to{' '}
+                    <span
+                      style={{
+                        color: theme.palette.telegram.main,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {{ telegramBot }}
+                    </span>
+                  </Trans>
+                </Box>
+              )}
             </TableCell>
           </TableRow>
           <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>

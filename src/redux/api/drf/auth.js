@@ -9,10 +9,25 @@ const api = drfApi.injectEndpoints({
         body,
       }),
     }),
+    loginTelegram: builder.mutation({
+      invalidatesTags: ['User'],
+      query: (body) => ({
+        url: '/auth/login/telegram/',
+        method: 'POST',
+        body,
+      }),
+    }),
     logout: builder.mutation({
       query: () => ({
         url: '/auth/logout/',
         method: 'POST',
+      }),
+    }),
+    userPatch: builder.mutation({
+      query: (body) => ({
+        url: '/auth/user/',
+        method: 'PATCH',
+        body,
       }),
     }),
     userRegister: builder.mutation({
@@ -22,14 +37,16 @@ const api = drfApi.injectEndpoints({
         body,
       }),
     }),
-    user: builder.query({ query: () => '/auth/user/' }),
+    user: builder.query({ query: () => '/auth/user/', providesTags: ['User'] }),
   }),
 });
 
 export default api;
 export const {
   useLoginMutation,
+  useLoginTelegramMutation,
   useLogoutMutation,
+  useUserPatchMutation,
   useUserRegisterMutation,
   useUserQuery,
 } = api;

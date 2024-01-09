@@ -1,11 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 
 import { useSelector } from 'react-redux';
 
-import useExternalScript from 'hooks/useExternalScript';
+import useScript from 'hooks/useScript';
 
 import { TRADING_VIEW_TICKER_SYMBOLS } from 'constants/lists';
 
@@ -15,14 +15,13 @@ const TICKER_CONFIG = {
 };
 
 export default function TickerWidget({ isVisible }) {
-  const tickerRef = useRef();
-
   const currentLanguage = useSelector((state) => state.app.language);
   const currentTheme = useSelector((state) => state.app.theme);
 
-  const script = useExternalScript(
+  useScript(
     'https://s3.tradingview.com/external-embedding/embed-widget-tickers.js',
     {
+      nodeId: 'tv-ticker-widget',
       attributes: {
         innerHTML: JSON.stringify({
           ...TICKER_CONFIG,
@@ -35,20 +34,12 @@ export default function TickerWidget({ isVisible }) {
     [currentLanguage, currentTheme]
   );
 
-  useEffect(() => {
-    tickerRef.current.appendChild(script.current);
-    return () => {
-      while (tickerRef?.current?.firstChild)
-        tickerRef?.current?.removeChild(tickerRef?.current?.firstChild);
-    };
-  }, [currentLanguage, currentTheme]);
-
   return (
     <Box
       component={Paper}
       sx={{ display: isVisible ? 'block' : 'none', mb: 1 }}
     >
-      <div ref={tickerRef} className="tradingview-widget-container" />
+      <div id="tv-ticker-widget" className="tradingview-widget-container" />
       <div className="tradingview-widget-copyright" />
     </Box>
   );

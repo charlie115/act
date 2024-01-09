@@ -7,7 +7,7 @@ export default function useExternalScript(
 ) {
   const script = useRef();
 
-  const { attachToHeader = true, attributes = {}, onLoad } = options;
+  const { attachToHeader = true, attributes = {}, onLoad, skip } = options;
 
   const loadScript = () => {
     const scriptLoadingPromise = new Promise((resolve) => {
@@ -18,6 +18,7 @@ export default function useExternalScript(
 
       Object.entries(attributes).forEach(([key, value]) => {
         script.current[key] = value;
+        script.current.setAttribute(key, value);
       });
 
       script.current.onload = resolve;
@@ -31,8 +32,8 @@ export default function useExternalScript(
   };
 
   useEffect(() => {
-    loadScript();
-  }, [url, ...dependencies]);
+    if (!skip) loadScript();
+  }, [url, skip, ...dependencies]);
 
   return script;
 }

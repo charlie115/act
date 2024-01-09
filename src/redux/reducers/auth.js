@@ -6,6 +6,7 @@ const initialState = {
   user: null,
   id: null,
   loggedin: false,
+  telegramBot: null,
 };
 
 export const authSlice = createSlice({
@@ -44,6 +45,22 @@ export const authSlice = createSlice({
         (state, { payload }) => {
           state.user = payload;
           state.loggedin = payload.role !== 'visitor';
+          if (state.loggedin) {
+            const telegramBot = payload?.socialapps?.find(
+              (o) => o.provider === 'telegram'
+            );
+            state.telegramBot = telegramBot?.name;
+          }
+        }
+      )
+      .addMatcher(
+        drfAuthApi.endpoints.userPatch.matchFulfilled,
+        (state, { payload }) => {
+          state.user = payload;
+          const telegramBot = payload?.socialapps?.find(
+            (o) => o.provider === 'telegram'
+          );
+          state.telegramBot = telegramBot?.name;
         }
       )
       .addMatcher(
@@ -51,6 +68,12 @@ export const authSlice = createSlice({
         (state, { payload }) => {
           state.user = payload;
           state.loggedin = payload.role !== 'visitor';
+          if (state.loggedin) {
+            const telegramBot = payload?.socialapps?.find(
+              (o) => o.provider === 'telegram'
+            );
+            state.telegramBot = telegramBot?.name;
+          }
         }
       );
   },

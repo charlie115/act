@@ -4,11 +4,11 @@ const api = drfApi.injectEndpoints({
   endpoints: (builder) => ({
     getAssets: builder.query({
       keepUnusedDataFor: 5,
+      providesTags: ['Assets'],
       query: (params) => ({
         url: '/infocore/assets/',
         params,
       }),
-      providesTags: ['Assets'],
       transformResponse: (response) =>
         response?.results?.reduce(
           (acc, value) => ({

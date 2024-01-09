@@ -141,6 +141,10 @@ const colors = {
     dark: '#e03d00',
   },
 
+  telegram: {
+    main: '#4AA3E2',
+  },
+
   tumblr: {
     main: '#35465c',
     dark: '#2a3749',
