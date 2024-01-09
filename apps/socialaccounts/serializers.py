@@ -10,7 +10,7 @@ class ProxySocialAppSerializer(serializers.ModelSerializer):
             "id",
             "provider",
             "name",
-            # "client_id",
+            "client_id",
             # "secret",
             # "key",
         )
