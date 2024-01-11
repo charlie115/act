@@ -52,6 +52,7 @@ const protectedRoutes = [
     name: 'my-page',
     path: '/my-page',
     element: MyPage,
+    displayChat: true,
     getTitle: () => i18n.t('My Page'),
     ref: createRef(),
   },

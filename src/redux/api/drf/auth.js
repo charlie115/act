@@ -10,12 +10,12 @@ const api = drfApi.injectEndpoints({
       }),
     }),
     loginTelegram: builder.mutation({
-      invalidatesTags: ['User'],
       query: (body) => ({
         url: '/auth/login/telegram/',
         method: 'POST',
         body,
       }),
+      invalidatesTags: ['User'],
     }),
     logout: builder.mutation({
       query: () => ({

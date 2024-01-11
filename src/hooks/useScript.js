@@ -24,7 +24,10 @@ export default function useScript(
     }
 
     return () => {
-      if (url) while (node?.firstChild) node?.removeChild(node?.firstChild);
+      const renderedNode = document.getElementById(nodeId);
+      if (url)
+        while (renderedNode?.firstChild)
+          renderedNode?.removeChild(renderedNode?.firstChild);
     };
   }, [url, ...dependencies]);
 

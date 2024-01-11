@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
@@ -99,33 +99,34 @@ export default function MyPage() {
               </Stack>
             </TableCell>
           </TableRow>
-          <TableRow>
-            <TableCell align="right" sx={{ p: 0 }}>
-              <TelegramIcon />
-            </TableCell>
-            <TableCell sx={{ fontSize: 16 }}>
-              {t('Telegram Integration')}
-            </TableCell>
-            <TableCell>
-              {telegramBot && !user?.telegram_chat_id ? (
+          {telegramBot && (
+            <TableRow>
+              <TableCell align="right" sx={{ p: 0 }}>
+                <TelegramIcon />
+              </TableCell>
+              <TableCell sx={{ fontSize: 16 }}>
+                {t('Telegram Integration')}
+              </TableCell>
+              <TableCell>
                 <Box id="telegram-button" />
-              ) : (
-                <Box sx={{ fontSize: 16 }}>
-                  <Trans>
-                    Connected to{' '}
-                    <span
-                      style={{
-                        color: theme.palette.telegram.main,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {{ telegramBot }}
-                    </span>
-                  </Trans>
-                </Box>
-              )}
-            </TableCell>
-          </TableRow>
+                {!(telegramBot && !user?.telegram_chat_id) && (
+                  <Box sx={{ fontSize: 16 }}>
+                    <Trans>
+                      Connected to{' '}
+                      <span
+                        style={{
+                          color: theme.palette.telegram.main,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {{ telegramBot }}
+                      </span>
+                    </Trans>
+                  </Box>
+                )}
+              </TableCell>
+            </TableRow>
+          )}
           <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
             <TableCell align="right" sx={{ p: 0 }}>
               <AlternateEmailIcon />
