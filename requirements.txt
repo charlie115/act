@@ -6,15 +6,15 @@ APScheduler==3.6.3
 arelle==2.2
 astroid==2.12.10
 asttokens==2.0.8
-async-timeout==4.0.2
+async-timeout==4.0.3
 asyncio==3.4.3
+asyncpg==0.29.0
 attrs==20.3.0
 autobahn==21.1.1
 Automat==20.2.0
 backcall==0.2.0
 backoff==2.2.1
 beautifulsoup4==4.9.3
-pybit==5.6.2
 bravado==11.0.3
 bravado-core==5.17.0
 certifi==2023.7.22
@@ -32,6 +32,7 @@ contourpy==1.0.7
 cryptography==3.3.1
 cssselect==1.1.0
 cycler==0.10.0
+databases==0.8.0
 dataclasses-json==0.5.7
 dateparser==1.0.0
 debugpy==1.6.3
@@ -53,6 +54,7 @@ fonttools==4.39.4
 frozenlist==1.3.1
 fsspec==2023.5.0
 greenlet==2.0.2
+gunicorn==21.2.0
 h11==0.14.0
 h2==4.1.0
 halo==0.0.31
@@ -69,6 +71,7 @@ idna==2.10
 importlib-metadata==6.8.0
 importlib-resources==5.12.0
 incremental==17.5.0
+inflect==7.0.0
 ipykernel==6.15.2
 ipython==8.4.0
 isodate==0.6.0
@@ -85,8 +88,8 @@ joblib==1.0.0
 jsonpointer==2.0
 jsonref==0.2
 jsonschema==3.2.0
-jupyter_client==7.3.5
 jupyter-core==4.11.1
+jupyter_client==7.3.5
 keyring==24.2.0
 kiwisolver==1.3.1
 langchain==0.0.169
@@ -115,6 +118,17 @@ networkx==3.1
 nltk==3.8.1
 numexpr==2.8.4
 numpy==1.25.1
+nvidia-cublas-cu11==11.10.3.66
+nvidia-cuda-cupti-cu11==11.7.101
+nvidia-cuda-nvrtc-cu11==11.7.99
+nvidia-cuda-runtime-cu11==11.7.99
+nvidia-cudnn-cu11==8.5.0.96
+nvidia-cufft-cu11==10.9.0.58
+nvidia-curand-cu11==10.2.10.91
+nvidia-cusolver-cu11==11.4.0.1
+nvidia-cusparse-cu11==11.7.4.91
+nvidia-nccl-cu11==2.14.3
+nvidia-nvtx-cu11==11.7.91
 openai==0.27.6
 openapi-schema-pydantic==1.2.4
 openpyxl==3.0.5
@@ -125,7 +139,7 @@ parsel==1.6.0
 parso==0.8.3
 pexpect==4.8.0
 pickleshare==0.7.5
-pip==23.3.1
+pillow==10.2.0
 platformdirs==2.5.2
 posthog==3.0.1
 prompt-toolkit==3.0.30
@@ -137,6 +151,7 @@ ptyprocess==0.7.0
 pure-eval==0.2.2
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
+pybit==5.6.2
 pycodestyle==2.6.0
 pycparser==2.20
 pycryptodome==3.15.0
@@ -176,7 +191,6 @@ selenium==4.15.2
 sentence-transformers==2.2.2
 sentencepiece==0.1.99
 service-identity==18.1.0
-setuptools==49.2.1
 simplejson==3.17.2
 six==1.15.0
 sklearn==0.0
@@ -184,10 +198,12 @@ sniffio==1.3.0
 sortedcontainers==2.4.0
 soupsieve==2.1
 spinners==0.0.24
-SQLAlchemy==2.0.13
+sqlacodegen==2.3.0.post1
+SQLAlchemy==1.4.51
 stack-data==0.5.0
 starlette==0.26.1
 strict-rfc3339==0.7
+swagger-spec-validator==3.0.3
 sympy==1.12
 telegram==0.0.1
 tenacity==8.2.2
@@ -208,8 +224,8 @@ trio-websocket==0.11.1
 triton==2.0.0
 Twisted==20.3.0
 txaio==20.12.1
-typing_extensions==4.5.0
 typing-inspect==0.8.0
+typing_extensions==4.5.0
 tzdata==2023.3
 tzlocal==2.1
 ujson==4.0.2
@@ -224,7 +240,6 @@ webcolors==1.11.1
 webencodings==0.5.1
 websocket-client==1.6.1
 websockets==11.0.3
-wheel==0.40.0
 wrapt==1.12.1
 wsproto==1.2.0
 xmltodict==0.12.0
@@ -232,4 +247,3 @@ yarl==1.6.3
 zipp==3.15.0
 zope.interface==5.2.0
 zstandard==0.21.0
-sqlacodegen==2.3.0.post1
