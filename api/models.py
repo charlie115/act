@@ -15,8 +15,8 @@ class UserInfo(Base):
     telegram_name = Column(Text)
     registered_datetime = Column(DateTime)
     status = Column(Text)
-    alarm_num = Column(Integer)
-    alarm_period = Column(Integer)
+    send_times = Column(Integer)
+    send_term = Column(Integer)
     remark = Column(Text)
 
 

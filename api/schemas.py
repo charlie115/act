@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 import uuid
@@ -12,8 +12,8 @@ class UserInfoSchema(BaseModel):
     telegram_name: Optional[str] = None
     registered_datetime: Optional[datetime] = None
     status: Optional[str] = None
-    alarm_num: Optional[int] = None
-    alarm_period: Optional[int] = None
+    send_times: Optional[int] = None
+    send_term: Optional[int] = None
     remark: Optional[str] = None
 
     class Config:
@@ -25,8 +25,9 @@ class UserInfoCreate(BaseModel):
     telegram_id: int
     telegram_name: Optional[str] = None
     status: Optional[str] = None
-    alarm_num: 1
-    alarm_period: 1
+    # Default value is 1
+    send_times: int = Field(default=1)
+    send_term: int = Field(default=1)
     remark: Optional[str] = None
 
 # Exchange Config Schema

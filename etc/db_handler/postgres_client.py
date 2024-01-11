@@ -78,8 +78,8 @@ class InitDBClient:
                 telegram_name TEXT,
                 registered_datetime TIMESTAMP,
                 status TEXT,
-                alarm_num INTEGER,
-                alarm_period INTEGER,
+                send_times INTEGER,
+                send_term INTEGER,
                 remark TEXT
             )"""
         conn = self.get_conn()
