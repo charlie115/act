@@ -43,6 +43,7 @@ import orderBy from 'lodash/orderBy';
 
 import { MARKET_CODE_LIST } from 'constants/lists';
 
+// const DEFAULT_MARKET_CODE = { target: 14, origin: 15 };
 const DEFAULT_MARKET_CODE = { target: 0, origin: 7 };
 
 function MarketCodeMenu({ onChange }) {

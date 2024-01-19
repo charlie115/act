@@ -167,24 +167,30 @@ const LightWeightPremiumKlineChart = forwardRef(
 
       currentData?.forEach((item) => {
         const time = DateTime.fromISO(item.datetime_now).toMillis();
-        const open = item[`${dataType}_open`] || 0;
-        const high = item[`${dataType}_high`] || 0;
-        const low = item[`${dataType}_low`] || 0;
-        const close = item[`${dataType}_close`] || 0;
-        if (isKimpExchange && isTetherPriceView)
-          candlestick.push({
-            time,
-            open: item.dollar * (1 + open * 0.01),
-            high: item.dollar * (1 + high * 0.01),
-            low: item.dollar * (1 + low * 0.01),
-            close: item.dollar * (1 + close * 0.01),
-          });
-        else candlestick.push({ time, open, high, low, close });
-        if (item.tp !== null)
-          line.push({
-            time,
-            value: item.tp,
-          });
+        if (
+          item[`${dataType}_open`] !== undefined &&
+          item[`${dataType}_high`] !== undefined &&
+          item[`${dataType}_low`] !== undefined &&
+          item[`${dataType}_close`] !== undefined
+        ) {
+          const open = item[`${dataType}_open`] || 0;
+          const high = item[`${dataType}_high`] || 0;
+          const low = item[`${dataType}_low`] || 0;
+          const close = item[`${dataType}_close`] || 0;
+          if (isKimpExchange && isTetherPriceView)
+            candlestick.push({
+              time,
+              open: item.dollar * (1 + open * 0.01),
+              high: item.dollar * (1 + high * 0.01),
+              low: item.dollar * (1 + low * 0.01),
+              close: item.dollar * (1 + close * 0.01),
+            });
+          else candlestick.push({ time, open, high, low, close });
+          if (item.tp !== null) line.push({ time, value: item.tp });
+        } else {
+          candlestick.push({ time });
+          line.push({ time, color: 'transparent', value: 0 });
+        }
       });
       return { candlestick, line };
     }, [currentData, isTetherPriceView, dataType]);
