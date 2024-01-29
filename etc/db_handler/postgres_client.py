@@ -73,7 +73,7 @@ class InitDBClient:
             (
                 id SERIAL PRIMARY KEY,
                 user_uuid TEXT NOT NULL UNIQUE,
-                email TEXT,
+                email TEXT NOT NULL UNIQUE,
                 telegram_id BIGINT,
                 telegram_name TEXT,
                 registered_datetime TIMESTAMP,
@@ -108,8 +108,8 @@ class InitDBClient:
                 user_uuid TEXT NOT NULL, 
                 registered_datetime TIMESTAMP,
                 service_datetime_end TIMESTAMP, -- PostgreSQL uses TIMESTAMP for both date and time
-                target_market_code TEXT,
-                origin_market_code TEXT,
+                target_market_code TEXT NOT NULL,
+                origin_market_code TEXT NOT NULL,
                 target_market_uid TEXT,
                 origin_market_uid TEXT,
                 target_market_referral_use BOOLEAN,

@@ -5,7 +5,7 @@ import uuid
 
 # User Info Schema
 class UserInfoSchema(BaseModel):
-    id: Optional[int] = None
+    # id: Optional[int] = None
     user_uuid: str
     email: Optional[str] = None
     telegram_id: Optional[int] = None
@@ -36,8 +36,8 @@ class ExchangeConfigSchema(BaseModel):
     user_uuid: str
     registered_datetime: Optional[datetime] = None
     service_datetime_end: Optional[datetime] = None
-    target_market_code: Optional[str] = None
-    origin_market_code: Optional[str] = None
+    target_market_code: Optional[str]
+    origin_market_code: Optional[str]
     target_market_uid: Optional[str] = None
     origin_market_uid: Optional[str] = None
     target_market_referral_use: Optional[bool] = None
@@ -64,8 +64,8 @@ class ExchangeConfigSchema(BaseModel):
 class ExchangeConfigCreate(BaseModel):
     user_uuid: str
     service_datetime_end: Optional[datetime] = None
-    target_market_code: Optional[str] = None
-    origin_market_code: Optional[str] = None
+    target_market_code: str = Field(..., description="Code for the target market")
+    origin_market_code: str = Field(..., description="Code for the origin market")
     target_market_uid: Optional[str] = None
     origin_market_uid: Optional[str] = None
     target_market_referral_use: Optional[bool] = None
@@ -125,17 +125,17 @@ class RepeatTradeCreate(BaseModel):
 # Trade Schema
 class TradeSchema(BaseModel):
     id: Optional[int] = None
-    user_uuid: str
+    user_uuid: Optional[str] = None
     registered_datetime: Optional[datetime] = None
     last_updated_datetime: Optional[datetime] = None
-    uuid: str
+    uuid: Optional[str] = None
     connected_repeat_uuid: Optional[str] = None
-    base_asset: str
-    usdt_conversion: bool
-    target_market_code: str
-    origin_market_code: str
-    low: float
-    high: float
+    base_asset: Optional[str] = None
+    usdt_conversion: Optional[bool] = None
+    target_market_code: Optional[str] = None
+    origin_market_code: Optional[str] = None
+    low: Optional[float] = None
+    high: Optional[float] = None
     trigger_switch: Optional[int] = None
     trade_switch: Optional[int] = None
     trade_capital: Optional[float] = None
@@ -151,7 +151,6 @@ class TradeSchema(BaseModel):
 
 class TradeCreate(BaseModel):
     user_uuid: str
-    uuid: str
     connected_repeat_uuid: Optional[str] = None
     base_asset: str
     usdt_conversion: bool

@@ -30,6 +30,11 @@
         "monitor_bot": "kp_trade_monitor",
         "monitor_bot_api_url": "http://221.148.128.213:22180/api/monitor_v1/monitorbot/"
     },
+    "acw_setting":
+    {
+        "dev_url": "https://acw-dev.orbitholdings.org:20081/",
+        "prod_url": ""
+    },
     "database_setting":
     {
         "dev_postgres_docker":
