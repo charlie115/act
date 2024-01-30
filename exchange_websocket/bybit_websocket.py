@@ -309,7 +309,7 @@ class BybitWebsocket:
                     orderbook_last_update = allocated_orderbook_df['last_update_timestamp'].max()
                     # If the last update is older than update_threshold_mins, restart websocket
                     if (datetime.datetime.utcnow().timestamp() - orderbook_last_update/1000000) > update_threshold_mins*60:
-                        slow_orderbook_symbol = allocated_orderbook_df[allocated_orderbook_df['last_update'] == orderbook_last_update]['s'].values[0]
+                        slow_orderbook_symbol = allocated_orderbook_df[allocated_orderbook_df['last_update_timestamp'] == orderbook_last_update]['s'].values[0]
                         content = f"monitor_websocket_last_update|{i+1}th_orderbook_proc {slow_orderbook_symbol} last_update is older than {update_threshold_mins} mins. Restarting websocket.."
                         self.websocket_logger.info(content)
                         self.register_monitor_msg.register(self.admin_id, self.node, 'monitor', f'[BYBIT {self.market_type}] monitor_websocket_last_update', content, code=None, sent_switch=0, send_counts=1, remark=None)
