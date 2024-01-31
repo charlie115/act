@@ -4,7 +4,7 @@ from django.utils.timezone import now
 from unfold.admin import ModelAdmin
 
 from infocore.mixins import AssetMixin
-from infocore.models import Asset
+from infocore.models import Asset, MarketCode
 
 
 class AssetAdmin(AssetMixin, ModelAdmin):
@@ -66,4 +66,14 @@ class AssetAdmin(AssetMixin, ModelAdmin):
         return False
 
 
+class MarketCodeAdmin(ModelAdmin):
+    list_display = [
+        "name",
+        "code",
+    ]
+    search_fields = ["code", "name"]
+    ordering = ["name"]
+
+
 admin.site.register(Asset, AssetAdmin)
+admin.site.register(MarketCode, MarketCodeAdmin)

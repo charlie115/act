@@ -10,3 +10,14 @@ class Asset(models.Model):
 
     def __str__(self):
         return self.symbol
+
+
+class MarketCode(models.Model):
+    name = models.CharField(max_length=150)
+    code = models.CharField(max_length=150, unique=True)
+
+    def __str__(self):
+        return self.code
+
+    class Meta:
+        verbose_name = "Market Code"
