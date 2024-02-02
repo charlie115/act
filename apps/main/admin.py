@@ -16,11 +16,11 @@ def get_app_list(self, request, app_label=None):
 
     # Sort the apps
     app_order = [
-        "authentication",
+        "infocore",
+        "tradecore",
         "users",
         "socialaccounts",
-        "tradecore",
-        "infocore",
+        "authentication",
         "messagecore",
         "django_rq",
     ]

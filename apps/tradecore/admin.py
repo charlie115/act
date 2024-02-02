@@ -1,39 +1,91 @@
-from django import forms
 from django.contrib import admin
+from django.utils.safestring import mark_safe
 
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
 
-from tradecore.mixins import NodeValidatorMixin
-from tradecore.models import Node, UserConfig
+from tradecore.models import (
+    Node,
+    NodeMarketCodeService,
+    TradeConfigAllocation,
+)
 
 
-class NodeForm(NodeValidatorMixin, forms.ModelForm):
-    pass
+class UsersInline(TabularInline):
+    model = Node.users.through
+    verbose_name = "User"
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class NodeMarketCodeServiceInline(TabularInline):
+    model = NodeMarketCodeService
+    extra = 0
+    verbose_name = "Market Code Service"
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 class NodeAdmin(ModelAdmin):
-    list_display = [
-        "name",
-        "domain",
-        "port",
-        "description",
-    ]
-    search_fields = ["name", "domain"]
-    form = NodeForm
+    fields = ["name", "url", "description", "max_user_count"]
+    list_display = ["name", "url", "description", "get_market_code_services"]
+    search_fields = ["name", "url"]
+    inlines = (
+        NodeMarketCodeServiceInline,
+        UsersInline,
+    )
+
+    def get_market_code_services(self, obj):
+        return mark_safe(
+            "<br>".join(
+                [
+                    f"{market_code_service.target.code}:{market_code_service.origin.code}"
+                    for market_code_service in obj.market_code_services.all()
+                ]
+            )
+        )
+
+    get_market_code_services.short_description = "Market Code Services"
+    get_market_code_services.allow_tags = True
 
 
-class UserConfigAdmin(ModelAdmin):
+class TradeConfigAllocationAdmin(ModelAdmin):
     list_display = [
+        "node",
+        "target_market_code",
+        "origin_market_code",
         "user",
-        "service_expiry_date",
+        "trade_config_uuid",
     ]
     search_fields = [
+        "node__name",
+        "node__url",
+        "target_market_code",
+        "origin_market_code",
+        "user__uuid",
         "user__email",
         "user__username",
         "user__first_name",
         "user__last_name",
+        "trade_config_uuid",
     ]
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 admin.site.register(Node, NodeAdmin)
-admin.site.register(UserConfig, UserConfigAdmin)
+admin.site.register(TradeConfigAllocation, TradeConfigAllocationAdmin)

@@ -1,10 +1,18 @@
 from rest_framework import routers
 
-from tradecore.views import NodeViewSet, UserConfigViewSet
+from tradecore.views import (
+    NodeViewSet,
+    TradeConfigViewSet,
+    TradesViewSet,
+)
 from lib.views import BaseEndpointListView
 
 
 class TradeCoreAPIListView(BaseEndpointListView):
+    """
+    Trade Core API endpoints
+    """
+
     pass
 
 
@@ -14,6 +22,7 @@ class DocumentedRouter(routers.DefaultRouter):
 
 router = DocumentedRouter()
 router.register(r"nodes", NodeViewSet)
-router.register(r"user-configs", UserConfigViewSet)
+router.register(r"trade-config", TradeConfigViewSet, basename="trade-config")
+router.register(r"trades", TradesViewSet, basename="trades")
 
 urlpatterns = router.urls
