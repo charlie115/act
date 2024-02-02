@@ -38,6 +38,41 @@ export default {
   MuiTableSortLabel: {
     styleOverrides: { root: { width: '2.75ch !important' } },
   },
+  MuiTab: {
+    styleOverrides: {
+      root: ({ theme }) => ({
+        color: theme.palette.text.main,
+        opacity: 0.7,
+        textTransform: 'none',
+        '&.Mui-selected': {
+          color: theme.palette.text.main,
+          fontWeight: 700,
+          opacity: 1,
+        },
+      }),
+    },
+  },
+  MuiTabs: {
+    styleOverrides: {
+      root: ({ ownerState, theme }) => ({
+        borderColor: theme.palette.divider,
+        marginBottom: 8,
+        '& .MuiTabs-indicator': {
+          backgroundColor: theme.palette.text.main,
+          height: '1px',
+        },
+        ...(ownerState.orientation === 'horizontal'
+          ? {
+              borderBottomStyle: 'solid',
+              borderBottomWidth: 1,
+            }
+          : {
+              borderRightStyle: 'solid',
+              borderRightWidth: 1,
+            }),
+      }),
+    },
+  },
   MuiToggleButton: {
     styleOverrides: {
       root: ({ ownerState, theme }) => ({

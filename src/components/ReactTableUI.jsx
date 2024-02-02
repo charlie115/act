@@ -13,7 +13,6 @@ import {
 import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
 import Skeleton from '@mui/material/Skeleton';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -32,8 +31,10 @@ const ReactTableUI = forwardRef(
       extraData,
       options,
       renderSubComponent,
+      getHeaderProps,
       getCellProps,
       getRowProps,
+      getTableProps,
       showProgressBar,
       isLoading,
       renderRow,
@@ -68,7 +69,7 @@ const ReactTableUI = forwardRef(
     return (
       <Box>
         {showProgressBar && <LinearProgress />}
-        <Table>
+        <Table {...(getTableProps ? getTableProps(table) : {})}>
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -76,54 +77,63 @@ const ReactTableUI = forwardRef(
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
-                    sx={{ width: header.getSize() }}
+                    onClick={header.column.getToggleSortingHandler()}
+                    sx={{
+                      width: header.getSize(),
+                      color: header.column.getIsSorted()
+                        ? theme.palette.text.main
+                        : theme.palette.grey[
+                            theme.palette.mode === 'dark' ? '200' : '700'
+                          ],
+                      fontSize: {
+                        xs: '0.5rem',
+                        md: '0.6rem',
+                        lg: '0.7rem',
+                      },
+                      lineHeight: 1.1,
+                      userSelect: 'none',
+                      verticalAlign: 'middle',
+                      whiteSpace: 'normal',
+                      wordWrap: 'break-word',
+                      ...(getHeaderProps ? getHeaderProps(header)?.sx : {}),
+                      ...header.column.columnDef.props?.sx,
+                      ...header.column.columnDef.slotProps?.header?.sx,
+                      cursor: header.column.getCanSort()
+                        ? 'pointer'
+                        : undefined,
+                    }}
                   >
                     {header.isPlaceholder ? null : (
-                      <Stack
-                        alignItems="center"
-                        direction="row"
-                        spacing={0}
-                        onClick={header.column.getToggleSortingHandler()}
-                        sx={
-                          header.column.getCanSort()
-                            ? {
-                                cursor: 'pointer',
-                                ...header.column.columnDef.props?.sx,
-                              }
-                            : { ...header.column.columnDef.props?.sx }
-                        }
-                      >
-                        <Box
-                          component="span"
-                          sx={{
-                            color: header.column.getIsSorted()
-                              ? theme.palette.text.main
-                              : theme.palette.grey[
-                                  theme.palette.mode === 'dark' ? '200' : '700'
-                                ],
-                            fontSize: {
-                              xs: '0.5rem',
-                              md: '0.6rem',
-                              lg: '0.7rem',
-                            },
-                            lineHeight: 1.1,
-                            userSelect: 'none',
-                            whiteSpace: 'normal',
-                            wordWrap: 'break-word',
-                          }}
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                        </Box>
-                        {{
-                          asc: <ArrowDropUpIcon />,
-                          desc: <ArrowDropDownIcon />,
-                        }[header.column.getIsSorted()] ?? (
-                          <Box sx={{ height: '1em', width: '1em' }} />
+                      <Box component="span" sx={{ position: 'relative' }}>
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
                         )}
-                      </Stack>
+                        {{
+                          asc: (
+                            <ArrowDropUpIcon
+                              sx={{
+                                color: 'text.main',
+                                position: 'absolute',
+                                bottom: '50%',
+                                right: '-1em',
+                                transform: 'translateY(50%)',
+                              }}
+                            />
+                          ),
+                          desc: (
+                            <ArrowDropDownIcon
+                              sx={{
+                                color: 'text.main',
+                                position: 'absolute',
+                                bottom: '50%',
+                                right: '-1em',
+                                transform: 'translateY(50%)',
+                              }}
+                            />
+                          ),
+                        }[header.column.getIsSorted()] ?? null}
+                      </Box>
                     )}
                   </TableHead>
                 ))}
@@ -216,6 +226,7 @@ const MemoizedRow = React.memo(
             key={cell.id}
             {...(getCellProps ? getCellProps(cell) : {})}
             {...cell.column.columnDef.props}
+            {...cell.column.columnDef.slotProps?.cell}
           >
             {flexRender(cell.column.columnDef.cell, {
               ...cell.getContext(),

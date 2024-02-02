@@ -6,6 +6,8 @@ import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 
 import { useTheme } from '@mui/material/styles';
 
@@ -24,8 +26,6 @@ import CollapsibleSearch from 'components/CollapsibleSearch';
 import DateRangePicker from 'components/DateRangePicker';
 import NewsList from 'components/NewsList';
 import SocMedPostList from 'components/SocMedPostList';
-import StyledTab from 'components/StyledTab';
-import StyledTabs from 'components/StyledTabs';
 import TabPanel from 'components/TabPanel';
 
 import { DATE_FORMAT_API_QUERY } from 'constants';
@@ -111,12 +111,13 @@ export default function News() {
           mb: 3,
         }}
       >
-        <StyledTabs
+        <Tabs
           aria-label="news-tabs"
           value={currentTab}
           onChange={(e, newValue) => setCurrentTab(newValue)}
+          sx={{ borderBottom: 0, mb: 0 }}
         >
-          <StyledTab
+          <Tab
             label={
               <Badge color="error" variant="dot" invisible={!newsBadge}>
                 {t('All News')}
@@ -125,7 +126,7 @@ export default function News() {
             value={NEWS_TAB.allNews}
             {...a11yProps({ name: 'news', id: NEWS_TAB.allNews })}
           />
-          <StyledTab
+          <Tab
             label={
               <Badge color="error" variant="dot" invisible={!socialMediaBadge}>
                 {t('Social Media')}
@@ -134,7 +135,7 @@ export default function News() {
             value={NEWS_TAB.socialMedia}
             {...a11yProps({ name: 'news', id: NEWS_TAB.socialMedia })}
           />
-          <StyledTab
+          <Tab
             label={
               <Badge
                 color="error"
@@ -147,7 +148,7 @@ export default function News() {
             value={NEWS_TAB.announcements}
             {...a11yProps({ name: 'news', id: NEWS_TAB.announcements })}
           />
-        </StyledTabs>
+        </Tabs>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', px: 1 }}>
           <Box sx={{ p: 1 }}>
             <DateRangePicker
