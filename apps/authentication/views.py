@@ -215,7 +215,7 @@ class AuthUserDetailsView(UserDetailsView):
                 socialapp__provider="telegram"
             )
             if len(user_telegram_socialapps) < 1:
-                telegram_socialapps = UserSerializer().get_telegram_bots()
+                telegram_socialapps = UserSerializer()._get_telegram_bots()
                 if len(telegram_socialapps) > 0:
                     UserSocialApps.objects.create(
                         socialapp=telegram_socialapps.first(),

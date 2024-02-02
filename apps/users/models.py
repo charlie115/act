@@ -12,7 +12,6 @@ from django.utils.translation import gettext_lazy as _
 
 from users.managers import UserManager
 from socialaccounts.models import ProxySocialApp
-from tradecore.models import Node
 
 
 class User(AbstractUser):
@@ -31,15 +30,6 @@ class User(AbstractUser):
     last_username_change = models.DateTimeField(default=now)
     role = models.CharField(default=VISITOR, choices=UserRoles)
     telegram_chat_id = models.CharField(max_length=150, blank=True, null=True)
-
-    node = models.ForeignKey(
-        Node,
-        null=True,
-        blank=True,
-        on_delete=models.RESTRICT,
-        related_name="users",
-        help_text="Node where the user's trades are executed",
-    )
 
     managers = models.ManyToManyField(
         "self",

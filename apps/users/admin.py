@@ -89,7 +89,6 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
         "last_name",
         "is_staff",
         "role",
-        "node",
     )
     search_fields = [
         "email",
@@ -121,7 +120,6 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
                     ("username", "email"),
                     "password",
                     "telegram_chat_id",
-                    "node",
                     ("date_joined", "last_login", "last_username_change"),
                 )
             },

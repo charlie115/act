@@ -1,7 +1,8 @@
 from django.db.models import Count
-from rest_framework import exceptions, serializers
+from rest_framework import serializers
 
 from lib.datetime import DATE_TIME_FORMAT
+from tradecore.serializers import TradeConfigAllocationSerializer
 from users.mixins import UserFavoriteAssetsValidatorMixin, UserUUIDSerializerMixin
 from users.models import (
     User,
@@ -12,8 +13,6 @@ from users.models import (
 )
 from socialaccounts.models import ProxySocialApp
 from socialaccounts.serializers import ProxySocialAppSerializer
-from tradecore.models import Node
-from tradecore.serializers import UserConfigSerializer
 
 
 class UserFavoriteAssetsSerializer(
@@ -44,8 +43,10 @@ class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
     favorite_assets = UserFavoriteAssetsSerializer(many=True, read_only=True)
-    trade_config = UserConfigSerializer(read_only=True)
     socialapps = serializers.SerializerMethodField()
+    trade_config_allocations = TradeConfigAllocationSerializer(
+        many=True, read_only=True
+    )
 
     def get_socialapps(self, instance):
         socialapps = [
@@ -54,23 +55,7 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         return socialapps
 
-    def validate(self, attrs):
-        nodes = (
-            Node.objects.all()
-            .annotate(user_count=Count("users"))
-            .order_by("user_count", "id")
-        )
-
-        if len(nodes) > 0:
-            attrs["node"] = nodes.first()
-        else:
-            raise exceptions.ValidationError(
-                {"detail": "There is no Node to assign user!"}
-            )
-
-        return super().validate(attrs)
-
-    def get_telegram_bots(self):
+    def _get_telegram_bots(self):
         """Get social apps with telegram provider
 
         Returns:
@@ -94,7 +79,7 @@ class UserSerializer(serializers.ModelSerializer):
         user.save()
 
         # Telegram authentication (unlike node, socialapps don't need to be validated)
-        telegram_socialapps = self.get_telegram_bots()
+        telegram_socialapps = self._get_telegram_bots()
         if len(telegram_socialapps) > 0:
             UserSocialApps.objects.create(
                 socialapp=telegram_socialapps.first(),
@@ -117,10 +102,9 @@ class UserSerializer(serializers.ModelSerializer):
             "date_joined",
             "profile",
             "favorite_assets",
-            "node",
-            "trade_config",
-            "telegram_chat_id",
             "socialapps",
+            "trade_config_allocations",
+            "telegram_chat_id",
         )
         read_only_fields = ("role", "is_active")
         extra_kwargs = {
@@ -131,7 +115,6 @@ class UserSerializer(serializers.ModelSerializer):
             },
             "date_joined": {"read_only": True},
             "telegram_chat_id": {"read_only": True},
-            "node": {"read_only": True},
         }
 
 
