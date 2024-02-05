@@ -103,8 +103,8 @@ class UserSerializer(serializers.ModelSerializer):
             "profile",
             "favorite_assets",
             "socialapps",
-            "trade_config_allocations",
             "telegram_chat_id",
+            "trade_config_allocations",
         )
         read_only_fields = ("role", "is_active")
         extra_kwargs = {
