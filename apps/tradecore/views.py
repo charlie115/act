@@ -231,7 +231,12 @@ class TradesViewSet(
 
         query_params = TradesViewSetFilterSerializer(data=self.request.query_params)
         query_params.is_valid(raise_exception=True)
-        query = query_params.validated_data.copy()
+
+        query = {
+            key: value
+            for key, value in query_params.validated_data.items()
+            if key in self.request.query_params.keys()
+        }
 
         filterset = filter(
             lambda item: all((item[k] == v for (k, v) in query.items())),
