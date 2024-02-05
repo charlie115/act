@@ -29,6 +29,21 @@ class ProfileInline(StackedInline):
         return False
 
 
+class FavoriteAssetsInline(TabularInline):
+    model = UserFavoriteAssets
+    verbose_name = "Favorite asset"
+    classes = ("collapse",)
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
 class ManagersInline(TabularInline):
     fk_name = "managed_user"
     model = UserManagers
@@ -55,6 +70,7 @@ class SocialAppInline(TabularInline):
     model = UserSocialApps
     extra = 0
     verbose_name = "Social app"
+    classes = ("collapse",)
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -99,37 +115,32 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
     ]
     readonly_fields = (
         "uuid",
+        "email",
+        "telegram_chat_id",
         "date_joined",
         "last_login",
         "last_username_change",
     )
     inlines = (
         ProfileInline,
-        SocialAppInline,
         SocialAccountInline,
         ManagersInline,
         ManagedInline,
+        FavoriteAssetsInline,
     )
     fieldsets = (
         (
-            _("Account info"),
+            None,
             {
                 "fields": (
                     "is_active",
                     "uuid",
+                    ("first_name", "last_name"),
                     ("username", "email"),
-                    "password",
                     "telegram_chat_id",
-                    ("date_joined", "last_login", "last_username_change"),
-                )
-            },
-        ),
-        (
-            _("Personal info"),
-            {
-                "fields": (
-                    "first_name",
-                    "last_name",
+                    "password",
+                    "date_joined",
+                    ("last_login", "last_username_change"),
                 )
             },
         ),
@@ -137,6 +148,7 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
             _("Permissions"),
             {
                 "fields": ("is_staff", "role", "groups"),
+                "classes": ("collapse",),
             },
         ),
     )
@@ -179,21 +191,6 @@ class UserFavoriteAssetsForm(UserFavoriteAssetsValidatorMixin, forms.ModelForm):
     pass
 
 
-# TODO: Move to User
-class UserFavoriteAssetsAdmin(ModelAdmin):
-    list_display = [
-        "id",
-        "user",
-        "base_asset",
-        "market_codes",
-    ]
-    search_fields = [
-        "base_asset",
-        "market_codes",
-    ]
-    form = UserFavoriteAssetsForm
-
-
 class UserBlocklistAdmin(ModelAdmin):
     list_display = [
         "id",
@@ -214,4 +211,3 @@ class UserBlocklistAdmin(ModelAdmin):
 admin.site.register(UserBlocklist, UserBlocklistAdmin)
 admin.site.register(User, CustomUserAdmin)
 admin.site.register(UserManagers, UserManagersAdmin)
-admin.site.register(UserFavoriteAssets, UserFavoriteAssetsAdmin)

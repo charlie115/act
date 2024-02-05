@@ -25,7 +25,12 @@ class User(AbstractUser):
     )
 
     email = models.EmailField(_("email address"), unique=True)
-    uuid = models.UUIDField(primary_key=False, default=uuid.uuid4, editable=False)
+    uuid = models.UUIDField(
+        primary_key=False,
+        default=uuid.uuid4,
+        editable=False,
+        verbose_name="UUID",
+    )
     username = models.CharField(max_length=100, unique=True, blank=True)
     last_username_change = models.DateTimeField(default=now)
     role = models.CharField(default=VISITOR, choices=UserRoles)

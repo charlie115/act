@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.urls import reverse
 from django.utils.safestring import mark_safe
 
 from unfold.admin import ModelAdmin, TabularInline
@@ -58,10 +59,10 @@ class NodeAdmin(ModelAdmin):
 
 class TradeConfigAllocationAdmin(ModelAdmin):
     list_display = [
-        "node",
+        "node_link",
         "target_market_code",
         "origin_market_code",
-        "user",
+        "user_link",
         "trade_config_uuid",
     ]
     search_fields = [
@@ -76,6 +77,18 @@ class TradeConfigAllocationAdmin(ModelAdmin):
         "user__last_name",
         "trade_config_uuid",
     ]
+
+    def node_link(self, obj):
+        url = reverse("admin:tradecore_node_change", args=(obj.node.id,))
+        return mark_safe(f"<a href='{url}'>{obj.node}</a>")
+
+    node_link.short_description = "Node"
+
+    def user_link(self, obj):
+        url = reverse("admin:users_user_change", args=(obj.user.id,))
+        return mark_safe(f"<a href='{url}'>{obj.user}</a>")
+
+    user_link.short_description = "User"
 
     def has_add_permission(self, request, obj=None):
         return False
