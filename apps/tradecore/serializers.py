@@ -8,9 +8,30 @@ from users.models import User
 
 
 class NodeSerializer(serializers.ModelSerializer):
+    market_code_services = serializers.SerializerMethodField(
+        default=[],
+        help_text="Returns a list of all the enabled market code services in the node.<br>"
+        "Format:`{target}:{origin}`<br>"
+        "Example: `UPBIT_SPOT/KRW:UPBIT_SPOT/BTC`",
+    )
+
+    def get_market_code_services(self, obj):
+        market_code_services = [
+            f"{market_code_service.target}:{market_code_service.origin}"
+            for market_code_service in obj.market_code_services.all()
+        ]
+        return market_code_services
+
     class Meta:
         model = Node
-        fields = ("id", "name", "url", "description", "max_user_count")
+        fields = (
+            "id",
+            "name",
+            "url",
+            "description",
+            "max_user_count",
+            "market_code_services",
+        )
 
 
 class TradeConfigAllocationSerializer(serializers.ModelSerializer):

@@ -1,3 +1,5 @@
+from django.db.models import CharField, Value
+from django.db.models.functions import Concat
 from django_filters import CharFilter, FilterSet
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
@@ -19,10 +21,33 @@ from tradecore.serializers import (
 
 class NodeFilter(FilterSet):
     description__contains = CharFilter(field_name="description", lookup_expr="contains")
+    market_code_services = CharFilter(
+        field_name="market_code_services",
+        method="filter_market_code",
+        help_text="Filter from a list of enabled market code services in the node.<br>"
+        "Format:`{target}:{origin}`<br>"
+        "Example: `UPBIT_SPOT/KRW:UPBIT_SPOT/BTC`",
+    )
+
+    def filter_market_code(self, queryset, name, value):
+        return queryset.annotate(
+            market_code=Concat(
+                "market_code_services__target__code",
+                Value(":"),
+                "market_code_services__origin__code",
+                output_field=CharField(),
+            )
+        ).filter(market_code=value)
 
     class Meta:
         model = Node
-        fields = ("name", "url", "description", "max_user_count")
+        fields = (
+            "name",
+            "url",
+            "description",
+            "max_user_count",
+            "market_code_services",
+        )
 
 
 @extend_schema(tags=["Node"])
@@ -68,32 +93,27 @@ class NodeViewSet(BaseViewSet):
 
 
 @extend_schema_view(
-    list=extend_schema(
-        operation_id="List exchange configs",
-        description="Returns a list of all  `exchange configs`.",
-        tags=["ExchangeConfig"],
+    retrieve=extend_schema(
+        operation_id="Retrieve a trade config",
+        description="Retrieves the details of an existing `trade config`.",
+        tags=["TradeConfig"],
     ),
     create=extend_schema(
-        operation_id="Create an exchange config",
-        description="Creates a new `exchange config`.",
-        tags=["ExchangeConfig"],
-    ),
-    retrieve=extend_schema(
-        operation_id="Retrieve an exchange config",
-        description="Retrieves the details of an existing `exchange config`.",
-        tags=["ExchangeConfig"],
+        operation_id="Create a trade config",
+        description="Creates a new `trade config`.",
+        tags=["TradeConfig"],
     ),
     update=extend_schema(
-        operation_id="Fully update an exchange config",
-        description="Fully updates an existing `exchange config`.<br>"
-        "*All the previous values of the `exchange config` will be replaced with the new values provided. "
+        operation_id="Fully update a trade config",
+        description="Fully updates an existing `trade config`.<br>"
+        "*All the previous values of the `trade config` will be replaced with the new values provided. "
         "Any parameters not provided will be unset.*",
-        tags=["ExchangeConfig"],
+        tags=["TradeConfig"],
     ),
     destroy=extend_schema(
-        operation_id="Delete an exchange config",
-        description="Deletes an existing `exchange config`.",
-        tags=["ExchangeConfig"],
+        operation_id="Delete a trade config",
+        description="Deletes an existing `trade config`.",
+        tags=["TradeConfig"],
     ),
 )
 class TradeConfigViewSet(
@@ -161,15 +181,15 @@ class TradeConfigViewSet(
         operation_id="Delete a trade",
         description="Deletes an existing `trade`.",
     ),
-    # delete=extend_schema(
-    #     operation_id="Delete all user trades",
-    #     description="Deletes all `trades` of a user.",
-    # ),
+    delete=extend_schema(
+        operation_id="Delete all user trades",
+        description="Deletes all `trades` of a user.",
+    ),
 )
 class TradesViewSet(
     TradeCoreMixin,
-    mixins.CreateModelMixin,
     mixins.ListModelMixin,
+    mixins.CreateModelMixin,
     mixins.RetrieveModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
