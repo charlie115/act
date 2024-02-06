@@ -1,7 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
-from lib.authentication import CoreIPAuthentication
 from lib.filters import CharArrayFilter, UserUuidFilter
 from lib.permissions import IsDjangoAdmin, IsAdminOrIsSelf
 from lib.views import BaseViewSet, UserOwnedViewSet, UserOwned1To1ViewSet
@@ -79,20 +78,10 @@ class UserViewSet(UserOwnedViewSet):
         "is_active",
     )
 
-    def get_authenticators(self):
-        authentication_classes = self.authentication_classes + [CoreIPAuthentication]
-
-        return [auth() for auth in authentication_classes]
-
     def get_permissions(self):
         permission_classes = self.permission_classes
 
-        if (
-            hasattr(self.request, "_authenticator")
-            and type(self.request._authenticator) is CoreIPAuthentication
-        ):
-            permission_classes = []
-        elif self.action == "create":
+        if self.action == "create":
             permission_classes = [IsDjangoAdmin]
         elif self.action != "list":
             permission_classes = [IsAdminOrIsSelf]
