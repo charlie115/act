@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import exceptions, mixins, response, viewsets
 from rest_framework.decorators import action
 
+from lib.authentication import NodeIPAuthentication
 from lib.views import BaseViewSet
 from lib.status import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from tradecore.mixins import TradeCoreMixin
@@ -85,6 +86,18 @@ class NodeViewSet(BaseViewSet):
     serializer_class = NodeSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = NodeFilter
+
+    def get_authenticators(self):
+        authentication_classes = self.authentication_classes + [NodeIPAuthentication]
+        return [auth() for auth in authentication_classes]
+
+    def get_permissions(self):
+        permission_classes = self.permission_classes
+
+        if type(self.request._authenticator) is NodeIPAuthentication:
+            permission_classes = []
+
+        return [permission() for permission in permission_classes]
 
 
 ###################
