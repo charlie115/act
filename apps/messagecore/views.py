@@ -1,7 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
-from lib.authentication import CoreIPAuthentication
+from lib.authentication import NodeIPAuthentication
 from lib.views import BaseViewSet
 from messagecore.models import Message
 from messagecore.serializers import MessageSerializer
@@ -41,7 +41,7 @@ class MessageViewSet(BaseViewSet):
     queryset = Message.objects.all().order_by("id")
     serializer_class = MessageSerializer
     filter_backends = [DjangoFilterBackend]
-    authentication_classes = [CoreIPAuthentication]
+    authentication_classes = [NodeIPAuthentication]
     permission_classes = []
     filterset_fields = (
         "origin",

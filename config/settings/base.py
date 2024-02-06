@@ -407,7 +407,3 @@ UNFOLD = {
 COINMARKETCAP_API_KEY = env("COINMARKETCAP_API_KEY")
 COINMARKETCAP_API_URL = "https://pro-api.coinmarketcap.com/v2"
 COINMARKETCAP_CRYPTO_INFO_API = f"{COINMARKETCAP_API_URL}/cryptocurrency/info"
-
-# Core related
-INFOCORE_IPS = env.list("INFOCORE_IPS", default=["localhost", "127.0.0.1"])
-TRADECORE_API_URL = env.str("TRADECORE_API_URL", default="http://localhost:8000")
