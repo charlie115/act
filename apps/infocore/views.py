@@ -1,3 +1,5 @@
+import json
+
 from django.conf import settings
 from django_filters import FilterSet
 from django_filters.rest_framework import DjangoFilterBackend
@@ -95,6 +97,30 @@ class MarketCodesView(views.APIView):
                     market_codes[target_market] = [origin_market]
 
         data = {key: sorted(market_codes[key]) for key in sorted(market_codes.keys())}
+
+        return response.Response(data)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Get dollar info",
+        description="Returns dollar information",
+        tags=["Dollar"],
+    ),
+)
+class DollarView(views.APIView):
+    permission_classes = []
+    page_size = 200
+
+    def get(self, request):
+        redis_key = "INFO_CORE|dollar"
+
+        data = REDIS_CLI.get(redis_key).decode()
+
+        try:
+            data = json.loads(data)
+        except Exception as exception:
+            raise exceptions.APIException(detail=str(exception))
 
         return response.Response(data)
 

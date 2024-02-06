@@ -4,8 +4,9 @@ from rest_framework import response
 from urllib.parse import urljoin
 
 from infocore.views import (
-    KlineDataView,
+    DollarView,
     MarketCodesView,
+    KlineDataView,
     WalletStatusView,
 )
 from lib.views import BaseEndpointListView
@@ -52,6 +53,7 @@ class InfoCoreAPIListView(BaseEndpointListView):
 urlpatterns = [
     path("", InfoCoreAPIListView.as_view(), name="infocore api list"),
     path("assets/", include("infocore.urls.assets"), name="assets urls"),
+    path("dollar/", DollarView.as_view(), name="dollar"),
     path(
         "funding-rate/",
         include("infocore.urls.funding_rate"),

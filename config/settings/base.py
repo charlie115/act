@@ -313,6 +313,7 @@ SPECTACULAR_SETTINGS = {
                 "name": "INFO CORE",
                 "tags": [
                     "Asset",
+                    "Dollar",
                     "FundingRate",
                     "Kline",
                     "MarketCodes",
