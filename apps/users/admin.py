@@ -115,8 +115,6 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
     ]
     readonly_fields = (
         "uuid",
-        "email",
-        "telegram_chat_id",
         "date_joined",
         "last_login",
         "last_username_change",
@@ -161,6 +159,11 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
             },
         ),
     )
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return self.readonly_fields + ("email", "telegram_chat_id")
+        return self.readonly_fields
 
     def get_inlines(self, request, obj=None):
         if obj:
