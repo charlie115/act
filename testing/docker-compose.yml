@@ -1,19 +1,28 @@
 version: '3'
 services:
 
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - $HOME/certbot/conf:/etc/letsencrypt
+      - $HOME/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
   nginx:
     image: community-nginx:test
     build:
       context: "nginx/"
     container_name: test-community-nginx
     volumes:
-      - $HOME/test-community-nginx/dhparam.pem:/etc/nginx/dhparam.pem
-      - $HOME/test-community-nginx/certs/:/etc/ssl/certs/
-      - $HOME/test-community-nginx/private/:/etc/ssl/private/
       - $HOME/test-community-web/build/:/opt/community_frontend/build/
+      - $HOME/test-community-drf/static/:/opt/community_drf/static/
+      - $HOME/test-community-drf/media/:/opt/community_drf/media/
+      - $HOME/certbot/conf:/etc/letsencrypt
+      - $HOME/certbot/www:/var/www/certbot
     ports:
-      - "20080:20080"
-      - "20081:20081"
+      - "80:80"
+      - "443:443"
     depends_on:
       - drf
     networks:
@@ -31,9 +40,7 @@ services:
     volumes:
       - $HOME/test-community-postgres/data/:/var/lib/postgresql/data/
     ports:
-      - "25432:5432"
-    expose:
-      - "5432"
+      - "5432:5432"
     networks:
       - test-community-network
     healthcheck:
@@ -51,9 +58,7 @@ services:
       - $HOME/test-community-redis/data/:/data/
       - $HOME/test-community-redis/conf/redis.conf:/etc/redis/redis.conf
     ports:
-      - "26379:6379"
-    expose:
-      - "6379"
+      - "6379:6379"
     networks:
       - test-community-network
     restart: always
@@ -68,9 +73,7 @@ services:
     volumes:
       - $HOME/test-community-mongodb/data/:/data/
     ports:
-      - "27018:27017"
-    expose:
-      - "27017"
+      - "27017:27017"
     networks:
       - test-community-network
     restart: always
