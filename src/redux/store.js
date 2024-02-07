@@ -60,7 +60,12 @@ const chatPersistConfig = {
 const homePersistConfig = {
   key: 'home',
   storage,
-  whitelist: ['bookmarkedMarketCodes', 'favoriteAssets', 'priceView'],
+  whitelist: [
+    'bookmarkedMarketCodes',
+    'defaultMarketCodes',
+    'favoriteAssets',
+    'priceView',
+  ],
 };
 
 const rootPersistConfig = {

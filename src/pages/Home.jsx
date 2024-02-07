@@ -67,19 +67,12 @@ function Home() {
       <FormGroup
         row
         sx={{
-          pointerEvents:
-            isKoreanMarket(marketCodes?.targetMarketCode) &&
-            !isKoreanMarket(marketCodes?.originMarketCode)
-              ? undefined
-              : 'none',
+          pointerEvents: isKimpExchange ? undefined : 'none',
           width: { xs: 200, sm: 'auto' },
           mb: { xs: 0.5, sm: 2, md: 1, lg: 0 },
         }}
         className={`animate__animated animate__${
-          isKoreanMarket(marketCodes?.targetMarketCode) &&
-          !isKoreanMarket(marketCodes?.originMarketCode)
-            ? 'zoomIn'
-            : 'zoomOut'
+          isKimpExchange ? 'zoomIn' : 'zoomOut'
         }`}
       >
         <FormControlLabel

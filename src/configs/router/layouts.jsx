@@ -15,7 +15,13 @@ import Paper from '@mui/material/Paper';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
 import { useSelector } from 'react-redux';
-import { useUserQuery, useUserPatchMutation } from 'redux/api/drf/auth';
+import {
+  useLogoutMutation,
+  useUserQuery,
+  useUserPatchMutation,
+} from 'redux/api/drf/auth';
+
+import { logout } from 'redux/reducers/auth';
 
 import { useTranslation } from 'react-i18next';
 
@@ -66,7 +72,7 @@ export function MainLayout() {
 
   const { loggedin, telegramBot, user } = useSelector((state) => state.auth);
 
-  const { isSuccess } = useUserQuery({}, { skip: !loggedin });
+  const { isError, isSuccess } = useUserQuery({}, { skip: !loggedin });
   const [patchUser] = useUserPatchMutation();
 
   useEffect(() => {
@@ -77,6 +83,10 @@ export function MainLayout() {
       document.removeEventListener('contextmenu', handleContextmenu);
     };
   }, []);
+
+  useEffect(() => {
+    if (isError) logout();
+  }, [isError]);
 
   useEffect(() => {
     if (isSuccess) {
@@ -132,7 +142,6 @@ export function MainLayout() {
                   sx={{ display: 'flex', flex: 1, overflowX: 'clip' }}
                 >
                   {/* <Outlet /> */}
-
                   <SwitchTransition>
                     <CSSTransition
                       unmountOnExit

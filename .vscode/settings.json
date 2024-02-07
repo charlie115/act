@@ -10,7 +10,9 @@
     "loggedin",
     "newscore",
     "overscan",
+    "singleshot",
     "swipeable",
+    "tradecore",
     "tradingview"
   ],
   "files.exclude": {

@@ -14,7 +14,7 @@ const colors = {
 
   black: { light: '#212529', main: '#000000' },
 
-  accent: { main: '#fad532' },
+  accent: { light: '#fce174', main: '#fad532' },
 
   primary: { main: '#007cff', light: '#44b0fd' },
 
@@ -22,11 +22,11 @@ const colors = {
 
   info: { main: '#00bbff' },
 
-  success: { main: '#25C196' },
+  success: { main: '#25C196', light: '#74f7b8' },
 
-  warning: { main: '#ffc65f' },
+  warning: { light: '#ffc65f', main: '#faa12d' },
 
-  error: { main: '#ff0d45' },
+  error: { main: '#ff0d45', light: '#fa3c68' },
 
   light: { main: '#f0f2f5' },
 

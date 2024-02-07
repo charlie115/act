@@ -48,6 +48,7 @@ import union from 'lodash/union';
 
 import PremiumDataChartViewer from 'components/PremiumDataChartViewer';
 import ReactTableUI from 'components/ReactTableUI';
+import TradeTriggerConfigByAsset from 'components/TradeTriggerConfigByAsset';
 
 import { REGEX } from 'constants';
 
@@ -87,6 +88,8 @@ function PremiumTable({
   const [assets, setAssets] = useState([]);
   const [assetsParam, setAssetsParam] = useState();
   const [marketCodesParam, setMarketCodesParam] = useState();
+
+  const [alarmConfig, setAlarmConfig] = useState();
 
   const localFavoriteAssets = useSelector(
     (state) =>
@@ -185,6 +188,8 @@ function PremiumTable({
     },
     [loggedin, marketCodes]
   );
+
+  const onAlarmConfigChange = useCallback((value) => setAlarmConfig(value), []);
 
   const columns = useMemo(
     () => [
@@ -464,9 +469,16 @@ function PremiumTable({
           baseAssetData={row.original}
           {...extraData}
         />
+        {loggedin && (
+          <TradeTriggerConfigByAsset
+            baseAsset={row.original.name}
+            onAlarmConfigChange={onAlarmConfigChange}
+            {...extraData}
+          />
+        )}
       </Box>
     ),
-    []
+    [loggedin]
   );
 
   useEffect(() => {
@@ -497,6 +509,7 @@ function PremiumTable({
         columns={columns}
         data={data}
         extraData={{
+          alarmConfig,
           marketCodes,
           queryKey,
           isKimpExchange,

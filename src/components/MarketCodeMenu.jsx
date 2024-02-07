@@ -32,6 +32,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   // selectBookmarkMarketCodePair,
+  changeDefaultMarketCodes,
   toggleBookmarkMarketCodes,
 } from 'redux/reducers/home';
 
@@ -43,7 +44,6 @@ import orderBy from 'lodash/orderBy';
 
 import { MARKET_CODE_LIST } from 'constants/lists';
 
-// const DEFAULT_MARKET_CODE = { target: 14, origin: 15 };
 const DEFAULT_MARKET_CODE = { target: 0, origin: 7 };
 
 function MarketCodeMenu({ onChange }) {
@@ -55,6 +55,10 @@ function MarketCodeMenu({ onChange }) {
 
   const bookmarkedMarketCodes = useSelector(
     (state) => state.home.bookmarkedMarketCodes
+  );
+
+  const defaultMarketCodes = useSelector(
+    (state) => state.home.defaultMarketCodes
   );
 
   const theme = useTheme();
@@ -122,16 +126,28 @@ function MarketCodeMenu({ onChange }) {
       disabled: !data?.[target.value],
       origins: data?.[target.value] || [],
     }));
+    const defaultTarget = targetList.find(
+      (a) => a.value === defaultMarketCodes?.targetMarketCode && !a.disabled
+    );
+    const defaultOrigin = targetList.find(
+      (a) =>
+        a.value === defaultMarketCodes?.originMarketCode &&
+        data?.[defaultMarketCodes?.targetMarketCode]?.findIndex(
+          (b) => b === defaultMarketCodes?.originMarketCode
+        ) >= 0
+    );
     setTargetMarketCodeList(orderBy(targetList, 'disabled'));
     setTargetMarketCode(
       (state) =>
-        targetList?.[state?.index] || targetList?.[DEFAULT_MARKET_CODE.target]
+        defaultTarget ||
+        targetList?.[state?.index] ||
+        targetList?.[DEFAULT_MARKET_CODE.target]
     );
     setOriginMarketCode((state) => {
-      if (state) return marketCodeList[state?.index] || {};
-      return marketCodeList[DEFAULT_MARKET_CODE.origin];
+      if (state) return defaultOrigin || marketCodeList[state?.index] || {};
+      return defaultOrigin || marketCodeList[DEFAULT_MARKET_CODE.origin];
     });
-  }, [data, isFetching, marketCodeList]);
+  }, [data, isFetching, marketCodeList, defaultMarketCodes]);
 
   useEffect(() => {
     if (marketCodeList.length > 0) {
@@ -343,11 +359,6 @@ function MarketCodeMenu({ onChange }) {
                               selected={target.value === targetMarketCode.value}
                               onClick={() => {
                                 setTargetMarketCode(target);
-                                // if (
-                                //   !target.origins?.find(
-                                //     (o) => o === originMarketCode?.value
-                                //   )
-                                // )
                                 setOriginMarketCode({});
                               }}
                               sx={{ p: { xs: 0.25, sm: 1 } }}
@@ -407,6 +418,13 @@ function MarketCodeMenu({ onChange }) {
                                 onClick={() => {
                                   setOriginMarketCode(origin);
                                   setOpen(false);
+
+                                  dispatch(
+                                    changeDefaultMarketCodes({
+                                      targetMarketCode: targetMarketCode.value,
+                                      originMarketCode: origin.value,
+                                    })
+                                  );
                                 }}
                                 sx={{ p: { xs: 0.25, sm: 1 } }}
                               >
@@ -508,6 +526,12 @@ function MarketCodeMenu({ onChange }) {
               onClick={() => {
                 setTargetMarketCode(target);
                 setOriginMarketCode(origin);
+                dispatch(
+                  changeDefaultMarketCodes({
+                    targetMarketCode: target.value,
+                    originMarketCode: origin.value,
+                  })
+                );
                 handleBookmarkMenuClose();
               }}
               sx={{ fontSize: 11 }}

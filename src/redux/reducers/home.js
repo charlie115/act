@@ -18,6 +18,9 @@ export const homeSlice = createSlice({
         state.favoriteAssets[payload.marketCodeKey] = [];
       state.favoriteAssets[payload.marketCodeKey].push(payload.baseAsset);
     },
+    changeDefaultMarketCodes: (state, { payload }) => {
+      state.defaultMarketCodes = payload;
+    },
     removeLocalFavoriteAsset: (state, { payload }) => {
       state.favoriteAssets?.[payload.marketCodeKey]?.splice(payload.id, 1);
     },
@@ -43,6 +46,7 @@ export const homeSlice = createSlice({
 
 export const {
   addLocalFavoriteAsset,
+  changeDefaultMarketCodes,
   removeLocalFavoriteAsset,
   selectBookmarkMarketCodePair,
   toggleBookmarkMarketCodePair,

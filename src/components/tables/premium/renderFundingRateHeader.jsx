@@ -18,7 +18,11 @@ export default function renderFundingRateHeader({ column, marketCodes }) {
   );
   if (!marketCode) return i18n.t('Funding Rate');
   return (
-    <Tooltip title={marketCode.getLabel()} placement="bottom-end">
+    <Tooltip
+      title={marketCode.getLabel()}
+      placement="bottom-end"
+      sx={{ display: 'inline-flex' }}
+    >
       <Stack
         useFlexGap
         alignItems="center"

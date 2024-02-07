@@ -39,6 +39,7 @@ import LightWeightFundingRateChart from 'components/charts/LightWeightFundingRat
 import LightWeightFundingRateDiffChart from 'components/charts/LightWeightFundingRateDiffChart';
 
 function PremiumDataChartViewer({
+  alarmConfig,
   baseAssetData,
   marketCodes,
   defaultDChartDataType,
@@ -242,6 +243,7 @@ function PremiumDataChartViewer({
             <LightWeightPremiumKlineChart
               ref={premiumKlineChartRef}
               baseAsset={baseAsset}
+              alarmConfig={alarmConfig}
               dataType={chartDataType}
               interval={klineInterval}
               marketCodes={marketCodes}
@@ -255,6 +257,7 @@ function PremiumDataChartViewer({
         return null;
     }
   }, [
+    alarmConfig,
     chartDataType,
     klineInterval,
     targetMarketCode,
@@ -262,6 +265,8 @@ function PremiumDataChartViewer({
     marketCodes,
     baseAsset,
     subtrahend,
+    isKimpExchange,
+    isTetherPriceView,
   ]);
 
   const isFavorite = !isUndefined(favoriteAssetId);
@@ -325,7 +330,7 @@ function PremiumDataChartViewer({
                     else onAddFavoriteAsset(baseAsset);
                   }}
                   sx={{
-                    '& :hover': {
+                    ':hover': {
                       color: theme.palette.accent.main,
                       opacity: 0.5,
                     },

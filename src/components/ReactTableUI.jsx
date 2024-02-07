@@ -13,6 +13,7 @@ import {
 import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
 import Skeleton from '@mui/material/Skeleton';
+import TablePagination from '@mui/material/TablePagination';
 import Typography from '@mui/material/Typography';
 
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -30,6 +31,7 @@ const ReactTableUI = forwardRef(
       data,
       extraData,
       options,
+      enableTablePaginationUI,
       renderSubComponent,
       getHeaderProps,
       getCellProps,
@@ -63,6 +65,8 @@ const ReactTableUI = forwardRef(
     });
 
     const { rows } = table.getRowModel();
+
+    const { pageSize, pageIndex } = table.getState().pagination;
 
     if (ref) ref.current = table;
 
@@ -187,6 +191,38 @@ const ReactTableUI = forwardRef(
                   </TableRow>
                 ))}
           </tbody>
+          {enableTablePaginationUI && data.length > 0 && !isLoading && (
+            <tfoot>
+              <TableRow>
+                <TablePagination
+                  count={table.getFilteredRowModel().rows.length}
+                  rowsPerPageOptions={[
+                    // 5,
+                    // 10,
+                    // 25,
+                    { label: t('All'), value: data.length },
+                  ]}
+                  colSpan={columns.length}
+                  rowsPerPage={pageSize}
+                  page={pageIndex}
+                  shape="rounded"
+                  size="small"
+                  labelRowsPerPage={t('Rows')}
+                  onPageChange={(_, page) => {
+                    table.setPageIndex(page);
+                  }}
+                  onRowsPerPageChange={(e) => {
+                    const size = e.target.value ? Number(e.target.value) : 10;
+                    table.setPageSize(size);
+                  }}
+                  sx={{
+                    borderBottom: 0,
+                    '& .MuiTablePagination-toolbar': { minHeight: 0 },
+                  }}
+                />
+              </TableRow>
+            </tfoot>
+          )}
         </Table>
         {!isLoading && (
           <Box sx={{ textAlign: 'center' }}>
@@ -250,7 +286,6 @@ const MemoizedRow = React.memo(
 
 export const Table = styled('table')(() => ({
   borderCollapse: 'collapse',
-  borderRadius: 5,
   fontSize: '0.88em',
   tableLayout: 'fixed',
   width: '100%',

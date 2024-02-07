@@ -60,7 +60,7 @@ export default function renderNameCell({
               }}
               sx={{
                 fontSize: 13,
-                '& :hover': { color: theme.palette.accent.main, opacity: 0.5 },
+                ':hover': { color: theme.palette.accent.main, opacity: 0.5 },
               }}
             />
           </Box>

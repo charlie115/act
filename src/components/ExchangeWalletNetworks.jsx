@@ -52,7 +52,7 @@ export default function ExchangeWalletNetworks({
       direction="row"
       flexWrap="wrap"
       spacing={{ xs: 2, md: 3 }}
-      sx={{ mb: { xs: 3, md: 3 } }}
+      sx={{ mb: { xs: 3, md: 2 } }}
     >
       {targetMarketCode.value.includes('SPOT') && (
         <Stack alignItems="center" direction="row" spacing={1}>

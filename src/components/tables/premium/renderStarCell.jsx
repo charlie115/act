@@ -11,8 +11,8 @@ import i18n from 'configs/i18n';
 export default function renderStarCell({
   cell,
   row,
-  handleAddFavoriteAsset,
-  handleRemoveFavoriteAsset,
+  onAddFavoriteAsset,
+  onRemoveFavoriteAsset,
   theme,
 }) {
   const isFavorite = !isUndefined(cell.getValue());
@@ -29,12 +29,12 @@ export default function renderStarCell({
         color={isFavorite ? 'accent' : 'secondary'}
         onClick={(e) => {
           e.stopPropagation();
-          if (isFavorite) handleRemoveFavoriteAsset(cell.getValue());
-          else handleAddFavoriteAsset(row.original.name);
+          if (isFavorite) onRemoveFavoriteAsset(cell.getValue());
+          else onAddFavoriteAsset(row.original.name);
         }}
         sx={{
           fontSize: { sm: '0.75rem', md: 16, lg: 20 },
-          '& :hover': { color: theme.palette.accent.main, opacity: 0.5 },
+          ':hover': { color: theme.palette.accent.main, opacity: 0.5 },
         }}
       />
     </Tooltip>

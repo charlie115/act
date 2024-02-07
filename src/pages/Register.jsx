@@ -45,10 +45,7 @@ export default function Register() {
     mode: 'all',
   });
 
-  const username = useWatch({
-    control,
-    name: 'username',
-  });
+  const username = useWatch({ control, name: 'username' });
 
   const { isValid } = formState;
 
@@ -93,20 +90,6 @@ export default function Register() {
           control={control}
           rules={{
             required: t('Please enter a username'),
-            // minLength: {
-            //   value: 6,
-            //   message: t('Username must have {{min}}~{{max}} characters', {
-            //     min: 6,
-            //     max: 25,
-            //   }),
-            // },
-            // maxLength: {
-            //   value: 25,
-            //   message: t('Username must have {{min}}~{{max}} characters', {
-            //     min: 6,
-            //     max: 25,
-            //   }),
-            // },
             validate: {
               matchPattern: (value) => {
                 if (!REGEX.usernameFirstCharacter.test(value))

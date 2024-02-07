@@ -32,6 +32,7 @@ const api = websocketApi.injectEndpoints({
             if (message.type === 'connect') return;
 
             const result = JSON.parse(message.result);
+
             updateCachedData((draft) => {
               result.forEach((item) => {
                 const dateTimeString = DateTime.fromMillis(
