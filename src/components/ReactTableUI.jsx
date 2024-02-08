@@ -170,7 +170,7 @@ const ReactTableUI = forwardRef(
                     />
                   )
                 )
-              : [...Array(10).keys()].map((item) => (
+              : [...Array(pageSize || 10).keys()].map((item) => (
                   <TableRow key={item}>
                     {table.getVisibleFlatColumns().map((column) => (
                       <TableCell

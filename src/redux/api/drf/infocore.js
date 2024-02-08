@@ -25,6 +25,10 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    getDollar: builder.query({
+      keepUnusedDataFor: 1,
+      query: () => ({ url: '/infocore/dollar/' }),
+    }),
     getFundingRate: builder.query({
       keepUnusedDataFor: 1,
       query: (params) => ({
@@ -72,6 +76,7 @@ export default api;
 export const {
   useGetAssetsQuery,
   useGetAverageFundingRateQuery,
+  useGetDollarQuery,
   useGetFundingRateQuery,
   useGetFundingRateDiffQuery,
   useGetHistoricalKlineQuery,

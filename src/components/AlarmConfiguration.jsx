@@ -13,6 +13,8 @@ import Input from '@mui/material/Input';
 import InputAdornment from '@mui/material/InputAdornment';
 import InputLabel from '@mui/material/InputLabel';
 import Snackbar from '@mui/material/Snackbar';
+import Stack from '@mui/material/Stack';
+
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -23,10 +25,13 @@ import { useTranslation } from 'react-i18next';
 
 import { useSelector } from 'react-redux';
 
+import { useGetDollarQuery } from 'redux/api/drf/infocore';
 import {
   usePostTradeMutation,
   usePostTradeConfigMutation,
 } from 'redux/api/drf/tradecore';
+
+import { usePrevious } from '@uidotdev/usehooks';
 
 import isKoreanMarket from 'utils/isKoreanMarket';
 
@@ -52,17 +57,30 @@ function AlarmConfiguration({
     [marketCodes]
   );
 
-  const { control, handleSubmit, formState, getValues, reset, trigger } =
-    useForm({
-      defaultValues: { entry: '', exit: '', isTether: isTetherPriceView },
-      mode: 'all',
-    });
+  const {
+    control,
+    handleSubmit,
+    formState,
+    getValues,
+    reset,
+    setValue,
+    trigger,
+  } = useForm({
+    defaultValues: { entry: '', exit: '', isTether: isTetherPriceView },
+    mode: 'all',
+  });
 
-  const { isValid } = formState;
+  const { isDirty, isValid } = formState;
 
   const entry = useWatch({ control, name: 'entry' });
   const exit = useWatch({ control, name: 'exit' });
   const isTether = useWatch({ control, name: 'isTether' });
+
+  const {
+    data: dollar,
+    isFetching: isDollarFetching,
+    isSuccess: isDollarSuccess,
+  } = useGetDollarQuery({}, { skip: !isTether });
 
   const [postTrade, tradeResults] = usePostTradeMutation();
   const [postTradeConfig, tradeConfigResults] = usePostTradeConfigMutation();
@@ -125,6 +143,41 @@ function AlarmConfiguration({
     });
   }, [entry, exit, isTether]);
 
+  useEffect(() => {
+    if (dollar && isDollarSuccess) {
+      const entryValue = getValues('entry');
+      if (entryValue && parseFloat(entryValue) <= 500)
+        setValue(
+          'entry',
+          (dollar.price * (1 + parseFloat(entryValue) / 100)).toFixed(3)
+        );
+      const exitValue = getValues('exit');
+      if (exitValue && parseFloat(exitValue) <= 500)
+        setValue(
+          'exit',
+          (dollar.price * (1 + parseFloat(exitValue) / 100)).toFixed(3)
+        );
+    }
+  }, [dollar, isDollarSuccess]);
+
+  const prevIsTether = usePrevious(isTether);
+  useEffect(() => {
+    if (prevIsTether && !isTether) {
+      const entryValue = getValues('entry');
+      if (entryValue && parseFloat(entryValue) > 500)
+        setValue(
+          'entry',
+          (100 * (parseFloat(entryValue) / dollar.price - 1)).toFixed(3)
+        );
+      const exitValue = getValues('exit');
+      if (exitValue && parseFloat(exitValue) > 500)
+        setValue(
+          'exit',
+          (100 * (parseFloat(exitValue) / dollar.price - 1)).toFixed(3)
+        );
+    }
+  }, [isTether]);
+
   useEffect(
     () => () =>
       onAlarmConfigChange({
@@ -143,31 +196,36 @@ function AlarmConfiguration({
       sx={{ mt: 6 }}
     >
       <Grid container spacing={3} sx={{ px: { xs: 2, md: 4 } }}>
+        {/* <Grid item md={2} xs={6}>
+          <Button size="small">{t('Clear')}</Button>
+        </Grid> */}
         {showTether && (
-          <Grid item md xs={12}>
-            <Box
+          <Grid item md={2} xs={6}>
+            {/* <Box
               sx={{
                 display: 'flex',
-                justifyContent: { xs: 'flex-start', md: 'flex-end' },
+                justifyContent: 'space-between',
+                // justifyContent: { xs: 'flex-start', md: 'flex-end' },
               }}
-            >
-              <Controller
-                name="isTether"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={<Checkbox />}
-                    label={t('USDT Conversion')}
-                    checked={!!field.value}
-                    sx={{
-                      alignItems: 'flex-end',
-                      span: { paddingBottom: 0 },
-                    }}
-                    {...field}
-                  />
-                )}
-              />
-            </Box>
+            > */}
+            <Controller
+              name="isTether"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={<Checkbox />}
+                  disabled={isDollarFetching}
+                  label={t('USDT Conversion')}
+                  checked={!!field.value}
+                  sx={{
+                    alignItems: 'flex-end',
+                    span: { paddingBottom: 0 },
+                  }}
+                  {...field}
+                />
+              )}
+            />
+            {/* </Box> */}
           </Grid>
         )}
         <Grid item md xs={12} sx={{ pt: '12px !important' }}>
@@ -193,6 +251,7 @@ function AlarmConfiguration({
               >
                 <InputLabel>{t('Entry')}</InputLabel>
                 <Input
+                  readOnly={isDollarFetching}
                   type="number"
                   startAdornment={
                     <InputAdornment position="start">
@@ -207,11 +266,13 @@ function AlarmConfiguration({
                       {isTether ? t('KRW') : '%'}
                     </InputAdornment>
                   }
-                  inputProps={{
-                    precision: 2,
-                    step: 0.1,
-                  }}
+                  inputProps={{ precision: 2, step: 0.1 }}
                   {...field}
+                  onChange={(e) => {
+                    const { value } = e.target;
+                    if (value && !isTether && parseFloat(value) > 500) return;
+                    field.onChange(e);
+                  }}
                 />
                 <FormHelperText>{fieldState.error?.message}</FormHelperText>
               </FormControl>
@@ -241,6 +302,7 @@ function AlarmConfiguration({
               >
                 <InputLabel>{t('Exit')}</InputLabel>
                 <Input
+                  readOnly={isDollarFetching}
                   type="number"
                   startAdornment={
                     <InputAdornment position="start">
@@ -257,6 +319,11 @@ function AlarmConfiguration({
                   }
                   inputProps={{ step: 0.1 }}
                   {...field}
+                  onChange={(e) => {
+                    const { value } = e.target;
+                    if (value && !isTether && parseFloat(value) > 500) return;
+                    field.onChange(e);
+                  }}
                 />
                 <FormHelperText>{fieldState.error?.message}</FormHelperText>
               </FormControl>
@@ -264,21 +331,26 @@ function AlarmConfiguration({
           />
         </Grid>
         <Grid item md xs={12}>
-          <Button
-            fullWidth
-            type="submit"
-            variant="contained"
-            disabled={!isValid || isLoading}
-            endIcon={
-              isLoading ? (
-                <CircularProgress color="inherit" size={15} />
-              ) : (
-                <ArrowForwardIcon />
-              )
-            }
-          >
-            {t('Register')}
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              fullWidth
+              type="submit"
+              variant="contained"
+              disabled={!isValid || isLoading}
+              endIcon={
+                isLoading ? (
+                  <CircularProgress color="inherit" size={15} />
+                ) : (
+                  <ArrowForwardIcon />
+                )
+              }
+            >
+              {t('Register')}
+            </Button>
+            <Button disabled={!isDirty} onClick={() => reset()}>
+              {t('Clear')}
+            </Button>
+          </Stack>
         </Grid>
       </Grid>
       <Box sx={{ position: 'relative', mt: 4 }}>
