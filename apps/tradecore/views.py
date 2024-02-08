@@ -94,7 +94,10 @@ class NodeViewSet(BaseViewSet):
     def get_permissions(self):
         permission_classes = self.permission_classes
 
-        if type(self.request._authenticator) is NodeIPAuthentication:
+        if (
+            hasattr(self.request, "_authenticator")
+            and type(self.request._authenticator) is NodeIPAuthentication
+        ):
             permission_classes = []
 
         return [permission() for permission in permission_classes]
