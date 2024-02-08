@@ -71,7 +71,7 @@ class OkxWebsocket:
             def on_error(ws, error):
                 # print(f'okx_websocket on_error executed!')
                 # print(error)
-                self.websocket_logger.error(f'okx_websocket|okx_websocket on_error executed!\n Error: {error}')
+                self.websocket_logger.error(f'okx_websocket|okx_websocket on_error executed!\n Error: {error}, traceback: {traceback.format_exc()}')
                 pass
 
             def on_close(ws, close_status_code, close_msg):

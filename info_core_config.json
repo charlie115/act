@@ -20,7 +20,7 @@
             "telegram_bot_name": "info_core_dev_bot",
             "reference_node": null,
             "enabled_market_klines": [
-                "UPBIT_SPOT/KRW:OKX_USD_M/USDT"
+                "BITHUMB_SPOT/KRW:OKX_USD_M/USDT"
             ]
         },
         "kline_generator1":

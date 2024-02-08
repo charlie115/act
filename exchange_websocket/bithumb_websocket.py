@@ -65,7 +65,7 @@ class BithumbWebsocket:
         def on_error(ws, error):
             # print(f'bithumb_websocket on_error executed!')
             # print(error)
-            self.websocket_logger.error(f'bithumb_websocket|bithumb_websocket on_error executed!\n Error: {error}')
+            self.websocket_logger.error(f'bithumb_websocket|bithumb_websocket on_error executed!\n Error: {error}, traceback: {traceback.format_exc()}')
 
         def on_close(ws, close_status_code, close_msg):
             # print(f"\n\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")

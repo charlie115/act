@@ -69,7 +69,7 @@ class BinanceWebsocket:
 
         def on_error(ws, error):
             # print(f'binance_websocket on_error executed!')
-            self.websocket_logger.error(f'binance_websocket|{proc_name} on_error executed!\n Error: {error}')
+            self.websocket_logger.error(f'binance_websocket|{proc_name} on_error executed!\n Error: {error}, traceback: {traceback.format_exc()}')
             pass
 
         def on_close(ws, close_status_code, close_msg):
