@@ -63,6 +63,7 @@
     "start": "react-scripts start",
     "build:production": "REACT_APP_ENV=production react-scripts build",
     "build:staging": "env-cmd -f .env.staging react-scripts build",
+    "build:test": "env-cmd -f .env.test react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint --fix --ext .js,.jsx .",

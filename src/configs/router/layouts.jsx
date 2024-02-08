@@ -15,11 +15,7 @@ import Paper from '@mui/material/Paper';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
 import { useSelector } from 'react-redux';
-import {
-  useLogoutMutation,
-  useUserQuery,
-  useUserPatchMutation,
-} from 'redux/api/drf/auth';
+import { useUserQuery, useUserPatchMutation } from 'redux/api/drf/auth';
 
 import { logout } from 'redux/reducers/auth';
 

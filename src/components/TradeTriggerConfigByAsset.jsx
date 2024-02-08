@@ -1,9 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { useNavigate } from 'react-router-dom';
-
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
@@ -77,11 +74,11 @@ function TradeTriggerConfigByAsset({
   }, []);
 
   useScript(
-    telegramBot && user && !user?.telegram_chat_id
+    telegramBot && user && !user?.telegram_chat_id && nodes?.results.length > 0
       ? 'https://telegram.org/js/telegram-widget.js?22'
       : null,
     {
-      nodeId: 'telegram-button',
+      nodeId: 'telegram-trade-config-button',
       attributes: {
         'data-onauth': 'TelegramWidget.dataOnAuth(user)',
         'data-request-access': 'write',
@@ -210,7 +207,7 @@ function TradeTriggerConfigByAsset({
                 <Typography sx={{ color: 'error.main' }}>
                   {t('Connect to Telegram to enable this setting')}
                 </Typography>
-                <Box id="telegram-button" />
+                <Box id="telegram-trade-config-button" />
               </Stack>
             )}
           </Box>

@@ -6,8 +6,9 @@ module.exports = function (app) {
   app.use(
     '/api/',
     createProxyMiddleware({
-      target: 'https://arbicrypto.net',
+      target: 'https://acw-test.orbitholdings.org',
       changeOrigin: true,
+      secure: false,
       pathRewrite: {
         '^/api/': '/api/', // rewrite path
       },
