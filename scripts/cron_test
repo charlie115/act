@@ -1,0 +1,8 @@
+# Scrape news every hour
+0 * * * * cd /home/scrapy/news_core && scripts/scrape_news.sh >> /home/scrapy/news_core/logs/scrape_news.log 2>&1
+
+# Scrape announcements every hour
+0 * * * * cd /home/scrapy/news_core && scripts/scrape_announcements.sh >> /home/scrapy/news_core/logs/scrape_announcements.log 2>&1
+
+# Scrape sns posts every hour
+0 * * * * cd /home/scrapy/news_core && scripts/scrape_sns.sh >> /home/scrapy/news_core/logs/scrape_sns.log 2>&1
