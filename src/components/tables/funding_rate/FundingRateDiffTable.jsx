@@ -173,7 +173,7 @@ export default function FundingRateDiffTable() {
         accessorKey: 'icon',
         enableGlobalFilter: false,
         enableSorting: false,
-        maxSize: isMobile ? 25 : 80,
+        maxSize: isMobile ? 15 : 80,
         header: <span />,
         cell: renderIconCell,
         props: { rowSpan: 2 },
@@ -279,7 +279,7 @@ export default function FundingRateDiffTable() {
   );
 
   const renderRow = useCallback(
-    ({ row, extraData, renderSubComponent, getCellProps, getRowProps }) => (
+    ({ row, table, renderSubComponent, getCellProps, getRowProps }) => (
       <Fragment key={row.id}>
         <TableRow {...(getRowProps ? getRowProps(row) : {})}>
           {row.getVisibleCells().map((cell) => (
@@ -290,9 +290,9 @@ export default function FundingRateDiffTable() {
             >
               {flexRender(cell.column.columnDef.cell, {
                 ...cell.getContext(),
-                ...extraData,
-                isMobile,
-                theme,
+                ...table.options.meta,
+                // isMobile,
+                // theme,
               })}
             </TableCell>
           ))}
@@ -309,7 +309,7 @@ export default function FundingRateDiffTable() {
               >
                 {flexRender(cell.column.columnDef.cell, {
                   ...cell.getContext(),
-                  ...extraData,
+                  ...table.options.meta,
                   isMobile,
                   theme,
                 })}
@@ -319,7 +319,7 @@ export default function FundingRateDiffTable() {
         {row.getIsExpanded() && renderSubComponent && (
           <TableRow key={`${row.id}-expand-panel`}>
             <TableCell colSpan={row.getVisibleCells().length}>
-              {renderSubComponent({ row, extraData })}
+              {renderSubComponent({ row, meta: table.options.meta })}
             </TableCell>
           </TableRow>
         )}
@@ -329,7 +329,7 @@ export default function FundingRateDiffTable() {
   );
 
   const renderSubComponent = useCallback(
-    ({ row, extraData }) => (
+    ({ row, meta }) => (
       <Box>
         <PremiumDataChartViewer
           showFundingRate
@@ -346,7 +346,7 @@ export default function FundingRateDiffTable() {
           defaultDisabledChartDataType={
             !marketCodes ? { tp: true, LS: true, SL: true } : null
           }
-          {...extraData}
+          {...meta}
         />
       </Box>
     ),
@@ -390,6 +390,7 @@ export default function FundingRateDiffTable() {
             },
             onExpandedChange: setExpanded,
             onPaginationChange: setPagination,
+            meta: { theme, isMobile },
           }}
           getRowProps={(row) => ({
             onClick: () => {

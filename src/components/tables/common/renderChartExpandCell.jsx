@@ -7,7 +7,7 @@ export default function renderChartExpandCell({ cell, row }) {
   return (
     <InsightsIcon
       color={row.getIsExpanded() ? 'info' : ''}
-      sx={{ fontSize: { md: '0.65rem', lg: 14 } }}
+      sx={{ fontSize: { xs: '1em', md: '0.65rem', lg: 14 } }}
     />
   );
 }

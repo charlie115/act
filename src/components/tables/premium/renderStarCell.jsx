@@ -8,14 +8,11 @@ import isUndefined from 'lodash/isUndefined';
 
 import i18n from 'configs/i18n';
 
-export default function renderStarCell({
-  cell,
-  row,
-  onAddFavoriteAsset,
-  onRemoveFavoriteAsset,
-  theme,
-}) {
+export default function renderStarCell({ cell, row, table }) {
   const isFavorite = !isUndefined(cell.getValue());
+
+  const { onAddFavoriteAsset, onRemoveFavoriteAsset, theme } =
+    table.options.meta;
 
   return (
     <Tooltip

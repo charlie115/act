@@ -29,7 +29,6 @@ const ReactTableUI = forwardRef(
     {
       columns,
       data,
-      extraData,
       options,
       enableTablePaginationUI,
       renderSubComponent,
@@ -150,23 +149,19 @@ const ReactTableUI = forwardRef(
                   renderRow ? (
                     renderRow({
                       row,
-                      extraData,
+                      table,
                       renderSubComponent,
                       getCellProps,
                       getRowProps,
-                      theme,
-                      isMobile,
                     })
                   ) : (
                     <MemoizedRow
                       key={row.id}
                       row={row}
-                      extraData={extraData}
+                      table={table}
                       renderSubComponent={renderSubComponent}
                       getCellProps={getCellProps}
                       getRowProps={getRowProps}
-                      theme={theme}
-                      isMobile={isMobile}
                     />
                   )
                 )
@@ -182,7 +177,8 @@ const ReactTableUI = forwardRef(
                         <Skeleton
                           animation="wave"
                           variant="text"
-                          sx={{ mx: 2 }}
+                          sx={{ mx: { xs: 0, md: 1 } }}
+                          height={isMobile ? 10 : 20}
                           width={column.getSize() * 0.9}
                           // width={(column.getSize() - index) / 2}
                         />
@@ -246,15 +242,7 @@ const ReactTableUI = forwardRef(
 );
 
 const MemoizedRow = React.memo(
-  ({
-    row,
-    extraData,
-    renderSubComponent,
-    getCellProps,
-    getRowProps,
-    theme,
-    isMobile,
-  }) => (
+  ({ row, table, renderSubComponent, getCellProps, getRowProps }) => (
     <>
       <TableRow {...(getRowProps ? getRowProps(row) : {})}>
         {row.getVisibleCells().map((cell) => (
@@ -266,9 +254,6 @@ const MemoizedRow = React.memo(
           >
             {flexRender(cell.column.columnDef.cell, {
               ...cell.getContext(),
-              ...extraData,
-              isMobile,
-              theme,
             })}
           </TableCell>
         ))}
@@ -276,7 +261,7 @@ const MemoizedRow = React.memo(
       {row.getIsExpanded() && renderSubComponent && (
         <TableRow key={`${row.id}-expand-panel`}>
           <TableCell colSpan={row.getVisibleCells().length}>
-            {renderSubComponent({ row, extraData })}
+            {renderSubComponent({ row, meta: table.options.meta })}
           </TableCell>
         </TableRow>
       )}

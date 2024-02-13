@@ -259,8 +259,9 @@ function PremiumTable({
               accessorKey: 'targetFundingRate',
               enableGlobalFilter: false,
               size: isMobile ? 40 : 60,
-              header: (props) =>
-                renderFundingRateHeader({ ...props, marketCodes }),
+              // header: (props) =>
+              //   renderFundingRateHeader({ ...props, marketCodes }),
+              header: renderFundingRateHeader,
               cell: renderFundingRateCell,
             },
           ]
@@ -271,8 +272,7 @@ function PremiumTable({
               accessorKey: 'originFundingRate',
               enableGlobalFilter: false,
               size: isMobile ? 40 : 60,
-              header: (props) =>
-                renderFundingRateHeader({ ...props, marketCodes }),
+              header: renderFundingRateHeader,
               cell: renderFundingRateCell,
             },
           ]
@@ -461,19 +461,19 @@ function PremiumTable({
   }, []);
 
   const renderSubComponent = useCallback(
-    ({ row, extraData }) => (
+    ({ row, meta }) => (
       <Box>
         <PremiumDataChartViewer
           showFundingRate
           showFundingRateDiff
           baseAssetData={row.original}
-          {...extraData}
+          {...meta}
         />
         {loggedin && (
           <TradeTriggerConfigByAsset
             baseAsset={row.original.name}
             onAlarmConfigChange={onAlarmConfigChange}
-            {...extraData}
+            {...meta}
           />
         )}
       </Box>
@@ -508,15 +508,6 @@ function PremiumTable({
         ref={tableRef}
         columns={columns}
         data={data}
-        extraData={{
-          alarmConfig,
-          marketCodes,
-          queryKey,
-          isKimpExchange,
-          isTetherPriceView,
-          onAddFavoriteAsset,
-          onRemoveFavoriteAsset,
-        }}
         options={{
           getRowId,
           defaultColumn: { sortingFn: sortWithStarred },
@@ -528,6 +519,17 @@ function PremiumTable({
           },
           onExpandedChange,
           onPaginationChange: setPagination,
+          meta: {
+            alarmConfig,
+            marketCodes,
+            queryKey,
+            isMobile,
+            isKimpExchange,
+            isTetherPriceView,
+            onAddFavoriteAsset,
+            onRemoveFavoriteAsset,
+            theme,
+          },
         }}
         renderSubComponent={renderSubComponent}
         getCellProps={() => ({ sx: { height: 50 } })}

@@ -196,13 +196,13 @@ export default function AvgFundingRateTable() {
     [data, assetsData, selectedMarket?.value]
   );
 
-  const renderSubComponent = useCallback(({ row, extraData }) => (
+  const renderSubComponent = useCallback(({ row, meta }) => (
     <Box>
       <LightWeightFundingRateChart
         symbol={row.original.symbol}
         baseAsset={row.original.name}
         marketCode={`${row.original.market}/${row.original.quoteAsset}`}
-        {...extraData}
+        {...meta}
       />
     </Box>
   ));

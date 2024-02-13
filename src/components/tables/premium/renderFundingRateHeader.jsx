@@ -8,7 +8,8 @@ import i18n from 'configs/i18n';
 
 import { MARKET_CODE_LIST } from 'constants/lists';
 
-export default function renderFundingRateHeader({ column, marketCodes }) {
+export default function renderFundingRateHeader({ column, table }) {
+  const { marketCodes } = table.options.meta;
   const marketCode = MARKET_CODE_LIST.find(
     (o) =>
       o.value ===

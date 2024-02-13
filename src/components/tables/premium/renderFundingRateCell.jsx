@@ -6,7 +6,7 @@ import isUndefined from 'lodash/isUndefined';
 
 import FundingRate from 'components/FundingRate';
 
-export default function renderFundingRateCell({ cell, column, row, isMobile }) {
+export default function renderFundingRateCell({ cell, column, row, table }) {
   const value = cell.getValue();
   if (isUndefined(value)) return '...';
 
@@ -32,7 +32,7 @@ export default function renderFundingRateCell({ cell, column, row, isMobile }) {
       diff={diff}
       value={value}
       fundingTime={fundingRate?.funding_time}
-      isMobile={isMobile}
+      isMobile={table.options.meta.isMobile}
     />
   );
 }

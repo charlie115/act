@@ -11,17 +11,12 @@ import Highlighter from 'react-highlight-words';
 
 import isUndefined from 'lodash/isUndefined';
 
-export default function renderNameCell({
-  cell,
-  row,
-  table,
-  handleAddFavoriteAsset,
-  handleRemoveFavoriteAsset,
-  isMobile,
-  theme,
-}) {
+export default function renderNameCell({ cell, row, table }) {
   const isFavorite = !isUndefined(row.original.favoriteAssetId);
   const searchWord = table.getState().globalFilter;
+
+  const { onAddFavoriteAsset, onRemoveFavoriteAsset, isMobile } =
+    table.options.meta;
 
   return (
     <>
@@ -33,7 +28,7 @@ export default function renderNameCell({
                 loading="lazy"
                 width={isMobile ? '10' : '15'}
                 src={row.original.icon}
-                alt={row.original.name}
+                alt={cell.getValue()}
               />
             ) : (
               <BlockIcon color="secondary" sx={{ fontSize: 12 }} />
@@ -55,13 +50,10 @@ export default function renderNameCell({
               onClick={(e) => {
                 e.stopPropagation();
                 if (isFavorite)
-                  handleRemoveFavoriteAsset(row.original.favoriteAssetId);
-                else handleAddFavoriteAsset(cell.getValue());
+                  onRemoveFavoriteAsset(row.original.favoriteAssetId);
+                else onAddFavoriteAsset(cell.getValue());
               }}
-              sx={{
-                fontSize: 13,
-                ':hover': { color: theme.palette.accent.main, opacity: 0.5 },
-              }}
+              sx={{ fontSize: 13 }}
             />
           </Box>
           <Box>

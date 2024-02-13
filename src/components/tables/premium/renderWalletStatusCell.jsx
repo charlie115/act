@@ -7,7 +7,8 @@ import ArrowRightAltIcon from '@mui/icons-material/ArrowRightAlt';
 
 import { MARKET_CODE_LIST } from 'constants/lists';
 
-export default function renderWalletStatusCell({ cell, marketCodes }) {
+export default function renderWalletStatusCell({ cell, table }) {
+  const { marketCodes } = table.options.meta;
   const targetMarketCode = MARKET_CODE_LIST.find(
     (o) => o.value === marketCodes?.targetMarketCode
   );
