@@ -5,13 +5,6 @@ import pandas as pd
 import time
 import traceback
 import requests
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service as ChromeService
-from webdriver_manager.chrome import ChromeDriverManager
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
@@ -23,7 +16,6 @@ class Bithumb:
         self.secret_key = secret_key
         self.server_url = "https://api.bithumb.com"
         self.headers = {"accept": "application/json"}
-        self.chrome_driver_path = "/usr/local/bin/chromedriver"
 
     def spot_all_tickers(self, market=None):
         if market is None:
@@ -47,48 +39,20 @@ class Bithumb:
         return self.spot_all_tickers()
 
     def wallet_status(self):
-        url = "https://www.bithumb.com/coin_inout/compare_price"
-        # Set up driver
-        service = Service(self.chrome_driver_path)
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        options.add_argument('--no-sandbox')
-        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko")
-        # chrome_options.add_argument("--disable-dev-shm-usage")
-        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+        network_df = pd.DataFrame()
+        base_asset_list = self.spot_all_tickers()['base_asset'].to_list()
+        for each_base_asset in base_asset_list:
+            res = requests.get(f'https://api.bithumb.com/public/assetsstatus/multichain/{each_base_asset}')
+            df = pd.DataFrame(res.json()['data'])
+            df.loc[:, 'currency'] = each_base_asset
+            network_df = pd.concat([network_df, df])
+            time.sleep(0.025)
+        network_df = network_df.rename(columns={'currency': 'asset', 'net_type':'network_type', 'deposit_status': 'deposit', 'withdrawal_status': 'withdraw'})
+        network_df.loc[:, 'deposit'] = network_df['deposit'].apply(lambda x: True if x == 1 else False)
+        network_df.loc[:, 'withdraw'] = network_df['withdraw'].apply(lambda x: True if x == 1 else False)
+        network_df.loc[:, 'network_type'] = network_df['network_type'].apply(lambda x: x.split('_')[0])
 
-        # Get a webpage
-        driver.get(url)
-        wait = WebDriverWait(driver, 10)
-        element = wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'g_tb_list')))
-
-        element_list = driver.find_elements(By.CLASS_NAME, 'coin_list')
-        element_list = [x.text for x in element_list]
-
-        # Clean up (close browser once done)
-        driver.quit()
-
-        wallet_status_list = [x.split('(')[1] for x in element_list]
-        wallet_status_list = [x.replace(')','').split(' ') for x in wallet_status_list]
-        wallet_status_df = pd.DataFrame(wallet_status_list)
-        def temp(row):
-            try:
-                float(row[2])
-                if row[1] == "Mainnet":
-                    return row[0]
-                else:
-                    return row[1]
-            except:
-                network_name = row[1] + " " + row[2]
-                return network_name.upper()
-        wallet_status_df['network_type'] = wallet_status_df.apply(lambda row:temp(row), axis=1)
-        wallet_status_df = wallet_status_df.rename(columns={0:'asset', 3: 'deposit', 4: 'withdraw'})
-        wallet_status_df.loc[:, 'deposit'] = wallet_status_df['deposit'].apply(lambda x: True if x == '정상' else False)
-        wallet_status_df.loc[:, 'withdraw'] = wallet_status_df['withdraw'].apply(lambda x: True if x == '정상' else False)
-        wallet_status_df['network_type'] = wallet_status_df['network_type'].replace('ERC-20', 'ETH').replace('TRC-20', 'TRX').replace('BEP-20', 'BSC')
-        wallet_status_df = wallet_status_df[['asset','network_type','deposit','withdraw']]
-
-        return wallet_status_df
+        return network_df
 
 class InitBithumbAdaptor:
     def __init__(self, my_access_key=None, my_secret_key=None, logging_dir=None):
