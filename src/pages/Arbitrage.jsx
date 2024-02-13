@@ -10,6 +10,7 @@ import { useTheme } from '@mui/material/styles';
 
 import { useTranslation } from 'react-i18next';
 
+import i18n from 'configs/i18n';
 import a11yProps from 'utils/a11yProps';
 
 import AvgFundingRateTable from 'components/tables/funding_rate/AvgFundingRateTable';
@@ -17,6 +18,21 @@ import FundingRateDiffTable from 'components/tables/funding_rate/FundingRateDiff
 import TabPanel from 'components/TabPanel';
 
 const ARBITRAGE_TAB = { fundingRateDifference: 0, averageFundingRate: 1 };
+const TABS = [
+  {
+    id: 0,
+    name: 'fundingRateDifference',
+    component: FundingRateDiffTable,
+    getLabel: () => i18n.t('Funding Rate Difference'),
+    // component: FundingRateDiffTable,
+  },
+  {
+    id: 1,
+    name: 'averageFundingRate',
+    component: AvgFundingRateTable,
+    getLabel: () => i18n.t('Average Funding Rate'),
+  },
+];
 
 export default function Arbitrage() {
   const { t } = useTranslation();
@@ -28,69 +44,40 @@ export default function Arbitrage() {
 
   return (
     <Box sx={{ flex: 1 }}>
-      {/* <Stack
-        alignItems="center"
-        justifyContent="space-between"
-        direction="row"
-        spacing={{ xs: 1, sm: 2 }}
-        sx={{
-          borderBottom: 1,
-          borderColor: 'divider',
-          mb: 1,
-        }}
-      > */}
       <Tabs
         aria-label="arbitrage-tabs"
         value={currentTab}
         onChange={(e, newValue) => setCurrentTab(newValue)}
       >
-        <Tab
-          label={t('Funding Rate Difference')}
-          value={ARBITRAGE_TAB.fundingRateDifference}
-          {...a11yProps({
-            name: 'arbitrage',
-            id: ARBITRAGE_TAB.fundingRateDifference,
-          })}
-        />
-        <Tab
-          label={t('Average Funding Rate')}
-          value={ARBITRAGE_TAB.averageFundingRate}
-          {...a11yProps({
-            name: 'arbitrage',
-            id: ARBITRAGE_TAB.averageFundingRate,
-          })}
-        />
+        {TABS.map(({ id, name, getLabel }) => (
+          <Tab
+            key={name}
+            label={getLabel()}
+            value={id}
+            {...a11yProps({ id, name })}
+          />
+        ))}
       </Tabs>
-      {/* </Stack> */}
       <SwipeableViews
         axis={theme.direction === 'rtl' ? 'x-reverse' : 'x'}
         index={currentTab}
         onChangeIndex={(newIndex) => setCurrentTab(newIndex)}
       >
-        <TabPanel
-          id="arbitrage"
-          index={ARBITRAGE_TAB.fundingRateDifference}
-          dir={theme.direction}
-          value={currentTab}
-        >
-          {currentTab === ARBITRAGE_TAB.fundingRateDifference && (
-            <Box sx={{ overflowX: 'hidden', mb: 2, p: 1 }}>
-              <FundingRateDiffTable />
-            </Box>
-          )}
-        </TabPanel>
-        <TabPanel
-          id="arbitrage"
-          index={ARBITRAGE_TAB.averageFundingRate}
-          dir={theme.direction}
-          value={currentTab}
-        >
-          {currentTab === ARBITRAGE_TAB.averageFundingRate && (
-            <Box sx={{ overflowX: 'hidden', mb: 2, p: 1 }}>
-              <AvgFundingRateTable />
-            </Box>
-          )}
-        </TabPanel>
+        {TABS.map(({ id, name, ...others }) => (
+          <TabPanel
+            key={name}
+            id={name}
+            index={id}
+            dir={theme.direction}
+            value={currentTab}
+          >
+            {currentTab === id && (
+              <Box sx={{ overflowX: 'hidden', mb: 2, p: 1 }}>
+                <others.component />
+              </Box>
+            )}
+          </TabPanel>
+        ))}
       </SwipeableViews>
     </Box>
   );
