@@ -205,8 +205,9 @@ class TradeConfigViewSet(
 class TradesViewSet(
     TradeCoreMixin,
     mixins.ListModelMixin,
-    mixins.CreateModelMixin,
     mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):

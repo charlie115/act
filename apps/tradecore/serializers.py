@@ -212,6 +212,13 @@ class TradesViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     status = serializers.CharField(required=False)
     remark = serializers.CharField(required=False)
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if not attrs["low"] < attrs["high"]:
+            raise exceptions.ValidationError({"low": ["Low must be less than high."]})
+
+        return attrs
+
     def create(self, validated_data):
         node = self.get_node(validated_data.get("trade_config_uuid"))
 
@@ -222,6 +229,31 @@ class TradesViewSetSerializer(TradeCoreMixin, serializers.Serializer):
         )
 
         if api_response.status_code == HTTP_201_CREATED:
+            return api_response.json()
+
+        self.handle_exception_from_api(api_response)
+
+    def update(self, instance, validated_data):
+        fixed_value_keys = [
+            "trade_config_uuid",
+            "base_asset",
+        ]
+
+        new_instance = instance.copy()
+        for key, value in validated_data.items():
+            if key not in fixed_value_keys and value != instance.get(key, None):
+                new_instance[key] = value
+
+        node = self.get_node(validated_data.get("trade_config_uuid"))
+
+        api_response = self.tradecore_update_api(
+            url=node.url,
+            endpoint=self.context["view"].tradecore_api_endpoint,
+            path_param=instance.get("uuid"),
+            data=new_instance,
+        )
+
+        if api_response.status_code == HTTP_200_OK:
             return api_response.json()
 
         self.handle_exception_from_api(api_response)
