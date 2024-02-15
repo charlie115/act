@@ -18,6 +18,7 @@ import Stack from '@mui/material/Stack';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import InsightsIcon from '@mui/icons-material/Insights';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
@@ -44,7 +45,7 @@ import ReactTableUI, { TableCell, TableRow } from 'components/ReactTableUI';
 
 import { EXCHANGE_LIST } from 'constants/lists';
 
-import renderChartExpandCell from 'components/tables/common/renderChartExpandCell';
+import renderExpandCell from 'components/tables/common/renderExpandCell';
 import renderFundingRateCell from './renderFundingRateCell';
 import renderFundingRateDiffCell from './renderFundingRateDiffCell';
 import renderIconCell from './renderIconCell';
@@ -229,7 +230,7 @@ export default function FundingRateDiffTable() {
         enableGlobalFilter: false,
         enableSorting: false,
         size: 11,
-        cell: renderChartExpandCell,
+        cell: renderExpandCell,
         header: <span />,
         props: {
           rowSpan: 2,
@@ -390,7 +391,7 @@ export default function FundingRateDiffTable() {
             },
             onExpandedChange: setExpanded,
             onPaginationChange: setPagination,
-            meta: { theme, isMobile },
+            meta: { theme, isMobile, expandIcon: InsightsIcon },
           }}
           getRowProps={(row) => ({
             onClick: () => {

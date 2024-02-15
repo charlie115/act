@@ -11,6 +11,7 @@ import Button from '@mui/material/Button';
 
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import InsightsIcon from '@mui/icons-material/Insights';
 import WalletIcon from '@mui/icons-material/Wallet';
 
 import { useTheme } from '@mui/material/styles';
@@ -46,13 +47,13 @@ import isUndefined from 'lodash/isUndefined';
 import orderBy from 'lodash/orderBy';
 import union from 'lodash/union';
 
+import AssetTradeConfigTriggers from 'components/AssetTradeConfigTriggers';
 import PremiumDataChartViewer from 'components/PremiumDataChartViewer';
 import ReactTableUI from 'components/ReactTableUI';
-import TradeTriggerConfigByAsset from 'components/TradeTriggerConfigByAsset';
 
 import { REGEX } from 'constants';
 
-import renderChartExpandCell from 'components/tables/common/renderChartExpandCell';
+import renderExpandCell from 'components/tables/common/renderExpandCell';
 import renderFundingRateHeader from './renderFundingRateHeader';
 import renderFundingRateCell from './renderFundingRateCell';
 import renderNameCell from './renderNameCell';
@@ -290,7 +291,7 @@ function PremiumTable({
         enableSorting: false,
         size: 11,
         maxSize: 11,
-        cell: renderChartExpandCell,
+        cell: renderExpandCell,
         header: <span />,
       },
     ],
@@ -470,7 +471,7 @@ function PremiumTable({
           {...meta}
         />
         {loggedin && (
-          <TradeTriggerConfigByAsset
+          <AssetTradeConfigTriggers
             baseAsset={row.original.name}
             onAlarmConfigChange={onAlarmConfigChange}
             {...meta}
@@ -529,6 +530,7 @@ function PremiumTable({
             onAddFavoriteAsset,
             onRemoveFavoriteAsset,
             theme,
+            expandIcon: InsightsIcon,
           },
         }}
         renderSubComponent={renderSubComponent}

@@ -12,9 +12,9 @@ const api = drfApi.injectEndpoints({
       }),
     }),
     deleteMultipleTrades: builder.mutation({
-      queryFn: async ({ ids, params }, queryApi, extraOptions) => {
+      queryFn: async ({ uuids, params }, queryApi, extraOptions) => {
         try {
-          const promises = ids.map((id) =>
+          const promises = uuids.map((id) =>
             baseQueryWithReAuth(
               {
                 url: `/tradecore/trades/${id}`,
@@ -61,6 +61,15 @@ const api = drfApi.injectEndpoints({
       }),
       invalidatesTags: ['User'],
     }),
+    putTrade: builder.mutation({
+      query: ({ uuid, ...body }) => ({
+        url: `/tradecore/trades/${uuid}/`,
+        method: 'PUT',
+        params: { tradeConfigUuid: body.trade_config_uuid },
+        body,
+      }),
+      invalidatesTags: ['Trades'],
+    }),
   }),
 });
 
@@ -71,4 +80,5 @@ export const {
   useGetTradesQuery,
   usePostTradeMutation,
   usePostTradeConfigMutation,
+  usePutTradeMutation,
 } = api;

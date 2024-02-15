@@ -14,6 +14,7 @@ import TextField from '@mui/material/TextField';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import InsightsIcon from '@mui/icons-material/Insights';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
@@ -39,7 +40,7 @@ import ReactTableUI from 'components/ReactTableUI';
 
 import { EXCHANGE_LIST } from 'constants/lists';
 
-import renderChartExpandCell from 'components/tables/common/renderChartExpandCell';
+import renderExpandCell from 'components/tables/common/renderExpandCell';
 import renderFundingRateCell from './renderFundingRateCell';
 import renderIconCell from './renderIconCell';
 import renderMarketCell from './renderMarketCell';
@@ -165,7 +166,7 @@ export default function AvgFundingRateTable() {
         enableGlobalFilter: false,
         enableSorting: false,
         size: 11,
-        cell: renderChartExpandCell,
+        cell: renderExpandCell,
         header: <span />,
       },
     ],
@@ -246,9 +247,10 @@ export default function AvgFundingRateTable() {
             state: { expanded, pagination },
             onExpandedChange: (newExpanded) => setExpanded(newExpanded()),
             onPaginationChange: setPagination,
+            meta: { theme, isMobile, expandIcon: InsightsIcon },
           }}
           renderSubComponent={renderSubComponent}
-          getCellProps={() => ({ sx: { height: 40 } })}
+          getCellProps={() => ({ onClick: () => {}, sx: { height: 40 } })}
           getRowProps={(row) => ({
             onClick: () => row.toggleExpanded(!row.getIsExpanded()),
             sx: {

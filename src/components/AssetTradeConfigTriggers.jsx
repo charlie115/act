@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -25,19 +25,22 @@ import { useTranslation } from 'react-i18next';
 import useScript from 'hooks/useScript';
 import a11yProps from 'utils/a11yProps';
 
-import AlarmConfiguration from 'components/AlarmConfiguration';
+import CreateAlarmForm from 'components/CreateAlarmForm';
 import TabPanel from 'components/TabPanel';
 
 import AlarmsTable from 'components/tables/trigger/AlarmsTable';
 
 const CONFIGURATION_TAB = { alarm: 0, autoTrade: 1, all: 2 };
 
-function TradeTriggerConfigByAsset({
+function AssetTradeConfigTriggers({
   baseAsset,
   marketCodes,
   isTetherPriceView,
   onAlarmConfigChange,
 }) {
+  const alarmsTableRef = useRef();
+  const createAlarmFormRef = useRef();
+
   const { t } = useTranslation();
 
   const theme = useTheme();
@@ -119,7 +122,7 @@ function TradeTriggerConfigByAsset({
                 })}
               />
               <Tab
-                // disabled
+                disabled
                 icon={<AccountBalanceWalletIcon />}
                 iconPosition="start"
                 label={t('Auto Trade')}
@@ -131,7 +134,7 @@ function TradeTriggerConfigByAsset({
                 })}
               />
               <Tab
-                // disabled
+                disabled
                 icon={<CheckBoxIcon />}
                 iconPosition="start"
                 label={t('All')}
@@ -154,7 +157,8 @@ function TradeTriggerConfigByAsset({
                 >
                   {currentTab === CONFIGURATION_TAB.alarm && (
                     <>
-                      <AlarmConfiguration
+                      <CreateAlarmForm
+                        ref={createAlarmFormRef}
                         baseAsset={baseAsset}
                         marketCodes={marketCodes}
                         isTetherPriceView={isTetherPriceView}
@@ -162,8 +166,10 @@ function TradeTriggerConfigByAsset({
                         onAlarmConfigChange={onAlarmConfigChange}
                       />
                       <AlarmsTable
+                        createAlarmFormRef={createAlarmFormRef}
                         baseAsset={baseAsset}
                         tradeConfigAllocation={tradeConfigAllocation}
+                        onAlarmConfigChange={onAlarmConfigChange}
                       />
                     </>
                   )}
@@ -218,4 +224,4 @@ function TradeTriggerConfigByAsset({
   return null;
 }
 
-export default React.memo(TradeTriggerConfigByAsset);
+export default React.memo(AssetTradeConfigTriggers);

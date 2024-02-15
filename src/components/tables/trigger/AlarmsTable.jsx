@@ -18,10 +18,11 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
-
-import DeleteIcon from '@mui/icons-material/Delete';
 
 import { Trans, useTranslation } from 'react-i18next';
 import { DateTime } from 'luxon';
@@ -31,22 +32,30 @@ import {
   useGetTradesQuery,
 } from 'redux/api/drf/tradecore';
 
+import isEmpty from 'lodash/isEmpty';
 import orderBy from 'lodash/orderBy';
 
 import ReactTableUI from 'components/ReactTableUI';
+import UpdateAlarmForm from 'components/UpdateAlarmForm';
 
+import renderExpandCell from 'components/tables/common/renderExpandCell';
 import renderSelectCell from './renderSelectCell';
 import renderValueCell from './renderValueCell';
-
 import renderSelectHeader from './renderSelectHeader';
 
-export default function AlarmsTable({ baseAsset, tradeConfigAllocation }) {
+export default function AlarmsTable({
+  baseAsset,
+  tradeConfigAllocation,
+  onAlarmConfigChange,
+  createAlarmFormRef,
+}) {
   const tableRef = useRef();
   const { i18n, t } = useTranslation();
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  const [expanded, setExpanded] = useState({});
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   const [rowSelection, setRowSelection] = useState({});
 
@@ -75,6 +84,11 @@ export default function AlarmsTable({ baseAsset, tradeConfigAllocation }) {
       setDeleteAlert(false);
     }
   }, [isDeleteSuccess]);
+
+  useEffect(() => {
+    if (!isEmpty(expanded)) createAlarmFormRef.current.setDisabled(true);
+    else createAlarmFormRef.current.setDisabled(false);
+  }, [expanded]);
 
   const columns = useMemo(
     () => [
@@ -106,6 +120,15 @@ export default function AlarmsTable({ baseAsset, tradeConfigAllocation }) {
         accessorKey: 'registered',
         header: t('Registration Date'),
       },
+      {
+        accessorKey: 'edit',
+        enableGlobalFilter: false,
+        enableSorting: false,
+        size: 11,
+        maxSize: 11,
+        cell: renderExpandCell,
+        header: <span />,
+      },
     ],
     [i18n.language, isMobile]
   );
@@ -126,6 +149,23 @@ export default function AlarmsTable({ baseAsset, tradeConfigAllocation }) {
   );
 
   const getRowId = useCallback((row) => row.uuid, []);
+  const onExpandedChange = useCallback(
+    (newExpanded) => setExpanded(newExpanded()),
+    []
+  );
+
+  const renderSubComponent = useCallback(
+    ({ row: { original, toggleExpanded }, meta }) => (
+      <Box sx={{ bgcolor: 'background.default' }}>
+        <UpdateAlarmForm
+          row={original}
+          onAlarmConfigChange={meta.onAlarmConfigChange}
+          toggleExpanded={toggleExpanded}
+        />
+      </Box>
+    ),
+    []
+  );
 
   return (
     <Box sx={{ mx: 4, p: 2 }}>
@@ -157,10 +197,13 @@ export default function AlarmsTable({ baseAsset, tradeConfigAllocation }) {
         options={{
           getRowId,
           enableRowSelection: true,
-          state: { pagination, rowSelection },
+          state: { expanded, pagination, rowSelection },
+          onExpandedChange,
           onPaginationChange: setPagination,
           onRowSelectionChange: setRowSelection,
+          meta: { theme, isMobile, onAlarmConfigChange, expandIcon: EditIcon },
         }}
+        renderSubComponent={renderSubComponent}
         getHeaderProps={() => ({
           sx: {
             bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
@@ -168,6 +211,15 @@ export default function AlarmsTable({ baseAsset, tradeConfigAllocation }) {
           },
         })}
         getCellProps={() => ({ sx: { height: 30, px: 2 } })}
+        getRowProps={(row) => ({
+          onClick: () => row.toggleExpanded(!row.getIsExpanded()),
+          sx: {
+            cursor: 'pointer',
+            ...(row.getIsExpanded()
+              ? { bgcolor: theme.palette.background.default }
+              : {}),
+          },
+        })}
         getTableProps={() => ({
           sx: {
             border: 1,
@@ -205,7 +257,6 @@ export default function AlarmsTable({ baseAsset, tradeConfigAllocation }) {
           <Button
             autoFocus
             color="secondary"
-            // variant="filled"
             disabled={isDeleteLoading}
             onClick={() => setDeleteAlert(false)}
           >
@@ -217,7 +268,7 @@ export default function AlarmsTable({ baseAsset, tradeConfigAllocation }) {
             disabled={isDeleteLoading}
             onClick={() =>
               deleteMultipleTrades({
-                ids: Object.keys(rowSelection),
+                uuids: Object.keys(rowSelection),
                 params: {
                   tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid,
                 },
