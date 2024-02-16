@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -47,6 +47,7 @@ const LightWeightBaseChart = forwardRef(
     },
     ref
   ) => {
+    const location = useLocation();
     const navigate = useNavigate();
 
     const containerRef = useRef();
@@ -258,7 +259,7 @@ const LightWeightBaseChart = forwardRef(
             <Button
               color="error"
               size="large"
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/login', { state: { from: location } })}
               sx={{
                 position: 'absolute',
                 top: '35%',

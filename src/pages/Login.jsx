@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -24,6 +24,7 @@ import BrandLogo from 'components/BrandLogo';
 
 export default function Login() {
   const { t } = useTranslation();
+  const location = useLocation();
 
   const user = useSelector((state) => state.auth.user);
 
@@ -35,7 +36,14 @@ export default function Login() {
 
   if (user)
     return (
-      <Navigate replace to={user.role === 'visitor' ? '/register' : '/'} />
+      <Navigate
+        replace
+        to={
+          user.role === 'visitor'
+            ? '/register'
+            : location?.state?.from?.pathname || '/'
+        }
+      />
     );
 
   return (

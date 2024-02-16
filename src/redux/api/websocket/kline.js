@@ -69,6 +69,21 @@ const api = websocketApi.injectEndpoints({
         socket.close();
         socket.removeEventListener('message', onMessage);
       },
+      // queryFn: () => {
+      //   const result = JSON.parse(dummy);
+      //   const draft = {};
+      //   result.forEach((item) => {
+      //     const dateTimeString = DateTime.fromMillis(
+      //       item.datetime_now
+      //     ).toFormat(DATE_FORMAT_API_QUERY);
+      //     item.datetime_now = DateTime.fromISO(dateTimeString).toMillis();
+
+      //     if (!(item.base_asset in draft)) draft[item.base_asset] = {};
+      //     if (!isEqual(item, draft[item.base_asset]))
+      //       draft[item.base_asset] = item;
+      //   });
+      //   return { data: draft };
+      // },
     }),
   }),
 });

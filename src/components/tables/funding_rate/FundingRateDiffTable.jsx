@@ -98,10 +98,6 @@ export default function FundingRateDiffTable() {
   }, [data]);
 
   useEffect(() => {
-    // if (marketCodes && selectedRow) selectedRow.toggleExpanded(true);
-  }, [marketCodes, selectedRow]);
-
-  useEffect(() => {
     const exchanges = [
       { label: t('All Exchanges'), value: 'ALL', icon: <CheckBoxIcon /> },
     ].concat(
@@ -292,8 +288,6 @@ export default function FundingRateDiffTable() {
               {flexRender(cell.column.columnDef.cell, {
                 ...cell.getContext(),
                 ...table.options.meta,
-                // isMobile,
-                // theme,
               })}
             </TableCell>
           ))}
@@ -343,7 +337,7 @@ export default function FundingRateDiffTable() {
               originMarketCode: `${row.original.marketY}/${row.original.quoteAssetY}`,
             }
           }
-          defaultDChartDataType={!marketCodes ? 'FR' : undefined}
+          defaultChartDataType={!marketCodes ? 'FR' : undefined}
           defaultDisabledChartDataType={
             !marketCodes ? { tp: true, LS: true, SL: true } : null
           }

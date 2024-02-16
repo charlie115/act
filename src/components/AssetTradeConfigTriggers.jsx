@@ -8,10 +8,6 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import CheckBoxIcon from '@mui/icons-material/CheckBox';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 
@@ -22,6 +18,8 @@ import { useGetNodesQuery } from 'redux/api/drf/tradecore';
 
 import { useTranslation } from 'react-i18next';
 
+import sortBy from 'lodash/sortBy';
+
 import useScript from 'hooks/useScript';
 import a11yProps from 'utils/a11yProps';
 
@@ -30,7 +28,14 @@ import TabPanel from 'components/TabPanel';
 
 import AlarmsTable from 'components/tables/trigger/AlarmsTable';
 
+import { TRIGGER_LIST } from 'constants/lists';
+
 const CONFIGURATION_TAB = { alarm: 0, autoTrade: 1, all: 2 };
+
+const TABS = sortBy(TRIGGER_LIST, 'tabId').map((trigger) => ({
+  ...trigger,
+  disabled: trigger.value !== 'alarms',
+}));
 
 function AssetTradeConfigTriggers({
   baseAsset,
@@ -38,7 +43,6 @@ function AssetTradeConfigTriggers({
   isTetherPriceView,
   onAlarmConfigChange,
 }) {
-  const alarmsTableRef = useRef();
   const createAlarmFormRef = useRef();
 
   const { t } = useTranslation();
@@ -99,10 +103,12 @@ function AssetTradeConfigTriggers({
           <Divider />
           <Box sx={isMobile ? undefined : { display: 'flex', flexGrow: 1 }}>
             <Tabs
+              allowScrollButtonsMobile
+              scrollButtons
               aria-label="configuration-tabs"
               value={currentTab}
               orientation={isMobile ? 'horizontal' : 'vertical'}
-              variant="standard"
+              variant={isMobile ? 'scrollable' : 'standard'}
               onChange={(e, newValue) => setCurrentTab(newValue)}
               sx={
                 isMobile
@@ -110,41 +116,18 @@ function AssetTradeConfigTriggers({
                   : { borderRight: 1, borderColor: 'divider', width: 150 }
               }
             >
-              <Tab
-                icon={<NotificationsIcon />}
-                iconPosition="start"
-                label={t('Alarm')}
-                value={CONFIGURATION_TAB.alarm}
-                sx={{ minHeight: 45, justifyContent: 'flex-start' }}
-                {...a11yProps({
-                  name: 'configuration',
-                  id: CONFIGURATION_TAB.alarm,
-                })}
-              />
-              <Tab
-                disabled
-                icon={<AccountBalanceWalletIcon />}
-                iconPosition="start"
-                label={t('Auto Trade')}
-                value={CONFIGURATION_TAB.autoTrade}
-                sx={{ minHeight: 45, justifyContent: 'flex-start' }}
-                {...a11yProps({
-                  name: 'configuration',
-                  id: CONFIGURATION_TAB.autoTrade,
-                })}
-              />
-              <Tab
-                disabled
-                icon={<CheckBoxIcon />}
-                iconPosition="start"
-                label={t('All')}
-                value={CONFIGURATION_TAB.all}
-                sx={{ minHeight: 45, justifyContent: 'flex-start' }}
-                {...a11yProps({
-                  name: 'all',
-                  id: CONFIGURATION_TAB.all,
-                })}
-              />
+              {TABS.map((tab) => (
+                <Tab
+                  key={tab.value}
+                  icon={<tab.icon />}
+                  iconPosition="start"
+                  label={tab.getLabel()}
+                  value={tab.tabId}
+                  disabled={tab.disabled}
+                  sx={{ minHeight: 45, justifyContent: 'flex-start' }}
+                  {...a11yProps(tab)}
+                />
+              ))}
             </Tabs>
             {user?.telegram_chat_id ? (
               <>

@@ -213,7 +213,7 @@ const CreateAlarmForm = forwardRef(
       >
         <Grid container spacing={3} sx={{ px: { xs: 2, md: 4 } }}>
           {showTether && (
-            <Grid item md={2} xs={6}>
+            <Grid item md={2} xs={12}>
               <Controller
                 name="isTether"
                 control={control}

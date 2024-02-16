@@ -9,6 +9,9 @@ export default function renderSelectCell({ row }) {
       disabled={row.original.isDeleteLoading}
       indeterminate={row.getIsSomeSelected()}
       onChange={row.getToggleSelectedHandler()}
+      onClick={(e) => e.stopPropagation()}
+      size="small"
+      sx={{ p: 0.5 }}
     />
   );
 }

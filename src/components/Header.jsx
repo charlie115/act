@@ -7,11 +7,12 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import IconButton from '@mui/material/IconButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
 
 import MenuIcon from '@mui/icons-material/Menu';
 
@@ -86,9 +87,12 @@ export default function Header() {
                   }}
                   selected={page.path === location.pathname}
                 >
-                  <Typography textAlign="center" sx={{ fontWeight: 700 }}>
+                  <ListItemIcon>
+                    <page.icon />
+                  </ListItemIcon>
+                  <ListItemText sx={{ fontWeight: 700 }}>
                     {page.getTitle()}
-                  </Typography>
+                  </ListItemText>
                 </MenuItem>
               ))}
             </Menu>

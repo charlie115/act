@@ -1,3 +1,7 @@
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+
 import i18n from 'configs/i18n';
 
 import BinanceSvg from 'assets/svg/binance.svg';
@@ -239,5 +243,26 @@ export const TRADING_VIEW_TICKER_SYMBOLS = [
   {
     // description: '코스닥',
     proName: 'KRX:KOSDAQ',
+  },
+];
+
+export const TRIGGER_LIST = [
+  {
+    getLabel: () => i18n.t('All Triggers'),
+    value: 'all',
+    icon: CheckBoxIcon,
+    tabId: 2,
+  },
+  {
+    getLabel: () => i18n.t('Alarms'),
+    value: 'alarms',
+    icon: NotificationsIcon,
+    tabId: 0,
+  },
+  {
+    getLabel: () => i18n.t('Auto Trade'),
+    value: 'autoTrade',
+    icon: AccountBalanceWalletIcon,
+    tabId: 1,
   },
 ];

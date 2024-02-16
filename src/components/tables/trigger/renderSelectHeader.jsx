@@ -8,6 +8,8 @@ export default function renderSelectHeader({ table }) {
       checked={table.getIsAllPageRowsSelected()}
       indeterminate={table.getIsSomePageRowsSelected()}
       onChange={table.getToggleAllPageRowsSelectedHandler()}
+      size="small"
+      sx={{ p: 0.5 }}
     />
   );
 }

@@ -29,7 +29,7 @@ import { DateTime } from 'luxon';
 
 import {
   useDeleteMultipleTradesMutation,
-  useGetTradesQuery,
+  useGetTradesByTradeConfigQuery,
 } from 'redux/api/drf/tradecore';
 
 import isEmpty from 'lodash/isEmpty';
@@ -65,7 +65,7 @@ export default function AlarmsTable({
     data: trades,
     isFetching,
     isLoading,
-  } = useGetTradesQuery(
+  } = useGetTradesByTradeConfigQuery(
     {
       baseAsset,
       tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid,
@@ -95,7 +95,7 @@ export default function AlarmsTable({
       {
         accessorKey: 'select',
         enableSorting: false,
-        size: 50,
+        size: isMobile ? 10 : 50,
         header: renderSelectHeader,
         cell: renderSelectCell,
       },
@@ -168,7 +168,7 @@ export default function AlarmsTable({
   );
 
   return (
-    <Box sx={{ mx: 4, p: 2 }}>
+    <Box sx={{ mx: { xs: 0, md: 4 }, p: { xs: 0, md: 2 } }}>
       {Object.keys(rowSelection).length > 0 && (
         <Stack alignItems="center" direction="row" spacing={2} sx={{ mb: 2 }}>
           <Typography sx={{ fontWeight: 700 }}>
@@ -207,10 +207,10 @@ export default function AlarmsTable({
         getHeaderProps={() => ({
           sx: {
             bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
-            px: 2,
+            px: { xs: 0, md: 2 },
           },
         })}
-        getCellProps={() => ({ sx: { height: 30, px: 2 } })}
+        getCellProps={() => ({ sx: { height: 30, px: { xs: 0, md: 2 } } })}
         getRowProps={(row) => ({
           onClick: () => row.toggleExpanded(!row.getIsExpanded()),
           sx: {
@@ -224,7 +224,7 @@ export default function AlarmsTable({
           sx: {
             border: 1,
             borderColor: 'divider',
-            fontSize: '1.2em',
+            fontSize: '1em',
             width: isMobile ? 'auto' : undefined,
           },
         })}
@@ -238,7 +238,7 @@ export default function AlarmsTable({
         {isDeleteLoading && <LinearProgress />}
         <DialogTitle id="delete-alert-title">
           {t(
-            'Are you sure you want to permanently delete the selected alarms?'
+            'Are you sure you want to permanently delete the selected alarm(s)?'
           )}
         </DialogTitle>
         <DialogContent>
@@ -267,12 +267,14 @@ export default function AlarmsTable({
             variant="contained"
             disabled={isDeleteLoading}
             onClick={() =>
-              deleteMultipleTrades({
-                uuids: Object.keys(rowSelection),
-                params: {
-                  tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid,
-                },
-              })
+              deleteMultipleTrades(
+                Object.keys(rowSelection).map((row) => ({
+                  uuid: row,
+                  params: {
+                    tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid,
+                  },
+                }))
+              )
             }
           >
             {t('Delete')}

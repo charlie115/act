@@ -101,7 +101,9 @@ export default function News() {
         </Box>
       )}
       <Stack
+        useFlexGap
         direction="row"
+        flexWrap="wrap"
         spacing={{ xs: 1, sm: 2 }}
         sx={{
           borderBottom: 1,
@@ -111,46 +113,59 @@ export default function News() {
           mb: 3,
         }}
       >
-        <Tabs
-          aria-label="news-tabs"
-          value={currentTab}
-          onChange={(e, newValue) => setCurrentTab(newValue)}
-          sx={{ borderBottom: 0, mb: 0 }}
+        <Box>
+          <Tabs
+            allowScrollButtonsMobile
+            scrollButtons
+            aria-label="news-tabs"
+            variant="scrollable"
+            value={currentTab}
+            onChange={(e, newValue) => setCurrentTab(newValue)}
+            sx={{ borderBottom: 0, mb: 0 }}
+          >
+            <Tab
+              label={
+                <Badge color="error" variant="dot" invisible={!newsBadge}>
+                  {t('All News')}
+                </Badge>
+              }
+              value={NEWS_TAB.allNews}
+              {...a11yProps({ name: 'news', id: NEWS_TAB.allNews })}
+            />
+            <Tab
+              label={
+                <Badge
+                  color="error"
+                  variant="dot"
+                  invisible={!socialMediaBadge}
+                >
+                  {t('Social Media')}
+                </Badge>
+              }
+              value={NEWS_TAB.socialMedia}
+              {...a11yProps({ name: 'news', id: NEWS_TAB.socialMedia })}
+            />
+            <Tab
+              label={
+                <Badge
+                  color="error"
+                  variant="dot"
+                  invisible={!announcementsBadge}
+                >
+                  {t('Exchange Notice')}
+                </Badge>
+              }
+              value={NEWS_TAB.announcements}
+              {...a11yProps({ name: 'news', id: NEWS_TAB.announcements })}
+            />
+          </Tabs>
+        </Box>
+        <Stack
+          direction="row"
+          spacing={{ xs: 0.25, sm: 1 }}
+          sx={{ alignItems: 'center', px: 1 }}
         >
-          <Tab
-            label={
-              <Badge color="error" variant="dot" invisible={!newsBadge}>
-                {t('All News')}
-              </Badge>
-            }
-            value={NEWS_TAB.allNews}
-            {...a11yProps({ name: 'news', id: NEWS_TAB.allNews })}
-          />
-          <Tab
-            label={
-              <Badge color="error" variant="dot" invisible={!socialMediaBadge}>
-                {t('Social Media')}
-              </Badge>
-            }
-            value={NEWS_TAB.socialMedia}
-            {...a11yProps({ name: 'news', id: NEWS_TAB.socialMedia })}
-          />
-          <Tab
-            label={
-              <Badge
-                color="error"
-                variant="dot"
-                invisible={!announcementsBadge}
-              >
-                {t('Exchange Notice')}
-              </Badge>
-            }
-            value={NEWS_TAB.announcements}
-            {...a11yProps({ name: 'news', id: NEWS_TAB.announcements })}
-          />
-        </Tabs>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', px: 1 }}>
-          <Box sx={{ p: 1 }}>
+          <Box sx={{ p: { xs: 0, sm: 1 } }}>
             <DateRangePicker
               onChange={({ from, to }) => {
                 setStartTime(

@@ -465,6 +465,7 @@ function PremiumTable({
     ({ row, meta }) => (
       <Box>
         <PremiumDataChartViewer
+          showExchangeWallets
           showFundingRate
           showFundingRateDiff
           baseAssetData={row.original}

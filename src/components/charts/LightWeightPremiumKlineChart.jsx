@@ -134,6 +134,7 @@ const LightWeightPremiumKlineChart = forwardRef(
       },
       { skip: !marketCodes }
     );
+
     const {
       data: initialData,
       refetch: refetchInitialData,

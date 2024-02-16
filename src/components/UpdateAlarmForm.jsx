@@ -100,13 +100,13 @@ export default function UpdateAlarmForm({
             }}
             render={({ field, fieldState }) => (
               <FormControl
-                autoFocus
                 fullWidth
                 error={!!fieldState.error}
                 variant="standard"
               >
                 <InputLabel>{t('Entry')}</InputLabel>
                 <Input
+                  autoFocus
                   readOnly={isLoading}
                   type="number"
                   startAdornment={

@@ -1,8 +1,14 @@
 import { createRef, lazy } from 'react';
 
+import HomeIcon from '@mui/icons-material/Home';
+import FeedIcon from '@mui/icons-material/Feed';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import SyncIcon from '@mui/icons-material/Sync';
+
 import i18n from 'configs/i18n';
 
 const Arbitrage = lazy(() => import('pages/Arbitrage'));
+const Bot = lazy(() => import('pages/Bot'));
 const Home = lazy(() => import('pages/Home'));
 // const Investment = lazy(() => import('pages/Investment'));
 const Login = lazy(() => import('pages/Login'));
@@ -18,6 +24,7 @@ const main = [
     element: Home,
     displayChat: true,
     displayTicker: true,
+    icon: HomeIcon,
     getTitle: () => i18n.t('Home'),
     ref: createRef(),
   },
@@ -26,6 +33,7 @@ const main = [
     path: '/arbitrage',
     element: Arbitrage,
     displayChat: true,
+    icon: SyncIcon,
     getTitle: () => i18n.t('Arbitrage'),
     ref: createRef(),
   },
@@ -42,7 +50,17 @@ const main = [
     path: '/news',
     element: News,
     displayChat: true,
+    icon: FeedIcon,
     getTitle: () => i18n.t('News'),
+    ref: createRef(),
+  },
+  {
+    name: 'bot',
+    path: '/bot',
+    element: Bot,
+    displayChat: true,
+    icon: SmartToyIcon,
+    getTitle: () => i18n.t('Bot'),
     ref: createRef(),
   },
 ];
