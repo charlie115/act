@@ -109,12 +109,12 @@ class InitTrigger:
             else:
                 if free_user:
                     sql = """
-                    SELECT trade.*, trade_config, trade_config.service_datetime_end, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code
+                    SELECT trade.*, trade_config, trade_config.service_datetime_end, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code, trade_config.send_times, trade_config.send_term
                     FROM trade
                     JOIN trade_config ON trade.trade_config_uuid = trade_config.uuid WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s AND trade_config.service_datetime_end <= %s"""
                 else:
                     sql = """
-                    SELECT trade.*, trade_config, trade_config.service_datetime_end, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code
+                    SELECT trade.*, trade_config, trade_config.service_datetime_end, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code, trade_config.send_times, trade_config.send_term
                     FROM trade
                     JOIN trade_config ON trade.trade_config_uuid = trade_config.uuid WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s AND trade_config.service_datetime_end > %s"""
                 val = (target_market_code, origin_market_code, pd.Timestamp.now())
@@ -196,16 +196,16 @@ class InitTrigger:
                 sl_premium = row['SL_premium']
                 sl_premium_value = row['SL_premium_value']
 
-                msg_title = f"프리미엄 상향돌파"
+                msg_title = f"{row['base_asset']}/{row['quote_asset']} 프리미엄 상향돌파"
                 msg_content = f"{row['target_market_code']}:{row['origin_market_code']}\n"
-                msg_content += f"{row['base_asset']}/{row['quote_asset']} 현재 SL:{round(sl_premium_value, 3)}, 설정된 High: {row['high']}\n"
+                msg_content += f"현재 SL:{round(sl_premium_value, 3)}, 설정된 탈출값: {row['high']}\n"
                 if pd.isnull(row['tp']):
                     current_price = (row['ap'] + row['bp'])/2
                 else:
                     current_price = row['tp']
                 msg_content += f"현재가격: {current_price}({round(row['scr'],2)}%)"
                 msg_full = f"{msg_title}\n{msg_content}"
-                self.acw_api.create_message(row['telegram_id'], msg_title, self.node, 'info', msg_full)
+                self.acw_api.create_message(row['telegram_id'], msg_title, self.node, 'info', msg_full, send_times=row['send_times'], send_term=row['send_term'])
             row_thread = Thread(target=row_thread, args=(row_tup,), daemon=True)
             row_thread.start()
 
@@ -221,15 +221,15 @@ class InitTrigger:
                 sl_premium = row['SL_premium']
                 sl_premium_value = row['SL_premium_value']
 
-                msg_title = f"프리미엄 하향돌파"
+                msg_title = f"{base_asset}/{quote_asset} 프리미엄 하향돌파"
                 msg_content = f"{row['target_market_code']}:{row['origin_market_code']}\n"
-                msg_content += f"{base_asset}/{quote_asset} 현재 LS:{round(ls_premium_value, 3)}, 설정된 Low: {row['low']}\n"
+                msg_content += f"현재 LS:{round(ls_premium_value, 3)}, 설정된 진입값: {row['low']}\n"
                 if pd.isnull(row['tp']):
                     current_price = (row['ap'] + row['bp'])/2
                 else:
                     current_price = row['tp']
                 msg_content += f"현재가격: {current_price}({round(row['scr'],2)}%)"
                 msg_full = f"{msg_title}\n{msg_content}"
-                self.acw_api.create_message(row['telegram_id'], msg_title, self.node, 'info', msg_full)
+                self.acw_api.create_message(row['telegram_id'], msg_title, self.node, 'info', msg_full, send_times=row['send_times'], send_term=row['send_term'])
             row_thread = Thread(target=row_thread, args=(row_tup,), daemon=True)
             row_thread.start()
