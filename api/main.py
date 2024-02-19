@@ -1,3 +1,4 @@
+import random
 from fastapi import FastAPI
 from fastapi import status
 from fastapi.responses import Response
@@ -10,9 +11,10 @@ from typing import Optional
 from typing import List
 from uuid import UUID
 import sys, os
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-import schemas
-import crud
+upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(upper_dir)
+from api import schemas
+from api import crud
 
 app = FastAPI()
 
@@ -63,3 +65,30 @@ async def remove_trade(uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
 @app.delete("/trades/")
 async def remove_all_trades(trade_config_uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
     return await crud.delete_all_trade(trade_config_uuid, db)
+
+@app.get("/exchange-api-key/", response_model=List[schemas.ExchangeApiKey])
+async def read_exchange_api_keys(trade_config_uuid: Optional[UUID] = None, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.get_all_exchange_api_keys(trade_config_uuid, db)
+
+@app.get("/exchange-api-key/{uuid}", response_model=schemas.ExchangeApiKey)
+async def read_exchange_api_key(uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.get_exchange_api_key(uuid, db)
+
+@app.post("/exchange-api-key/", response_model=schemas.ExchangeApiKey, status_code=status.HTTP_201_CREATED)
+async def create_exchange_api_key(exchange_api_key: schemas.ExchangeApiKeyCreate, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.create_exchange_api_key(exchange_api_key, db)
+
+@app.put("/exchange-api-key/{uuid}", response_model=schemas.ExchangeApiKey)
+async def update_exchange_api_key(uuid: UUID, exchange_api_key: schemas.ExchangeApiKeyUpdate, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.update_exchange_api_key(uuid, exchange_api_key, db)
+
+@app.delete("/exchange-api-key/{uuid}")
+async def remove_exchange_api_key(uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.delete_exchange_api_key(uuid, db)
+
+
+
+# ############ API endpoints for communication with exchanges ####################################
+# @app.get("/balance/{acw_user_uuid}", response_model=List[schemas.SpotBalance])
+# async def read_balance(acw_user_uuid: UUID, market_code: str, db: AsyncSession = Depends(crud.get_db)):
+#     return await crud.fetch_balance(acw_user_uuid, market_code, db)

@@ -1,4 +1,5 @@
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, Numeric, ForeignKey, Integer, SmallInteger, Text, text
+from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -31,9 +32,9 @@ class TradeConfig(Base):
     origin_market_margin_call = Column(SmallInteger)
     target_market_safe_reverse = Column(Boolean)
     origin_market_safe_reverse = Column(Boolean)
-    target_market_risk_threshold_p = Column(Numeric(3, 3))
-    origin_market_risk_threshold_p = Column(Numeric(3, 3))
-    repeat_limit_p = Column(Numeric(3, 3))
+    target_market_risk_threshold_p = Column(Numeric(6, 3))
+    origin_market_risk_threshold_p = Column(Numeric(6, 3))
+    repeat_limit_p = Column(Numeric(6, 3))
     repeat_limit_direction = Column(Text)
     repeat_num_limit = Column(Integer)
     on_off = Column(Boolean)
@@ -50,8 +51,8 @@ class Trade(Base):
     last_updated_datetime = Column(DateTime)
     base_asset = Column(Text, nullable=False)
     usdt_conversion = Column(Boolean, nullable=False)
-    low = Column(Numeric(5, 3), nullable=False)
-    high = Column(Numeric(5, 3), nullable=False)
+    low = Column(Numeric(8, 3), nullable=False)
+    high = Column(Numeric(8, 3), nullable=False)
     trigger_switch = Column(SmallInteger)
     trade_switch = Column(SmallInteger)
     trade_capital = Column(Integer)
@@ -73,7 +74,7 @@ class RepeatTrade(Base):
     trade_uuid = Column(ForeignKey('trade.uuid', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
     registered_datetime = Column(DateTime)
     last_update_datetime = Column(DateTime)
-    pauto_num = Column(Numeric(3, 3))
+    pauto_num = Column(Numeric(6, 3))
     switch = Column(SmallInteger)
     auto_trade_switch = Column(SmallInteger)
     enter_target_market_order_id = Column(Text)
@@ -84,3 +85,22 @@ class RepeatTrade(Base):
     remark = Column(Text)
 
     trade = relationship('Trade')
+
+class ExchangeApiKey(Base):
+    __tablename__ = 'exchange_api_key'
+
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(UUID(as_uuid=True), unique=True, server_default=text("gen_random_uuid()"))
+    trade_config_uuid = Column(ForeignKey('trade_config.uuid', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    registered_datetime = Column(DateTime)
+    last_update_datetime = Column(DateTime)
+    market_code = Column(Text, nullable=False)
+    exchange = Column(Text, nullable=False)
+    spot = Column(Boolean, nullable=False)
+    futures = Column(Boolean, nullable=False)
+    access_key = Column(BYTEA, nullable=False)
+    secret_key = Column(BYTEA, nullable=False)
+    passphrase = Column(BYTEA)
+    remark = Column(Text)
+
+    trade_config = relationship('TradeConfig')

@@ -102,8 +102,8 @@ class Trade(TradeBase):
 class RepeatTradeBase(BaseModel):
     uuid: UUID
     trade_uuid: UUID
-    registered_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    last_update_datetime: Optional[datetime] = None
+    registered_datetime: datetime
+    last_update_datetime: datetime
     pauto_num: Optional[Decimal] = None
     switch: Optional[int] = None
     auto_trade_switch: Optional[int] = None
@@ -124,3 +124,98 @@ class RepeatTrade(RepeatTradeBase):
 
     class Config:
         orm_mode = True
+
+class ExchangeApiKeyBase(BaseModel):
+    uuid: UUID
+    trade_config_uuid: UUID
+    registered_datetime: datetime
+    last_update_datetime: datetime
+    market_code: str
+    exchange: str
+    spot: bool
+    futures: bool
+    access_key: bytes  # Consider handling this differently if sensitive
+    remark: Optional[str] = None
+
+# Schema for request on user API key creation
+class ExchangeApiKeyCreate(ExchangeApiKeyBase):
+    uuid: Optional[UUID] = None
+    trade_config_uuid: UUID
+    registered_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    last_update_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    market_code: str
+    exchange: Optional[str] = None
+    spot: Optional[bool] = None
+    futures: Optional[bool] = None
+    access_key: bytes
+    secret_key: bytes
+    passphrase: Optional[bytes] = None
+    
+# Schema for request on user API key update
+class ExchangeApiKeyUpdate(ExchangeApiKeyBase):
+    uuid: Optional[UUID] = None
+    trade_config_uuid: Optional[UUID] = None
+    registered_datetime: Optional[datetime] = None
+    last_update_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    market_code: Optional[str] = None
+    exchange: Optional[str] = None
+    spot: Optional[bool] = None
+    futures: Optional[bool] = None
+    access_key: Optional[bytes] = None
+    secret_key: Optional[bytes] = None
+    passphrase: Optional[bytes] = None
+    remark: Optional[str] = None
+
+# Schema for response model
+class ExchangeApiKey(ExchangeApiKeyBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+
+######################## Schema without database #######################################
+class SpotPosition(BaseModel):
+    asset: str
+    free: Decimal
+    locked: Decimal
+
+class USDMPosition(BaseModel):
+    symbol: str
+    base_asset: str
+    entry_price: Decimal
+    leverage: int
+    qty: Decimal
+    margin_type: str
+    unrealized_profit_percent: Optional[Decimal] = None
+    liquidation_price: Optional[Decimal] = None
+    ROI: Optional[Decimal] = None
+
+class COINMPosition(BaseModel):
+    symbol: str
+    base_asset: str
+    entry_price: Decimal
+    leverage: int
+    qty: Decimal
+    margin_type: str
+    unrealized_profit_percent: Optional[Decimal] = None
+    liquidation_price: Optional[Decimal] = None
+    ROI: Optional[Decimal] = None
+
+class SpotCapital(BaseModel):
+    currency: str
+    available: Decimal
+    locked: Decimal
+    unrealized_profit: Decimal
+
+class USDMCapital(BaseModel):
+    currency: str
+    available: Decimal
+    locked: Decimal
+    unrealized_profit: Decimal  
+
+class COINMCapital(BaseModel): 
+    currency: str
+    available: Decimal
+    locked: Decimal
+    unrealized_profit: Decimal

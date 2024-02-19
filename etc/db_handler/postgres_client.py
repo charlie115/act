@@ -45,6 +45,7 @@ class InitDBClient:
         self.create_trade_config()
         self.create_trade()
         self.create_repeat_trade()
+        self.create_exchange_api_key()
 
     def check_table_exist(self, table_name):
         query = f"""
@@ -93,9 +94,9 @@ class InitDBClient:
                 origin_market_margin_call SMALLINT,
                 target_market_safe_reverse BOOLEAN,
                 origin_market_safe_reverse BOOLEAN,
-                target_market_risk_threshold_p NUMERIC(3, 3),
-                origin_market_risk_threshold_p NUMERIC(3, 3),
-                repeat_limit_p NUMERIC(3, 3),
+                target_market_risk_threshold_p NUMERIC(6, 3),
+                origin_market_risk_threshold_p NUMERIC(6, 3),
+                repeat_limit_p NUMERIC(6, 3),
                 repeat_limit_direction TEXT,
                 repeat_num_limit INTEGER,
                 on_off BOOLEAN,
@@ -130,8 +131,8 @@ class InitDBClient:
                 last_updated_datetime TIMESTAMP,
                 base_asset TEXT NOT NULL,
                 usdt_conversion BOOLEAN NOT NULL,
-                low NUMERIC(5, 3) NOT NULL,
-                high NUMERIC(5, 3) NOT NULL,
+                low NUMERIC(8, 3) NOT NULL,
+                high NUMERIC(8, 3) NOT NULL,
                 trigger_switch SMALLINT,
                 trade_switch SMALLINT,
                 trade_capital INTEGER,
@@ -172,16 +173,55 @@ class InitDBClient:
                 trade_uuid UUID NOT NULL,
                 registered_datetime TIMESTAMP,
                 last_update_datetime TIMESTAMP,
-                pauto_num NUMERIC(3, 3),
+                pauto_num NUMERIC(6, 3),
                 switch SMALLINT,
                 auto_trade_switch SMALLINT,
                 enter_target_market_order_id TEXT,
                 enter_origin_market_order_id TEXT,
                 exit_target_market_order_id TEXT,
                 exit_origin_market_order_id TEXT,
-                status TEXT NOT NULL,
+                status TEXT,
                 remark TEXT,
                 FOREIGN KEY (trade_uuid) REFERENCES trade(uuid)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE
+            )"""
+        conn = self.get_conn()
+        curr = conn.cursor()
+        curr.execute(query)
+        conn.commit()
+        curr.close()
+        conn.close()
+        if self.logger is not None:
+            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
+        else:
+            print(f"InitDBClient|TABLE: {table_name} created.")
+
+    def create_exchange_api_key(self, table_name='exchange_api_key'):
+        # First check whether the table exists
+        if self.check_table_exist(table_name):
+            if self.logger is not None:
+                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
+            else:
+                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            return
+        query = f"""
+            CREATE TABLE IF NOT EXISTS {table_name}
+            (
+                id SERIAL PRIMARY KEY,
+                uuid UUID DEFAULT gen_random_uuid() UNIQUE,
+                trade_config_uuid UUID NOT NULL,
+                registered_datetime TIMESTAMP,
+                last_update_datetime TIMESTAMP,
+                market_code TEXT NOT NULL,
+                exchange TEXT NOT NULL,
+                spot BOOLEAN NOT NULL,
+                futures BOOLEAN NOT NULL,
+                access_key BYTEA NOT NULL,
+                secret_key BYTEA NOT NULL,
+                passphrase BYTEA,
+                remark TEXT,
+                FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE
             )"""

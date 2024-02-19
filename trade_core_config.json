@@ -1,16 +1,15 @@
 {
-    "node": "trade_core1",
+    "node": "trade_core_dev",
     "node_settings":
     {
-        "trade_core1":
+        "trade_core_dev":
         {
+            "prod": false,
             "db_settings": "dev_postgres_docker",
             "redis_settings": "dev_redis_remote",
             "telegram_bot_name": "test_bot",
             "reference_node": null,
-            "enabled_markets": [
-                "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT"
-            ]
+            "encryption_key": "1JhCAuLI_oEkqCih_2oRWWY4Q1LL8l-VoWgxJJxKt_I="
         }
     },
     "telegram_bot_setting": 
@@ -32,7 +31,7 @@
     },
     "acw_setting":
     {
-        "dev_url": "https://acw-dev.orbitholdings.org:20081/",
+        "dev_url": "https://acw-test.orbitholdings.org/api/",
         "prod_url": ""
     },
     "database_setting":

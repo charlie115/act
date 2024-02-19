@@ -93,7 +93,7 @@ class MyTelegramBot(telegram.Bot):
 ####################################################################################################################################
 
 class InitTelegramBot:
-    def __init__(self, bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list, total_enabled_market_klines):
+    def __init__(self, bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list):
         self.node = node
         # self.encryption_key = encryption_key
         self.core = core
@@ -105,9 +105,9 @@ class InitTelegramBot:
         self.telegram_bot_logger = KimpBotLogger("telegram_bot_logger", logging_dir).logger
         self.updater = Updater(token=bot_token, request_kwargs={'read_timeout': 30, 'connect_timeout': 30})
         self.dispatcher = self.updater.dispatcher
-        self.total_enabled_market_klines = total_enabled_market_klines
-        self.total_enabled_markets = []
-        self._get_total_enabled_markets()
+        # self.total_enabled_market_klines = total_enabled_market_klines
+        # self.total_enabled_markets = []
+        # self._get_total_enabled_markets()
         request_object = telegram.utils.request.Request(connect_timeout=30.0, read_timeout=30.0)
         # self.bot = telegram.Bot(token=bot_token, request=request_object)
         self.bot = MyTelegramBot(logger=self.telegram_bot_logger, token=bot_token, request=request_object)
@@ -155,14 +155,14 @@ class InitTelegramBot:
         # start polling
         self.updater.start_polling()
 
-    def _get_total_enabled_markets(self):
-        for each_market_combi_code in self.total_enabled_market_klines:
-            target_market_code, origin_market_code = each_market_combi_code.split(':')
-            target_market = target_market_code.split('/')[0]
-            origin_market = origin_market_code.split('/')[0]
-            self.total_enabled_markets.append(target_market)
-            self.total_enabled_markets.append(origin_market)
-        self.total_enabled_markets = list(set(self.total_enabled_markets))
+    # def _get_total_enabled_markets(self):
+    #     for each_market_combi_code in self.total_enabled_market_klines:
+    #         target_market_code, origin_market_code = each_market_combi_code.split(':')
+    #         target_market = target_market_code.split('/')[0]
+    #         origin_market = origin_market_code.split('/')[0]
+    #         self.total_enabled_markets.append(target_market)
+    #         self.total_enabled_markets.append(origin_market)
+    #     self.total_enabled_markets = list(set(self.total_enabled_markets))
 
 ######### telegram chat functions####################################################################################################
 

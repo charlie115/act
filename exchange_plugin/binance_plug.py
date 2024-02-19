@@ -144,3 +144,320 @@ class InitBinanceAdaptor:
         binance_wallet_status_df = binance_wallet_status_df.rename(columns={"network": "network_type", "coin": "asset", "withdrawEnable": "withdraw", "depositEnable": "deposit"})
         return binance_wallet_status_df
         
+
+################################################################################################################################################
+
+
+class UserBinanceAdaptor:
+    def __init__(self, recvWindow=45000, logging_dir=None):
+        self.user_client_dict = {}
+        self.recvWindow = recvWindow
+        self.logger = KimpBotLogger("user_binance_plug", logging_dir).logger
+        self.retry_term_sec = 0.2
+        self.retry_count_limit = 2
+        self.logger.info(f"user_binance_plug_logger started.")
+
+    def load_user_client(self, access_key, secret_key):
+        user_client = self.user_client_dict.get(access_key)
+        if user_client is None:
+            self.user_client_dict[access_key] = Client(access_key, secret_key)
+            return self.user_client_dict[access_key]
+        else:
+            return user_client
+
+    def check_api_key(self, access_key, secret_key, futures=False):
+        self.user_client_dict.pop(access_key, None)
+        try:
+            if futures is False:
+                self.get_spot_balance(access_key, secret_key)
+            else:
+                self.get_usdm_balance(access_key, secret_key)
+            return (True, 'OK')
+        except Exception as e:
+            self.user_client_dict.pop(access_key, None)
+            return (False, str(e))
+
+    def get_spot_balance(self, access_key, secret_key):
+        client = self.load_user_client(access_key, secret_key)
+        spot_balance = pd.DataFrame(client.get_account()['balances'])
+        spot_balance.loc[:,['free','locked']] = spot_balance[['free','locked']].astype(float)
+        spot_balance_df = spot_balance[spot_balance['free']>0].reset_index(drop=True)
+        return spot_balance_df
+
+    def get_usdm_balance(self, access_key, secret_key, return_dict=None):
+        if return_dict is None:
+            client = self.load_user_client(access_key, secret_key)
+            usdm_balance_df = pd.DataFrame(client.futures_account_balance())
+            usdm_balance_df.loc[:, ['balance', 'maxWithdrawAmount']] = usdm_balance_df[['balance', 'maxWithdrawAmount']].astype(float)
+            return usdm_balance_df
+        else:
+            client = self.load_user_client(access_key, secret_key)
+            usdm_balance_df = pd.DataFrame(client.futures_account_balance())
+            usdm_balance_df.loc[:, ['balance', 'maxWithdrawAmount']] = usdm_balance_df[['balance', 'maxWithdrawAmount']].astype(float)
+            return_dict['res'] = usdm_balance_df
+
+    def get_balance(self, access_key, secret_key, market_type='SPOT'):
+        if market_type == "SPOT":
+            return self.get_spot_balance(access_key, secret_key)
+        elif market_type == "USD_M":
+            return self.get_usdm_balance(access_key, secret_key)
+        elif market_type == "COIN_M":
+            raise Exception(f"market_type: {market_type} is not supported yet.")
+        else:
+            raise Exception(f"Invalid market_type: {market_type}")
+
+    # Binancef order functions
+    def change_margin_type(self, access_key, secret_key, symbol, marginType='ISOLATED'):
+        client = self.load_user_client(access_key, secret_key)
+        try:
+            res = client.futures_change_margin_type(
+                symbol=symbol,
+                marginType=marginType
+            )
+        except Exception as e:
+            error_code = e.code
+            if error_code == -4046:
+                res = {'code': 200, 'msg': e.message}
+            else:
+                self.logger.error(f"change_margin_type|{traceback.format_exc()}")
+                raise Exception(e)
+        return res
+
+    def change_leverage(self, access_key, secret_key, symbol, leverage):
+        client = self.load_user_client(access_key, secret_key)
+        res = client.futures_change_leverage(symbol=symbol, leverage=leverage)
+        return res
+
+    def futures_order_info(self, access_key, secret_key, symbol, orderId, return_dict=None):
+        client = self.load_user_client(access_key, secret_key)
+        if return_dict is None:
+            res = client.futures_get_order(symbol=symbol, orderId=orderId, recvWindow=self.recvWindow)
+            return res
+        else:
+            try:
+                return_dict['res'] = client.futures_get_order(symbol=symbol, orderId=orderId, recvWindow=self.recvWindow)
+                return_dict['state'] = 'OK'
+            except Exception as e:
+                self.logger.error(f"futures_order_info|{traceback.format_exc()}")
+                return_dict['res'] = e
+                return_dict['state'] = 'ERROR'
+    # Original
+    # def market_enter(self, access_key, secret_key, symbol, qty, return_dict=None):
+    #     client = self.load_user_client(access_key, secret_key)
+    #     if return_dict is None:
+    #         res = client.futures_create_order(
+    #             symbol=symbol,
+    #             side='SELL',
+    #             type='MARKET',
+    #             quantity=qty,
+    #             recvWindow=self.recvWindow
+    #             # workingType='MARK_PRICE'
+    #         )
+    #         return res
+    #     else:
+    #         try:
+    #             return_dict['res'] =  client.futures_create_order(
+    #                 symbol=symbol,
+    #                 side='SELL',
+    #                 type='MARKET',
+    #                 quantity=qty,
+    #                 recvWindow=self.recvWindow
+    #                 # workingType='MARK_PRICE'
+    #             )
+    #             return_dict['state'] = 'OK'
+    #         except Exception as e:
+    #             self.logger.error(f"market_enter|{traceback.format_exc()}")
+    #             return_dict['res'] = e
+    #             return_dict['state'] = 'ERROR'
+
+    def market_enter(self, access_key, secret_key, symbol, qty, return_dict=None):
+        client = self.load_user_client(access_key, secret_key)
+
+        retry_count = 0
+
+        while retry_count <= self.retry_count_limit:
+            if retry_count >= 1:
+                self.logger.info(f"market_enter|retry_count: {retry_count}, retry_term_sec: {self.retry_term_sec}, retry_count_limit: {self.retry_count_limit}") # For TESTING
+            try:
+                res = client.futures_create_order(
+                    symbol=symbol,
+                    side='SELL',
+                    type='MARKET',
+                    quantity=qty,
+                    recvWindow=self.recvWindow
+                )
+                if return_dict is not None:
+                    return_dict['res'] = res
+                    return_dict['state'] = 'OK'
+                return res
+            except Exception as e:
+                if e.code not in [-1000, -1001] or retry_count == self.retry_count_limit:
+                    if return_dict is None:
+                        raise e
+                    else:
+                        return_dict['res'] = e
+                        return_dict['state'] = 'ERROR'
+                        return
+            retry_count += 1
+
+    # # Original
+    # def market_exit(self, access_key, secret_key, symbol, qty, return_dict=None):
+    #     client = self.load_user_client(access_key, secret_key)
+    #     if return_dict is None:
+    #         res = client.futures_create_order(
+    #             symbol=symbol,
+    #             side='BUY',
+    #             type='MARKET',
+    #             quantity=qty,
+    #             recvWindow=self.recvWindow
+    #         )
+    #         return res
+    #     else:
+    #         try:
+    #             return_dict['res'] = client.futures_create_order(
+    #             symbol=symbol,
+    #             side='BUY',
+    #             type='MARKET',
+    #             quantity=qty,
+    #             recvWindow=self.recvWindow
+    #         )
+    #             return_dict['state'] = 'OK'
+    #         except Exception as e:
+    #             self.logger.error(f"market_exit|{traceback.format_exc()}")
+    #             return_dict['res'] = e
+    #             return_dict['state'] = 'ERROR'
+
+    def market_exit(self, access_key, secret_key, symbol, qty, return_dict=None):
+        client = self.load_user_client(access_key, secret_key)
+
+        retry_count = 0
+
+        while retry_count <= self.retry_count_limit:
+            if retry_count >= 1:
+                self.logger.info(f"market_exit|retry_count: {retry_count}, retry_term_sec: {self.retry_term_sec}, retry_count_limit: {self.retry_count_limit}") # For TESTING
+            try:
+                res = client.futures_create_order(
+                symbol=symbol,
+                side='BUY',
+                type='MARKET',
+                quantity=qty,
+                recvWindow=self.recvWindow
+                )
+                if return_dict is not None:
+                    return_dict['res'] = res
+                    return_dict['state'] = 'OK'
+                return res
+            except Exception as e:
+                if e.code not in [-1000, -1001] or retry_count == self.retry_count_limit:
+                    if return_dict is None:
+                        raise e
+                    else:
+                        return_dict['res'] = e
+                        return_dict['state'] = 'ERROR'
+                        return
+            retry_count += 1
+    # Original
+    # def position_information(self, access_key, secret_key, symbol, return_dict=None):
+    #     client = self.load_user_client(access_key, secret_key)
+    #     if return_dict is None:
+    #         res = client.futures_position_information()
+    #         position_df = pd.DataFrame(res)
+    #         symbol_df = position_df[position_df['symbol']==symbol]
+    #         if len(symbol_df) == 0:
+    #             position_qty = 0
+    #             liquidation_price = None
+    #         else:
+    #             position_qty = abs(float(symbol_df['positionAmt'].iloc[0]))
+    #             liquidation_price = float(symbol_df['liquidationPrice'].iloc[0])
+    #         return (position_qty, liquidation_price)
+    #     else:
+    #         try:
+    #             res = client.futures_position_information()
+    #             position_df = pd.DataFrame(res)
+    #             symbol_df = position_df[position_df['symbol']==symbol]
+    #             if len(symbol_df) == 0:
+    #                 position_qty = 0
+    #                 liquidation_price = None
+    #             else:
+    #                 position_qty = abs(float(symbol_df['positionAmt'].iloc[0]))
+    #                 liquidation_price = float(symbol_df['liquidationPrice'].iloc[0])
+    #             return_dict['res'] = (position_qty, liquidation_price)
+    #             return_dict['state'] = 'OK'
+    #         except Exception as e:
+    #             self.logger.error(f"position_information|{traceback.format_exc()}")
+    #             return_dict['res'] = e
+    #             return_dict['state'] = 'ERROR'
+
+    def position_information(self, access_key, secret_key, symbol, return_dict=None):
+        client = self.load_user_client(access_key, secret_key)
+
+        retry_count = 0
+
+        while retry_count <= self.retry_count_limit:
+            try:
+                res = client.futures_position_information()
+                position_df = pd.DataFrame(res)
+                symbol_df = position_df[position_df['symbol']==symbol]
+                if len(symbol_df) == 0:
+                    position_qty = 0
+                    liquidation_price = None
+                else:
+                    position_qty = abs(float(symbol_df['positionAmt'].iloc[0]))
+                    liquidation_price = float(symbol_df['liquidationPrice'].iloc[0])
+                if return_dict is not None:
+                    return_dict['res'] = (position_qty, liquidation_price)
+                    return_dict['state'] = 'OK'
+                return (position_qty, liquidation_price)
+            except Exception as e:
+                if e.code not in [-1000, -1001] or retry_count == self.retry_count_limit:
+                    if return_dict is None:
+                        raise e
+                    else:
+                        return_dict['res'] = e
+                        return_dict['state'] = 'ERROR'
+                        return
+            retry_count += 1
+
+    def all_position_information(self, access_key, secret_key, market_type='USD_M', return_dict=None):
+        if market_type not in ["USD_M", 'COIN_M']:
+            raise Exception(f"Invalid market_type: {market_type}")
+        client = self.load_user_client(access_key, secret_key)
+        if market_type == "USD_M":
+            res = client.futures_position_information()
+            position_df = pd.DataFrame(res)
+            position_df.loc[:, 'positionAmt':'maxNotionalValue'] = position_df.loc[:,'positionAmt':'maxNotionalValue'].astype(float)
+            position_df = position_df[position_df['positionAmt']!=0].reset_index(drop=True)
+        elif market_type == "COIN_M":
+            # raise error for not supported yet
+            raise Exception(f"market_type: {market_type} is not supported yet.")
+        else:
+            raise Exception(f"Invalid market_type: {market_type}")
+        if return_dict is None:
+            return position_df
+        else:
+            try:
+                return_dict['res'] = position_df
+                return_dict['state'] = 'OK'
+            except Exception as e:
+                self.logger.error(f"all_position_information|{traceback.format_exc()}")
+                return_dict['res'] = e
+                return_dict['state'] = 'ERROR'
+
+    def get_futures_account(self, access_key, secret_key, return_dict=None):
+        client = self.load_user_client(access_key, secret_key)
+        if return_dict is None:
+            res = client.futures_account()
+            res_df = pd.DataFrame(res['assets'])
+            res_df.loc[:, 'walletBalance':'updateTime'] = res_df.loc[:, 'walletBalance':'updateTime'].astype(float)
+            return res_df
+        else:
+            try:
+                res = client.futures_account()
+                res_df = pd.DataFrame(res['assets'])
+                res_df.loc[:, 'walletBalance':'updateTime'] = res_df.loc[:, 'walletBalance':'updateTime'].astype(float)
+                return_dict['res'] = res_df
+                return_dict['state'] = 'OK'
+            except Exception as e:
+                self.logger.error(f"get_futures_account|{traceback.format_exc()}")
+                return_dict['res'] = e
+                return_dict['state'] = 'ERROR'

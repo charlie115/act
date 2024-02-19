@@ -86,3 +86,55 @@ class InitUpbitAdaptor:
             return_dict['res'] = upbit_all_ticker_df
 
     
+################################################################################################################################################
+            
+class UserUpbitAdaptor:
+    def __init__(self, logging_dir=None):
+        self.user_client_dict = {}
+        self.retry_term_sec = 0.2
+        self.retry_count_limit = 2
+        self.upbit_plug_logger = KimpBotLogger("user_upbit_plug", logging_dir).logger
+        self.upbit_plug_logger.info(f"user_upbit_plug_logger started.")
+
+    def load_user_client(self, access_key, secret_key):
+        user_client = self.user_client_dict.get(access_key)
+        if user_client is None:
+            self.user_client_dict[access_key] = Upbit(access_key, secret_key)
+            return self.user_client_dict[access_key]
+        else:
+            return user_client
+        
+    def get_spot_balance(self, access_key, secret_key, return_dict=None):
+        upbit_client = self.load_user_client(access_key, secret_key)
+        result_df = pd.DataFrame(upbit_client.Account.Account_info()['result'])
+        result_df.loc[:, ['balance','locked','avg_buy_price']] = result_df[['balance','locked','avg_buy_price']].astype(float)
+        result_df = result_df.rename(columns={'currency':'asset', 'balance':'free', 'locked':'used'})
+        if return_dict is None:
+            return result_df
+        else:
+            return_dict['res'] = result_df
+
+    def get_balance(self, access_key, secret_key, market_type='SPOT'):
+        if market_type == "SPOT":
+            return self.get_spot_balance(access_key, secret_key)
+        elif market_type == "USD_M":
+            raise Exception(f"market_type: {market_type} is not supported yet.")
+        elif market_type == "COIN_M":
+            raise Exception(f"market_type: {market_type} is not supported yet.")
+        else:
+            raise Exception(f"Invalid market_type: {market_type}")
+    
+    def check_api_key(self, access_key, secret_key, futures=False):
+        self.user_client_dict.pop(access_key, None)
+        try:
+            if futures is False:
+                self.get_spot_balance(access_key, secret_key)
+            else:
+                # self.get_coinm_balance(access_key, secret_key)
+                raise Exception(f"futures market is not supported yet.")
+            return (True, 'OK')
+        except Exception as e:
+            self.user_client_dict.pop(access_key, None)
+            return (False, str(e))
+        
+    

@@ -31,7 +31,7 @@ def get_arguments():
     # parser.add_argument('--node', '-n', required=True, nargs=1, help='Specify a node name. Configuration will be done based on the node name.', dest='node')
     parser.add_argument('--proc_n', '-p', nargs=1, help='Specify a number of processes to handle websockets.', default=[1], dest='proc_n')
     parser.add_argument('--log', '-l', nargs=1, help='Specify a directory to save log files.', default=[logging_dir], dest='logging_dir')
-    parser.add_argument('--config', '-c', nargs=1, help='Specify a directory of a config json file.', default=[current_folder_dir+"/info_core_config.json"], dest='config_dir')
+    parser.add_argument('--config', '-c', nargs=1, help='Specify a directory of a config json file.', default=[current_folder_dir+"/trade_core_config.json"], dest='config_dir')
 
     # node = parser.parse_args().node[0]
     proc_n = int(parser.parse_args().proc_n[0])
@@ -61,8 +61,8 @@ if __name__ == '__main__':
     register_monitor_msg.register(admin_id, node, 'info', f"info_core_main|node:{node} has started.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
     # Read api keys
     exchange_api_key_dict = config['exchange_api_key']
-    # enabled kline market settings
-    enabled_markets = config['node_settings'][node]['enabled_markets']
+    # # enabled kline market settings
+    # enabled_markets = config['node_settings'][node]['enabled_markets']
 
     # idle
 
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     db_dict = config['database_setting'][config['node_settings'][node]['db_settings']]
     
     # Initiate Kimp core (Websocket engine)
-    core = InitCore(logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, enabled_markets, db_dict)
+    core = InitCore(logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, db_dict)
 
     time.sleep(5)
 

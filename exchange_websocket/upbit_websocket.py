@@ -112,7 +112,7 @@ class UpbitWebsocket:
         def on_error(ws, error):
             # print(f'upbit_websocket on_error executed!')
             # print(error)
-            self.websocket_logger.error(f'upbit_websocket|upbit_websocket on_error executed!\n Error: {error}')
+            self.websocket_logger.error(f'upbit_websocket|upbit_websocket on_error executed!\n Error: {error}, traceback: {traceback.format_exc()}')
             pass
 
         def on_close(ws, close_status_code, close_msg):

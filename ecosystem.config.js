@@ -1,9 +1,9 @@
 module.exports = {
   apps : [{
-    name: 'info_core',
-    script: 'kp_info_loader_main.py',
+    name: 'trade_core',
+    script: 'trade_core_main.py',
     interpreter: 'python3.9',
-    args: "-p 5",
+    args: "-p 2",
     restart_delay: 3000,
   },
   ],
