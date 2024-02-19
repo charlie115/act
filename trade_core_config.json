@@ -10,6 +10,15 @@
             "telegram_bot_name": "test_bot",
             "reference_node": null,
             "encryption_key": "1JhCAuLI_oEkqCih_2oRWWY4Q1LL8l-VoWgxJJxKt_I="
+        },
+        "trade_core":
+        {
+            "prod": true,
+            "db_settings": "postgres_docker",
+            "redis_settings": "redis_remote",
+            "telegram_bot_name": "test_bot",
+            "reference_node": null,
+            "encryption_key": "1JhCAuLI_oEkqCih_2oRWWY4Q1LL8l-VoWgxJJxKt_I="
         }
     },
     "telegram_bot_setting": 
@@ -32,7 +41,7 @@
     "acw_setting":
     {
         "dev_url": "https://acw-test.orbitholdings.org/api/",
-        "prod_url": ""
+        "prod_url": "https://arbicrypto.net/api/"
     },
     "database_setting":
     {
@@ -71,10 +80,10 @@
         },
         "postgres_docker":
         {
-            "host":"acw",
+            "host":"postgres",
             "port":5432,
-            "user":"test",
-            "passwd":"9b_D2yf£2N3c"
+            "user":"trade_core",
+            "passwd":"5fgp3h84!!"
         },
         "mongodb_docker":
         {
