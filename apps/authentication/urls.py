@@ -17,10 +17,10 @@ from authentication.views import (
     AuthUserDetailsView,
     AuthUserRegisterView,
 )
-from lib.views import BaseEndpointListView
+from lib.views import BaseAPIListView
 
 
-class AuthAPIListView(BaseEndpointListView):
+class AuthAPIListView(BaseAPIListView):
     """
     Authentication API endpoints
     """
@@ -40,25 +40,39 @@ class AuthAPIListView(BaseEndpointListView):
         return response.Response(api_list)
 
 
+app_name = "authentication"
+
 urlpatterns = [
-    path("", AuthAPIListView.as_view(), name="auth api list"),
-    path("login/", AuthGoogleLoginView.as_view(), name="google login"),
-    path("login/telegram/", AuthTelegramLoginView.as_view(), name="telegram login"),
-    path("logout/", AuthLogoutView.as_view(), name="logout"),
-    path("password/change/", AuthPasswordChangeView.as_view(), name="password change"),
-    path("password/reset/", AuthPasswordResetView.as_view(), name="password reset"),
+    path("", AuthAPIListView.as_view(), name="auth-root"),
+    path("login/", AuthGoogleLoginView.as_view(), name="login-view"),
+    path(
+        "login/telegram/",
+        AuthTelegramLoginView.as_view(),
+        name="login-telegram-view",
+    ),
+    path("logout/", AuthLogoutView.as_view(), name="logout-view"),
+    path(
+        "password/change/",
+        AuthPasswordChangeView.as_view(),
+        name="password-change-view",
+    ),
+    path(
+        "password/reset/",
+        AuthPasswordResetView.as_view(),
+        name="password-reset-view",
+    ),
     path(
         "password/reset/confirm/",
         AuthPasswordResetConfirmView.as_view(),
-        name="password reset confirm",
+        name="password-reset-confirm-view",
     ),
-    path("token/refresh/", AuthTokenRefreshView.as_view(), name="token refresh"),
-    path("token/verify/", AuthTokenVerifyView.as_view(), name="token verify"),
-    path("user/", AuthUserDetailsView.as_view(), name="logged in user"),
-    path("user/register/", AuthUserRegisterView.as_view(), name="register user"),
+    path("token/refresh/", AuthTokenRefreshView.as_view(), name="token-refresh-view"),
+    path("token/verify/", AuthTokenVerifyView.as_view(), name="token-verify-view"),
+    path("user/", AuthUserDetailsView.as_view(), name="user-view"),
+    path("user/register/", AuthUserRegisterView.as_view(), name="user-register-view"),
 ]
 
 if os.environ["DJANGO_SETTINGS_MODULE"] == "config.settings.dev":
     urlpatterns += [
-        path("login/basic/", AuthBasicLoginView.as_view(), name="basic login"),
+        path("login/basic/", AuthBasicLoginView.as_view(), name="login-basic-view"),
     ]

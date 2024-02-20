@@ -1,10 +1,10 @@
 from rest_framework import routers
 
-from lib.views import BaseEndpointListView
+from lib.views import BaseAPIListView
 from messagecore.views import MessageViewSet
 
 
-class MessageCoreAPIListView(BaseEndpointListView):
+class MessageCoreAPIListView(BaseAPIListView):
     """
     List of MessageCore APIs
     """
@@ -14,7 +14,10 @@ class MessageCoreAPIListView(BaseEndpointListView):
 
 class DocumentedRouter(routers.DefaultRouter):
     APIRootView = MessageCoreAPIListView
+    root_view_name = "messagecore-root"
 
+
+app_name = "messagecore"
 
 router = DocumentedRouter()
 router.register(r"messages", MessageViewSet)

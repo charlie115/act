@@ -6,21 +6,23 @@ from infocore.views import (
     FundingRateDiffDataView,
 )
 
+app_name = "infocore:funding-rate"
+
 
 urlpatterns = [
     path(
         "",
         FundingRateDataView.as_view(),
-        name="funding rate data",
+        name="funding-rate-view",
     ),
     path(
         "average/",
         AverageFundingRateDataView.as_view(),
-        name=" average funding rate data",
+        name="average-funding-rate-view",
     ),
     path(
         "diff/",
         FundingRateDiffDataView.as_view(),
-        name="funding rate diff data",
+        name="funding-rate-diff-view",
     ),
 ]

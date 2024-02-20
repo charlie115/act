@@ -13,11 +13,11 @@ from drf_spectacular.views import (
 )
 from rest_framework.response import Response
 
-from lib.views import BaseEndpointListView
+from lib.views import BaseAPIListView
 from lib.url import mkpath
 
 
-class EndpointListView(BaseEndpointListView):
+class APIListView(BaseAPIListView):
     def get(self, request, *args, **kwargs):
         api_list = {
             "admin": request.build_absolute_uri("admin/"),
@@ -34,15 +34,15 @@ class EndpointListView(BaseEndpointListView):
 
 
 urlpatterns = [
-    path(mkpath(""), EndpointListView.as_view(), name="endpoint list"),
+    path(mkpath(""), APIListView.as_view(), name="api-root"),
     path(mkpath("admin/"), admin.site.urls),
-    path(mkpath("auth/"), include("authentication.urls"), name="authentication urls"),
-    path(mkpath("chat/"), include("chat.urls"), name="chat urls"),
-    path(mkpath("users/"), include("users.urls"), name="users urls"),
-    path(mkpath("infocore/"), include("infocore.urls.urls"), name="infocore urls"),
-    path(mkpath("messagecore/"), include("messagecore.urls"), name="messagecore urls"),
-    path(mkpath("newscore/"), include("newscore.urls"), name="newscore urls"),
-    path(mkpath("tradecore/"), include("tradecore.urls"), name="tradecore urls"),
+    path(mkpath("auth/"), include("authentication.urls")),
+    path(mkpath("chat/"), include("chat.urls")),
+    path(mkpath("users/"), include("users.urls")),
+    path(mkpath("infocore/"), include("infocore.urls.urls")),
+    path(mkpath("messagecore/"), include("messagecore.urls")),
+    path(mkpath("newscore/"), include("newscore.urls")),
+    path(mkpath("tradecore/"), include("tradecore.urls")),
     # redis queue
     path(mkpath("django-rq/"), include("django_rq.urls")),
     # docs

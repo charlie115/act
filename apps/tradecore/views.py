@@ -86,6 +86,7 @@ class NodeViewSet(BaseViewSet):
     serializer_class = NodeSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = NodeFilter
+    http_method_names = ["get", "post", "put", "patch", "delete"]
 
     def get_authenticators(self):
         authentication_classes = self.authentication_classes + [NodeIPAuthentication]
@@ -143,6 +144,7 @@ class TradeConfigViewSet(
     serializer_class = TradeConfigViewSetSerializer
     lookup_field = "uuid"
     tradecore_api_endpoint = "trade-config/"
+    http_method_names = ["get", "post", "put", "delete"]
 
     def get_object(self):
         trade_config_allocation = self.get_trade_config_allocation(
@@ -214,6 +216,7 @@ class TradesViewSet(
     serializer_class = TradesViewSetSerializer
     lookup_field = "uuid"
     tradecore_api_endpoint = "trades/"
+    http_method_names = ["get", "post", "put", "delete"]
 
     def get_object(self):
         "Override get_object since our queryset is a dict and not a model"
@@ -282,6 +285,11 @@ class TradesViewSet(
 
         self.handle_exception_from_api(api_response)
 
+    def delete(self, request, *args, **kwargs):
+        if not kwargs:
+            return self.bulk_delete(request)
+        return self.destroy(request, *args, **kwargs)
+
     def perform_destroy(self, instance):
         node = self.get_node(trade_config_uuid=instance.get("trade_config_uuid"))
 
@@ -298,7 +306,7 @@ class TradesViewSet(
 
     @extend_schema(responses=TradesViewSetSerializer(many=True))
     @action(detail=False, methods=["delete"])
-    def delete(self, request):
+    def bulk_delete(self, request):
         query_params = TradesViewSetQueryParamsSerializer(
             data=self.request.query_params
         )

@@ -9,10 +9,10 @@ from infocore.views import (
     KlineDataView,
     WalletStatusView,
 )
-from lib.views import BaseEndpointListView
+from lib.views import BaseAPIListView
 
 
-class InfoCoreAPIListView(BaseEndpointListView):
+class InfoCoreAPIListView(BaseAPIListView):
     """
     Info Core API endpoints
     """
@@ -50,16 +50,18 @@ class InfoCoreAPIListView(BaseEndpointListView):
         return response.Response(api_list)
 
 
+app_name = "infocore"
+
 urlpatterns = [
-    path("", InfoCoreAPIListView.as_view(), name="infocore api list"),
-    path("assets/", include("infocore.urls.assets"), name="assets urls"),
-    path("dollar/", DollarView.as_view(), name="dollar"),
+    path("", InfoCoreAPIListView.as_view(), name="infocore-root"),
+    path("assets/", include("infocore.urls.assets"), name="assets"),
+    path("dollar/", DollarView.as_view(), name="dollar-view"),
     path(
         "funding-rate/",
         include("infocore.urls.funding_rate"),
-        name="funding rate urls",
+        name="funding-rate",
     ),
-    path("kline/", KlineDataView.as_view(), name="kline data"),
-    path("market-codes/", MarketCodesView.as_view(), name="market codes"),
-    path("wallet-status/", WalletStatusView.as_view(), name="wallet status"),
+    path("kline/", KlineDataView.as_view(), name="kline-view"),
+    path("market-codes/", MarketCodesView.as_view(), name="market-codes-view"),
+    path("wallet-status/", WalletStatusView.as_view(), name="wallet-status-view"),
 ]

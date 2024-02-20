@@ -5,10 +5,10 @@ from django.urls import path
 from rest_framework import response
 
 from chat.views import PastChatMessagesView, RandomUsernameView, chatbox
-from lib.views import BaseEndpointListView
+from lib.views import BaseAPIListView
 
 
-class ChatAPIListView(BaseEndpointListView):
+class ChatAPIListView(BaseAPIListView):
     """
     Chat API endpoints
     """
@@ -32,13 +32,15 @@ class ChatAPIListView(BaseEndpointListView):
         return response.Response(api_list)
 
 
+app_name = "chat"
+
 urlpatterns = [
-    path("", ChatAPIListView.as_view(), name="chat api list"),
-    path("username/", RandomUsernameView.as_view(), name="random username"),
-    path("past/", PastChatMessagesView.as_view(), name="past chat messages"),
+    path("", ChatAPIListView.as_view(), name="chat-root"),
+    path("username/", RandomUsernameView.as_view(), name="username-view"),
+    path("past/", PastChatMessagesView.as_view(), name="past-view"),
 ]
 
 if os.environ["DJANGO_SETTINGS_MODULE"] == "config.settings.dev":
     urlpatterns += [
-        path("chatbox/", chatbox, name="chatbox"),
+        path("chatbox/", chatbox, name="chatbox-view"),
     ]

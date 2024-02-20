@@ -64,9 +64,9 @@ class UserOwnedOrManagerViewSet(UserOwnedViewSet):
         return self.queryset
 
 
-class BaseEndpointListView(routers.APIRootView):
+class BaseAPIListView(routers.APIRootView):
     """
-    View returning a list of available endpoints per app
+    View returning a list of available APIs per app
     """
 
     http_method_names = ["get"]

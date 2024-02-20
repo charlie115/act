@@ -51,3 +51,4 @@ class MessageViewSet(BaseViewSet):
         "telegram_bot_username",
         "sent",
     )
+    http_method_names = ["get", "post", "put", "patch", "delete"]

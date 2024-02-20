@@ -37,6 +37,7 @@ from users.serializers import UserSerializer
 class AuthGoogleLoginView(SocialLoginView):
     adapter_class = CustomGoogleOAuth2Adapter
     client_class = OAuth2Client
+    http_method_names = ["post"]
 
 
 @extend_schema(tags=["Auth"])
@@ -48,6 +49,7 @@ class AuthGoogleLoginView(SocialLoginView):
 )
 class AuthTelegramLoginView(LoginView):
     permission_classes = (permissions.AllowAny,)
+    http_method_names = ["post"]
 
     def post(self, request, *args, **kwargs):
         if "user" not in request.data:
@@ -118,7 +120,7 @@ class AuthTelegramLoginView(LoginView):
     ),
 )
 class AuthBasicLoginView(LoginView):
-    pass
+    http_method_names = ["post"]
 
 
 @extend_schema(tags=["Auth"])
@@ -130,7 +132,7 @@ class AuthBasicLoginView(LoginView):
     ),
 )
 class AuthLogoutView(LogoutView):
-    pass
+    http_method_names = ["post"]
 
 
 @extend_schema(tags=["Auth"])
@@ -141,7 +143,7 @@ class AuthLogoutView(LogoutView):
     ),
 )
 class AuthPasswordChangeView(PasswordChangeView):
-    pass
+    http_method_names = ["post"]
 
 
 @extend_schema(tags=["Auth"])
@@ -152,7 +154,7 @@ class AuthPasswordChangeView(PasswordChangeView):
     ),
 )
 class AuthPasswordResetView(PasswordResetView):
-    pass
+    http_method_names = ["post"]
 
 
 @extend_schema(tags=["Auth"])
@@ -163,7 +165,7 @@ class AuthPasswordResetView(PasswordResetView):
     ),
 )
 class AuthPasswordResetConfirmView(PasswordResetConfirmView):
-    pass
+    http_method_names = ["post"]
 
 
 @extend_schema(tags=["Auth"])
@@ -175,7 +177,7 @@ class AuthPasswordResetConfirmView(PasswordResetConfirmView):
     ),
 )
 class AuthTokenRefreshView(get_refresh_view()):
-    pass
+    http_method_names = ["post"]
 
 
 @extend_schema(tags=["Auth"])
@@ -186,7 +188,7 @@ class AuthTokenRefreshView(get_refresh_view()):
     ),
 )
 class AuthTokenVerifyView(TokenVerifyView):
-    pass
+    http_method_names = ["post"]
 
 
 @extend_schema(tags=["Auth"])
@@ -208,6 +210,8 @@ class AuthTokenVerifyView(TokenVerifyView):
     ),
 )
 class AuthUserDetailsView(UserDetailsView):
+    http_method_names = ["get", "put", "patch"]
+
     def partial_update(self, request, *args, **kwargs):
         telegram_bot = request.data.pop("telegram_bot", None)
         if telegram_bot:

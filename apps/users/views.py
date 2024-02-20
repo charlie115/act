@@ -77,6 +77,7 @@ class UserViewSet(UserOwnedViewSet):
         "role",
         "is_active",
     )
+    http_method_names = ["get", "post", "put", "patch", "delete"]
 
     def get_permissions(self):
         permission_classes = self.permission_classes

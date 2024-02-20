@@ -1,10 +1,10 @@
 from rest_framework import routers
 
-from lib.views import BaseEndpointListView
+from lib.views import BaseAPIListView
 from newscore.views import AnnouncementViewSet, NewsViewSet, PostViewSet
 
 
-class NewsCoreAPIListView(BaseEndpointListView):
+class NewsCoreAPIListView(BaseAPIListView):
     """
     List of NewsCore APIs
     """
@@ -14,7 +14,10 @@ class NewsCoreAPIListView(BaseEndpointListView):
 
 class DocumentedRouter(routers.DefaultRouter):
     APIRootView = NewsCoreAPIListView
+    root_view_name = "newscore-root"
 
+
+app_name = "newscore"
 
 router = DocumentedRouter()
 router.register(r"announcements", AnnouncementViewSet)

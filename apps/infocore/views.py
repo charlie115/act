@@ -68,6 +68,7 @@ class AssetViewSet(BaseViewSet):
     filterset_class = AssetFilter
     http_method_names = ["get", "post"]
     permission_classes = []
+    http_method_names = ["get", "post", "put", "patch", "delete"]
 
 
 @extend_schema_view(
@@ -78,6 +79,7 @@ class AssetViewSet(BaseViewSet):
     ),
 )
 class MarketCodesView(views.APIView):
+    http_method_names = ["get"]
     permission_classes = []
     page_size = 200
     _prefix = "INFO_CORE|ACTIVATED|"
@@ -109,13 +111,17 @@ class MarketCodesView(views.APIView):
     ),
 )
 class DollarView(views.APIView):
+    http_method_names = ["get"]
     permission_classes = []
     page_size = 200
 
     def get(self, request):
         redis_key = "INFO_CORE|dollar"
 
-        data = REDIS_CLI.get(redis_key).decode()
+        try:
+            data = REDIS_CLI.get(redis_key).decode()
+        except AttributeError:
+            raise exceptions.NotFound()
 
         try:
             data = json.loads(data)
@@ -135,6 +141,7 @@ class DollarView(views.APIView):
     ),
 )
 class KlineDataView(views.APIView):
+    http_method_names = ["get"]
     permission_classes = []
     page_size = 200
 
@@ -230,6 +237,7 @@ class KlineDataView(views.APIView):
     ),
 )
 class FundingRateDataView(views.APIView):
+    http_method_names = ["get"]
     permission_classes = []
     page_size = 200
 
@@ -329,6 +337,7 @@ class FundingRateDataView(views.APIView):
     ),
 )
 class AverageFundingRateDataView(views.APIView):
+    http_method_names = ["get"]
     permission_classes = []
     page_size = 200
 
@@ -384,6 +393,7 @@ class AverageFundingRateDataView(views.APIView):
     ),
 )
 class FundingRateDiffDataView(views.APIView):
+    http_method_names = ["get"]
     permission_classes = []
     page_size = 200
 
@@ -455,6 +465,7 @@ class FundingRateDiffDataView(views.APIView):
     ),
 )
 class WalletStatusView(views.APIView):
+    http_method_names = ["get"]
     permission_classes = []
     page_size = 200
 

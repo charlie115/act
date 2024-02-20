@@ -1,6 +1,6 @@
 from rest_framework import routers
 
-from lib.views import BaseEndpointListView
+from lib.views import BaseAPIListView
 from users.views import (
     UserViewSet,
     UserBlocklistViewSet,
@@ -9,7 +9,7 @@ from users.views import (
 )
 
 
-class UserAPIListView(BaseEndpointListView):
+class UserAPIListView(BaseAPIListView):
     """
     List of User APIs
     """
@@ -19,7 +19,10 @@ class UserAPIListView(BaseEndpointListView):
 
 class DocumentedRouter(routers.DefaultRouter):
     APIRootView = UserAPIListView
+    root_view_name = "users-root"
 
+
+app_name = "users"
 
 router = DocumentedRouter()
 router.register(r"users", UserViewSet)

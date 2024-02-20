@@ -70,6 +70,7 @@ def chatbox(request):
     ),
 )
 class PastChatMessagesView(views.APIView, PageNumberPagination):
+    http_method_names = ["get"]
     permission_classes = []
     page_size = 100
 
@@ -156,6 +157,7 @@ class PastChatMessagesView(views.APIView, PageNumberPagination):
     ),
 )
 class RandomUsernameView(views.APIView):
+    http_method_names = ["get"]
     permission_classes = []
 
     def get(self, request):

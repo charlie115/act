@@ -1,14 +1,14 @@
 from rest_framework import routers
 
+from lib.views import BaseAPIListView
 from tradecore.views import (
     NodeViewSet,
     TradeConfigViewSet,
     TradesViewSet,
 )
-from lib.views import BaseEndpointListView
 
 
-class TradeCoreAPIListView(BaseEndpointListView):
+class TradeCoreAPIListView(BaseAPIListView):
     """
     Trade Core API endpoints
     """
@@ -18,7 +18,10 @@ class TradeCoreAPIListView(BaseEndpointListView):
 
 class DocumentedRouter(routers.DefaultRouter):
     APIRootView = TradeCoreAPIListView
+    root_view_name = "tradecore-root"
 
+
+app_name = "tradecore"
 
 router = DocumentedRouter()
 router.register(r"nodes", NodeViewSet)
