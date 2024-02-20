@@ -23,7 +23,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
         if user_telegram_socialapps.first():
             telegram_bot = user_telegram_socialapps.first().socialapp
-            attrs["telegram_bot_username"] = telegram_bot.name
+            attrs["telegram_bot_username"] = telegram_bot.client_id
         else:
             raise exceptions.ValidationError(
                 {
