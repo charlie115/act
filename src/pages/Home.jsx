@@ -12,7 +12,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
-
 import { useTheme } from '@mui/material/styles';
 
 import { useDispatch, useSelector } from 'react-redux';

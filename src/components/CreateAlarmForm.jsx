@@ -298,7 +298,7 @@ const CreateAlarmForm = forwardRef(
                       entryValue &&
                       parseFloat(value) <= parseFloat(entryValue)
                     )
-                      return t('Exit must be higher than exit');
+                      return t('Exit must be higher than entry');
                     return true;
                   },
                 },

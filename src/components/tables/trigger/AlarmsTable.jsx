@@ -40,7 +40,9 @@ import UpdateAlarmForm from 'components/UpdateAlarmForm';
 
 import renderExpandCell from 'components/tables/common/renderExpandCell';
 import renderSelectCell from './renderSelectCell';
+import renderStatusCell from './renderStatusCell';
 import renderValueCell from './renderValueCell';
+
 import renderSelectHeader from './renderSelectHeader';
 
 export default function AlarmsTable({
@@ -115,10 +117,11 @@ export default function AlarmsTable({
         accessorKey: 'status',
         size: isMobile ? 80 : 140,
         header: t('Status'),
+        cell: renderStatusCell,
       },
       {
-        accessorKey: 'registered',
-        header: t('Registration Date'),
+        accessorKey: 'created',
+        header: t('Created'),
       },
       {
         accessorKey: 'edit',
@@ -138,9 +141,10 @@ export default function AlarmsTable({
       orderBy(trades || [], 'registered_datetime', 'desc').map((trade) => ({
         entry: trade.low,
         exit: trade.high,
-        registered: DateTime.fromISO(trade.registered_datetime).toLocaleString(
+        created: DateTime.fromISO(trade.registered_datetime).toLocaleString(
           DateTime.DATETIME_MED
         ),
+        status: trade.trigger_switch,
         isTether: trade.usdt_conversion,
         isDeleteLoading,
         ...trade,

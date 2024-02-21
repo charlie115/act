@@ -145,7 +145,7 @@ export default function UpdateAlarmForm({
                 greaterThanEntry: (value) => {
                   const entryValue = getValues('entry');
                   if (entryValue && parseFloat(value) <= parseFloat(entryValue))
-                    return t('Exit must be higher than exit');
+                    return t('Exit must be higher than entry');
                   return true;
                 },
               },

@@ -248,8 +248,8 @@ export const TRADING_VIEW_TICKER_SYMBOLS = [
 
 export const TRIGGER_LIST = [
   {
-    getLabel: () => i18n.t('All Triggers'),
-    value: 'all',
+    getLabel: () => i18n.t('All'),
+    value: 'ALL',
     icon: CheckBoxIcon,
     tabId: 2,
   },

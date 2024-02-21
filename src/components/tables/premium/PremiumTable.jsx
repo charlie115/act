@@ -380,27 +380,29 @@ function PremiumTable({
   const prevAssets = usePrevious(assets);
   useEffect(() => {
     if (isSuccess) {
-      if (realTimeDataList.length) {
+      if (realTimeData.length === 0) {
+        setReady(false);
+        timeoutRef.current = setTimeout(() => {
+          setAssets([]);
+          setReady(true);
+        }, 5000);
+      } else {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         const realTimeAssets = realTimeDataList
           .map((item) => item.base_asset)
           .sort();
         if (!isEqual(prevAssets, realTimeAssets)) {
           setAssets(realTimeAssets);
-          setReady(true);
         }
-      } else {
-        setReady(false);
-        timeoutRef.current = setTimeout(() => {
-          setAssets([]);
-          setReady(true);
-        }, 5000);
       }
     }
   }, [isSuccess, realTimeDataList]);
 
   useEffect(() => {
-    if (!isEqual(prevAssets, assets)) setAssetsParam(assets.join(','));
+    if (!isEqual(prevAssets, assets)) {
+      setAssetsParam(assets.join(','));
+      if (assets.length) setReady(true);
+    }
   }, [assets]);
 
   useEffect(() => {

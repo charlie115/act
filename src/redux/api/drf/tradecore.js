@@ -11,13 +11,21 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    getTradeConfig: builder.query({
+      providesTags: ['TradeConfig'],
+      keepUnusedDataFor: 1,
+      query: ({ uuid, ...params }) => ({
+        url: `/tradecore/trade-config/${uuid}/`,
+        params,
+      }),
+    }),
     deleteMultipleTrades: builder.mutation({
       queryFn: async (items, queryApi, extraOptions) => {
         try {
           const promises = items.map((item) =>
             baseQueryWithReAuth(
               {
-                url: `/tradecore/trades/${item.uuid}`,
+                url: `/tradecore/trades/${item.uuid}/`,
                 method: 'DELETE',
                 params: item.params,
               },
@@ -101,6 +109,15 @@ const api = drfApi.injectEndpoints({
       }),
       invalidatesTags: ['AllTrades', 'TradesByTradeConfig'],
     }),
+    putTradeConfig: builder.mutation({
+      query: ({ uuid, ...body }) => ({
+        url: `/tradecore/trade-config/${uuid}/`,
+        method: 'PUT',
+        // params: { tradeConfigUuid: body.trade_config_uuid },
+        body,
+      }),
+      invalidatesTags: ['TradeConfig'],
+    }),
   }),
 });
 
@@ -109,8 +126,10 @@ export const {
   useDeleteMultipleTradesMutation,
   useGetAllTradesQuery,
   useGetNodesQuery,
+  useGetTradeConfigQuery,
   useGetTradesByTradeConfigQuery,
   usePostTradeMutation,
   usePostTradeConfigMutation,
   usePutTradeMutation,
+  usePutTradeConfigMutation,
 } = api;

@@ -13,14 +13,18 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
+import InputAdornment from '@mui/material/InputAdornment';
+import OutlinedInput from '@mui/material/OutlinedInput';
 import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import SearchIcon from '@mui/icons-material/Search';
+import SyncAltIcon from '@mui/icons-material/SyncAlt';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
@@ -33,60 +37,39 @@ import {
   useGetAllTradesQuery,
 } from 'redux/api/drf/tradecore';
 
-import { useSelector } from 'react-redux';
-
+import debounce from 'lodash/debounce';
 import orderBy from 'lodash/orderBy';
-import uniqBy from 'lodash/uniqBy';
 
 import isKoreanMarket from 'utils/isKoreanMarket';
 
 import DropdownMenu from 'components/DropdownMenu';
-import MarketCodeCombinationFilter from 'components/MarketCodeCombinationFilter';
 import PremiumDataChartViewer from 'components/PremiumDataChartViewer';
 import ReactTableUI from 'components/ReactTableUI';
 import UpdateAlarmForm from 'components/UpdateAlarmForm';
 
-import { MARKET_CODE_LIST, TRIGGER_LIST } from 'constants/lists';
+import { TRIGGER_LIST } from 'constants/lists';
 
 import renderExpandCell from 'components/tables/common/renderExpandCell';
+import renderMarketCodesCell from './renderMarketCodesCell';
 import renderSelectCell from './renderSelectCell';
+import renderStatusCell from './renderStatusCell';
 import renderValueCell from './renderValueCell';
+
 import renderSelectHeader from './renderSelectHeader';
 
-export default function TriggersTable() {
+export default function TriggersTable({
+  selectedMarketCodeCombination,
+  tradeConfigAllocations,
+  tradeConfigUuids,
+}) {
   const tableRef = useRef();
   const { i18n, t } = useTranslation();
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const { user } = useSelector((state) => state.auth);
-
-  const tradeConfigAllocations = useMemo(
-    () =>
-      user?.trade_config_allocations?.map((tradeConfig) => {
-        const target = MARKET_CODE_LIST.find(
-          (o) => o.value === tradeConfig.target_market_code
-        );
-        const origin = MARKET_CODE_LIST.find(
-          (o) => o.value === tradeConfig.origin_market_code
-        );
-        return {
-          target,
-          origin,
-          uuid: tradeConfig.trade_config_uuid,
-          value: `${tradeConfig.target_market_code}:${tradeConfig.origin_market_code}`,
-        };
-      }) || [],
-    [user?.trade_config_allocations]
-  );
-
-  const tradeConfigUuids = useMemo(
-    () => user?.trade_config_allocations?.map((o) => o.trade_config_uuid) || [],
-    [user?.trade_config_allocations]
-  );
-
   const [expanded, setExpanded] = useState({});
+  const [globalFilter, setGlobalFilter] = useState('');
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 100,
@@ -96,14 +79,11 @@ export default function TriggersTable() {
   const [deleteAlert, setDeleteAlert] = useState(false);
 
   const [alarmConfig, setAlarmConfig] = useState();
-  const [marketCodeCombinationList, setMarketCodeCombinationList] = useState(
-    []
-  );
-  const [selectedMarketCodeCombination, setSelectedMarketCodeCombination] =
-    useState();
 
-  const [triggerList, setTriggerList] = useState([]);
-  const [selectedTrigger, setSelectedTrigger] = useState();
+  const [triggerTypeList, setTriggerTypeList] = useState([]);
+  const [selectedTriggerType, setSelectedTriggerType] = useState();
+
+  const [searchValue, setSearchValue] = useState('');
 
   const { data, isFetching, isLoading } = useGetAllTradesQuery(
     { tradeConfigUuids }
@@ -123,80 +103,38 @@ export default function TriggersTable() {
   }, [isDeleteSuccess]);
 
   useEffect(() => {
-    const marketCodes = [
-      {
-        label: t('All Market Code Combinations'),
-        value: 'ALL',
-        icon: <CheckBoxIcon />,
-      },
-    ].concat(
-      data?.map((item) => {
-        const tradeConfig = tradeConfigAllocations.find(
-          (o) => o.uuid === item.trade_config_uuid
-        );
-        return {
-          value: tradeConfig?.value,
-          target: {
-            label: tradeConfig?.target.getLabel(),
-            icon: (
-              <Box
-                component="img"
-                src={tradeConfig?.target.icon}
-                alt={tradeConfig?.target.getLabel()}
-                sx={{
-                  height: { xs: 16, md: 18 },
-                  width: { xs: 16, md: 18 },
-                }}
-              />
-            ),
-          },
-          origin: {
-            label: tradeConfig?.origin.getLabel(),
-            icon: (
-              <Box
-                component="img"
-                src={tradeConfig?.origin.icon}
-                alt={tradeConfig?.origin.getLabel()}
-                sx={{
-                  height: { xs: 16, md: 18 },
-                  width: { xs: 16, md: 18 },
-                }}
-              />
-            ),
-          },
-          tradeConfigUuid: tradeConfig.uuid,
-        };
-      })
-    );
-    setMarketCodeCombinationList(uniqBy(marketCodes, 'value'));
-    if (!selectedMarketCodeCombination)
-      setSelectedMarketCodeCombination(marketCodes[0]);
-  }, [
-    data,
-    selectedMarketCodeCombination,
-    tradeConfigAllocations,
-    i18n.language,
-  ]);
-
-  useEffect(() => {
     const triggers = TRIGGER_LIST.map((trigger) => ({
       label: trigger.getLabel(),
       value: trigger.value,
       icon: <trigger.icon />,
       disabled: trigger.value === 'autoTrade',
     }));
-    setTriggerList(triggers);
-    if (!selectedTrigger) setSelectedTrigger(triggers[0]);
-  }, [selectedTrigger, i18n.language]);
+    setTriggerTypeList(triggers);
+    if (!selectedTriggerType) setSelectedTriggerType(triggers[0]);
+  }, [selectedTriggerType, i18n.language]);
 
   const columns = useMemo(
     () => [
       {
         accessorKey: 'select',
+        enableGlobalFilter: false,
         enableSorting: false,
         size: isMobile ? 20 : 50,
         header: renderSelectHeader,
         cell: renderSelectCell,
+      },
+      {
+        accessorKey: 'baseAsset',
+        size: 80,
+        header: t('Base Asset'),
+      },
+      {
+        accessorKey: 'marketCodes',
+        enableGlobalFilter: false,
+        enableSorting: false,
+        size: isMobile ? 80 : 140,
+        header: <SyncAltIcon />,
+        cell: renderMarketCodesCell,
       },
       {
         accessorKey: 'entry',
@@ -214,10 +152,11 @@ export default function TriggersTable() {
         accessorKey: 'status',
         size: isMobile ? 80 : 140,
         header: t('Status'),
+        cell: renderStatusCell,
       },
       {
-        accessorKey: 'registered',
-        header: t('Registration Date'),
+        accessorKey: 'created',
+        header: t('Created'),
       },
       {
         accessorKey: 'edit',
@@ -236,11 +175,18 @@ export default function TriggersTable() {
     () =>
       orderBy(
         data?.filter((item) => {
+          if (!item) return false;
+
           let flag = selectedMarketCodeCombination?.value === 'ALL';
           if (selectedMarketCodeCombination?.value !== 'ALL')
             flag =
               selectedMarketCodeCombination?.tradeConfigUuid ===
               item.trade_config_uuid;
+          if (selectedTriggerType?.value !== 'ALL')
+            flag =
+              flag && selectedTriggerType?.value === 'alarms'
+                ? item.trade_capital === null
+                : item.trade_capital !== null;
           return flag;
         }) || [],
         'registered_datetime',
@@ -250,27 +196,39 @@ export default function TriggersTable() {
           (o) => o.uuid === trade.trade_config_uuid
         );
         return {
+          ...trade,
+          baseAsset: trade.base_asset,
           entry: trade.low,
           exit: trade.high,
-          registered: DateTime.fromISO(
-            trade.registered_datetime
-          ).toLocaleString(DateTime.DATETIME_MED),
+          created: DateTime.fromISO(trade.registered_datetime).toLocaleString(
+            DateTime.DATETIME_MED
+          ),
           isTether: trade.usdt_conversion,
           isDeleteLoading,
+          status: trade.trigger_switch,
           marketCodes: {
             targetMarketCode: tradeConfig.target.value,
             originMarketCode: tradeConfig.origin.value,
           },
-          ...trade,
         };
       }),
     [
       data,
       selectedMarketCodeCombination,
+      selectedTriggerType,
       tradeConfigAllocations,
       isDeleteLoading,
     ]
   );
+
+  const onChange = (value) => setGlobalFilter(value);
+  const debouncedOnChange = useCallback(
+    debounce(onChange, 500, { leading: false, trailing: true })
+  );
+
+  useEffect(() => {
+    debouncedOnChange(searchValue);
+  }, [searchValue]);
 
   const onAlarmConfigChange = useCallback((value) => setAlarmConfig(value), []);
 
@@ -283,15 +241,17 @@ export default function TriggersTable() {
   const renderSubComponent = useCallback(
     ({ row: { original, toggleExpanded }, meta }) => (
       <Box sx={{ bgcolor: 'background.default' }}>
-        <PremiumDataChartViewer
-          baseAssetData={{ name: original.base_asset }}
-          marketCodes={original.marketCodes}
-          isKimpExchange={
-            isKoreanMarket(original.marketCodes.targetMarketCode) &&
-            !isKoreanMarket(original.marketCodes.originMarketCode)
-          }
-          {...meta}
-        />
+        <Box sx={{ p: { xs: 0.5, md: 2 } }}>
+          <PremiumDataChartViewer
+            baseAssetData={{ name: original.baseAsset }}
+            marketCodes={original.marketCodes}
+            isKimpExchange={
+              isKoreanMarket(original.marketCodes.targetMarketCode) &&
+              !isKoreanMarket(original.marketCodes.originMarketCode)
+            }
+            {...meta}
+          />
+        </Box>
         <UpdateAlarmForm
           row={original}
           onAlarmConfigChange={onAlarmConfigChange}
@@ -305,24 +265,49 @@ export default function TriggersTable() {
   return (
     <Box sx={{ mx: { xs: 0, md: 1 }, p: { xs: 0, md: 1 } }}>
       <Stack
-        useFlexGap
         direction="row"
-        flexWrap="wrap"
-        sx={{ mb: 2 }}
+        justifyContent="space-between"
         spacing={1}
+        sx={{ mb: 2 }}
       >
-        <MarketCodeCombinationFilter
-          options={marketCodeCombinationList}
-          value={selectedMarketCodeCombination}
-          onSelectItem={setSelectedMarketCodeCombination}
-        />
         <DropdownMenu
-          value={selectedTrigger}
-          options={triggerList}
-          onSelectItem={setSelectedTrigger}
+          value={selectedTriggerType}
+          options={triggerTypeList}
+          onSelectItem={setSelectedTriggerType}
           buttonStyle={{
             justifyContent: 'flex-start',
             minWidth: isMobile ? 190 : 220,
+          }}
+        />
+        <OutlinedInput
+          size="small"
+          placeholder={t('Search')}
+          onChange={(e) => setSearchValue(e.target.value)}
+          value={searchValue}
+          startAdornment={
+            <InputAdornment position="start">
+              <SearchIcon sx={isMobile ? { fontSize: '1em' } : {}} />
+            </InputAdornment>
+          }
+          endAdornment={
+            <InputAdornment
+              position="end"
+              sx={{ cursor: 'pointer', ':hover': { opacity: 0.5 } }}
+            >
+              <CloseIcon
+                onClick={() => {
+                  setGlobalFilter('');
+                  setSearchValue('');
+                }}
+                sx={isMobile ? { fontSize: '1em' } : {}}
+              />
+            </InputAdornment>
+          }
+          // inputProps={{
+          //   style: isSmallScreen ? { height: '0.5em', width: 60 } : {},
+          // }}
+          sx={{
+            '& .MuiInputBase-root': { px: { xs: 0.5, sm: 1 } },
           }}
         />
       </Stack>
@@ -354,7 +339,7 @@ export default function TriggersTable() {
         options={{
           getRowId,
           enableRowSelection: true,
-          state: { expanded, pagination, rowSelection },
+          state: { expanded, globalFilter, pagination, rowSelection },
           onExpandedChange,
           onPaginationChange: setPagination,
           onRowSelectionChange: setRowSelection,
@@ -363,7 +348,6 @@ export default function TriggersTable() {
             isMobile,
             alarmConfig,
             expandIcon: EditIcon,
-            // onAlarmConfigChange,
           },
         }}
         renderSubComponent={renderSubComponent}
@@ -387,7 +371,7 @@ export default function TriggersTable() {
           sx: {
             border: 1,
             borderColor: 'divider',
-            fontSize: isMobile ? '0.8em' : '1em',
+            fontSize: isMobile ? '0.8em' : '1.15em',
             width: isMobile ? 'auto' : undefined,
           },
         })}

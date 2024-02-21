@@ -31,7 +31,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  // selectBookmarkMarketCodePair,
+  // selectBookmarkMarketCodeCombination,
   changeDefaultMarketCodes,
   toggleBookmarkMarketCodes,
 } from 'redux/reducers/home';
@@ -77,7 +77,7 @@ function MarketCodeMenu({ onChange }) {
 
   const [bookmarkAnchor, setBookmarkAnchor] = useState(null);
   const [bookmarkOpen, setBookmarkOpen] = useState(false);
-  const [bookmarkedPairs, setBookmarkedPairs] = useState([]);
+  const [bookmarkedCombinations, setBookmarkedCombinations] = useState([]);
 
   const { data, isFetching, refetch } = useGetMarketCodesQuery();
 
@@ -151,13 +151,13 @@ function MarketCodeMenu({ onChange }) {
 
   useEffect(() => {
     if (marketCodeList.length > 0) {
-      const marketCodePairs = [];
+      const marketCodeCombinations = [];
       Object.entries(bookmarkedMarketCodes).forEach(([target, origins]) => {
         const targetObj = marketCodeList[target];
         Object.keys(origins)
           .filter((origin) => origins[origin])
           .forEach((origin) =>
-            marketCodePairs.push([
+            marketCodeCombinations.push([
               {
                 ...targetObj,
                 disabled: !data?.[targetObj.value],
@@ -167,16 +167,16 @@ function MarketCodeMenu({ onChange }) {
             ])
           );
       });
-      setBookmarkedPairs(marketCodePairs);
+      setBookmarkedCombinations(marketCodeCombinations);
     }
   }, [bookmarkedMarketCodes, marketCodeList, data]);
 
   useEffect(() => {
-    if (bookmarkedPairs.length === 0) {
+    if (bookmarkedCombinations.length === 0) {
       setBookmarkAnchor(null);
       setBookmarkOpen(false);
     }
-  }, [bookmarkedPairs]);
+  }, [bookmarkedCombinations]);
 
   useEffect(() => {
     setMarketCodeList(
@@ -272,7 +272,7 @@ function MarketCodeMenu({ onChange }) {
             </Stack>
           </Stack>
         </Button>
-        {bookmarkedPairs.length > 0 && (
+        {bookmarkedCombinations.length > 0 && (
           <MoreVertIcon
             onClick={(event) => {
               setBookmarkAnchor(event.currentTarget);
@@ -494,8 +494,8 @@ function MarketCodeMenu({ onChange }) {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         transformOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <MenuItem disabled>{t('Bookmarked Pairs')}</MenuItem>
-        {bookmarkedPairs.map(([target, origin]) => (
+        <MenuItem disabled>{t('Bookmarks')}</MenuItem>
+        {bookmarkedCombinations.map(([target, origin]) => (
           <ListItem
             disablePadding
             key={`${target.index}-${origin.index}`}

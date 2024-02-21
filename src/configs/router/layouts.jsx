@@ -109,9 +109,32 @@ export function MainLayout() {
             <React.Suspense fallback={<LinearProgress />}>
               <TVTickerWidget isVisible={currentRoute.displayTicker} />
             </React.Suspense>
-            <Grid container ref={currentRoute.ref} spacing={1}>
+            <Box
+              component={Paper}
+              sx={{
+                display: 'flex',
+                flex: 1,
+                overflowX: 'clip',
+                minHeight: { xs: '45vh', lg: '90vh' },
+                position: 'relative',
+              }}
+            >
+              {/* <Outlet /> */}
+              <SwitchTransition>
+                <CSSTransition
+                  unmountOnExit
+                  key={location.pathname}
+                  nodeRef={currentRoute.ref}
+                  timeout={3000}
+                  classNames="pages"
+                >
+                  {() => <Outlet />}
+                </CSSTransition>
+              </SwitchTransition>
+            </Box>
+            {/* <Grid container ref={currentRoute.ref} spacing={1}>
               <Grid item xs={12} lg={1}>
-                {/* <Box
+                <Box
                 component={Paper}
                 sx={{
                   p: 1,
@@ -120,12 +143,12 @@ export function MainLayout() {
                 }}
               >
                 AD???
-              </Box> */}
+              </Box>
               </Grid>
               <Grid
                 item
-                xs={12}
-                lg={10}
+                // xs={12}
+                // lg={10}
                 // lg={8}
                 sx={{
                   display: 'flex',
@@ -137,7 +160,6 @@ export function MainLayout() {
                   component={Paper}
                   sx={{ display: 'flex', flex: 1, overflowX: 'clip' }}
                 >
-                  {/* <Outlet /> */}
                   <SwitchTransition>
                     <CSSTransition
                       unmountOnExit
@@ -152,7 +174,7 @@ export function MainLayout() {
                 </Box>
               </Grid>
               <Grid item xs={12} lg={1}>
-                {/* <Box
+                <Box
                 component={Paper}
                 sx={{
                   p: 1,
@@ -161,9 +183,9 @@ export function MainLayout() {
                 }}
               >
                 AD???
-              </Box> */}
+              </Box>
               </Grid>
-            </Grid>
+            </Grid> */}
           </Box>
           {y > 500 && (
             <Box
