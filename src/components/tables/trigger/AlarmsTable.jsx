@@ -139,6 +139,7 @@ export default function AlarmsTable({
   const data = useMemo(
     () =>
       orderBy(trades || [], 'registered_datetime', 'desc').map((trade) => ({
+        ...trade,
         entry: trade.low,
         exit: trade.high,
         created: DateTime.fromISO(trade.registered_datetime).toLocaleString(
@@ -147,7 +148,6 @@ export default function AlarmsTable({
         status: trade.trigger_switch,
         isTether: trade.usdt_conversion,
         isDeleteLoading,
-        ...trade,
       })),
     [trades, isDeleteLoading]
   );
