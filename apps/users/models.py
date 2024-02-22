@@ -10,20 +10,50 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
+from api.models import Permission
 from users.managers import UserManager
 from socialaccounts.models import ProxySocialApp
 
 
-class User(AbstractUser):
-    VISITOR = "visitor"
-    USER = "user"
-    INTERNAL_USER = "internal"
-    UserRoles = (
-        (VISITOR, "Visitor"),
-        (USER, "User"),
-        (INTERNAL_USER, "Internal"),
+class UserRole(models.Model):
+    """This table stores User.Roles just for API permission purposes"""
+
+    ADMIN = "ADMIN"
+    INTERNAL_USER = "INTERNAL"
+    MANAGER = "MANAGER"
+    AFFILIATE = "AFFILIATE"
+    USER = "USER"
+    VISITOR = "VISITOR"
+    Roles = (
+        (ADMIN, ADMIN),
+        (INTERNAL_USER, INTERNAL_USER),
+        (MANAGER, MANAGER),
+        (AFFILIATE, AFFILIATE),
+        (USER, USER),
+        (VISITOR, VISITOR),
     )
 
+    name = models.CharField(
+        primary_key=True,
+        default=VISITOR,
+        choices=Roles,
+    )
+    api_permissions = models.ManyToManyField(
+        Permission,
+        verbose_name="API Permissions",
+        blank=True,
+        null=True,
+        help_text="<em>API permissions for <b>VISITORS</b> and <b>USERS</b> are not customizable.</em><br>",
+    )
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "User Role"
+
+
+class User(AbstractUser):
     email = models.EmailField(_("email address"), unique=True)
     uuid = models.UUIDField(
         primary_key=False,
@@ -33,16 +63,13 @@ class User(AbstractUser):
     )
     username = models.CharField(max_length=100, unique=True, blank=True)
     last_username_change = models.DateTimeField(default=now)
-    role = models.CharField(default=VISITOR, choices=UserRoles)
-    telegram_chat_id = models.CharField(max_length=150, blank=True, null=True)
-
-    managers = models.ManyToManyField(
-        "self",
-        through="UserManagers",
-        symmetrical=False,
-        related_name="managed_users",
-        blank=True,
+    role = models.ForeignKey(
+        UserRole,
+        default=UserRole.VISITOR,
+        on_delete=models.PROTECT,
+        related_name="users",
     )
+    telegram_chat_id = models.CharField(max_length=150, blank=True, null=True)
 
     objects = UserManager()
 
@@ -99,17 +126,17 @@ class UserSocialApps(models.Model):
         verbose_name = "User Social App"
 
 
-class UserManagers(models.Model):
+class UserManagement(models.Model):
     manager = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="managed_user",
+        related_name="managed_users",
         db_column="manager_user_id",
     )
     managed_user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="manager",
+        related_name="managers",
         db_column="managed_user_id",
     )
 
@@ -117,7 +144,8 @@ class UserManagers(models.Model):
         return f"{self.manager.username} manages {self.managed_user.username}"
 
     class Meta:
-        verbose_name = "User Manager"
+        verbose_name = "User Management"
+        verbose_name_plural = "User Management"
 
 
 class UserProfile(models.Model):

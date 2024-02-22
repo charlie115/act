@@ -18,10 +18,13 @@ class UserManager(BaseUserManager):
         """
         Creates and saves a superuser with the given email and other fields
         """
+        from users.models import UserRole
+
         user = self.create_user(email, password, **extra_fields)
         user.is_admin = True
         user.is_staff = True
         user.is_superuser = True
-        user.role = self.model.INTERNAL_USER
+        user.role = UserRole.objects.get(name=UserRole.INTERNAL_USER)
         user.save(using=self._db)
+
         return user

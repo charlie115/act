@@ -87,6 +87,7 @@ THIRD_PARTY_APPS = (
 
 LOCAL_APPS = (
     "main",
+    "api",
     "authentication",
     "chat",
     "socialaccounts",

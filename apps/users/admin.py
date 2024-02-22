@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
 from allauth.socialaccount.models import SocialAccount
@@ -9,9 +10,10 @@ from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from users.mixins import UserFavoriteAssetsValidatorMixin
 from users.models import (
     User,
+    UserRole,
     UserBlocklist,
     UserFavoriteAssets,
-    UserManagers,
+    UserManagement,
     UserProfile,
     UserSocialApps,
 )
@@ -46,7 +48,7 @@ class FavoriteAssetsInline(TabularInline):
 
 class ManagersInline(TabularInline):
     fk_name = "managed_user"
-    model = UserManagers
+    model = UserManagement
     extra = 0
     verbose_name = "Manager"
     classes = ("collapse",)
@@ -57,7 +59,7 @@ class ManagersInline(TabularInline):
 
 class ManagedInline(TabularInline):
     fk_name = "manager"
-    model = UserManagers
+    model = UserManagement
     extra = 0
     verbose_name = "Managed user"
     classes = ("collapse",)
@@ -97,6 +99,40 @@ class SocialAccountInline(StackedInline):
         return False
 
 
+class UserRoleAdmin(ModelAdmin):
+    list_display = ["name", "get_api_permissions"]
+    search_fields = [
+        "name",
+    ]
+    filter_horizontal = ["api_permissions"]
+    readonly_fields = ["name"]
+
+    def get_api_permissions(self, obj):
+        api_permissions = obj.api_permissions.all()
+        return mark_safe(
+            "<br>".join(
+                [f"{api_permission.name}" for api_permission in api_permissions]
+                if api_permissions
+                else "-"
+            )
+        )
+
+    get_api_permissions.short_description = "API Permissions"
+    get_api_permissions.allow_tags = True
+
+    def get_readonly_fields(self, request, obj):
+        if obj.name in [UserRole.VISITOR, UserRole.USER]:
+            return self.readonly_fields + ["api_permissions"]
+
+        return super().get_readonly_fields(request, obj)
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
 class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
     list_display = (
         "email",
@@ -104,6 +140,13 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
         "first_name",
         "last_name",
         "is_staff",
+        "role",
+    )
+    list_filter = (
+        "is_staff",
+        "is_superuser",
+        "is_active",
+        "groups",
         "role",
     )
     search_fields = [
@@ -173,7 +216,7 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
 
 
 # TODO: Group per manager, managed_user
-class UserManagersAdmin(ModelAdmin):
+class UserManagementAdmin(ModelAdmin):
     list_display = [
         "manager",
         "managed_user",
@@ -188,6 +231,9 @@ class UserManagersAdmin(ModelAdmin):
         "manager___first_name",
         "manager___last_name",
     ]
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 class UserFavoriteAssetsForm(UserFavoriteAssetsValidatorMixin, forms.ModelForm):
@@ -211,6 +257,7 @@ class UserBlocklistAdmin(ModelAdmin):
         return False
 
 
+admin.site.register(UserRole, UserRoleAdmin)
 admin.site.register(UserBlocklist, UserBlocklistAdmin)
 admin.site.register(User, CustomUserAdmin)
-admin.site.register(UserManagers, UserManagersAdmin)
+admin.site.register(UserManagement, UserManagementAdmin)

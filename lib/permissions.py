@@ -1,6 +1,6 @@
 from rest_framework.permissions import BasePermission, IsAdminUser, IsAuthenticated
 
-from users.models import User
+from users.models import User, UserRole
 
 
 def get_groups_name_lowercase(group_queryset):
@@ -27,7 +27,7 @@ class IsVisitor(IsSuperuser):
         visitor_permission = bool(
             request.user
             and request.user.is_authenticated
-            and request.user.role == User.VISITOR
+            and request.user.role == UserRole.VISITOR
         )
 
         return superuser_permission or visitor_permission
@@ -45,7 +45,7 @@ class IsUser(IsSuperuser):
         visitor_permission = bool(
             request.user
             and request.user.is_authenticated
-            and request.user.role == User.USER
+            and request.user.role == UserRole.USER
         )
 
         return visitor_permission or superuser_permission

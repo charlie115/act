@@ -23,7 +23,7 @@ from rest_framework_simplejwt.views import TokenVerifyView
 
 from authentication.adapters import CustomGoogleOAuth2Adapter
 from socialaccounts.models import ProxySocialAccount
-from users.models import User, UserSocialApps
+from users.models import User, UserRole, UserSocialApps
 from users.serializers import UserSerializer
 
 
@@ -258,6 +258,6 @@ class AuthUserRegisterView(UserDetailsView):
             and not new_username.startswith("@")
             and new_username[0].isalpha()
         ):
-            serializer.instance.role = serializer.instance.USER
+            serializer.instance.role = UserRole.objects.get(name=UserRole.USER)
 
         serializer.save()
