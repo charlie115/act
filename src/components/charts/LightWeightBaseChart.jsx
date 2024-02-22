@@ -59,12 +59,17 @@ const LightWeightBaseChart = forwardRef(
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
     const [barsInfo, setBarsInfo] = useState(null);
+    const [showForwardArrow, setShowForwardArrow] = useState(false);
 
     const onVisibleLogicalRangeChange = (newVisibleLogicalRange) => {
       const newBarsInfo = baseSeriesRef.current.barsInLogicalRange(
         newVisibleLogicalRange
       );
+      if (newBarsInfo && Math.floor(newBarsInfo.barsAfter) >= 100)
+        setShowForwardArrow(true);
       if (newBarsInfo && Math.floor(newBarsInfo.barsAfter) === 0)
+        setShowForwardArrow(false);
+      if (newBarsInfo && Math.floor(newBarsInfo.barsBefore) >= -1)
         setBarsInfo(null);
       else setBarsInfo(newBarsInfo);
     };
@@ -237,7 +242,7 @@ const LightWeightBaseChart = forwardRef(
             [unit]: 1,
           });
           const startTime = endTime.minus({
-            [unit]: quantity * Math.abs(Math.floor(barsInfo.barsBefore)) * 50,
+            [unit]: quantity * Math.abs(Math.floor(barsInfo.barsBefore)),
           });
           onBarsInfoChanged({ start: startTime, end: endTime });
         }
@@ -271,7 +276,7 @@ const LightWeightBaseChart = forwardRef(
               {t('Login to view data')}
             </Button>
           )}
-          {barsInfo?.barsAfter > 100 && (
+          {showForwardArrow && (
             <IconButton
               color="dark"
               size="small"
