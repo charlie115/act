@@ -15,6 +15,8 @@ import os
 
 from datetime import timedelta
 from django.utils.translation import gettext_lazy as _
+from django.templatetags.static import static
+from django.urls import reverse_lazy
 from environ import Env
 from os.path import join
 from pathlib import Path
@@ -401,6 +403,104 @@ UNFOLD = {
     # "SCRIPTS": [
     #     lambda request: static("js/script.js"),
     # ],
+}
+
+UNFOLD = {
+    "SITE_TITLE": None,
+    "SITE_HEADER": None,
+    "SITE_URL": "/",
+    "SITE_LOGO": {
+        "light": lambda request: static("logo-light.svg"),  # light mode
+        "dark": lambda request: static("logo-dark.svg"),  # dark mode
+    },
+    "SITE_SYMBOL": "tune",  # symbol from icon set
+    "SHOW_HISTORY": False,  # show/hide "History" button, default: True
+    "SHOW_VIEW_ON_SITE": True,  # show/hide "View on site" button, default: True
+    "SIDEBAR": {
+        "show_search": True,  # Search in applications and models names
+        "show_all_applications": True,  # Dropdown with all applications and models
+        "navigation": [
+            {
+                "title": _("ACW"),
+                "separator": True,  # Top border
+                "items": [
+                    # {
+                    #     "title": _("Dashboard"),
+                    #     "icon": "dashboard",  # Supported icon set: https://fonts.google.com/icons
+                    #     "link": reverse_lazy("admin:index"),
+                    #     "badge": "sample_app.badge_callback",
+                    #     "permission": lambda request: request.user.is_superuser,
+                    # },
+                    {
+                        "title": _("Users"),
+                        "icon": "people",
+                        "link": reverse_lazy("admin:users_user_changelist"),
+                    },
+                    {
+                        "title": _("User Management"),
+                        "icon": "supervisor_account",
+                        "link": reverse_lazy("admin:users_usermanagement_changelist"),
+                    },
+                    {
+                        "title": _("User Blocklist"),
+                        "icon": "person_off",
+                        "link": reverse_lazy("admin:users_userblocklist_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": _("CORE"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Market Codes"),
+                        "icon": "sync_alt",
+                        "link": reverse_lazy("admin:infocore_marketcode_changelist"),
+                    },
+                    {
+                        "title": _("Nodes"),
+                        "icon": "dns",
+                        "link": reverse_lazy("admin:tradecore_node_changelist"),
+                    },
+                    {
+                        "title": _("Trade Config Allocations"),
+                        "icon": "add_chart",
+                        "link": reverse_lazy(
+                            "admin:tradecore_tradeconfigallocation_changelist"
+                        ),
+                    },
+                    {
+                        "title": _("Messages"),
+                        "icon": "outgoing_mail",
+                        "link": reverse_lazy("admin:messagecore_message_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": _(""),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Groups"),
+                        "icon": "groups_2",
+                        "link": reverse_lazy(
+                            "admin:authentication_proxygroup_changelist"
+                        ),
+                    },
+                    {
+                        "title": _("Roles"),
+                        "icon": "admin_panel_settings",
+                        "link": reverse_lazy("admin:users_userrole_changelist"),
+                    },
+                    {
+                        "title": _("API Permissions"),
+                        "icon": "http",
+                        "link": reverse_lazy("admin:api_permission_changelist"),
+                    },
+                ],
+            },
+        ],
+    },
 }
 
 
