@@ -141,7 +141,7 @@ class UserManagement(models.Model):
     )
 
     def __str__(self):
-        return f"{self.manager.username} manages {self.managed_user.username}"
+        return f"{self.manager.email} manages {self.managed_user.email}"
 
     class Meta:
         verbose_name = "User Management"

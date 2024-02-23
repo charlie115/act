@@ -7,8 +7,9 @@ from rest_framework import exceptions, mixins, response, viewsets
 from rest_framework.decorators import action
 
 from lib.authentication import NodeIPAuthentication
-from lib.views import BaseViewSet
+from lib.permissions import IsAdmin, IsInternal, IsManager, IsUser
 from lib.status import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
+from lib.views import BaseViewSet
 from tradecore.mixins import TradeCoreMixin
 from tradecore.models import Node
 from tradecore.serializers import (
@@ -142,11 +143,14 @@ class TradeConfigViewSet(
     viewsets.GenericViewSet,
 ):
     serializer_class = TradeConfigViewSetSerializer
+    permission_classes = [IsAdmin | IsInternal | IsManager | IsUser]
     lookup_field = "uuid"
     tradecore_api_endpoint = "trade-config/"
     http_method_names = ["get", "post", "put", "delete"]
 
     def get_object(self):
+        "Override get_object since our queryset is a dict and not a model"
+
         trade_config_allocation = self.get_trade_config_allocation(
             trade_config_uuid=self.kwargs[self.lookup_field]
         )
@@ -158,9 +162,15 @@ class TradeConfigViewSet(
             path_param=trade_config_allocation.trade_config_uuid,
         )
         if api_response.status_code == HTTP_200_OK:
-            return api_response.json()
+            obj = api_response.json()
+            self.check_object_permissions(self.request, obj)
+            return obj
 
         self.handle_exception_from_api(api_response)
+
+    def perform_create(self, serializer):
+        self.check_object_permissions(self.request, dict(serializer.validated_data))
+        serializer.save()
 
     def perform_destroy(self, instance):
         trade_config_allocation = self.get_trade_config_allocation(
@@ -214,6 +224,7 @@ class TradesViewSet(
     viewsets.GenericViewSet,
 ):
     serializer_class = TradesViewSetSerializer
+    permission_classes = [IsAdmin | IsInternal | IsManager | IsUser]
     lookup_field = "uuid"
     tradecore_api_endpoint = "trades/"
     http_method_names = ["get", "post", "put", "delete"]
@@ -267,7 +278,8 @@ class TradesViewSet(
 
     def get_queryset(self):
         query_params = TradesViewSetQueryParamsSerializer(
-            data=self.request.query_params
+            context={"view": self, "request": self.request},
+            data=self.request.query_params,
         )
         query_params.is_valid(raise_exception=True)
         query = query_params.validated_data
@@ -284,6 +296,13 @@ class TradesViewSet(
             return api_response.json()
 
         self.handle_exception_from_api(api_response)
+
+    def perform_create(self, serializer):
+        trade_config_allocation = self.get_trade_config_allocation(
+            serializer.validated_data["trade_config_uuid"]
+        )
+        self.check_object_permissions(self.request, trade_config_allocation)
+        serializer.save()
 
     def delete(self, request, *args, **kwargs):
         if not kwargs:
@@ -308,7 +327,8 @@ class TradesViewSet(
     @action(detail=False, methods=["delete"])
     def bulk_delete(self, request):
         query_params = TradesViewSetQueryParamsSerializer(
-            data=self.request.query_params
+            context={"view": self, "request": self.request},
+            data=self.request.query_params,
         )
         query_params.is_valid(raise_exception=True)
         query = query_params.validated_data

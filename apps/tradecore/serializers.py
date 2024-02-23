@@ -48,7 +48,7 @@ class TradeConfigAllocationSerializer(serializers.ModelSerializer):
 
 class TradeConfigViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     uuid = serializers.UUIDField(read_only=True)
-    acw_user_uuid = serializers.UUIDField()
+    user = serializers.UUIDField(required=False)
     telegram_id = serializers.IntegerField(read_only=True)
     target_market_code = serializers.CharField()
     origin_market_code = serializers.CharField()
@@ -76,21 +76,37 @@ class TradeConfigViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     on_off = serializers.BooleanField(required=False)
     remark = serializers.CharField(required=False)
 
+    def validate(self, attrs):
+        if self.instance is None:
+            if "user" in attrs:
+                try:
+                    user = User.objects.get(uuid=attrs.get("user"))
+                except User.DoesNotExist:
+                    raise exceptions.ValidationError({"user": ["User not found."]})
+            else:
+                user = self.context["request"].user
+
+            if user.telegram_chat_id is None:
+                raise exceptions.ValidationError(
+                    {"user": ["User is not connected to a telegram bot!"]}
+                )
+
+            attrs["user"] = user
+
+        return attrs
+
     def create(self, validated_data):
-        try:
-            user = User.objects.get(uuid=validated_data.get("acw_user_uuid"))
-            self.check_existing_allocation(user, validated_data)
+        user = validated_data.pop("user")
 
-        except User.DoesNotExist:
-            raise exceptions.ValidationError({"user": ["User not found."]})
-
-        except TradeConfigAllocation.DoesNotExist:
+        if self.is_not_yet_allocated(user, validated_data):
+            validated_data["user"] = user.uuid
             validated_data["telegram_id"] = user.telegram_chat_id
+
             return self.allocate_user_trade(user, validated_data)
 
     def update(self, instance, validated_data):
         fixed_value_keys = [
-            "user_uuid",
+            "user",
             "telegram_id",
             "target_market_code",
             "origin_market_code",
@@ -115,12 +131,12 @@ class TradeConfigViewSetSerializer(TradeCoreMixin, serializers.Serializer):
 
         self.handle_exception_from_api(api_response)
 
-    def check_existing_allocation(self, user, data):
-        trade_config_allocation = user.trade_config_allocations.get(
-            target_market_code=data.get("target_market_code"),
-            origin_market_code=data.get("origin_market_code"),
-        )
-        if trade_config_allocation:
+    def is_not_yet_allocated(self, user, data):
+        try:
+            user.trade_config_allocations.get(
+                target_market_code=data.get("target_market_code"),
+                origin_market_code=data.get("origin_market_code"),
+            )
             exception = exceptions.APIException(
                 {
                     "target_market_code": ["Trade config already exists."],
@@ -129,6 +145,9 @@ class TradeConfigViewSetSerializer(TradeCoreMixin, serializers.Serializer):
             )
             exception.status_code = HTTP_409_CONFLICT
             raise exception
+
+        except TradeConfigAllocation.DoesNotExist:
+            return True
 
     def allocate_user_trade(self, user, data):
         nodes = (
@@ -168,8 +187,20 @@ class TradeConfigViewSetSerializer(TradeCoreMixin, serializers.Serializer):
         )
 
 
-class TradesViewSetQueryParamsSerializer(serializers.Serializer):
+class TradesViewSetQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField()
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)
 
 
 class TradesViewSetFilterSerializer(serializers.Serializer):

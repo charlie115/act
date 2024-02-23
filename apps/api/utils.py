@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.urls import get_resolver
 from django.urls.resolvers import URLPattern, RegexPattern
 
@@ -73,7 +74,7 @@ def get_api_permission_choices():
 
     permission_choices = []
     for app_name, data in all_api.items():
-        if app_name not in ["authentication", "chat"]:
+        if app_name in settings.API_APP_SETTINGS["PROTECTED"]:
             endpoint_methods = [
                 (
                     f"{app_name}_{method}_{endpoint}",

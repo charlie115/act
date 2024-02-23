@@ -15,10 +15,15 @@ from socialaccounts.models import ProxySocialApp
 from socialaccounts.serializers import ProxySocialAppSerializer
 
 
+class UserOwnedSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
+    def validate(self, attrs):
+        attrs["user"] = self.context["request"].user
+        return super().validate(attrs)
+
+
 class UserFavoriteAssetsSerializer(
-    UserUUIDSerializerMixin,
     UserFavoriteAssetsValidatorMixin,
-    serializers.ModelSerializer,
+    UserOwnedSerializer,
 ):
     class Meta:
         model = UserFavoriteAssets

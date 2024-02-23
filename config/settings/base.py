@@ -102,6 +102,13 @@ LOCAL_APPS = (
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
+# Used in api app and permission system
+API_APP_SETTINGS = {
+    "PUBLIC": ["authentication", "chat", "infocore", "newscore"],
+    "INTERNAL": ["schema", "redoc", "swagger"],  # for internal users only
+    "PROTECTED": ["tradecore"],  # on permission basis
+}
+
 MIDDLEWARE = (
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -285,9 +292,7 @@ SPECTACULAR_SETTINGS = {
     #     'rest_framework_simplejwt.authentication.JWTAuthentication',
     #     'rest_framework.authentication.SessionAuthentication'
     # ],
-    "SERVE_PERMISSIONS": [
-        "lib.permissions.IsDjangoAdmin" or "lib.permissions.IsACWAdmin"
-    ],
+    "SERVE_PERMISSIONS": ["lib.permissions.IsInternalOrAdmin"],
     "SERVE_INCLUDE_SCHEMA": False,
     "SORT_OPERATION_PARAMETERS": False,
     "EXTENSIONS_ROOT": {
@@ -491,11 +496,6 @@ UNFOLD = {
                         "title": _("Roles"),
                         "icon": "admin_panel_settings",
                         "link": reverse_lazy("admin:users_userrole_changelist"),
-                    },
-                    {
-                        "title": _("API Permissions"),
-                        "icon": "http",
-                        "link": reverse_lazy("admin:api_permission_changelist"),
                     },
                 ],
             },

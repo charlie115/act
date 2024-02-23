@@ -2,8 +2,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from lib.filters import CharArrayFilter, UserUuidFilter
-from lib.permissions import IsDjangoAdmin, IsAdminOrIsSelf
-from lib.views import BaseViewSet, UserOwnedViewSet, UserOwned1To1ViewSet
+from lib.views import BaseViewSet
 from users.models import (
     User,
     UserBlocklist,
@@ -18,6 +17,9 @@ from users.serializers import (
 )
 
 
+###########
+# Filters #
+###########
 class UserFavoriteAssetsFilter(UserUuidFilter):
     market_codes = CharArrayFilter(field_name="market_codes", lookup_expr="contains")
 
@@ -32,6 +34,9 @@ class UserProfileFilter(UserUuidFilter):
         fields = ("user", "referral", "level", "points")
 
 
+#########
+# Views #
+#########
 @extend_schema(tags=["User"])
 @extend_schema_view(
     list=extend_schema(
@@ -62,7 +67,7 @@ class UserProfileFilter(UserUuidFilter):
         description="Deletes an existing `user`.",
     ),
 )
-class UserViewSet(UserOwnedViewSet):
+class UserViewSet(BaseViewSet):
     queryset = User.objects.all().order_by("id")
     lookup_field = "uuid"
     serializer_class = UserSerializer
@@ -78,16 +83,6 @@ class UserViewSet(UserOwnedViewSet):
         "is_active",
     )
     http_method_names = ["get", "post", "put", "patch", "delete"]
-
-    def get_permissions(self):
-        permission_classes = self.permission_classes
-
-        if self.action == "create":
-            permission_classes = [IsDjangoAdmin]
-        elif self.action != "list":
-            permission_classes = [IsAdminOrIsSelf]
-
-        return [permission() for permission in permission_classes]
 
 
 @extend_schema(tags=["UserFavoriteAssets"])
@@ -108,7 +103,7 @@ class UserViewSet(UserOwnedViewSet):
         description="Deletes an existing user `favorite symbol`.",
     ),
 )
-class UserFavoriteAssetsViewSet(UserOwnedViewSet):
+class UserFavoriteAssetsViewSet(BaseViewSet):
     queryset = UserFavoriteAssets.objects.all().order_by("id")
     serializer_class = UserFavoriteAssetsSerializer
     filter_backends = [DjangoFilterBackend]
@@ -140,7 +135,7 @@ class UserFavoriteAssetsViewSet(UserOwnedViewSet):
     ),
     destroy=extend_schema(exclude=True),
 )
-class UserProfileViewSet(UserOwned1To1ViewSet):
+class UserProfileViewSet(BaseViewSet):
     queryset = UserProfile.objects.all().order_by("id")
     serializer_class = UserProfileSerializer
     filter_backends = [DjangoFilterBackend]

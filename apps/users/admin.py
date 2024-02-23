@@ -175,6 +175,7 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
             {
                 "fields": (
                     "is_active",
+                    "role",
                     "uuid",
                     ("first_name", "last_name"),
                     ("username", "email"),
@@ -186,9 +187,9 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
             },
         ),
         (
-            _("Permissions"),
+            _("Django Admin Permissions"),
             {
-                "fields": ("is_staff", "role", "groups"),
+                "fields": ("is_staff", "groups"),
                 "classes": ("collapse",),
             },
         ),
