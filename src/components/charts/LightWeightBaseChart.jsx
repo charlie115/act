@@ -23,7 +23,7 @@ import { createChart, CrosshairMode } from 'lightweight-charts';
 
 import { useTranslation } from 'react-i18next';
 
-import { usePrevious } from '@uidotdev/usehooks';
+import { useMeasure, usePrevious } from '@uidotdev/usehooks';
 
 import { DateTime } from 'luxon';
 
@@ -52,6 +52,8 @@ const LightWeightBaseChart = forwardRef(
 
     const containerRef = useRef();
     const tooltipRef = useRef();
+
+    const [wrapperRef, { width }] = useMeasure();
 
     const { t } = useTranslation();
 
@@ -229,6 +231,10 @@ const LightWeightBaseChart = forwardRef(
       });
     }, [isMobile]);
 
+    useEffect(() => {
+      if (width) ref.current.applyOptions({ width });
+    }, [width]);
+
     const prevBarsInfo = usePrevious(barsInfo);
     useEffect(() => {
       if (barsInfo && Math.floor(barsInfo.barsBefore) < 0) {
@@ -250,7 +256,7 @@ const LightWeightBaseChart = forwardRef(
     }, [barsInfo, interval]);
 
     return (
-      <>
+      <Box ref={wrapperRef}>
         {isLoading && <LinearProgress />}
         <Box
           ref={containerRef}
@@ -317,7 +323,7 @@ const LightWeightBaseChart = forwardRef(
             }}
           />
         </Box>
-      </>
+      </Box>
     );
   }
 );

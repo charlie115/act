@@ -29,7 +29,7 @@ import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
 
-import { DATE_FORMAT_API_QUERY } from 'constants';
+import { DATE_FORMAT_API_QUERY, USER_ROLE } from 'constants';
 import { INTERVAL_LIST } from 'constants/lists';
 
 import LightWeightBaseChart from './LightWeightBaseChart';
@@ -70,7 +70,7 @@ const LightWeightPremiumKlineChart = forwardRef(
   ) => {
     const { loggedin, user } = useSelector((state) => state.auth);
     const { timezone } = useSelector((state) => state.app);
-    const isAuthorized = loggedin && user.role !== 'visitor';
+    const isAuthorized = loggedin && user.role !== USER_ROLE.visitor;
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));

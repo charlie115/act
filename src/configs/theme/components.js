@@ -40,12 +40,12 @@ export default {
   },
   MuiTab: {
     styleOverrides: {
-      root: ({ theme }) => ({
+      root: ({ ownerState, theme }) => ({
         color: theme.palette.text.main,
         opacity: 0.7,
         textTransform: 'none',
         '&.Mui-selected': {
-          color: theme.palette.text.main,
+          color: theme.palette[ownerState.textColor || 'text'].main,
           fontWeight: 700,
           opacity: 1,
         },
@@ -58,7 +58,8 @@ export default {
         borderColor: theme.palette.divider,
         marginBottom: 8,
         '& .MuiTabs-indicator': {
-          backgroundColor: theme.palette.text.main,
+          backgroundColor:
+            theme.palette[ownerState.indicatorColor || 'text'].main,
           height: '1px',
         },
         ...(ownerState.orientation === 'horizontal'

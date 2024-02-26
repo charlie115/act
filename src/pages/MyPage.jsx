@@ -62,21 +62,25 @@ export default function MyPage() {
   );
 
   return (
-    <Box sx={{ m: 'auto' }}>
+    <Box sx={{ m: 'auto', p: { xs: 2, sm: 0 } }}>
       <Typography variant="h4" sx={{ mb: 2 }}>
         {t('My Page')}
       </Typography>
       <Divider sx={{ mb: 2 }} />
       <Table
-        sx={{ borderCollapse: 'collapse', minWidth: 400, td: { border: 0 } }}
+        sx={{
+          borderCollapse: 'collapse',
+          minWidth: { xs: 320, sm: 400 },
+          td: { border: 0 },
+        }}
       >
         <TableBody>
           <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
             <TableCell align="right" sx={{ p: 0, width: 16 }}>
               <PersonIcon />
             </TableCell>
-            <TableCell sx={{ fontSize: 16 }}>{t('Name')}</TableCell>
-            <TableCell sx={{ fontSize: 16 }}>
+            <TableCell sx={{ fontSize: '1.15em' }}>{t('Name')}</TableCell>
+            <TableCell sx={{ fontSize: '1.15em' }}>
               <Stack alignItems="center" direction="row" spacing={1}>
                 <Avatar
                   src={user?.profile?.picture}
@@ -104,13 +108,13 @@ export default function MyPage() {
               <TableCell align="right" sx={{ p: 0 }}>
                 <TelegramIcon />
               </TableCell>
-              <TableCell sx={{ fontSize: 16 }}>
+              <TableCell sx={{ fontSize: '1.15em' }}>
                 {t('Telegram Integration')}
               </TableCell>
               <TableCell>
                 <Box id="telegram-button" />
                 {!(telegramBot && !user?.telegram_chat_id) && (
-                  <Box sx={{ fontSize: 16 }}>
+                  <Box sx={{ fontSize: '1.15em' }}>
                     <Trans>
                       Connected to{' '}
                       <span
@@ -131,15 +135,15 @@ export default function MyPage() {
             <TableCell align="right" sx={{ p: 0 }}>
               <AlternateEmailIcon />
             </TableCell>
-            <TableCell sx={{ fontSize: 16 }}>{t('Username')}</TableCell>
-            <TableCell sx={{ fontSize: 16 }}>{user?.username}</TableCell>
+            <TableCell sx={{ fontSize: '1.15em' }}>{t('Username')}</TableCell>
+            <TableCell sx={{ fontSize: '1.15em' }}>{user?.username}</TableCell>
           </TableRow>
           <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
             <TableCell align="right" sx={{ p: 0 }}>
               <GoogleIcon />
             </TableCell>
-            <TableCell sx={{ fontSize: 16 }}>{t('E-mail')}</TableCell>
-            <TableCell sx={{ fontSize: 16 }}>{user?.email}</TableCell>
+            <TableCell sx={{ fontSize: '1.15em' }}>{t('E-mail')}</TableCell>
+            <TableCell sx={{ fontSize: '1.15em' }}>{user?.email}</TableCell>
           </TableRow>
           {user?.date_joined && (
             <TableRow
@@ -148,10 +152,10 @@ export default function MyPage() {
               <TableCell align="right" sx={{ p: 0 }}>
                 <DomainVerificationIcon />
               </TableCell>
-              <TableCell sx={{ fontSize: 16 }}>
+              <TableCell sx={{ fontSize: '1.15em' }}>
                 {t('Registration Date')}
               </TableCell>
-              <TableCell sx={{ fontSize: 16 }}>
+              <TableCell sx={{ fontSize: '1.15em' }}>
                 {DateTime.fromISO(user.date_joined).toFormat('DDDD')}
               </TableCell>
             </TableRow>

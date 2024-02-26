@@ -39,6 +39,8 @@ import { useGetMessagesQuery } from 'redux/api/websocket/chat';
 
 import useRefWithCallback from 'hooks/useRefWithCallback';
 
+import { USER_ROLE } from 'constants';
+
 import ChatInput from './ChatInput';
 import ChatMenu from './ChatMenu';
 import ChatMessage from './ChatMessage';
@@ -61,7 +63,7 @@ export default function ChatWidget({ isVisible }) {
   );
 
   const chatUsername =
-    user && user.role !== 'visitor' ? user.username : nickname;
+    user && user.role !== USER_ROLE.visitor ? user.username : nickname;
 
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -110,7 +112,7 @@ export default function ChatWidget({ isVisible }) {
 
   useGetRandomUsernameQuery(
     {},
-    { skip: (loggedin && user?.role !== 'visitor') || nickname }
+    { skip: (loggedin && user?.role !== USER_ROLE.visitor) || nickname }
   );
 
   const renderMessages = useMemo(
@@ -204,7 +206,7 @@ export default function ChatWidget({ isVisible }) {
           bottom: 0,
           right: 0,
           p: 1,
-          zIndex: 10,
+          zIndex: 1201,
         }}
       >
         <Badge

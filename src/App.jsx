@@ -43,24 +43,23 @@ function App() {
         <CssBaseline />
         <GlobalStyles
           styles={{
-            '::-webkit-scrollbar': {
-              boxShadow: `inset 0 0 6px ${alpha(
-                theme.palette.background.paper,
-                0.1
-              )}`,
-              borderRadius: '10px',
-              width: 4,
-            },
-            '::-webkit-scrollbar-thumb': {
-              borderRadius: '10px',
-              background: 'rgba(203, 227, 236, 0.4)',
-              boxShadow: 'inset 0 0 6px rgba(#3c4b64, 0.5)',
-            },
-            '::-webkit-scrollbar-thumb:window-inactive': {
-              background: 'rgba(203, 227, 236, 0.4)',
-            },
             input: { textTransform: 'unset' },
-            '#root': { minHeight: '100vh' },
+            '#root': { height: '100vh', overflowY: 'hidden' },
+            '*, html': {
+              scrollBehavior: 'smooth !important',
+              '::-webkit-scrollbar': {
+                borderRadius: '10px',
+                scrollbarWidth: 'thin',
+                width: 4,
+              },
+              '::-webkit-scrollbar-thumb': {
+                borderRadius: '10px',
+                background: 'rgba(203, 227, 236, 0.2)',
+              },
+              '::-webkit-scrollbar-thumb:window-inactive': {
+                opacity: 0,
+              },
+            },
           }}
         />
         <RouterProvider

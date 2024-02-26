@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
 
-import { DATE_FORMAT_API_QUERY } from 'constants';
+import { DATE_FORMAT_API_QUERY, USER_ROLE } from 'constants';
 
 import LightWeightBaseChart from './LightWeightBaseChart';
 
@@ -41,7 +41,7 @@ export default function LightWeightFundingRateDiffChart({
 
   const { timezone: tz } = useSelector((state) => state.app);
   const { loggedin, user } = useSelector((state) => state.auth);
-  const isAuthorized = loggedin && user.role !== 'visitor';
+  const isAuthorized = loggedin && user.role !== USER_ROLE.visitor;
 
   const [data, setData] = useState();
   const [startFundingTime, setStartFundingTime] = useState();

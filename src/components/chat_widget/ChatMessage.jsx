@@ -183,7 +183,7 @@ export default function ChatMessage({
               isOwnMessage={isOwnMessage}
               className={
                 prevIsNewMessage && !isNewMessage
-                  ? 'animate__animated animate__pulse'
+                  ? 'animate__animated animate__pulse animate__repeat-2'
                   : null
               }
             >
@@ -218,7 +218,7 @@ const MessageBox = styled(Box, {
     minWidth: 150,
     maxWidth: 220,
     padding: 8,
-    borderRadius: 8,
+    borderRadius: 4,
     opacity: isBlocked ? 0.5 : 1,
   };
 });

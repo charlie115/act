@@ -6,11 +6,13 @@ module.exports = function (app) {
   app.use(
     '/api/',
     createProxyMiddleware({
-      target: 'https://acw-test.orbitholdings.org',
+      target: process.env.REACT_APP_DRF_URL,
       changeOrigin: true,
+      // changeOrigin: false,
       secure: false,
       pathRewrite: {
         '^/api/': '/api/', // rewrite path
+        // '^/api/': '', // rewrite path
       },
     })
   );

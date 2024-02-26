@@ -10,7 +10,9 @@ import FullScreenLoading from 'components/FullScreenLoading';
 
 import navigation from 'configs/navigation';
 
-import { MainLayout, ProtectedLayout, PublicLayout } from './layouts';
+import MainLayout from 'components/MainLayout';
+
+import { ProtectedLayout, PublicLayout } from './layouts';
 
 export default createBrowserRouter(
   createRoutesFromElements(

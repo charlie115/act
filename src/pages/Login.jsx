@@ -22,6 +22,8 @@ import { useLoginMutation } from 'redux/api/drf/auth';
 
 import BrandLogo from 'components/BrandLogo';
 
+import { USER_ROLE } from 'constants';
+
 export default function Login() {
   const { t } = useTranslation();
   const location = useLocation();
@@ -39,7 +41,7 @@ export default function Login() {
       <Navigate
         replace
         to={
-          user.role === 'visitor'
+          user.role === USER_ROLE.visitor
             ? '/register'
             : location?.state?.from?.pathname || '/'
         }

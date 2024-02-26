@@ -2,6 +2,8 @@ import { createSlice } from '@reduxjs/toolkit';
 
 import drfAuthApi from 'redux/api/drf/auth';
 
+import { USER_ROLE } from 'constants';
+
 const initialState = {
   user: null,
   id: null,
@@ -32,7 +34,7 @@ export const authSlice = createSlice({
             refreshToken: payload.refresh,
           };
           state.user = payload.user;
-          state.loggedin = payload.user.role !== 'visitor';
+          state.loggedin = payload.user.role !== USER_ROLE.visitor;
         }
       )
       .addMatcher(drfAuthApi.endpoints.logout.matchFulfilled, (state) => {
@@ -44,7 +46,7 @@ export const authSlice = createSlice({
         drfAuthApi.endpoints.user.matchFulfilled,
         (state, { payload }) => {
           state.user = payload;
-          state.loggedin = payload.role !== 'visitor';
+          state.loggedin = payload.role !== USER_ROLE.visitor;
           if (state.loggedin) {
             const telegramBot = payload?.socialapps?.find(
               (o) => o.provider === 'telegram'
@@ -67,7 +69,7 @@ export const authSlice = createSlice({
         drfAuthApi.endpoints.userRegister.matchFulfilled,
         (state, { payload }) => {
           state.user = payload;
-          state.loggedin = payload.role !== 'visitor';
+          state.loggedin = payload.role !== USER_ROLE.visitor;
           if (state.loggedin) {
             const telegramBot = payload?.socialapps?.find(
               (o) => o.provider === 'telegram'

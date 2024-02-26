@@ -21,15 +21,13 @@ const ToggleBtn = styled(ToggleButton)(() => ({
 }));
 
 function IntervalSelector({ defaultValue, disabled, onChange }) {
-  const { i18n, t } = useTranslation();
+  const { t } = useTranslation();
 
   const [selectedIdx, setSelectedIdx] = useState(
     defaultValue
       ? INTERVAL_LIST.findIndex((o) => o.value === defaultValue)
       : null
   );
-
-  const [intervalList, setIntervalList] = useState([]);
 
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -46,17 +44,6 @@ function IntervalSelector({ defaultValue, disabled, onChange }) {
       debouncedOnChange(INTERVAL_LIST[selectedIdx].value);
   }, [selectedIdx]);
 
-  useEffect(() => {
-    setIntervalList(
-      INTERVAL_LIST.map((interval) => ({
-        label: interval.getLabel(),
-        ...interval,
-      }))
-    );
-  }, [i18n.language]);
-
-  if (intervalList.length === 0) return null;
-
   return (
     <Box>
       <ToggleButtonGroup
@@ -71,9 +58,9 @@ function IntervalSelector({ defaultValue, disabled, onChange }) {
         size="small"
         sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
       >
-        {intervalList.map((interval, idx) => (
+        {INTERVAL_LIST.map((interval, idx) => (
           <ToggleBtn key={interval.value} value={idx} sx={{ py: 0 }}>
-            {interval.label}
+            {interval.getLabel()}
           </ToggleBtn>
         ))}
       </ToggleButtonGroup>
@@ -94,7 +81,7 @@ function IntervalSelector({ defaultValue, disabled, onChange }) {
         }}
       >
         {selectedIdx !== null
-          ? intervalList[selectedIdx].label
+          ? INTERVAL_LIST[selectedIdx].getLabel()
           : t('Intervals')}
       </Button>
       <Menu
@@ -103,7 +90,7 @@ function IntervalSelector({ defaultValue, disabled, onChange }) {
         onClose={() => setAnchorEl(null)}
         sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
       >
-        {intervalList.map((interval, idx) => (
+        {INTERVAL_LIST.map((interval, idx) => (
           <MenuItem
             key={interval.value}
             disabled={selectedIdx === idx}
@@ -113,7 +100,7 @@ function IntervalSelector({ defaultValue, disabled, onChange }) {
               setAnchorEl(null);
             }}
           >
-            {interval.label}
+            {interval.getLabel()}
           </MenuItem>
         ))}
       </Menu>

@@ -47,83 +47,83 @@ export default function Header() {
   }, []);
 
   return (
-    <AppBar position="sticky" sx={{ bgcolor: 'dark.light' }}>
-      <Container maxWidth="xxl">
-        <Toolbar disableGutters>
-          <Box
-            sx={{
-              alignItems: 'center',
-              display: { xs: 'flex', md: 'none' },
-              mr: 1,
-            }}
-          >
-            <IconButton
-              aria-label="header-menu"
-              aria-controls="header-menu"
-              aria-haspopup="true"
-              color="white"
-              size="large"
-              onClick={(e) => setMenuAnchorEl(e.currentTarget)}
-              sx={{ p: 0 }}
+    // <AppBar position="sticky" sx={{ bgcolor: 'dark.light' }}>
+    //   <Container maxWidth="xxl">
+    <Toolbar>
+      <Box
+        sx={{
+          alignItems: 'center',
+          display: { xs: 'flex', md: 'none' },
+          mr: 1,
+        }}
+      >
+        <IconButton
+          aria-label="header-menu"
+          aria-controls="header-menu"
+          aria-haspopup="true"
+          color="white"
+          size="large"
+          onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+          sx={{ p: 0 }}
+        >
+          <MenuIcon />
+        </IconButton>
+        <Menu
+          id="header-menu"
+          anchorEl={menuAnchorEl}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          keepMounted
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          open={!!menuAnchorEl}
+          onClose={() => setMenuAnchorEl(null)}
+          sx={{ display: { xs: 'block', md: 'none' } }}
+        >
+          {pages.main?.map((page) => (
+            <MenuItem
+              key={page.name}
+              onClick={() => {
+                navigate(page.path);
+                setMenuAnchorEl(null);
+              }}
+              selected={page.path === location.pathname}
             >
-              <MenuIcon />
-            </IconButton>
-            <Menu
-              id="header-menu"
-              anchorEl={menuAnchorEl}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-              keepMounted
-              transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-              open={!!menuAnchorEl}
-              onClose={() => setMenuAnchorEl(null)}
-              sx={{ display: { xs: 'block', md: 'none' } }}
-            >
-              {pages.main?.map((page) => (
-                <MenuItem
-                  key={page.name}
-                  onClick={() => {
-                    navigate(page.path);
-                    setMenuAnchorEl(null);
-                  }}
-                  selected={page.path === location.pathname}
-                >
-                  <ListItemIcon>
-                    <page.icon />
-                  </ListItemIcon>
-                  <ListItemText sx={{ fontWeight: 700 }}>
-                    {page.getTitle()}
-                  </ListItemText>
-                </MenuItem>
-              ))}
-            </Menu>
-          </Box>
-          <BrandLogo
-            onClick={() => navigate('/')}
-            sx={{ flexGrow: { xs: 1, md: 0 } }}
-          />
-          <Box sx={{ flexGrow: 1, ml: 3, display: { xs: 'none', md: 'flex' } }}>
-            {pages.main?.map((page) => (
-              <MenuButton
-                key={page.name}
-                active={page.path === location.pathname}
-                onClick={() => navigate(page.path)}
-                sx={{ ml: 1, my: 2, px: 1 }}
-              >
+              <ListItemIcon>
+                <page.icon />
+              </ListItemIcon>
+              <ListItemText sx={{ fontWeight: 700 }}>
                 {page.getTitle()}
-              </MenuButton>
-            ))}
-          </Box>
-          <Stack
-            direction="row"
-            spacing={{ xs: 1, sm: 2 }}
-            sx={{ alignItems: 'center' }}
+              </ListItemText>
+            </MenuItem>
+          ))}
+        </Menu>
+      </Box>
+      <BrandLogo
+        onClick={() => navigate('/')}
+        sx={{ flexGrow: { xs: 1, md: 0 } }}
+      />
+      <Box sx={{ flexGrow: 1, ml: 3, display: { xs: 'none', md: 'flex' } }}>
+        {pages.main?.map((page) => (
+          <MenuButton
+            key={page.name}
+            active={page.path === location.pathname}
+            onClick={() => navigate(page.path)}
+            sx={{ ml: 1, my: 2, px: 1 }}
           >
-            <LanguageSelector />
-            <ThemeSelector />
-            <HeaderUserMenu />
-          </Stack>
-        </Toolbar>
-      </Container>
-    </AppBar>
+            {page.getTitle()}
+          </MenuButton>
+        ))}
+      </Box>
+      <Stack
+        direction="row"
+        spacing={{ xs: 1, sm: 2 }}
+        sx={{ alignItems: 'center' }}
+      >
+        <LanguageSelector />
+        <ThemeSelector />
+        <HeaderUserMenu />
+      </Stack>
+    </Toolbar>
+    //   </Container>
+    // </AppBar>
   );
 }

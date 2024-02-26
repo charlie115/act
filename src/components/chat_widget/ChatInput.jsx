@@ -19,7 +19,7 @@ import { useSelector } from 'react-redux';
 
 import { useSendMessageMutation } from 'redux/api/websocket/chat';
 
-function ChatInput({ user }) {
+function ChatInput({ open, user, disabled }) {
   const inputRef = useRef();
 
   const [sendMessage] = useSendMessageMutation();
@@ -44,33 +44,48 @@ function ChatInput({ user }) {
   return (
     <Stack
       direction="row"
-      sx={{ alignItems: 'flex-end', justifyContent: 'space-between', p: 1 }}
+      sx={{
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        mb: 1,
+        p: 1,
+        ...(disabled ? { opacity: 0.2, pointerEvents: 'none' } : {}),
+      }}
     >
-      <InputContainer
-        sx={{ flex: 1, maxHeight: 120, overflowY: 'auto', px: 2 }}
-      >
-        <InputBase
-          autoFocus
-          fullWidth
-          multiline
-          size="large"
-          value={message}
-          onChange={(e) => {
-            if (e.target.value !== '\n') setMessage(e.target.value);
-            setEmojiPickerAnchorEl(null);
-          }}
-          onKeyPress={(e) => {
-            if (e.key === 'Enter') onSubmit();
-          }}
-          inputProps={{ ref: inputRef }}
-        />
-      </InputContainer>
-      <Stack direction="row" spacing={0}>
+      <Box sx={{ flex: 1, position: 'relative' }}>
+        <InputContainer>
+          {open && (
+            <InputBase
+              autoFocus
+              fullWidth
+              multiline
+              disabled={disabled}
+              size="large"
+              value={message}
+              onChange={(e) => {
+                if (e.target.value !== '\n') setMessage(e.target.value);
+                setEmojiPickerAnchorEl(null);
+              }}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') onSubmit();
+              }}
+              inputProps={{ ref: inputRef }}
+              sx={{ color: 'grey.900', p: 1, pr: 4 }}
+            />
+          )}
+        </InputContainer>
         <ClickAwayListener onClickAway={() => setEmojiPickerAnchorEl(null)}>
-          <Box>
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: '50%',
+              right: 0,
+              transform: 'translateY(50%)',
+            }}
+          >
             <IconButton
               id="emoji-popover"
-              color="info"
+              color="secondary"
               size="small"
               onClick={(e) =>
                 setEmojiPickerAnchorEl(
@@ -103,24 +118,26 @@ function ChatInput({ user }) {
             </Popper>
           </Box>
         </ClickAwayListener>
-        <IconButton
-          color="info"
-          size="small"
-          disabled={!/\S/.test(message)}
-          onClick={onSubmit}
-        >
-          <SendIcon />
-        </IconButton>
-      </Stack>
+      </Box>
+      <IconButton
+        color="info"
+        size="small"
+        disabled={!/\S/.test(message)}
+        onClick={onSubmit}
+      >
+        <SendIcon />
+      </IconButton>
     </Stack>
   );
 }
 
-const InputContainer = styled(Box)(() => ({
+const InputContainer = styled(Box)(({ theme }) => ({
+  backgroundColor: theme.palette.light.main,
+  borderRadius: 4,
   flex: 1,
-  maxHeight: 120,
+  minHeight: 80,
+  maxHeight: 180,
   overflowY: 'auto',
-  px: 2,
   msOverflowStyle: 'none',
   '::-webkit-scrollbar': { display: 'none' },
 }));

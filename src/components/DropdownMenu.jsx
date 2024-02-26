@@ -24,6 +24,7 @@ export default function DropdownMenu({
   value,
   onSelectItem,
   tooltipTitle,
+  buttonProps,
   buttonStyle,
   containerStyle,
 }) {
@@ -71,6 +72,7 @@ export default function DropdownMenu({
           aria-haspopup="true"
           size={isMobile ? 'medium' : 'large'}
           variant="outlined"
+          {...buttonProps}
           endIcon={<ArrowDropDownIcon fontSize="small" />}
           startIcon={value?.icon}
           onClick={handleToggle}
@@ -104,7 +106,7 @@ export default function DropdownMenu({
         role={undefined}
         placement="bottom-start"
         popperOptions={{ strategy: 'fixed' }}
-        sx={{ zIndex: 100 }}
+        sx={{ zIndex: 1201 }}
       >
         {({ TransitionProps, placement }) => (
           <Grow

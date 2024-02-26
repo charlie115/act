@@ -34,6 +34,7 @@ import ExchangeWalletNetworks from 'components/ExchangeWalletNetworks';
 import IntervalSelector from 'components/IntervalSelector';
 
 import { MARKET_CODE_LIST } from 'constants/lists';
+import { USER_ROLE } from 'constants';
 
 import LightWeightPremiumKlineChart from 'components/charts/LightWeightPremiumKlineChart';
 import LightWeightFundingRateChart from 'components/charts/LightWeightFundingRateChart';
@@ -63,7 +64,7 @@ function PremiumDataChartViewer({
   } = baseAssetData;
 
   const { loggedin, user } = useSelector((state) => state.auth);
-  const isAuthorized = loggedin && user.role !== 'visitor';
+  const isAuthorized = loggedin && user.role !== USER_ROLE.visitor;
 
   const theme = useTheme();
 

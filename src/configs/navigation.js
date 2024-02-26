@@ -83,6 +83,7 @@ const publicRoutes = [
     element: Login,
     getTitle: () => i18n.t('Login'),
     ref: createRef(),
+    // displayChat: true, // TODO: remove
   },
   {
     name: 'register',
