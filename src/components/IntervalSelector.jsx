@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -11,7 +11,7 @@ import { styled } from '@mui/material/styles';
 
 import { useTranslation } from 'react-i18next';
 
-import debounce from 'lodash/debounce';
+import { useDebounce } from '@uidotdev/usehooks';
 
 import { INTERVAL_LIST } from 'constants/lists';
 
@@ -28,21 +28,14 @@ function IntervalSelector({ defaultValue, disabled, onChange }) {
       ? INTERVAL_LIST.findIndex((o) => o.value === defaultValue)
       : null
   );
+  const debouncedSelectedIdx = useDebounce(selectedIdx, 1000);
 
   const [anchorEl, setAnchorEl] = useState(null);
 
-  const debouncedOnChange = useCallback(
-    debounce(onChange, 1000, {
-      leading: true,
-      trailing: true,
-    }),
-    []
-  );
-
   useEffect(() => {
-    if (selectedIdx !== null && onChange)
-      debouncedOnChange(INTERVAL_LIST[selectedIdx].value);
-  }, [selectedIdx]);
+    if (debouncedSelectedIdx !== null && onChange)
+      onChange(INTERVAL_LIST[debouncedSelectedIdx].value);
+  }, [debouncedSelectedIdx]);
 
   return (
     <Box>

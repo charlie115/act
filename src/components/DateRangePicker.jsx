@@ -14,6 +14,7 @@ import { PickersDay } from '@mui/x-date-pickers/PickersDay';
 import { DateTime } from 'luxon';
 import { useTranslation } from 'react-i18next';
 
+import { useDebounce } from '@uidotdev/usehooks';
 import debounce from 'lodash/debounce';
 
 function CustomDay({ day, range, selected, ...props }) {
@@ -61,6 +62,7 @@ export default function DateRangePicker({ onChange, onClear }) {
 
   const [open, setOpen] = useState(false);
   const [range, setRange] = useState();
+  const debouncedRange = useDebounce(range, 500);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
@@ -82,18 +84,14 @@ export default function DateRangePicker({ onChange, onClear }) {
     }
   };
 
-  const debouncedOnChange = useCallback(
-    debounce(onChange, 1000, { leading: false, trailing: true }),
-    []
-  );
   const debouncedOnClear = useCallback(
     debounce(onClear, 1000, { leading: false, trailing: true }),
     []
   );
 
   useEffect(() => {
-    if (range?.from && range?.to) debouncedOnChange(range);
-  }, [range]);
+    if (debouncedRange?.from && debouncedRange?.to) onChange(debouncedRange);
+  }, [debouncedRange]);
 
   useEffect(() => {
     let timeout;

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 
 import { togglePriceView } from 'redux/reducers/home';
 
-import debounce from 'lodash/debounce';
+import { useDebounce } from '@uidotdev/usehooks';
 
 import isKoreanMarket from 'utils/isKoreanMarket';
 
@@ -38,8 +38,8 @@ function Home() {
 
   const [marketCodes, setMarketCodes] = useState(null);
 
-  const [searchKeyword, setSearchKeyword] = useState('');
   const [searchValue, setSearchValue] = useState('');
+  const debouncedSearchValue = useDebounce(searchValue, 500);
 
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isSmallScreen = useMediaQuery('(max-width:420px)');
@@ -51,15 +51,6 @@ function Home() {
   const isKimpExchange =
     isKoreanMarket(marketCodes?.targetMarketCode) &&
     !isKoreanMarket(marketCodes?.originMarketCode);
-
-  const onChange = (value) => setSearchKeyword(value);
-  const debouncedOnChange = useCallback(
-    debounce(onChange, 500, { leading: false, trailing: true })
-  );
-
-  useEffect(() => {
-    debouncedOnChange(searchValue);
-  }, [searchValue]);
 
   const renderTetherToggle = () =>
     marketCodes ? (
@@ -130,7 +121,6 @@ function Home() {
               >
                 <CloseIcon
                   onClick={() => {
-                    setSearchKeyword('');
                     setSearchValue('');
                   }}
                   sx={isMobile ? { fontSize: '1em' } : {}}
@@ -148,7 +138,7 @@ function Home() {
         <Box>
           <PremiumTable
             marketCodes={marketCodes}
-            searchKeyword={searchKeyword}
+            searchKeyword={debouncedSearchValue}
             loggedin={loggedin}
             isKimpExchange={isKimpExchange}
             isTetherPriceView={isTetherPriceView}

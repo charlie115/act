@@ -27,9 +27,8 @@ import {
 
 import { useTranslation } from 'react-i18next';
 
-import { usePrevious } from '@uidotdev/usehooks';
+import { useDebounce, usePrevious } from '@uidotdev/usehooks';
 
-import debounce from 'lodash/debounce';
 import isEqual from 'lodash/isEqual';
 import orderBy from 'lodash/orderBy';
 import uniqBy from 'lodash/uniqBy';
@@ -64,19 +63,12 @@ export default function AvgFundingRateTable() {
   const [avgFundingRateParams, setAvgFundingRateParams] = useState({ n: 100 });
   const [n, setN] = useState(100);
 
+  const debouncedN = useDebounce(n, 1000);
+
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
-
-  const handleParamsChange = (newValue) => setAvgFundingRateParams(newValue);
-  const debouncedHandleParamsChange = useCallback(
-    debounce(handleParamsChange, 1000, {
-      leading: false,
-      trailing: true,
-    }),
-    []
-  );
 
   const { data, isLoading } = useGetAverageFundingRateQuery(
     avgFundingRateParams,
@@ -118,8 +110,8 @@ export default function AvgFundingRateTable() {
   }, [data, selectedMarket, i18n.language]);
 
   useEffect(() => {
-    if (n) debouncedHandleParamsChange({ n });
-  }, [n]);
+    if (debouncedN) setAvgFundingRateParams({ n: debouncedN });
+  }, [debouncedN]);
 
   const prevAssets = usePrevious(assets);
   const prevIsAssetsDataSuccess = usePrevious(isAssetsDataSuccess);
@@ -158,6 +150,7 @@ export default function AvgFundingRateTable() {
         size: isMobile ? 80 : 180,
         header: `${t('Avg. of the Last {{n}} Funding Rates', {
           n: avgFundingRateParams?.n,
+          // n: debouncedN,
         })} (N)`,
         cell: renderFundingRateCell,
       },
@@ -170,7 +163,7 @@ export default function AvgFundingRateTable() {
         header: <span />,
       },
     ],
-    [avgFundingRateParams?.n, i18n.language, isMobile]
+    [avgFundingRateParams, i18n.language, isMobile]
   );
 
   const tableData = useMemo(

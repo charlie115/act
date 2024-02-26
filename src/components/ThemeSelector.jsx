@@ -20,10 +20,7 @@ export default function ThemeSelector() {
 
   const changeTheme = (value) => dispatch(toggleTheme(value));
   const debouncedChangeTheme = useCallback(
-    debounce(changeTheme, 1500, {
-      leading: true,
-      trailing: true,
-    }),
+    debounce(changeTheme, 1500, { leading: true, trailing: true }),
     []
   );
 

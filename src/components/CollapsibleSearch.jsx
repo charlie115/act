@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import ClickAwayListener from '@mui/material/ClickAwayListener';
 import Collapse from '@mui/material/Collapse';
@@ -12,20 +12,18 @@ import SearchIcon from '@mui/icons-material/Search';
 
 import { useTranslation } from 'react-i18next';
 
-import debounce from 'lodash/debounce';
+import { useDebounce } from '@uidotdev/usehooks';
 
 export default function CollapsibleSearch({ onChange }) {
   const { t } = useTranslation();
 
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState('');
-
-  const handleChange = (newValue) => onChange(newValue);
-  const debouncedHandleChange = useCallback(debounce(handleChange, 1000), []);
+  const debouncedValue = useDebounce(value, 1000);
 
   useEffect(() => {
-    debouncedHandleChange(value);
-  }, [value]);
+    onChange(debouncedValue);
+  }, [debouncedValue]);
 
   return (
     <ClickAwayListener

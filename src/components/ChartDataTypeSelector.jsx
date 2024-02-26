@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -11,7 +11,8 @@ import { styled } from '@mui/material/styles';
 
 import { useTranslation } from 'react-i18next';
 
-import debounce from 'lodash/debounce';
+import { useDebounce } from '@uidotdev/usehooks';
+
 import isPlainObject from 'lodash/isPlainObject';
 
 import { CHART_DATA_TYPE } from 'constants/lists';
@@ -38,23 +39,16 @@ function ChartDataTypeSelector({
       ? CHART_DATA_TYPE.findIndex((o) => o.value === defaultValue)
       : null
   );
+  const debouncedSelectedIdx = useDebounce(selectedIdx, 500);
 
   const [chartData, setChartData] = useState([]);
 
   const [anchorEl, setAnchorEl] = useState(null);
 
-  const debouncedOnChange = useCallback(
-    debounce(onChange, 1000, {
-      leading: true,
-      trailing: true,
-    }),
-    []
-  );
-
   useEffect(() => {
-    if (selectedIdx !== null && onChange)
-      debouncedOnChange(CHART_DATA_TYPE[selectedIdx].value);
-  }, [selectedIdx]);
+    if (debouncedSelectedIdx !== null && onChange)
+      onChange(CHART_DATA_TYPE[debouncedSelectedIdx].value);
+  }, [debouncedSelectedIdx]);
 
   useEffect(() => {
     setChartData(

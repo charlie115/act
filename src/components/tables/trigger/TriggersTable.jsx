@@ -37,7 +37,7 @@ import {
   useGetAllTradesQuery,
 } from 'redux/api/drf/tradecore';
 
-import debounce from 'lodash/debounce';
+import { useDebounce } from '@uidotdev/usehooks';
 import orderBy from 'lodash/orderBy';
 
 import isKoreanMarket from 'utils/isKoreanMarket';
@@ -69,7 +69,6 @@ export default function TriggersTable({
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [expanded, setExpanded] = useState({});
-  const [globalFilter, setGlobalFilter] = useState('');
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 100,
@@ -84,6 +83,7 @@ export default function TriggersTable({
   const [selectedTriggerType, setSelectedTriggerType] = useState();
 
   const [searchValue, setSearchValue] = useState('');
+  const globalFilter = useDebounce(searchValue, 500);
 
   const { data, isFetching, isLoading } = useGetAllTradesQuery(
     { tradeConfigUuids }
@@ -221,15 +221,6 @@ export default function TriggersTable({
     ]
   );
 
-  const onChange = (value) => setGlobalFilter(value);
-  const debouncedOnChange = useCallback(
-    debounce(onChange, 500, { leading: false, trailing: true })
-  );
-
-  useEffect(() => {
-    debouncedOnChange(searchValue);
-  }, [searchValue]);
-
   const onAlarmConfigChange = useCallback((value) => setAlarmConfig(value), []);
 
   const getRowId = useCallback((row) => row.uuid, []);
@@ -296,7 +287,6 @@ export default function TriggersTable({
             >
               <CloseIcon
                 onClick={() => {
-                  setGlobalFilter('');
                   setSearchValue('');
                 }}
                 sx={isMobile ? { fontSize: '1em' } : {}}
