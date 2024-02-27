@@ -1,5 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework.pagination import PageNumberPagination
 
 from lib.authentication import NodeIPAuthentication
 from lib.permissions import ACWBasePermission
@@ -52,6 +53,8 @@ class MessageViewSet(BaseViewSet):
         "sent",
     )
     http_method_names = ["get", "post", "put", "patch", "delete"]
+    pagination_class = PageNumberPagination
+    pagination_class.page_size = 50
 
     def get_queryset(self):
         """Override BaseViewSet get_queryset since Message table has no relationship to User

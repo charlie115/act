@@ -9,19 +9,31 @@ from socialaccounts.models import SocialApp
 from users.models import User
 
 
+class TelegramChatIdChoiceField(forms.ModelChoiceField):
+    widget = forms.Select({"class": " ".join([*SELECT_CLASSES, "w-72"])})
+    help_text = "Only users that have connected their telegram account are allowed to create messages."
+
+    def label_from_instance(self, obj):
+        return f"{obj.telegram_chat_id} ({obj.email})"
+
+
 class MessageForm(forms.ModelForm):
-    telegram_bot_username = forms.ChoiceField(
-        choices=[(bot.client_id, bot.name) for bot in SocialApp.objects.all()],
+    telegram_bot_username = forms.ModelChoiceField(
         required=True,
+        queryset=SocialApp.objects.values_list("client_id", flat=True),
+        blank=False,
+        to_field_name="client_id",
         widget=forms.Select({"class": " ".join([*SELECT_CLASSES, "w-72"])}),
     )
-    telegram_chat_id = forms.ChoiceField(
-        choices=[
-            (user.telegram_chat_id, f"{user.telegram_chat_id} ({user.email})")
-            for user in User.objects.all()
-        ],
+    telegram_chat_id = TelegramChatIdChoiceField(
         required=True,
-        widget=forms.Select({"class": " ".join([*SELECT_CLASSES, "w-72"])}),
+        queryset=User.objects.exclude(
+            telegram_chat_id__isnull=True,
+        ).exclude(
+            telegram_chat_id__exact="",
+        ),
+        blank=False,
+        to_field_name="telegram_chat_id",
     )
     content = forms.CharField(
         widget=forms.Textarea({"class": " ".join([*INPUT_CLASSES])}),
@@ -33,6 +45,17 @@ class MessageForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
+        if cleaned_data.get("telegram_chat_id"):
+            cleaned_data["telegram_chat_id"] = cleaned_data[
+                "telegram_chat_id"
+            ].telegram_chat_id
+
+        if "telegram_bot_username" not in cleaned_data:
+            raise forms.ValidationError("telegram_bot_username")
+
+        if "telegram_chat_id" not in cleaned_data:
+            raise forms.ValidationError("telegram_chat_id")
 
         user = User.objects.get(telegram_chat_id=cleaned_data.get("telegram_chat_id"))
         user_telegram_bots = list(

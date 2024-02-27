@@ -63,12 +63,11 @@ class AssetFilter(FilterSet):
 )
 class AssetViewSet(BaseViewSet):
     queryset = Asset.objects.all().order_by("symbol")
-    serializer_class = AssetSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = AssetFilter
     http_method_names = ["get", "post"]
     permission_classes = []
-    http_method_names = ["get", "post", "put", "patch", "delete"]
+    serializer_class = AssetSerializer
+    filterset_class = AssetFilter
+    filter_backends = [DjangoFilterBackend]
 
 
 @extend_schema_view(
@@ -81,7 +80,6 @@ class AssetViewSet(BaseViewSet):
 class MarketCodesView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
-    page_size = 200
     _prefix = "INFO_CORE|ACTIVATED|"
 
     def get(self, request):
@@ -113,7 +111,6 @@ class MarketCodesView(views.APIView):
 class DollarView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
-    page_size = 200
 
     def get(self, request):
         redis_key = "INFO_CORE|dollar"
@@ -239,7 +236,6 @@ class KlineDataView(views.APIView):
 class FundingRateDataView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
-    page_size = 200
 
     def get(self, request):
         query_params = FundingRateDataQueryParamsSerializer(data=request.query_params)
@@ -339,7 +335,6 @@ class FundingRateDataView(views.APIView):
 class AverageFundingRateDataView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
-    page_size = 200
 
     def get(self, request):
         query_params = AverageFundingRateDataQueryParamsSerializer(
@@ -395,7 +390,6 @@ class AverageFundingRateDataView(views.APIView):
 class FundingRateDiffDataView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
-    page_size = 200
 
     def get(self, request):
         query_params = FundingRateDiffDataQueryParamsSerializer(
@@ -467,7 +461,6 @@ class FundingRateDiffDataView(views.APIView):
 class WalletStatusView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
-    page_size = 200
 
     def get(self, request):
         query_params = WalletStatusQueryParamsSerializer(data=request.query_params)
