@@ -125,9 +125,7 @@ class IsInternal(ACWIsAuthenticated):
         is_authenticated = super(IsInternal, self).has_permission(request, view)
 
         permission = (
-            is_authenticated
-            and request.user.role.name == UserRole.INTERNAL_USER
-            and self.has_api_permission(request)
+            is_authenticated and request.user.role.name == UserRole.INTERNAL_USER
         )
 
         return permission

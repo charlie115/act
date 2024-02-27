@@ -7,6 +7,7 @@ from rest_framework import exceptions, mixins, response, viewsets
 from rest_framework.decorators import action
 
 from lib.authentication import NodeIPAuthentication
+from lib.filters import filter_list_of_dictionaries
 from lib.permissions import IsAdmin, IsInternal, IsManager, IsUser
 from lib.status import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from lib.views import BaseViewSet
@@ -269,10 +270,7 @@ class TradesViewSet(
             if key in self.request.query_params.keys()
         }
 
-        filterset = filter(
-            lambda item: all((item[k] == v for (k, v) in query.items())),
-            queryset,
-        )
+        filterset = filter_list_of_dictionaries(query, queryset)
 
         return filterset
 

@@ -1,3 +1,4 @@
+from django.forms import model_to_dict
 from rest_framework import exceptions, serializers
 
 from messagecore.models import Message
@@ -13,6 +14,14 @@ class MessageSerializer(serializers.ModelSerializer):
                 {
                     "telegram_chat_id": [
                         f"User with telegram_chat_id {attrs['telegram_chat_id']} does not exist!"
+                    ]
+                }
+            )
+        except User.MultipleObjectsReturned:
+            raise exceptions.ValidationError(
+                {
+                    "telegram_chat_id": [
+                        "This telegram_chat_id is linked to multiple users!"
                     ]
                 }
             )
@@ -34,6 +43,16 @@ class MessageSerializer(serializers.ModelSerializer):
             )
 
         return super().validate(attrs)
+
+    def update(self, instance, validated_data):
+        allowed_update_fields = ["read"]
+
+        new_validated_data = model_to_dict(instance)
+        for key, value in validated_data.items():
+            if key in allowed_update_fields and value != getattr(instance, key):
+                new_validated_data[key] = value
+
+        return super().update(instance, new_validated_data)
 
     class Meta:
         model = Message

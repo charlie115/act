@@ -5,10 +5,49 @@ from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework import exceptions
 from urllib.parse import urljoin
 
+from lib.permissions import ACWBasePermission
 from tradecore.models import TradeConfigAllocation
+from users.models import User, UserRole
 
 
 class TradeCoreMixin(object):
+    def finalize_queryset(self, queryset):
+        query_field = ""
+        query = {}
+
+        if queryset.model is User:
+            query_field = "id__in"
+            query = {query_field: [self.request.user.uuid]}
+
+        elif hasattr(queryset.model, "user"):
+            query_field = "user_id__in"
+            query = {query_field: [self.request.user.id]}
+
+        if self.request.user.role.name == UserRole.ADMIN:
+            return queryset
+
+        if (
+            self.request.user.role.name == UserRole.INTERNAL_USER
+            and ACWBasePermission().has_api_permission(self.request)
+        ):
+            return queryset
+
+        if (
+            self.request.user.role.name == UserRole.MANAGER
+            and ACWBasePermission().has_api_permission(self.request)
+        ):
+            managed_user_uuids = self.request.user.managed_users.values_list(
+                "managed_user__uuid",
+                flat=True,
+            )
+
+            try:
+                query[query_field] += managed_user_uuids
+            except KeyError:
+                pass
+
+        return queryset.filter(**query)
+
     def get_trade_config_allocation(
         self,
         trade_config_uuid,

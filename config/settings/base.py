@@ -106,7 +106,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 API_APP_SETTINGS = {
     "PUBLIC": ["authentication", "chat", "infocore", "newscore"],
     "INTERNAL": ["schema", "redoc", "swagger"],  # for internal users only
-    "PROTECTED": ["tradecore"],  # on permission basis
+    "PROTECTED": ["tradecore", "messagecore"],  # on permission basis
 }
 
 MIDDLEWARE = (
@@ -399,26 +399,10 @@ UNFOLD = {
     "SITE_HEADER": "Django Admin",
     "SITE_URL": "/",
     "SITE_SYMBOL": "settings",  # symbol from icon set
-    # "LOGIN": {
-    #     "image": lambda r: static("sample/login-bg.jpg"),
-    # },
-    # "STYLES": [
-    #     lambda request: static("css/style.css"),
-    # ],
-    # "SCRIPTS": [
-    #     lambda request: static("js/script.js"),
-    # ],
-}
-
-UNFOLD = {
-    "SITE_TITLE": None,
-    "SITE_HEADER": None,
-    "SITE_URL": "/",
     "SITE_LOGO": {
         "light": lambda request: static("logo-light.svg"),  # light mode
         "dark": lambda request: static("logo-dark.svg"),  # dark mode
     },
-    "SITE_SYMBOL": "tune",  # symbol from icon set
     "SHOW_HISTORY": False,  # show/hide "History" button, default: True
     "SHOW_VIEW_ON_SITE": True,  # show/hide "View on site" button, default: True
     "SIDEBAR": {

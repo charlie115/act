@@ -19,7 +19,8 @@ class BaseViewSet(viewsets.ModelViewSet):
         queryset = super(BaseViewSet, self).get_queryset()
 
         """
-        By default, filter queryset to own objects if it has relation to User. Else, return as is.
+        By default, filter queryset to own objects if model has relation to User.
+        Else, return the queryset as is since there's no ownership.
         """
 
         query_field = ""
@@ -35,27 +36,37 @@ class BaseViewSet(viewsets.ModelViewSet):
 
         """
         Furthermore, depending on the caller's role, include in the queryset the objects they are allowed to manage
-          Admin, Internal = all users
-          Manager = managed users
-          Others = self only
+            Admin, Internal = all users
+            Manager = managed users
+            Others = self only
         """
 
-        if self.request.user.role.name in [UserRole.ADMIN, UserRole.INTERNAL_USER]:
-            return queryset
+        if self.request.user:
+            # If ADMIN, return all objects
+            if self.request.user.role.name == UserRole.ADMIN:
+                return queryset
 
-        if (
-            self.request.user.role.name == UserRole.MANAGER
-            and ACWBasePermission().has_api_permission(self.request)
-        ):
-            managed_user_ids = self.request.user.managed_users.values_list(
-                "managed_user__id",
-                flat=True,
-            )
+            # If INTERNAL, return all objects if has_api_permission
+            if (
+                self.request.user.role.name == UserRole.INTERNAL_USER
+                and ACWBasePermission().has_api_permission(self.request)
+            ):
+                return queryset
 
-            try:
-                query[query_field] += managed_user_ids
-            except KeyError:
-                pass
+            # If MANAGER, return own (already filtered at the start) + managed users objects if has_api_permission
+            if (
+                self.request.user.role.name == UserRole.MANAGER
+                and ACWBasePermission().has_api_permission(self.request)
+            ):
+                managed_user_ids = self.request.user.managed_users.values_list(
+                    "managed_user__id",
+                    flat=True,
+                )
+
+                try:
+                    query[query_field] += managed_user_ids
+                except KeyError:
+                    pass
 
         return queryset.filter(**query)
 
