@@ -18,13 +18,14 @@ from api import crud
 
 app = FastAPI()
 
+
 @app.post("/trade-config/", response_model=schemas.TradeConfig, status_code=status.HTTP_201_CREATED)
 async def create_trade_config(trade_config: schemas.TradeConfigCreate, db: AsyncSession = Depends(crud.get_db)):
     return await crud.create_trade_config(trade_config, db)
 
 @app.get("/trade-config/", response_model=List[schemas.TradeConfig])
-async def read_all_trade_config(acw_user_uuid: Optional[UUID] = None, target_market_code: Optional[str] = None, origin_market_code: Optional[str] = None, db: AsyncSession = Depends(crud.get_db)):
-    return await crud.get_all_trade_configs(acw_user_uuid, target_market_code, origin_market_code, db)
+async def read_all_trade_config(user: Optional[UUID] = None, target_market_code: Optional[str] = None, origin_market_code: Optional[str] = None, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.get_all_trade_configs(user, target_market_code, origin_market_code, db)
 
 @app.get("/trade-config/{uuid}", response_model=schemas.TradeConfig)
 async def read_trade_config(uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
@@ -39,8 +40,8 @@ async def remove_trade_config(uuid: UUID, db: AsyncSession = Depends(crud.get_db
     return await crud.delete_trade_config(uuid, db)
 
 @app.delete("/trade-config/")
-async def remove_trade_config(acw_user_uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
-    return await crud.delete_all_trade_configs(acw_user_uuid, db)
+async def remove_trade_config(user: UUID, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.delete_all_trade_configs(user, db)
 
 @app.get("/trades/", response_model=List[schemas.Trade])
 async def read_trades(trade_config_uuid: Optional[UUID] = None, db: AsyncSession = Depends(crud.get_db)):
@@ -88,7 +89,15 @@ async def remove_exchange_api_key(uuid: UUID, db: AsyncSession = Depends(crud.ge
 
 
 
-# ############ API endpoints for communication with exchanges ####################################
-# @app.get("/balance/{acw_user_uuid}", response_model=List[schemas.SpotBalance])
-# async def read_balance(acw_user_uuid: UUID, market_code: str, db: AsyncSession = Depends(crud.get_db)):
-#     return await crud.fetch_balance(acw_user_uuid, market_code, db)
+############ API endpoints for communication with exchanges ####################################
+@app.get("/spot-position/{user}", response_model=List[schemas.SpotPosition])
+async def read_spot_position(user: UUID, market_code: str, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.fetch_spot_position(user, market_code, db)
+
+@app.get("/futures-position/{user}", response_model=List[schemas.USDMPosition])
+async def read_futures_position(user: UUID, market_code: str, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.fetch_futures_position(user, market_code, db)
+
+@app.get("/capital/{user}", response_model=schemas.Capital)
+async def read_capital(user: UUID, market_code: str, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.fetch_capital(user, market_code, db)

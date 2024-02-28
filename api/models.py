@@ -12,7 +12,7 @@ class TradeConfig(Base):
 
     id = Column(Integer, primary_key=True, server_default=text("nextval('trade_config_id_seq'::regclass)"))
     uuid = Column(UUID(as_uuid=True), unique=True, server_default=text("gen_random_uuid()"))
-    acw_user_uuid = Column(UUID(as_uuid=True), nullable=False)
+    user = Column(UUID(as_uuid=True), nullable=False)
     telegram_id = Column(BigInteger, nullable=False)
     send_times = Column(Integer)
     send_term = Column(Integer)

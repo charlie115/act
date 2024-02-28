@@ -6,7 +6,7 @@ from decimal import Decimal
 
 class TradeConfigBase(BaseModel):
     uuid: UUID
-    acw_user_uuid: UUID
+    user: UUID
     telegram_id: int
     send_times: int
     send_term: int
@@ -44,7 +44,7 @@ class TradeConfigCreate(TradeConfigBase):
 
 class TradeConfigUpdate(TradeConfigBase):
     uuid: Optional[UUID] = None
-    acw_user_uuid: Optional[UUID] = None
+    user: Optional[UUID] = None
     telegram_id: Optional[int] = None
     send_times: Optional[int] = None
     send_term: Optional[int] = None
@@ -187,7 +187,6 @@ class USDMPosition(BaseModel):
     leverage: int
     qty: Decimal
     margin_type: str
-    unrealized_profit_percent: Optional[Decimal] = None
     liquidation_price: Optional[Decimal] = None
     ROI: Optional[Decimal] = None
 
@@ -198,24 +197,13 @@ class COINMPosition(BaseModel):
     leverage: int
     qty: Decimal
     margin_type: str
-    unrealized_profit_percent: Optional[Decimal] = None
     liquidation_price: Optional[Decimal] = None
     ROI: Optional[Decimal] = None
 
-class SpotCapital(BaseModel):
+class Capital(BaseModel):
     currency: str
-    available: Decimal
+    free: Decimal
     locked: Decimal
-    unrealized_profit: Decimal
-
-class USDMCapital(BaseModel):
-    currency: str
-    available: Decimal
-    locked: Decimal
-    unrealized_profit: Decimal  
-
-class COINMCapital(BaseModel): 
-    currency: str
-    available: Decimal
-    locked: Decimal
-    unrealized_profit: Decimal
+    before_pnl: Decimal
+    pnl: Decimal
+    after_pnl: Decimal

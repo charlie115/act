@@ -53,12 +53,12 @@ if __name__ == '__main__':
     monitor_bot_name = config['monitor_setting']['monitor_bot']
     monitor_bot_token = config['telegram_bot_setting'][monitor_bot_name]
     monitor_bot_api_url = config['monitor_setting']['monitor_bot_api_url']
-    admin_id_list = []
-    admin_id = config['telegram_admin_id']['charlie1155']
-    admin_id_list.append(admin_id)
-    register_monitor_msg = RegisterMonitorMsg(monitor_bot_token, monitor_bot_api_url, admin_id, logging_dir)
+    admin_telegram_id_list = []
+    admin_telegram_id = config['telegram_admin_id']['charlie1155']
+    admin_telegram_id_list.append(admin_telegram_id)
+    register_monitor_msg = RegisterMonitorMsg(monitor_bot_token, monitor_bot_api_url, admin_telegram_id, logging_dir)
     # For Test
-    register_monitor_msg.register(admin_id, node, 'info', f"info_core_main|node:{node} has started.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+    register_monitor_msg.register(admin_telegram_id, node, 'info', f"info_core_main|node:{node} has started.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
     # Read api keys
     exchange_api_key_dict = config['exchange_api_key']
     # # enabled kline market settings
@@ -76,11 +76,11 @@ if __name__ == '__main__':
     db_dict = config['database_setting'][config['node_settings'][node]['db_settings']]
     
     # Initiate Kimp core (Websocket engine)
-    core = InitCore(logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, db_dict)
+    core = InitCore(logging_dir, proc_n, node, admin_telegram_id, register_monitor_msg, exchange_api_key_dict, db_dict)
 
     time.sleep(5)
 
     # Initiate TelegramBot with Trigger engine
-    admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list)
+    admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_telegram_id_list)
     admin_telegram_bot.updater.idle()
 

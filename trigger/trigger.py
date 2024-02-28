@@ -10,8 +10,8 @@ from psycopg2 import extras
 from etc.acw_api import AcwApi
 
 class InitTrigger:
-    def __init__(self, admin_id, node, server_check_status_list, get_premium_df, enabled_markets, register_monitor_msg, remote_redis_client, db_dict, mongo_client, postgres_client, logging_dir):
-        self.admin_id = admin_id
+    def __init__(self, admin_telegram_id, node, server_check_status_list, get_premium_df, enabled_markets, register_monitor_msg, remote_redis_client, db_dict, mongo_client, postgres_client, logging_dir):
+        self.admin_telegram_id = admin_telegram_id
         self.node = node
         self.acw_api = AcwApi(prod=False)
         self.server_check_status_list = server_check_status_list
@@ -88,8 +88,10 @@ class InitTrigger:
         except Exception as e:
             # rollback the transaction if any error while inserting
             self.postgres_client.pool.putconn(conn, close=True)
-            self.logger.error(f"Error in load_exchange_config: {e}")
-            self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"load_exchange_config", content=traceback.format_exc(), code=None, sent_switch=0, send_counts=1, remark=None)
+            title = f"Error in load_exchange_config"
+            full_content = f"{title}:\n{traceback.format_exc()}"
+            self.logger.error(full_content)
+            self.acw_api.create_message(self.admin_telegram_id, title, self.node, "monitor", full_content, code=None)
             time.sleep(5)
 
     def load_exchange_config_loop(self, table_name='trade_config', loop_interval_secs=1):
@@ -114,7 +116,10 @@ class InitTrigger:
                     JOIN trade_config ON trade.trade_config_uuid = trade_config.uuid WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s AND trade_config.service_datetime_end <= %s"""
                 else:
                     sql = """
-                    SELECT trade.*, trade_config, trade_config.service_datetime_end, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code, trade_config.send_times, trade_config.send_term
+                    SELECT trade.*, trade_config, trade_config.service_datetime_end, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code, trade_config.send_times, trade_config.send_term,
+                    trade_config.target_market_cross, trade_config.target_market_leverage, trade_config.origin_market_cross, trade_config.origin_market_leverage, trade_config.target_market_margin_call, trade_config.origin_market_margin_call,
+                    trade_config.target_market_safe_reverse, trade_config.origin_market_safe_reverse, trade_config.target_market_risk_threshold_p, trade_config.origin_market_risk_threshold_p, trade_config.repeat_limit_p,
+                    trade_config.repeat_limit_direction, trade_config.repeat_num_limit
                     FROM trade
                     JOIN trade_config ON trade.trade_config_uuid = trade_config.uuid WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s AND trade_config.service_datetime_end > %s"""
                 val = (target_market_code, origin_market_code, pd.Timestamp.now())
@@ -123,8 +128,10 @@ class InitTrigger:
                 trade_df_dict[market_combi_code] = trade_df
                 return trade_df
         except Exception as e:
-            self.logger.error(f"Error in load_trade_df: {e}")
-            self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"load_trade_df", content=traceback.format_exc(), code=None, sent_switch=0, send_counts=1, remark=None)
+            title = f"Error in load_trade_df"
+            full_content = f"Error in load_trade_df: {e}\n{traceback.format_exc()}"
+            self.logger.error(full_content)
+            self.acw_api.create_message(self.admin_telegram_id, title, self.node, "monitor", full_content, code=None)
         
     def start_trigger_loop(self, market_combi_code, trade_df_dict, free_user=True, table_name='trade', loop_interval_secs=5):
         self.logger.info(f"start_trigger_loop: {market_combi_code} | free_user: {free_user} | table_name: {table_name} | loop_interval_secs: {loop_interval_secs}")
@@ -136,7 +143,7 @@ class InitTrigger:
             try:
                 trade_df = self.load_trade_df(conn, curr, market_combi_code, trade_df_dict, free_user, table_name)
                 # Loading data done
-                if len(trade_df) == 0:
+                if len(trade_df) == 0 or trade_df is None:
                     time.sleep(loop_interval_secs)
                     continue
 
@@ -179,11 +186,12 @@ class InitTrigger:
 
                 time.sleep(loop_interval_secs)
             except Exception as e:
-                self.logger.error(f"Error in start_trigger_loop: {e}")
+                title = f"Error in start_trigger_loop"
+                full_content = f"{title}: {e}\n{traceback.format_exc()}"
+                self.logger.error(full_content)
                 # rollback the transaction if any error while inserting
                 postgres_client.pool.putconn(conn, close=True)
-                self.logger.error(f"Error in start_trigger_loop: {e}")
-                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"start_trigger_loop", content=traceback.format_exc(), code=None, sent_switch=0, send_counts=1, remark=None)
+                self.acw_api.create_message(self.admin_telegram_id, title, self.node, "monitor", full_content, code=None)
                 time.sleep(10)
 
     def high_break(self, high_break_trade_df, free_user):
@@ -205,7 +213,7 @@ class InitTrigger:
                     current_price = row['tp']
                 msg_content += f"현재가격: {current_price}({round(row['scr'],2)}%)"
                 msg_full = f"{msg_title}\n{msg_content}"
-                self.acw_api.create_message(row['telegram_id'], msg_title, self.node, 'info', msg_full, send_times=row['send_times'], send_term=row['send_term'])
+                self.acw_api.create_message_thread(row['telegram_id'], msg_title, self.node, 'info', msg_full, send_times=row['send_times'], send_term=row['send_term'])
             row_thread = Thread(target=row_thread, args=(row_tup,), daemon=True)
             row_thread.start()
 
@@ -230,6 +238,6 @@ class InitTrigger:
                     current_price = row['tp']
                 msg_content += f"현재가격: {current_price}({round(row['scr'],2)}%)"
                 msg_full = f"{msg_title}\n{msg_content}"
-                self.acw_api.create_message(row['telegram_id'], msg_title, self.node, 'info', msg_full, send_times=row['send_times'], send_term=row['send_term'])
+                self.acw_api.create_message_thread(row['telegram_id'], msg_title, self.node, 'info', msg_full, send_times=row['send_times'], send_term=row['send_term'])
             row_thread = Thread(target=row_thread, args=(row_tup,), daemon=True)
             row_thread.start()

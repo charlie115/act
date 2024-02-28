@@ -74,7 +74,7 @@ class InitDBClient:
             (
                 id SERIAL PRIMARY KEY,
                 uuid UUID DEFAULT gen_random_uuid() UNIQUE,
-                acw_user_uuid UUID NOT NULL,
+                user UUID NOT NULL,
                 telegram_id BIGINT NOT NULL,
                 send_times INTEGER,
                 send_term INTEGER,

@@ -29,14 +29,14 @@ current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
 logging_dir = f"{current_folder_dir}/loggers/logs/"
 
 class InitCore:
-    def __init__(self, logging_dir, proc_n, node, admin_id, register_monitor_msg, exchange_api_key_dict, db_dict):
+    def __init__(self, logging_dir, proc_n, node, admin_telegram_id, register_monitor_msg, exchange_api_key_dict, db_dict):
         # Inital value setting
         self.logger = KimpBotLogger("trade_core", logging_dir).logger
         self.price_websocket_logger = KimpBotLogger("price_websocket", logging_dir).logger
         self.update_dollar_logger = KimpBotLogger("update_dollar", logging_dir).logger
         self.logging_dir = logging_dir
         self.node = node
-        self.admin_id = admin_id
+        self.admin_telegram_id = admin_telegram_id
         self.proc_n = proc_n
         self.monitor_websocket_switch = True
         self.exclude_outliers = True
@@ -133,30 +133,30 @@ class InitCore:
         self.exchange_websocket_dict = {}
         for enabled_websocket_name in self.enabled_websocket_list:
             if enabled_websocket_name == "UPBIT_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = UpbitWebsocket(self.admin_id, self.node, self.proc_n, self.get_upbit_symbol_list, self.register_monitor_msg, self.logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = UpbitWebsocket(self.admin_telegram_id, self.node, self.proc_n, self.get_upbit_symbol_list, self.register_monitor_msg, self.logging_dir)
             elif enabled_websocket_name == "BITHUMB_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = BithumbWebsocket(self.admin_id, self.node, self.proc_n, self.get_bithumb_symbol_list, self.register_monitor_msg, self.logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BithumbWebsocket(self.admin_telegram_id, self.node, self.proc_n, self.get_bithumb_symbol_list, self.register_monitor_msg, self.logging_dir)
             elif enabled_websocket_name == "BINANCE_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceWebsocket(self.admin_telegram_id, self.node, self.proc_n, self.get_binance_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
             elif enabled_websocket_name == "BINANCE_USD_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceUSDMWebsocket(self.admin_telegram_id, self.node, self.proc_n, self.get_binance_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
             elif enabled_websocket_name == "BINANCE_COIN_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_binance_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceCOINMWebsocket(self.admin_telegram_id, self.node, self.proc_n, self.get_binance_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
             elif enabled_websocket_name == "OKX_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = OkxWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_spot_symbol_list, register_monitor_msg, "SPOT", logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = OkxWebsocket(self.admin_telegram_id, self.node, self.proc_n, self.get_okx_spot_symbol_list, register_monitor_msg, "SPOT", logging_dir)
             elif enabled_websocket_name == "OKX_USD_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = OkxUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_usd_m_symbol_list, register_monitor_msg, "USD_M", logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = OkxUSDMWebsocket(self.admin_telegram_id, self.node, self.proc_n, self.get_okx_usd_m_symbol_list, register_monitor_msg, "USD_M", logging_dir)
             elif enabled_websocket_name == "OKX_COIN_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = OkxCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_okx_coin_m_symbol_list, register_monitor_msg, "COIN_M", logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = OkxCOINMWebsocket(self.admin_telegram_id, self.node, self.proc_n, self.get_okx_coin_m_symbol_list, register_monitor_msg, "COIN_M", logging_dir)
             elif enabled_websocket_name == "BYBIT_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = BybitWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitWebsocket(self.admin_telegram_id, self.node, self.proc_n, self.get_bybit_spot_symbol_list, register_monitor_msg, "SPOT", self.info_dict, logging_dir)
             elif enabled_websocket_name == "BYBIT_USD_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BybitUSDMWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitUSDMWebsocket(self.admin_telegram_id, self.node, self.proc_n, self.get_bybit_usd_m_symbol_list, register_monitor_msg, "USD_M", self.info_dict, logging_dir)
             elif enabled_websocket_name == "BYBIT_COIN_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, self.get_bybit_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitCOINMWebsocket(self.admin_telegram_id, self.node, self.proc_n, self.get_bybit_coin_m_symbol_list, register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
             else:
                 self.logger.error(f"InitCore|{enabled_websocket_name} is not valid.")
-                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"InitCore|{enabled_websocket_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                self.register_monitor_msg.register(self.admin_telegram_id, self.node, 'error', f"InitCore|{enabled_websocket_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
                 break
 
         # Loading convert rate
@@ -171,14 +171,14 @@ class InitCore:
         time.sleep(10)
 
         # Start trigger engine
-        self.trigger = InitTrigger(admin_id, node, self.server_check_status_list, self.get_premium_df, self.enabled_market_code_services, 
+        self.trigger = InitTrigger(self.admin_telegram_id, node, self.server_check_status_list, self.get_premium_df, self.enabled_market_code_services, 
                                    register_monitor_msg, self.remote_redis_client, self.db_dict, self.mongo_client, self.postgres_client, self.logging_dir)
 
     def fetch_enabled_market_code_services(self):
         all_node_df = self.acw_api.get_node()
         node_df = all_node_df[all_node_df['name']==self.node]
         if len(node_df) != 1:
-            self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"Node not found or not unique, len(node_df)={len(node_df)}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+            self.register_monitor_msg.register(self.admin_telegram_id, self.node, 'error', f"Node not found or not unique, len(node_df)={len(node_df)}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
             raise Exception(f"Node not found or not unique, len(node_df)={len(node_df)}")
         enabled_market_code_services = node_df['market_code_services'].values[0]
         return enabled_market_code_services
@@ -290,7 +290,7 @@ class InitCore:
                     self.info_dict[data_name] = self.bybit_adaptor.coin_m_all_tickers()
                 else:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name} is not valid.")
-                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                    self.register_monitor_msg.register(self.admin_telegram_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
                     break
                 self.local_redis_client.set_data(f'TRADE_CORE|{data_name}', pickle.dumps(self.info_dict[data_name]))
                 time.sleep(loop_time_secs)
@@ -299,7 +299,7 @@ class InitCore:
                 error_count += 1
                 if error_count >= error_count_limit:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name}, {traceback.format_exc()}")
-                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} failed.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                    self.register_monitor_msg.register(self.admin_telegram_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} failed.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
                 time.sleep(loop_time_secs)
 
     def get_dollar_dict(self):
@@ -513,7 +513,7 @@ class InitCore:
                     self.convert_rate_initialized = True
             except Exception as e:
                 self.logger.error(f"update_convert_rate_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
-                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_convert_rate_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                self.register_monitor_msg.register(self.admin_telegram_id, self.node, 'error', f"update_convert_rate_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
             time.sleep(loop_time_secs)
 
     def get_premium_df(self, target_market_code, origin_market_code):
@@ -631,7 +631,7 @@ class InitCore:
                 time.sleep(loop_interval_secs)
             except Exception as e:
                 self.logger.error(f"update_server_check_status|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
-                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_server_check_status|Exception occured! Error: {e}, traceback: {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                self.register_monitor_msg.register(self.admin_telegram_id, self.node, 'error', f"update_server_check_status|Exception occured! Error: {e}, traceback: {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
                 time.sleep(10)
 
     

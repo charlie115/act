@@ -11,7 +11,7 @@
             "reference_node": null,
             "encryption_key": "1JhCAuLI_oEkqCih_2oRWWY4Q1LL8l-VoWgxJJxKt_I="
         },
-        "trade_core":
+        "trade_core1":
         {
             "prod": true,
             "db_settings": "postgres_docker",
@@ -74,8 +74,8 @@
         },
         "dev_redis_remote":
         {
-            "host": "221.148.128.212",
-            "port": 26379,
+            "host": "14.52.68.128",
+            "port": 6379,
             "passwd": "CommunityRedis123!"
         },
         "postgres_docker":

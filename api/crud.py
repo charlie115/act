@@ -10,21 +10,24 @@ from uuid import UUID
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import models, schemas
-from utils import encrypt_data, decrypt_data
+from utils import encrypt_data, decrypt_data, find_api_keys
 from decorators import handle_db_exceptions
 from database import engine
 import datetime
-from exchange_plugin.binance_plug import UserBinanceAdaptor
-from exchange_plugin.upbit_plug import UserUpbitAdaptor
+from exchange_plugin.integrated_plug import UserExchangeAdaptor
+
+upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# initialize exchange adaptors
+user_exchange_adaptor = UserExchangeAdaptor(logging_dir=upper_dir+"/loggers/logs/")
 
 # Dependency to get the async database session
 async def get_db():
     async with AsyncSession(engine) as session:
         yield session
 
-async def get_all_trade_configs(acw_user_uuid: UUID, target_market_code: str, origin_market_code: str, db: AsyncSession):
-    if acw_user_uuid:
-        query = select(models.TradeConfig).filter(models.TradeConfig.acw_user_uuid == acw_user_uuid)
+async def get_all_trade_configs(user: UUID, target_market_code: str, origin_market_code: str, db: AsyncSession):
+    if user:
+        query = select(models.TradeConfig).filter(models.TradeConfig.user == user)
     else:
         query = select(models.TradeConfig)
     if target_market_code:
@@ -51,7 +54,7 @@ async def get_trade_config(uuid: UUID, db: AsyncSession):
 async def create_trade_config(trade_config: schemas.TradeConfigCreate, db: AsyncSession):
     # Check first if the user already has a trade config for the same exchange
     result = await db.execute(select(models.TradeConfig).filter(
-        models.TradeConfig.acw_user_uuid == trade_config.acw_user_uuid,
+        models.TradeConfig.user == trade_config.user,
         models.TradeConfig.target_market_code == trade_config.target_market_code,
         models.TradeConfig.origin_market_code == trade_config.origin_market_code
     ))
@@ -89,9 +92,9 @@ async def delete_trade_config(uuid: UUID, db: AsyncSession):
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-async def delete_all_trade_configs(acw_user_uuid: UUID, db: AsyncSession):
+async def delete_all_trade_configs(user: UUID, db: AsyncSession):
     # Query to find all trade configs for the user
-    result = await db.execute(select(models.TradeConfig).filter(models.TradeConfig.acw_user_uuid == acw_user_uuid))
+    result = await db.execute(select(models.TradeConfig).filter(models.TradeConfig.user == user))
     trade_configs = result.scalars().all()
 
     # Check if any trade configs are found
@@ -235,9 +238,29 @@ async def create_exchange_api_key(exchange_api_key: schemas.ExchangeApiKeyCreate
     exchange_api_key.spot = True if 'SPOT' in exchange_api_key.market_code else False
     exchange_api_key.futures = True if 'SPOT' not in exchange_api_key.market_code else False
 
+    access_key_to_check = exchange_api_key.access_key.decode()
+    secret_key_to_check = exchange_api_key.secret_key.decode()
+    if exchange_api_key.passphrase is not None:
+        passphrase_to_check = exchange_api_key.passphrase.decode()
+    else:
+        passphrase_to_check = None
+
+    # Validation of API key
+    try:
+        validated_flag, error_str = user_exchange_adaptor.check_api_key(
+            exchange_api_key.exchange, access_key_to_check, secret_key_to_check, passphrase_to_check, exchange_api_key.futures
+        )
+    except Exception as e:
+        validated_flag = False
+        error_str = str(e)
+    if not validated_flag:
+        raise HTTPException(status_code=400, detail=error_str)
+
     # Encrypt the access key and secret key before storing in the database
     exchange_api_key.access_key = encrypt_data(exchange_api_key.access_key)
     exchange_api_key.secret_key = encrypt_data(exchange_api_key.secret_key)
+    if exchange_api_key.passphrase is not None:
+        exchange_api_key.passphrase = encrypt_data(exchange_api_key.passphrase)
 
     db_exchange_api_key = models.ExchangeApiKey(**exchange_api_key.dict())
     db.add(db_exchange_api_key)
@@ -260,49 +283,56 @@ async def delete_exchange_api_key(uuid: UUID, db: AsyncSession):
 
 
 
-# #################### API for communication with exchanges ####################################
-# # initialize exchange adaptors
-# user_binance_adaptor = UserBinanceAdaptor()
-# user_upbit_adaptor = UserUpbitAdaptor()
+#################### API for communication with exchanges ####################################
+async def fetch_spot_position(user: UUID, market_code: str, db: AsyncSession):
+    market = market_code.split('/')[0].upper()
+    # quote_asset = market_code.split('/')[1].upper()
+    temp_list = market.split("_")
+    exchange = temp_list[0]
+    market_type = '_'.join(temp_list[1:])
+    if market_type != 'SPOT':
+        raise HTTPException(status_code=400, detail="Invalid market type. Only SPOT market is supported.")
 
-# async def fetch_balance(acw_user_uuid: UUID, market_code: str, db: AsyncSession):
-#     available_exchange_list = ["BINANCE", "UPBIT"]
-#     market = market_code.split('/')[0].upper()
-#     temp_list = market.split("_")
-#     exchange = temp_list[0]
-#     market_type = '_'.join(temp_list[1:])
+    access_key, secret_key, passphrase = await find_api_keys(user, exchange, True, False, db)
+    try:
+        position_df = user_exchange_adaptor.get_position(exchange, access_key, secret_key, market_type, passphrase=passphrase)
+    except Exception as e:
+        return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
+    return position_df.to_dict(orient="records")
 
-#     if exchange not in available_exchange_list:
-#         # return error response with the available exchange list
-#         return Response(status_code=status.HTTP_400_BAD_REQUEST, content=f"Exchange: {exchange} not supported. Available exchanges: {available_exchange_list}")
+async def fetch_futures_position(user: UUID, market_code: str, db: AsyncSession):
+    market = market_code.split('/')[0].upper()
+    # quote_asset = market_code.split('/')[1].upper()
+    temp_list = market.split("_")
+    exchange = temp_list[0]
+    market_type = '_'.join(temp_list[1:])
+    if market_type == "SPOT":
+        raise HTTPException(status_code=400, detail="Invalid market type. Only FUTURES market is supported.")
     
-#     # First fetch all trade_config that has the given acw_user_uuid
-#     trade_configs = await db.execute(select(models.TradeConfig).filter(models.TradeConfig.acw_user_uuid == acw_user_uuid))
-#     trade_configs = trade_configs.scalars().all()
-#     # Fetch the list API keys whose trade_config_uuid is in the trade_configs    
-#     api_key_list = []
-#     for trade_config in trade_configs:
-#         api_keys = await db.execute(select(models.ExchangeApiKey).filter(models.ExchangeApiKey.trade_config_uuid == trade_config.uuid))
-#         api_keys = api_keys.scalars().all()
-#         api_keys = [api_key for api_key in api_keys if api_key.market_code == market_code]
-#         api_key_list.extend(api_keys)
+    access_key, secret_key, passphrase = await find_api_keys(user, exchange, False, True, db)
+    try:
+        position_df = user_exchange_adaptor.get_position(exchange, access_key, secret_key, market_type, passphrase=passphrase)
+    except Exception as e:
+        return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
+    return position_df.to_dict(orient="records")
 
-#     # Pick one of the api key in the api key list by random
-#     api_key_obj = random.choice(api_key_list)
-#     access_key = decrypt_data(api_key_obj.access_key).decode("utf-8")
-#     secret_key = decrypt_data(api_key_obj.secret_key).decode("utf-8")
-
-#     if exchange.upper() == "BINANCE":
-#         try:
-#             balance_df = user_binance_adaptor.get_balance(access_key, secret_key, market_type)
-#         except Exception as e:
-#             return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
-#     elif exchange.upper() == "UPBIT":
-#         try:
-#             balance_df = user_upbit_adaptor.get_balance(access_key, secret_key)
-#         except Exception as e:
-#             return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
-#     else:
-#         raise ValueError(f"Exchange: {exchange} not supported.")
+async def fetch_capital(user: UUID, market_code: str, db: AsyncSession):
+    market = market_code.split('/')[0].upper()
+    # quote_asset = market_code.split('/')[1].upper()
+    temp_list = market.split("_")
+    exchange = temp_list[0]
+    market_type = '_'.join(temp_list[1:])
+    if market_type == "SPOT":
+        spot = True
+        futures = False
+    else:
+        spot = False
+        futures = True
     
-#     return balance_df.to_dict(orient="records")
+    access_key, secret_key, passphrase = await find_api_keys(user, exchange, spot, futures, db)
+    try:
+        position_df = user_exchange_adaptor.get_capital(exchange, access_key, secret_key, market_type, passphrase=passphrase)
+    except Exception as e:
+        return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
+    return position_df.to_dict()
+

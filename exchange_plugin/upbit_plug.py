@@ -108,7 +108,7 @@ class UserUpbitAdaptor:
         upbit_client = self.load_user_client(access_key, secret_key)
         result_df = pd.DataFrame(upbit_client.Account.Account_info()['result'])
         result_df.loc[:, ['balance','locked','avg_buy_price']] = result_df[['balance','locked','avg_buy_price']].astype(float)
-        result_df = result_df.rename(columns={'currency':'asset', 'balance':'free', 'locked':'used'})
+        result_df = result_df.rename(columns={'currency':'asset', 'balance':'free'})
         if return_dict is None:
             return result_df
         else:
@@ -125,15 +125,20 @@ class UserUpbitAdaptor:
             raise Exception(f"Invalid market_type: {market_type}")
     
     def check_api_key(self, access_key, secret_key, futures=False):
+        print(f"access_key: {access_key}, secret_key: {secret_key}, futures: {futures}")
         self.user_client_dict.pop(access_key, None)
+        client = self.load_user_client(access_key, secret_key)
+        print('UserUpbitAdaptor check_api_key executed.')
+        if futures:
+            raise Exception(f"futures market is not supported yet.")
         try:
-            if futures is False:
-                self.get_spot_balance(access_key, secret_key)
+            response = client.Account.Account_info()['response']
+            if response['status_code'] == 200:
+                return (True, 'OK')
             else:
-                # self.get_coinm_balance(access_key, secret_key)
-                raise Exception(f"futures market is not supported yet.")
-            return (True, 'OK')
+                return (False, response['text'])
         except Exception as e:
+            print('Exception executed')
             self.user_client_dict.pop(access_key, None)
             return (False, str(e))
         
