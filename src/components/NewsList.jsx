@@ -133,7 +133,7 @@ export default function NewsList({ filters, timezone, onUnreadData }) {
           <Button
             color="info"
             onClick={() => setPage(filteredNews?.nextPage || 2)}
-            sx={{ fontStyle: 'italic', my: 3, px: 5 }}
+            sx={{ fontStyle: 'italic', mb: 6, px: 5 }}
           >
             {t('Load more news...')}
           </Button>

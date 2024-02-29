@@ -1,10 +1,18 @@
 import React from 'react';
 
 import Box from '@mui/material/Box';
+import AddIcon from '@mui/icons-material/Add';
 
 import i18n from 'configs/i18n';
 
 export default function renderValueCell({ cell, row: { original } }) {
+  if (original.add)
+    return (
+      <AddIcon
+        color="success"
+        className="animate__animated animate__heartBeat animate__infinite"
+      />
+    );
   return (
     <>
       <Box component="span" sx={{ fontWeight: 700 }}>

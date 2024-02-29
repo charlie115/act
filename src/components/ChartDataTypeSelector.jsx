@@ -39,7 +39,7 @@ function ChartDataTypeSelector({
       ? CHART_DATA_TYPE.findIndex((o) => o.value === defaultValue)
       : null
   );
-  const debouncedSelectedIdx = useDebounce(selectedIdx, 500);
+  const debouncedSelectedIdx = useDebounce(selectedIdx, 250);
 
   const [chartData, setChartData] = useState([]);
 

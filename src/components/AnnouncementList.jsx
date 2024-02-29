@@ -253,7 +253,7 @@ export default function AnnouncementList({ filters, timezone, onUnreadData }) {
           <Button
             color="info"
             onClick={() => setPage(filteredAnnouncements?.nextPage || 2)}
-            sx={{ fontStyle: 'italic', my: 3, px: 5 }}
+            sx={{ fontStyle: 'italic', mb: 6, px: 5 }}
           >
             {t('Load more announcements...')}
           </Button>

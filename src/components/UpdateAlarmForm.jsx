@@ -22,14 +22,20 @@ import { useTranslation } from 'react-i18next';
 import { usePutTradeMutation } from 'redux/api/drf/tradecore';
 
 export default function UpdateAlarmForm({
-  row: { isTether, ...row },
+  baseAsset,
+  defaultEntry,
+  defaultExit,
+  isTether,
+  tradeConfigUuid,
+  usdtConversion,
+  uuid,
   onAlarmConfigChange,
   toggleExpanded,
 }) {
   const { t } = useTranslation();
 
   const { control, handleSubmit, formState, getValues, trigger } = useForm({
-    defaultValues: { entry: row.entry, exit: row.exit },
+    defaultValues: { entry: defaultEntry, exit: defaultExit },
     mode: 'all',
   });
 
@@ -45,10 +51,10 @@ export default function UpdateAlarmForm({
       putTrade({
         low: parseFloat(data.entry),
         high: parseFloat(data.exit),
-        base_asset: row.base_asset,
-        trade_config_uuid: row.trade_config_uuid,
-        usdt_conversion: row.usdt_conversion,
-        uuid: row.uuid,
+        base_asset: baseAsset,
+        trade_config_uuid: tradeConfigUuid,
+        usdt_conversion: usdtConversion,
+        uuid,
       });
   };
 
@@ -67,8 +73,8 @@ export default function UpdateAlarmForm({
 
   useEffect(() => {
     onAlarmConfigChange({
-      entry: row.entry || null,
-      exit: row.exit || null,
+      entry: defaultEntry || null,
+      exit: defaultExit || null,
       isTether,
     });
     return () => onAlarmConfigChange({});

@@ -130,7 +130,6 @@ const LightWeightPremiumKlineChart = forwardRef(
         ...marketCodes,
         interval,
         queryKey,
-        component: 'kline-chart',
       },
       { skip: !marketCodes }
     );

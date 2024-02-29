@@ -112,7 +112,6 @@ function PremiumDataChartViewer({
       ...marketCodes,
       interval: klineInterval,
       queryKey,
-      component: 'kline-chart',
     },
     { skip: !marketCodes }
   );

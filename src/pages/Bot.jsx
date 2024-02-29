@@ -119,6 +119,7 @@ export default function Bot() {
       tradeConfigAllocations?.map((item) => ({
         value: item.value,
         target: {
+          ...item.target,
           label: item.target.getLabel(),
           icon: (
             <Box
@@ -133,6 +134,7 @@ export default function Bot() {
           ),
         },
         origin: {
+          ...item.origin,
           label: item.origin.getLabel(),
           icon: (
             <Box

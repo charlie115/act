@@ -13,17 +13,13 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
-import InputAdornment from '@mui/material/InputAdornment';
-import OutlinedInput from '@mui/material/OutlinedInput';
 import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import SearchIcon from '@mui/icons-material/Search';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -32,16 +28,21 @@ import { useTheme } from '@mui/material/styles';
 import { Trans, useTranslation } from 'react-i18next';
 import { DateTime } from 'luxon';
 
+import { useGetAssetsQuery } from 'redux/api/drf/infocore';
 import {
   useDeleteMultipleTradesMutation,
   useGetAllTradesQuery,
 } from 'redux/api/drf/tradecore';
 
-import { useDebounce } from '@uidotdev/usehooks';
+import { useSelector } from 'react-redux';
+
+import isFunction from 'lodash/isFunction';
 import orderBy from 'lodash/orderBy';
 
 import isKoreanMarket from 'utils/isKoreanMarket';
 
+import AssetSearchInput from 'components/AssetSearchInput';
+import CreateAlarmForm from 'components/CreateAlarmForm';
 import DropdownMenu from 'components/DropdownMenu';
 import PremiumDataChartViewer from 'components/PremiumDataChartViewer';
 import ReactTableUI from 'components/ReactTableUI';
@@ -50,6 +51,7 @@ import UpdateAlarmForm from 'components/UpdateAlarmForm';
 import { TRIGGER_LIST } from 'constants/lists';
 
 import renderExpandCell from 'components/tables/common/renderExpandCell';
+import renderIconCell from 'components/tables/common/renderIconCell';
 import renderMarketCodesCell from './renderMarketCodesCell';
 import renderSelectCell from './renderSelectCell';
 import renderStatusCell from './renderStatusCell';
@@ -68,12 +70,17 @@ export default function TriggersTable({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  const { user } = useSelector((state) => state.auth);
+
   const [expanded, setExpanded] = useState({});
+  const [globalFilter, setGlobalFilter] = useState('');
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 100,
   });
   const [rowSelection, setRowSelection] = useState({});
+
+  const [selectedAsset, setSelectedAsset] = useState('');
 
   const [deleteAlert, setDeleteAlert] = useState(false);
 
@@ -82,18 +89,39 @@ export default function TriggersTable({
   const [triggerTypeList, setTriggerTypeList] = useState([]);
   const [selectedTriggerType, setSelectedTriggerType] = useState();
 
-  const [searchValue, setSearchValue] = useState('');
-  const globalFilter = useDebounce(searchValue, 500);
-
   const { data, isFetching, isLoading } = useGetAllTradesQuery(
-    { tradeConfigUuids }
-    // { skip: !tradeConfigAllocation }
+    { tradeConfigUuids },
+    { pollingInterval: 1000 * 60 }
   );
 
   const [
     deleteMultipleTrades,
     { isLoading: isDeleteLoading, isSuccess: isDeleteSuccess },
   ] = useDeleteMultipleTradesMutation();
+
+  const { data: assetsData } = useGetAssetsQuery();
+
+  const marketCodes = useMemo(() => {
+    if (
+      !selectedMarketCodeCombination?.value ||
+      selectedMarketCodeCombination.value === 'ALL'
+    )
+      return null;
+    return {
+      targetMarketCode: selectedMarketCodeCombination?.target.value,
+      originMarketCode: selectedMarketCodeCombination?.origin.value,
+    };
+  }, [selectedMarketCodeCombination?.value]);
+
+  const tradeConfigAllocation = useMemo(
+    () =>
+      user?.trade_config_allocations?.find(
+        (o) =>
+          o.target_market_code === marketCodes?.targetMarketCode &&
+          o.origin_market_code === marketCodes?.originMarketCode
+      ),
+    [marketCodes, user?.trade_config_allocations]
+  );
 
   useEffect(() => {
     if (isDeleteSuccess) {
@@ -122,6 +150,14 @@ export default function TriggersTable({
         size: isMobile ? 20 : 50,
         header: renderSelectHeader,
         cell: renderSelectCell,
+      },
+      {
+        accessorKey: 'icon',
+        enableGlobalFilter: false,
+        enableSorting: false,
+        maxSize: 10,
+        header: <span />,
+        cell: renderIconCell,
       },
       {
         accessorKey: 'baseAsset',
@@ -173,47 +209,66 @@ export default function TriggersTable({
 
   const tableData = useMemo(
     () =>
-      orderBy(
-        data?.filter((item) => {
-          if (!item) return false;
+      !selectedAsset || data?.find((o) => o.base_asset === selectedAsset)
+        ? orderBy(
+            data?.filter((item) => {
+              if (!item) return false;
 
-          let flag = selectedMarketCodeCombination?.value === 'ALL';
-          if (selectedMarketCodeCombination?.value !== 'ALL')
-            flag =
-              selectedMarketCodeCombination?.tradeConfigUuid ===
-              item.trade_config_uuid;
-          if (selectedTriggerType?.value !== 'ALL')
-            flag =
-              flag && selectedTriggerType?.value === 'alarms'
-                ? item.trade_capital === null
-                : item.trade_capital !== null;
-          return flag;
-        }) || [],
-        'registered_datetime',
-        'desc'
-      ).map((trade) => {
-        const tradeConfig = tradeConfigAllocations.find(
-          (o) => o.uuid === trade.trade_config_uuid
-        );
-        return {
-          ...trade,
-          baseAsset: trade.base_asset,
-          entry: trade.low,
-          exit: trade.high,
-          created: DateTime.fromISO(trade.registered_datetime).toLocaleString(
-            DateTime.DATETIME_MED
-          ),
-          isTether: trade.usdt_conversion,
-          isDeleteLoading,
-          status: trade.trigger_switch,
-          marketCodes: {
-            targetMarketCode: tradeConfig.target.value,
-            originMarketCode: tradeConfig.origin.value,
-          },
-        };
-      }),
+              let flag = selectedMarketCodeCombination?.value === 'ALL';
+              if (selectedMarketCodeCombination?.value !== 'ALL')
+                flag =
+                  selectedMarketCodeCombination?.tradeConfigUuid ===
+                  item.trade_config_uuid;
+              if (selectedTriggerType?.value !== 'ALL')
+                flag =
+                  flag && selectedTriggerType?.value === 'alarms'
+                    ? item.trade_capital === null
+                    : item.trade_capital !== null;
+              return flag;
+            }) || [],
+            'registered_datetime',
+            'desc'
+          ).map((trade) => {
+            const tradeConfig = tradeConfigAllocations.find(
+              (o) => o.uuid === trade.trade_config_uuid
+            );
+            return {
+              ...trade,
+              baseAsset: trade.base_asset,
+              name: trade.base_asset,
+              entry: trade.low,
+              exit: trade.high,
+              created: DateTime.fromISO(
+                trade.registered_datetime
+              ).toLocaleString(DateTime.DATETIME_MED),
+              isTether: trade.usdt_conversion,
+              isDeleteLoading,
+              status: trade.trigger_switch,
+              marketCodes: {
+                targetMarketCode: tradeConfig.target.value,
+                originMarketCode: tradeConfig.origin.value,
+              },
+              icon: assetsData?.[trade.base_asset]?.icon,
+            };
+          })
+        : [
+            {
+              uuid: selectedAsset,
+              baseAsset: selectedAsset,
+              name: selectedAsset,
+              icon: assetsData?.[selectedAsset]?.icon,
+              marketCodes: {
+                targetMarketCode: selectedMarketCodeCombination?.target.value,
+                originMarketCode: selectedMarketCodeCombination?.origin.value,
+              },
+              status: null,
+              add: true,
+            },
+          ],
     [
       data,
+      assetsData,
+      selectedAsset,
       selectedMarketCodeCombination,
       selectedTriggerType,
       tradeConfigAllocations,
@@ -221,33 +276,59 @@ export default function TriggersTable({
     ]
   );
 
+  useEffect(() => {
+    if (
+      selectedAsset &&
+      tableData.length === 1 &&
+      tableData[0].uuid === selectedAsset
+    )
+      tableRef.current.toggleAllRowsExpanded(true);
+    else tableRef.current.toggleAllRowsExpanded(false);
+  }, [tableData, selectedAsset]);
+
   const onAlarmConfigChange = useCallback((value) => setAlarmConfig(value), []);
 
   const getRowId = useCallback((row) => row.uuid, []);
-  const onExpandedChange = useCallback(
-    (newExpanded) => setExpanded(newExpanded()),
-    []
-  );
+  const onExpandedChange = useCallback((newExpanded) => {
+    setExpanded(isFunction(newExpanded) ? newExpanded() : newExpanded);
+  }, []);
 
   const renderSubComponent = useCallback(
     ({ row: { original, toggleExpanded }, meta }) => (
       <Box sx={{ bgcolor: 'background.default' }}>
         <Box sx={{ p: { xs: 0.5, md: 2 } }}>
           <PremiumDataChartViewer
+            {...meta}
             baseAssetData={{ name: original.baseAsset }}
             marketCodes={original.marketCodes}
             isKimpExchange={
               isKoreanMarket(original.marketCodes.targetMarketCode) &&
               !isKoreanMarket(original.marketCodes.originMarketCode)
             }
-            {...meta}
           />
         </Box>
-        <UpdateAlarmForm
-          row={original}
-          onAlarmConfigChange={onAlarmConfigChange}
-          toggleExpanded={toggleExpanded}
-        />
+        {original.add ? (
+          <Box sx={{ p: 2 }}>
+            <CreateAlarmForm
+              baseAsset={original.baseAsset}
+              marketCodes={original.marketCodes}
+              tradeConfigAllocation={meta.tradeConfigAllocation}
+              onAlarmConfigChange={onAlarmConfigChange}
+            />
+          </Box>
+        ) : (
+          <UpdateAlarmForm
+            baseAsset={original.baseAsset}
+            defaultEntry={original.entry}
+            defaultExit={original.exit}
+            isTether={original.isTether}
+            tradeConfigUuid={original.trade_config_uuid}
+            usdtConversion={original.usdt_conversion}
+            uuid={original.uuid}
+            onAlarmConfigChange={onAlarmConfigChange}
+            toggleExpanded={toggleExpanded}
+          />
+        )}
       </Box>
     ),
     []
@@ -270,34 +351,13 @@ export default function TriggersTable({
             minWidth: isMobile ? 190 : 220,
           }}
         />
-        <OutlinedInput
-          size="small"
-          placeholder={t('Search')}
-          onChange={(e) => setSearchValue(e.target.value)}
-          value={searchValue}
-          startAdornment={
-            <InputAdornment position="start">
-              <SearchIcon sx={isMobile ? { fontSize: '1em' } : {}} />
-            </InputAdornment>
-          }
-          endAdornment={
-            <InputAdornment
-              position="end"
-              sx={{ cursor: 'pointer', ':hover': { opacity: 0.5 } }}
-            >
-              <CloseIcon
-                onClick={() => {
-                  setSearchValue('');
-                }}
-                sx={isMobile ? { fontSize: '1em' } : {}}
-              />
-            </InputAdornment>
-          }
-          // inputProps={{
-          //   style: isSmallScreen ? { height: '0.5em', width: 60 } : {},
-          // }}
-          sx={{
-            '& .MuiInputBase-root': { px: { xs: 0.5, sm: 1 } },
+        <AssetSearchInput
+          apiOptions={{ skip: !marketCodes }}
+          apiParams={{ ...marketCodes, interval: '1T' }}
+          onChange={(value) => setGlobalFilter(value)}
+          onSelect={(value) => {
+            setGlobalFilter(value);
+            setSelectedAsset(value);
           }}
         />
       </Stack>
@@ -337,6 +397,7 @@ export default function TriggersTable({
             theme,
             isMobile,
             alarmConfig,
+            tradeConfigAllocation,
             expandIcon: EditIcon,
           },
         }}

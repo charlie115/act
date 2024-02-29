@@ -90,7 +90,7 @@ const api = drfApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['TradesByTradeConfig'],
+      invalidatesTags: ['AllTrades', 'TradesByTradeConfig'],
     }),
     postTradeConfig: builder.mutation({
       query: (body) => ({

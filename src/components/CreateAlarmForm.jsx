@@ -85,7 +85,11 @@ const CreateAlarmForm = forwardRef(
       setValue,
       trigger,
     } = useForm({
-      defaultValues: { entry: '', exit: '', isTether: isTetherPriceView },
+      defaultValues: {
+        entry: '',
+        exit: '',
+        isTether: isTetherPriceView || false,
+      },
       mode: 'all',
     });
 

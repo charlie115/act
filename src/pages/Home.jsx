@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -19,7 +19,9 @@ import { useTranslation } from 'react-i18next';
 
 import { togglePriceView } from 'redux/reducers/home';
 
-import { useDebounce } from '@uidotdev/usehooks';
+import { useDebounce, useVisibilityChange } from '@uidotdev/usehooks';
+
+import { DateTime } from 'luxon';
 
 import isKoreanMarket from 'utils/isKoreanMarket';
 
@@ -31,6 +33,8 @@ function Home() {
 
   const theme = useTheme();
 
+  const isFocused = useVisibilityChange();
+
   const { timezone } = useSelector((state) => state.app);
   const { loggedin } = useSelector((state) => state.auth);
 
@@ -40,6 +44,9 @@ function Home() {
 
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearchValue = useDebounce(searchValue, 500);
+
+  const [lastActive, setLastActive] = useState();
+  const [queryKey, setQueryKey] = useState(DateTime.now().toMillis());
 
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isSmallScreen = useMediaQuery('(max-width:420px)');
@@ -51,6 +58,20 @@ function Home() {
   const isKimpExchange =
     isKoreanMarket(marketCodes?.targetMarketCode) &&
     !isKoreanMarket(marketCodes?.originMarketCode);
+
+  useEffect(() => {
+    if (!isFocused) setLastActive(DateTime.now().toMillis());
+    else if (lastActive) {
+      const diff = DateTime.now()
+        .diff(DateTime.fromMillis(lastActive), ['minutes'])
+        .toObject();
+      if (diff.minutes > 60) {
+        window.location.reload();
+      } else if (diff.minutes > 1) {
+        setQueryKey(DateTime.now().toMillis());
+      }
+    }
+  }, [isFocused]);
 
   const renderTetherToggle = () =>
     marketCodes ? (
@@ -144,6 +165,7 @@ function Home() {
             isTetherPriceView={isTetherPriceView}
             isMobile={isMobile}
             timezone={timezone}
+            queryKey={queryKey}
           />
         </Box>
       </Box>

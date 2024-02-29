@@ -49,50 +49,6 @@ import { GlobalSnackbarProvider } from 'hooks/useGlobalSnackbar';
 
 import { RIGHT_SIDEBAR_WIDTH } from 'constants';
 
-const Main = styled(Box, { shouldForwardProp: (prop) => prop !== 'open' })(
-  ({ theme, open }) => ({
-    flexGrow: 1,
-    padding: theme.spacing(3),
-    transition: theme.transitions.create('margin', {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.leavingScreen,
-    }),
-    marginRight: -RIGHT_SIDEBAR_WIDTH,
-    ...(open && {
-      transition: theme.transitions.create('margin', {
-        easing: theme.transitions.easing.easeOut,
-        duration: theme.transitions.duration.enteringScreen,
-      }),
-      marginRight: 0,
-    }),
-    height: '100vh',
-    overflowY: 'auto',
-    position: 'relative',
-    scrollBehavior: 'smooth !important',
-  })
-);
-
-const NavAppBar = styled(AppBar, {
-  shouldForwardProp: (prop) => prop !== 'open',
-})(({ theme, open }) => ({
-  transition: theme.transitions.create(['margin', 'width'], {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
-  }),
-  ...(open && {
-    width: `calc(100% - ${RIGHT_SIDEBAR_WIDTH}px)`,
-    transition: theme.transitions.create(['margin', 'width'], {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-    marginRight: RIGHT_SIDEBAR_WIDTH,
-  }),
-}));
-
-const TVTickerWidget = React.lazy(() =>
-  import('components/trading_view/TVTickerWidget')
-);
-
 export default function MainLayout() {
   const theme = useTheme();
 
@@ -189,9 +145,7 @@ export default function MainLayout() {
             >
               <IconButton
                 size="medium"
-                onClick={() =>
-                  scrollTo({ left: 0, top: 0, behavior: 'smooth' })
-                }
+                onClick={() => scrollTo({ top: 0, behavior: 'smooth' })}
                 sx={{ bgcolor: 'grey.900', color: 'light.main' }}
               >
                 <KeyboardArrowUpIcon fontSize="large" />
@@ -207,3 +161,48 @@ export default function MainLayout() {
     </>
   );
 }
+
+const Main = styled(Box, { shouldForwardProp: (prop) => prop !== 'open' })(
+  ({ theme, open }) => ({
+    flexGrow: 1,
+    padding: theme.spacing(3),
+    transition: theme.transitions.create('margin', {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.leavingScreen,
+    }),
+    marginRight: -RIGHT_SIDEBAR_WIDTH,
+    ...(open && {
+      transition: theme.transitions.create('margin', {
+        easing: theme.transitions.easing.easeOut,
+        duration: theme.transitions.duration.enteringScreen,
+      }),
+      marginRight: 0,
+    }),
+    height: '100vh',
+    overflowY: 'auto',
+    position: 'relative',
+    scrollBehavior: 'smooth !important',
+  })
+);
+
+const NavAppBar = styled(AppBar, {
+  shouldForwardProp: (prop) => prop !== 'open',
+})(({ theme, open }) => ({
+  backgroundColor: theme.palette.dark.light,
+  transition: theme.transitions.create(['margin', 'width'], {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  ...(open && {
+    width: `calc(100% - ${RIGHT_SIDEBAR_WIDTH}px)`,
+    transition: theme.transitions.create(['margin', 'width'], {
+      easing: theme.transitions.easing.easeOut,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+    marginRight: RIGHT_SIDEBAR_WIDTH,
+  }),
+}));
+
+const TVTickerWidget = React.lazy(() =>
+  import('components/trading_view/TVTickerWidget')
+);

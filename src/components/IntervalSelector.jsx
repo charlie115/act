@@ -28,7 +28,7 @@ function IntervalSelector({ defaultValue, disabled, onChange }) {
       ? INTERVAL_LIST.findIndex((o) => o.value === defaultValue)
       : null
   );
-  const debouncedSelectedIdx = useDebounce(selectedIdx, 1000);
+  const debouncedSelectedIdx = useDebounce(selectedIdx, 500);
 
   const [anchorEl, setAnchorEl] = useState(null);
 
