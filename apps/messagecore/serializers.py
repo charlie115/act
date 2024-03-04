@@ -7,40 +7,41 @@ from users.models import User
 
 class MessageSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
-        try:
-            user = User.objects.get(telegram_chat_id=attrs["telegram_chat_id"])
-        except User.DoesNotExist:
-            raise exceptions.ValidationError(
-                {
-                    "telegram_chat_id": [
-                        f"User with telegram_chat_id {attrs['telegram_chat_id']} does not exist!"
-                    ]
-                }
-            )
-        except User.MultipleObjectsReturned:
-            raise exceptions.ValidationError(
-                {
-                    "telegram_chat_id": [
-                        "This telegram_chat_id is linked to multiple users!"
-                    ]
-                }
+        if self.instance is None:
+            try:
+                user = User.objects.get(telegram_chat_id=attrs["telegram_chat_id"])
+            except User.DoesNotExist:
+                raise exceptions.ValidationError(
+                    {
+                        "telegram_chat_id": [
+                            f"User with telegram_chat_id {attrs['telegram_chat_id']} does not exist!"
+                        ]
+                    }
+                )
+            except User.MultipleObjectsReturned:
+                raise exceptions.ValidationError(
+                    {
+                        "telegram_chat_id": [
+                            "This telegram_chat_id is linked to multiple users!"
+                        ]
+                    }
+                )
+
+            user_telegram_socialapps = user.socialapps.filter(
+                socialapp__provider="telegram"
             )
 
-        user_telegram_socialapps = user.socialapps.filter(
-            socialapp__provider="telegram"
-        )
-
-        if user_telegram_socialapps.first():
-            telegram_bot = user_telegram_socialapps.first().socialapp
-            attrs["telegram_bot_username"] = telegram_bot.client_id
-        else:
-            raise exceptions.ValidationError(
-                {
-                    "telegram_chat_id": [
-                        f"User with telegram_chat_id {attrs['telegram_chat_id']} has no associated Telegram Bot!"
-                    ]
-                }
-            )
+            if user_telegram_socialapps.first():
+                telegram_bot = user_telegram_socialapps.first().socialapp
+                attrs["telegram_bot_username"] = telegram_bot.client_id
+            else:
+                raise exceptions.ValidationError(
+                    {
+                        "telegram_chat_id": [
+                            f"User with telegram_chat_id {attrs['telegram_chat_id']} has no associated Telegram Bot!"
+                        ]
+                    }
+                )
 
         return super().validate(attrs)
 
