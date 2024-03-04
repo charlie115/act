@@ -154,7 +154,7 @@ class InitBinanceAdaptor:
 
 ################################################################################################################################################
 class UserBinanceAdaptor:
-    def __init__(self, admin_telegram_id=None, node=None, db_dict=None, trade_df_dict=None, market_combi_code=None, recvWindow=45000, logging_dir=None):
+    def __init__(self, admin_telegram_id, node=None, db_dict=None, trade_df_dict=None, market_combi_code=None, recvWindow=45000, logging_dir=None):
         self.admin_telegram_id = admin_telegram_id
         self.node = node
         self.user_client_dict = {}
@@ -323,7 +323,7 @@ class UserBinanceAdaptor:
     #             return_dict['res'] = e
     #             return_dict['state'] = 'ERROR'
 
-    def market_enter(self, access_key, secret_key, symbol, qty, return_dict=None):
+    def market_long(self, access_key, secret_key, symbol, qty, market_type, return_dict=None):
         client = self.load_user_client(access_key, secret_key)
 
         retry_count = 0
@@ -332,24 +332,27 @@ class UserBinanceAdaptor:
             if retry_count >= 1:
                 self.logger.info(f"market_enter|retry_count: {retry_count}, retry_term_sec: {self.retry_term_sec}, retry_count_limit: {self.retry_count_limit}") # For TESTING
             try:
-                res = client.futures_create_order(
-                    symbol=symbol,
-                    side='SELL',
-                    type='MARKET',
-                    quantity=qty,
-                    recvWindow=self.recvWindow
-                )
-                if return_dict is not None:
-                    return_dict['res'] = res
-                    return_dict['state'] = 'OK'
-                return res
+                if market_type == "USD_M":
+                    res = client.futures_create_order(
+                        symbol=symbol,
+                        side='SELL',
+                        type='MARKET',
+                        quantity=qty,
+                        recvWindow=self.recvWindow
+                    )
+                    if return_dict is not None:
+                        return_dict['res'] = res
+                        return_dict['error_code'] = None
+                    return res
+                else:
+                    raise Exception(f"market_type: {market_type} is not supported yet.")
             except Exception as e:
                 if e.code not in [-1000, -1001] or retry_count == self.retry_count_limit:
                     if return_dict is None:
                         raise e
                     else:
                         return_dict['res'] = e
-                        return_dict['state'] = 'ERROR'
+                        return_dict['error_code'] = e.code
                         return
             retry_count += 1
 
@@ -380,33 +383,36 @@ class UserBinanceAdaptor:
     #             return_dict['res'] = e
     #             return_dict['state'] = 'ERROR'
 
-    def market_exit(self, access_key, secret_key, symbol, qty, return_dict=None):
+    def market_short(self, access_key, secret_key, symbol, qty, market_type, return_dict=None):
         client = self.load_user_client(access_key, secret_key)
 
         retry_count = 0
 
         while retry_count <= self.retry_count_limit:
             if retry_count >= 1:
-                self.logger.info(f"market_exit|retry_count: {retry_count}, retry_term_sec: {self.retry_term_sec}, retry_count_limit: {self.retry_count_limit}") # For TESTING
+                self.logger.info(f"market_short|retry_count: {retry_count}, retry_term_sec: {self.retry_term_sec}, retry_count_limit: {self.retry_count_limit}") # For TESTING
             try:
-                res = client.futures_create_order(
-                symbol=symbol,
-                side='BUY',
-                type='MARKET',
-                quantity=qty,
-                recvWindow=self.recvWindow
-                )
-                if return_dict is not None:
-                    return_dict['res'] = res
-                    return_dict['state'] = 'OK'
-                return res
+                if market_type == "USD_M":
+                    res = client.futures_create_order(
+                    symbol=symbol,
+                    side='BUY',
+                    type='MARKET',
+                    quantity=qty,
+                    recvWindow=self.recvWindow
+                    )
+                    if return_dict is not None:
+                        return_dict['res'] = res
+                        return_dict['error_code'] = None
+                    return res
+                else:
+                    raise Exception(f"market_type: {market_type} is not supported yet.")
             except Exception as e:
                 if e.code not in [-1000, -1001] or retry_count == self.retry_count_limit:
                     if return_dict is None:
                         raise e
                     else:
                         return_dict['res'] = e
-                        return_dict['state'] = 'ERROR'
+                        return_dict['error_code'] = e.code
                         return
             retry_count += 1
     # Original
@@ -625,14 +631,14 @@ class UserBinanceAdaptor:
         # then start receiving messages
         async with ts as tscm:
             while True:
-                res = await tscm.recv()
-                self.logger.info(f"user_usd_m_socket stream|user:{trade_config_uuid}\nres: {res}\n") # test
-                if res['e'] == "MARGIN_CALL":
-                    self.usd_m_margin_call_callback(res, trade_config_uuid, margin_call_mode, telegram_id, counterpart_margin_call_callback)
-                if res['e'] == "ACCOUNT_UPDATE":
-                    # self.reflect_binance_account_update(user_id, res)
-                    pass
                 try:
+                    res = await tscm.recv()
+                    self.logger.info(f"user_usd_m_socket stream|trade_config_uuid:{trade_config_uuid}\nres: {res}\n") # test
+                    if res['e'] == "MARGIN_CALL":
+                        self.usd_m_margin_call_callback(res, trade_config_uuid, margin_call_mode, telegram_id, counterpart_margin_call_callback)
+                    if res['e'] == "ACCOUNT_UPDATE":
+                        # self.reflect_binance_account_update(user_id, res)
+                        pass
                     if res['e'] == "ORDER_TRADE_UPDATE" and res['o']['o'] == 'LIQUIDATION':
                         self.usd_m_liquidation_callback(res, trade_config_uuid, margin_call_mode, telegram_id, counterpart_liquidation_callback)
                 except Exception as e:
@@ -643,14 +649,13 @@ class UserBinanceAdaptor:
                     self.acw_api.create_message_thread(self.admin_telegram_id, title, self.node, 'error', msg_full, send_times=1, send_term=1)
                 time.sleep(0.3)
 
-    def user_usd_m_socket_async(self, access_key, secret_key, trade_config_uuid, margin_call_mode, telegram_id):
-        asyncio.run(self.user_usd_m_socket(access_key, secret_key, trade_config_uuid, margin_call_mode, telegram_id))
+    def user_usd_m_socket_async(self, access_key, secret_key, trade_config_uuid, margin_call_mode, telegram_id, counterpart_margin_call_callback, counterpart_liquidation_callback):
+        asyncio.run(self.user_usd_m_socket(access_key, secret_key, trade_config_uuid, margin_call_mode, telegram_id, counterpart_margin_call_callback, counterpart_liquidation_callback))
 
-    def start_user_socket_stream(self, market_type, loop_secs=3, monitor_loop_secs=2.5):
+    def start_user_socket_stream(self, market_type, counterpart_margin_call_callback, counterpart_liquidation_callback, loop_secs=3, monitor_loop_secs=2.5):
         # A user should have at least one trade_df setting to start user socket stream.
         if market_type.upper() not in ["USD_M"]:
             raise Exception(f"market_type: {market_type} is not supported yet.")
-        time.sleep(3)
         self.logger.info(f"start_socket_stream|start_socket_stream started.")
         def monitor_user_stream_loop():
             input_type = 'monitor'
@@ -680,13 +685,13 @@ class UserBinanceAdaptor:
                                 margin_call_mode = row['origin_market_margin_call']
                             if self.user_stream_monitoring_list == []:
                                 monitor_thread_tup = (row['trade_config_uuid'], Thread(target=self.user_usd_m_socket_async, args=(
-                                    row['access_key'], row['secret_key'], row['trade_config_uuid'], margin_call_mode, row['telegram_id']), daemon=True))
+                                    row['access_key'], row['secret_key'], row['trade_config_uuid'], margin_call_mode, row['telegram_id'], counterpart_margin_call_callback, counterpart_liquidation_callback), daemon=True))
                                 monitor_thread_tup[1].start()
                                 self.user_stream_monitoring_list.append(monitor_thread_tup)
                                 self.logger.info(f"trade_config_uuid: {row['trade_config_uuid']}'s user_stream monitor thread has been initiated.")
                             elif row['trade_config_uuid'] not in [x[0] for x in self.user_stream_monitoring_list]:
                                 monitor_thread_tup = (row['trade_config_uuid'], Thread(target=self.user_usd_m_socket_async, args=(
-                                    row['access_key'], row['secret_key'], row['trade_config_uuid'], margin_call_mode, row['telegram_id']), daemon=True))
+                                    row['access_key'], row['secret_key'], row['trade_config_uuid'], margin_call_mode, row['telegram_id'], counterpart_margin_call_callback, counterpart_liquidation_callback), daemon=True))
                                 monitor_thread_tup[1].start()
                                 self.user_stream_monitoring_list.append(monitor_thread_tup)
                                 self.logger.info(f"user_id: {row['trade_config_uuid']}'s user_stream monitor thread has been initiated.")

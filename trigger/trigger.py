@@ -111,7 +111,10 @@ class InitTrigger:
             else:
                 if free_user:
                     sql = """
-                    SELECT trade.*, trade_config, trade_config.service_datetime_end, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code, trade_config.send_times, trade_config.send_term
+                    SELECT trade.*, trade_config, trade_config.service_datetime_end, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code, trade_config.send_times, trade_config.send_term,
+                    trade_config.target_market_cross, trade_config.target_market_leverage, trade_config.origin_market_cross, trade_config.origin_market_leverage, trade_config.target_market_margin_call, trade_config.origin_market_margin_call,
+                    trade_config.target_market_safe_reverse, trade_config.origin_market_safe_reverse, trade_config.target_market_risk_threshold_p, trade_config.origin_market_risk_threshold_p, trade_config.repeat_limit_p,
+                    trade_config.repeat_limit_direction, trade_config.repeat_num_limit
                     FROM trade
                     JOIN trade_config ON trade.trade_config_uuid = trade_config.uuid WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s AND trade_config.service_datetime_end <= %s"""
                 else:

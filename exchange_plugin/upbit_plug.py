@@ -41,8 +41,8 @@ class InitUpbitAdaptor:
         self.my_client = Upbit(my_upbit_access_key, my_upbit_secret_key)
         self.pub_client = Upbit()
         self.info_dict = info_dict
-        self.upbit_plug_logger = KimpBotLogger("upbit_plug", logging_dir).logger
-        self.upbit_plug_logger.info(f"upbit_plug_logger started.")
+        self.logger = KimpBotLogger("upbit_plug", logging_dir).logger
+        self.logger.info(f"logger started.")
 
     # Private API
     def wallet_status(self):
@@ -93,8 +93,8 @@ class UserUpbitAdaptor:
         self.user_client_dict = {}
         self.retry_term_sec = 0.2
         self.retry_count_limit = 2
-        self.upbit_plug_logger = KimpBotLogger("user_upbit_plug", logging_dir).logger
-        self.upbit_plug_logger.info(f"user_upbit_plug_logger started.")
+        self.logger = KimpBotLogger("user_upbit_plug", logging_dir).logger
+        self.logger.info(f"user_upbit_plug_logger started.")
 
     def load_user_client(self, access_key, secret_key):
         user_client = self.user_client_dict.get(access_key)
@@ -141,5 +141,70 @@ class UserUpbitAdaptor:
             print('Exception executed')
             self.user_client_dict.pop(access_key, None)
             return (False, str(e))
+        
+    # Using limit order
+    def market_long(self, access_key, secret_key, symbol, qty, price, return_dict=None):
+        client = self.load_user_client(access_key, secret_key)
+
+        retry_count = 0
+
+        while retry_count <= self.retry_count_limit:
+            res = client.Order.Order_new(
+                market=symbol,
+                side='bid',
+                volume=str(qty),
+                price=str(calculate_upbit_price(price*1.25)),
+                ord_type='limit'
+            )
+            res = {**res, 'retry_count': retry_count, 'retry_count_limit': self.retry_count_limit, 'retry_term_sec': self.retry_term_sec}
+            if return_dict is not None:
+                return_dict['res'] = res
+            if retry_count != 0:
+                self.logger.info(f"market_long|res: {res}, symbol: {symbol}, qty: {qty}, price: {price}")
+            if res['response']['status_code'] == 201: # If it's not error -> return
+                return res
+            retry_error_case = False
+            if '알수없는' in res['result']['error']['message']:
+                retry_error_case = True
+            if '일시적인 거래량 급증' in res['result']['error']['message']:
+                retry_error_case = True
+            if retry_error_case is False: # If it's normal error -> return
+                self.logger.info(f"market_long|res: {res}, symbol: {symbol}, qty: {qty}, price: {price}") # TEST
+                return res
+            retry_count += 1
+            time.sleep(self.retry_term_sec)
+        return res
+    
+    # Using limit order
+    def market_short(self, access_key, secret_key, symbol, qty, price, return_dict=None):
+        client = self.load_user_client(access_key, secret_key)
+        retry_count = 0
+
+        while retry_count <= self.retry_count_limit:
+            res = client.Order.Order_new(
+                market=symbol,
+                side='ask',
+                volume=str(qty),
+                price=str(calculate_upbit_price(price*0.75)),
+                ord_type='limit'
+            )
+            res = {**res, 'retry_count': retry_count, 'retry_count_limit': self.retry_count_limit, 'retry_term_sec': self.retry_term_sec}
+            if return_dict is not None:
+                return_dict['res'] = res
+            if retry_count != 0:
+                self.logger.info(f"market_short|res: {res}, symbol: {symbol}, qty: {qty}, price: {price}")
+            if res['response']['status_code'] == 201:
+                return res
+            retry_error_case = False
+            if '알수없는' in res['result']['error']['message']:
+                retry_error_case = True
+            if '일시적인 거래량 급증' in res['result']['error']['message']:
+                retry_error_case = True
+            if retry_error_case is False:
+                self.logger.info(f"market_short|res: {res}, symbol: {symbol}, qty: {qty}, price: {price}") # TEST
+                return res
+            retry_count += 1
+            time.sleep(self.retry_term_sec)
+        return res
         
     

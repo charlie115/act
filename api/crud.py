@@ -1,4 +1,5 @@
 import random
+import json
 from fastapi import HTTPException
 from fastapi import status
 from fastapi.responses import Response
@@ -17,8 +18,23 @@ import datetime
 from exchange_plugin.integrated_plug import UserExchangeAdaptor
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+logging_dir = f"{upper_dir}/loggers/logs/"
+# Read config
+config_dir = f"{upper_dir}/trade_core_config.json"
+with open(config_dir) as f:
+    config = json.load(f)
+if not os.path.exists(logging_dir):
+    os.mkdir(logging_dir)
+# if node not in config['node_settings'].keys():
+#     raise Exception(f"Node name should be the one of {list(config['node_settings'].keys())}")
+node = config['node']
+monitor_bot_name = config['monitor_setting']['monitor_bot']
+monitor_bot_token = config['telegram_bot_setting'][monitor_bot_name]
+monitor_bot_api_url = config['monitor_setting']['monitor_bot_api_url']
+admin_telegram_id = config['telegram_admin_id']['charlie1155']
+
 # initialize exchange adaptors
-user_exchange_adaptor = UserExchangeAdaptor(logging_dir=upper_dir+"/loggers/logs/")
+user_exchange_adaptor = UserExchangeAdaptor(admin_telegram_id=admin_telegram_id, logging_dir=upper_dir+logging_dir)
 
 # Dependency to get the async database session
 async def get_db():

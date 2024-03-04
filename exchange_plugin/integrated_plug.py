@@ -14,14 +14,43 @@ from exchange_plugin.binance_plug import UserBinanceAdaptor
 from etc.redis_connector.redis_connector import InitRedis
 
 class UserExchangeAdaptor:
-    def __init__(self, logging_dir=None):
+    def __init__(self, admin_telegram_id, node=None, db_dict=None, trade_df_dict=None, market_combi_code=None, logging_dir=None):
         self.logger = KimpBotLogger("integrated_plug", logging_dir=logging_dir).logger
         self.logger.info('integrated_plug_logger init')
         self.exchange_adaptor_dict = {}
-        self.exchange_adaptor_dict["UPBIT"] = UserUpbitAdaptor(logging_dir=logging_dir)
-        self.exchange_adaptor_dict["BINANCE"] = UserBinanceAdaptor(logging_dir=logging_dir)
+        self.admin_telegram_id = admin_telegram_id
+        self.node = node
+        self.db_dict = db_dict
+        self.trade_df_dict = trade_df_dict
+        self.market_combi_code = market_combi_code.upper()
+        if self.market_combi_code is None: # If market_combi_code is not given, initialize all exchange adaptors since it will be used for curd.py in api
+            self.exchange_adaptor_dict["UPBIT"] = UserUpbitAdaptor(admin_telegram_id=admin_telegram_id, logging_dir=logging_dir)
+            self.exchange_adaptor_dict["BINANCE"] = UserBinanceAdaptor(admin_telegram_id=admin_telegram_id, logging_dir=logging_dir)
+            self.target_market_code = None
+            self.origin_market_code = None
+            self.target_market = None
+            self.target_quote_asset = None
+            self.target_exchange = None
+            self.target_market_type = None
+            self.origin_market = None
+            self.origin_quote_asset = None
+            self.origin_exchange = None
+            self.origin_market_type = None
+        else:
+            self.target_market_code, self.origin_market_code = self.market_combi_code.split(':')
+            self.target_market, self.target_quote_asset = self.target_market_code.split(':')
+            self.target_exchange = self.target_market.split('_')[0]
+            self.target_market_type = self.target_market.replace(self.target_exchange+'_', '')
+            self.origin_market, self.origin_quote_asset = self.origin_market_code.split(':')
+            self.origin_exchange = self.origin_market.split('_')[0]
+            self.origin_market_type = self.origin_market.replace(self.origin_exchange+'_', '')
+            if self.target_exchange == "UPBIT" or self.origin_exchange == "UPBIT":
+                self.exchange_adaptor_dict[self.target_exchange] = UserUpbitAdaptor(admin_telegram_id=admin_telegram_id, logging_dir=logging_dir)
+            elif self.target_exchange == "BINANCE" or self.origin_exchange == "BINANCE":
+                self.exchange_adaptor_dict[self.target_exchange] = UserBinanceAdaptor(admin_telegram_id=admin_telegram_id, logging_dir=logging_dir)
         # redis connection to read info_dict
         self.local_redis_client = InitRedis(host='localhost', port=6379, db=0, passwd=None)
+        self.available_market_combi_code_list = ["UPBIT_SPOT/KRW:BINANCE_USD_M/USDT"]
 
     def check_api_key(self, exchange, access_key, secret_key, passphrase=None, futures=False):
         """FUTURES includes USD_M, COIN_M"""
@@ -87,3 +116,20 @@ class UserExchangeAdaptor:
 
         capital_series = pd.Series({'free':free, 'locked':locked, 'before_pnl': before_pnl, 'pnl':pnl, 'after_pnl':after_pnl, 'currency': currency})
         return capital_series
+    
+    def start_user_socket_stream(self, market_combi_code):
+        if self.market_combi_code not in self.available_market_combi_code_list:
+            raise Exception(f'market_combi_code {market_combi_code} not supported yet.')
+        if self.market_combi_code == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT":
+            # target_exchange_adaptor.start_user_socket_stream(target_market_type)
+            # origin_exchange_adaptor.start_user_socket_stream(origin_market_type, counterpart_margin_call_callback, counterpart_liquidation_callback)
+            pass
+
+    def long_short_trade(self):
+        # self.exchange_adaptor_dict[self.target_exchange].
+        pass
+
+
+        
+
+
