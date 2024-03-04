@@ -30,11 +30,12 @@ class Message(models.Model):
     send_times = models.IntegerField(
         default=1,
         validators=[MinValueValidator(1), MaxValueValidator(20)],
+        help_text="Number of times the message should be sent",
     )
     send_term = models.IntegerField(
         default=1,
         validators=[MinValueValidator(1), MaxValueValidator(30)],
-        help_text="Term between the repeating message in seconds",
+        help_text="The interval between messages if sent more than 1 time\n(in seconds)",
     )
     read = models.BooleanField(default=False)
 

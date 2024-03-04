@@ -1,7 +1,9 @@
 from django import forms
 from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
 
 from unfold.admin import ModelAdmin
+from unfold.decorators import display
 from unfold.widgets import INPUT_CLASSES, SELECT_CLASSES
 
 from messagecore.models import Message
@@ -78,8 +80,8 @@ class MessageAdmin(ModelAdmin):
     list_display = [
         "title",
         "datetime",
-        "telegram_bot_username",
-        "telegram_chat_id",
+        "display_telegram_bot",
+        "display_telegram_chat_id",
         "origin",
         "type",
         # "code",
@@ -102,7 +104,34 @@ class MessageAdmin(ModelAdmin):
         "telegram_bot_username",
         "telegram_chat_id",
     ]
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "datetime",
+                    ("telegram_bot_username", "telegram_chat_id"),
+                    "title",
+                    "content",
+                    "remarks",
+                    ("origin", "type"),
+                    "code",
+                    "sent",
+                    ("send_times", "send_term"),
+                    "read",
+                )
+            },
+        ),
+    )
     form = MessageForm
+
+    @display(description=_("Telegram bot"))
+    def display_telegram_bot(self, instance):
+        return instance.telegram_bot_username
+
+    @display(description=_("Telegram ID"))
+    def display_telegram_chat_id(self, instance):
+        return instance.telegram_chat_id
 
     def has_change_permission(self, request, obj=None):
         return False
