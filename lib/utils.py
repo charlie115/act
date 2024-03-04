@@ -1,7 +1,7 @@
+import os
 import random
 
 from datetime import datetime
-from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 from lib.random.providers.adjectives import adjectives
@@ -25,7 +25,10 @@ def generate_username():
 
 
 def unfold_environment_callback(request):
-    if settings.DEBUG:
-        return [_("Development"), "info"]
-
-    return [_("Production"), "warning"]
+    env_color_dict = {
+        "Dev": "success",
+        "Test": "info",
+        "Production": "warning",
+    }
+    env = os.environ["DJANGO_SETTINGS_MODULE"].split(".")[-1]
+    return [_(env), env_color_dict.get(env)]
