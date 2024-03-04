@@ -1,7 +1,7 @@
 aiohttp==3.9.1
 channels[daphne]==4.0.0
 channels-redis==4.1.0
-Django==5.0.2
+Django==4.2.11
 dj-database-url==2.1.0
 dj-rest-auth==4.0.1
 django-allauth==0.50.0
