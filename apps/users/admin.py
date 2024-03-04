@@ -90,6 +90,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
         "last_login",
         "last_username_change",
     )
+    ordering = ("email",)
     inlines = (
         ProfileInline,
         ManagersInline,

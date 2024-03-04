@@ -5,6 +5,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import exceptions, mixins, response, viewsets
 from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter
 
 from lib.authentication import NodeIPAuthentication
 from lib.filters import filter_list_of_dictionaries
@@ -84,10 +85,12 @@ class NodeFilter(FilterSet):
     ),
 )
 class NodeViewSet(BaseViewSet):
-    queryset = Node.objects.all().order_by("id")
+    queryset = Node.objects.all()
     serializer_class = NodeSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = NodeFilter
+    ordering_fields = ["id", "name"]
+    ordering = ["id"]
     http_method_names = ["get", "post", "put", "patch", "delete"]
 
     def get_authenticators(self):

@@ -2,6 +2,7 @@ from django_filters import FilterSet, ChoiceFilter, DateTimeFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from pytz import all_timezones, timezone
+from rest_framework.filters import OrderingFilter
 
 from lib.datetime import TZ_UTC
 from lib.pagination import CustomPageNumberPagination
@@ -62,14 +63,16 @@ class PostFilter(StartTimeEndTimeFilter):
     ),
 )
 class NewsViewSet(BaseViewSet):
-    queryset = News.objects.all().order_by("-datetime")
+    queryset = News.objects.all()
     serializer_class = NewsSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = NewsFilter
-    http_method_names = ["get"]
+    ordering_fields = ["id"]
+    ordering = ["-datetime"]
     permission_classes = []
     pagination_class = CustomPageNumberPagination
     pagination_class.page_size = 10
+    http_method_names = ["get"]
 
 
 @extend_schema(tags=["Announcements"])
@@ -84,14 +87,16 @@ class NewsViewSet(BaseViewSet):
     ),
 )
 class AnnouncementViewSet(BaseViewSet):
-    queryset = Announcement.objects.all().order_by("-datetime")
+    queryset = Announcement.objects.all()
     serializer_class = AnnouncementSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = AnnouncementFilter
-    http_method_names = ["get"]
+    ordering_fields = ["id"]
+    ordering = ["-datetime"]
     permission_classes = []
     pagination_class = CustomPageNumberPagination
     pagination_class.page_size = 10
+    http_method_names = ["get"]
 
 
 @extend_schema(tags=["SNS Posts"])
@@ -106,11 +111,13 @@ class AnnouncementViewSet(BaseViewSet):
     ),
 )
 class PostViewSet(BaseViewSet):
-    queryset = Post.objects.all().order_by("-datetime")
+    queryset = Post.objects.all()
     serializer_class = PostSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = PostFilter
-    http_method_names = ["get"]
+    ordering_fields = ["id"]
+    ordering = ["-datetime"]
     permission_classes = []
     pagination_class = CustomPageNumberPagination
     pagination_class.page_size = 10
+    http_method_names = ["get"]

@@ -1,4 +1,3 @@
-from django_filters import filterset
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.filters import OrderingFilter
@@ -10,21 +9,6 @@ from lib.views import BaseViewSet
 from messagecore.models import Message
 from messagecore.serializers import MessageSerializer
 from users.models import UserRole
-
-
-class MessageFilter(filterset.FilterSet):
-    type = filterset.CharFilter(field_name="type")
-
-    class Meta:
-        model = Message
-        fields = [
-            "origin",
-            "type",
-            "code",
-            "telegram_chat_id",
-            "telegram_bot_username",
-            "sent",
-        ]
 
 
 @extend_schema(tags=["Message"])
@@ -61,7 +45,14 @@ class MessageViewSet(BaseViewSet):
     queryset = Message.objects.exclude(type=Message.MONITOR)
     serializer_class = MessageSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_class = MessageFilter
+    filterset_fields = (
+        "origin",
+        "type",
+        "code",
+        "telegram_chat_id",
+        "telegram_bot_username",
+        "sent",
+    )
     ordering_fields = ["id"]
     ordering = ["-datetime"]
     http_method_names = ["get", "post", "put", "patch", "delete"]

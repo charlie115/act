@@ -1,12 +1,9 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework.filters import OrderingFilter
 
 from lib.views import BaseViewSet
-from users.filters import (
-    UserFavoriteAssetsFilter,
-    UserProfileFilter,
-    DepositHistoryFilter,
-)
+from users.filters import UserFavoriteAssetsFilter, UserProfileFilter
 from users.models import (
     User,
     UserBlocklist,
@@ -56,10 +53,10 @@ from users.serializers import (
     ),
 )
 class UserViewSet(BaseViewSet):
-    queryset = User.objects.all().order_by("id")
+    queryset = User.objects.all()
     lookup_field = "uuid"
     serializer_class = UserSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = (
         "email",
         "uuid",
@@ -70,6 +67,15 @@ class UserViewSet(BaseViewSet):
         "role",
         "is_active",
     )
+    ordering_fields = [
+        "id",
+        "email",
+        "username",
+        "first_name",
+        "last_name",
+        "telegram_chat_id",
+    ]
+    ordering = ["email"]
     http_method_names = ["get", "post", "put", "patch", "delete"]
 
 
@@ -92,10 +98,16 @@ class UserViewSet(BaseViewSet):
     ),
 )
 class UserFavoriteAssetsViewSet(BaseViewSet):
-    queryset = UserFavoriteAssets.objects.all().order_by("id")
+    queryset = UserFavoriteAssets.objects.all()
     serializer_class = UserFavoriteAssetsSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = UserFavoriteAssetsFilter
+    ordering_fields = [
+        "id",
+        "base_asset",
+        "user",
+    ]
+    ordering = ["id"]
     http_method_names = ["get", "post", "delete"]
 
 
@@ -124,10 +136,17 @@ class UserFavoriteAssetsViewSet(BaseViewSet):
     destroy=extend_schema(exclude=True),
 )
 class UserProfileViewSet(BaseViewSet):
-    queryset = UserProfile.objects.all().order_by("id")
+    queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = UserProfileFilter
+    ordering_fields = [
+        "id",
+        "user",
+        "level",
+        "points",
+    ]
+    ordering = ["id"]
     http_method_names = ["get", "put", "patch", "delete"]
 
 
@@ -150,9 +169,16 @@ class UserProfileViewSet(BaseViewSet):
     ),
 )
 class UserBlocklistViewSet(BaseViewSet):
-    queryset = UserBlocklist.objects.all().order_by("id")
+    queryset = UserBlocklist.objects.all()
     serializer_class = UserBlocklistSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    ordering_fields = [
+        "id",
+        "target_username",
+        "target_ip",
+        "datetime",
+    ]
+    ordering = ["id"]
     http_method_names = ["get", "post", "delete"]
 
 
@@ -168,15 +194,22 @@ class UserBlocklistViewSet(BaseViewSet):
     ),
 )
 class DepositBalanceViewSet(BaseViewSet):
-    queryset = DepositBalance.objects.all().order_by("id")
+    queryset = DepositBalance.objects.all()
     lookup_field = "id"
     serializer_class = DepositBalanceSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = (
         "user",
         "balance",
         "last_update",
     )
+    ordering_fields = [
+        "id",
+        "user",
+        "balance",
+        "last_update",
+    ]
+    ordering = ["id"]
     http_method_names = ["get"]
 
 
@@ -211,9 +244,25 @@ class DepositBalanceViewSet(BaseViewSet):
     ),
 )
 class DepositHistoryViewSet(BaseViewSet):
-    queryset = DepositHistory.objects.all().order_by("id")
+    queryset = DepositHistory.objects.all()
     lookup_field = "id"
     serializer_class = DepositHistorySerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = DepositHistoryFilter
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = (
+        "user",
+        "balance",
+        "change",
+        "txid",
+        "type",
+        "pending",
+        "registered_datetime",
+    )
+    ordering_fields = [
+        "id",
+        "user",
+        "balance",
+        "change",
+        "registered_datetime",
+    ]
+    ordering = ["id"]
     http_method_names = ["get", "post", "put", "patch", "delete"]
