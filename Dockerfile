@@ -16,9 +16,10 @@ COPY ./requirements/base.txt requirements/base.txt
 COPY ./manage.py manage.py
 COPY ./config config/
 COPY ./lib lib/
+COPY ./templates templates/
 COPY ./apps apps/
 
-RUN pip install -r requirements/base.txt
+RUN pip install --no-cache-dir -r requirements/base.txt
 
 RUN mkdir -p /opt/community_drf/media
 RUN mkdir -p /opt/community_drf/static
@@ -34,7 +35,7 @@ COPY ./requirements/dev.txt requirements/dev.txt
 COPY ./docker/start-dev-server.sh /usr/local/bin/start-dev-server.sh
 
 RUN chmod +x /usr/local/bin/start-dev-server.sh
-RUN pip install -r requirements/dev.txt
+RUN pip install --no-cache-dir -r requirements/dev.txt
 
 CMD ["start-dev-server.sh"]
 
@@ -60,6 +61,6 @@ COPY ./requirements/prod.txt requirements/prod.txt
 COPY ./docker/start-prod-server.sh /usr/local/bin/start-prod-server.sh
 
 RUN chmod +x /usr/local/bin/start-prod-server.sh
-RUN pip install -r requirements/prod.txt
+RUN pip install --no-cache-dir -r requirements/prod.txt
 
 CMD ["start-prod-server.sh"]
