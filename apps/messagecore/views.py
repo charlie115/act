@@ -1,3 +1,4 @@
+from django_filters import filterset
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.pagination import PageNumberPagination
@@ -8,6 +9,21 @@ from lib.views import BaseViewSet
 from messagecore.models import Message
 from messagecore.serializers import MessageSerializer
 from users.models import UserRole
+
+
+class MessageFilter(filterset.FilterSet):
+    type = filterset.CharFilter(field_name="type")
+
+    class Meta:
+        model = Message
+        fields = [
+            "origin",
+            "type",
+            "code",
+            "telegram_chat_id",
+            "telegram_bot_username",
+            "sent",
+        ]
 
 
 @extend_schema(tags=["Message"])
@@ -44,14 +60,7 @@ class MessageViewSet(BaseViewSet):
     queryset = Message.objects.all().order_by("id")
     serializer_class = MessageSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = (
-        "origin",
-        "type",
-        "code",
-        "telegram_chat_id",
-        "telegram_bot_username",
-        "sent",
-    )
+    filterset_class = MessageFilter
     http_method_names = ["get", "post", "put", "patch", "delete"]
     pagination_class = PageNumberPagination
     pagination_class.page_size = 50
