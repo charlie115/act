@@ -6,6 +6,8 @@ from users.views import (
     UserBlocklistViewSet,
     UserFavoriteAssetsViewSet,
     UserProfileViewSet,
+    DepositBalanceViewSet,
+    DepositHistoryViewSet,
 )
 
 
@@ -29,5 +31,7 @@ router.register(r"users", UserViewSet)
 router.register(r"blocklist", UserBlocklistViewSet)
 router.register(r"favorite-assets", UserFavoriteAssetsViewSet)
 router.register(r"profiles", UserProfileViewSet)
+router.register(r"deposit-balance", DepositBalanceViewSet)
+router.register(r"deposit-history", DepositHistoryViewSet)
 
 urlpatterns = router.urls

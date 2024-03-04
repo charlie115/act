@@ -1,6 +1,9 @@
 import random
 
 from datetime import datetime
+from django.conf import settings
+from django.utils.translation import gettext_lazy as _
+
 from lib.random.providers.adjectives import adjectives
 from lib.random.providers.nouns import nouns
 
@@ -19,3 +22,10 @@ def generate_username():
     random_noun = random.choice(nouns)
     random_number = str(datetime.now().microsecond)[:3]
     return f"{random_adjective}{random_noun}{random_number}"
+
+
+def unfold_environment_callback(request):
+    if settings.DEBUG:
+        return [_("Development"), "info"]
+
+    return [_("Production"), "warning"]

@@ -54,14 +54,17 @@ class UserRole(models.Model):
 
 
 class User(AbstractUser):
-    email = models.EmailField(_("email address"), unique=True)
+    email = models.EmailField(
+        _("email address"),
+        unique=True,
+    )
     uuid = models.UUIDField(
+        _("UUID"),
         primary_key=False,
         default=uuid.uuid4,
         editable=False,
-        verbose_name="UUID",
     )
-    username = models.CharField(max_length=100, unique=True, blank=True)
+    username = models.CharField(_("username"), max_length=100, unique=True, blank=True)
     last_username_change = models.DateTimeField(default=now)
     role = models.ForeignKey(
         UserRole,
@@ -201,3 +204,63 @@ class UserBlocklist(models.Model):
     class Meta:
         verbose_name = "User Blocklist"
         verbose_name_plural = "User Blocklist"
+
+
+class DepositBalance(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="deposit_balance",
+    )
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    last_update = models.DateTimeField(default=now)
+
+    def save(self, *args, **kwargs):
+        self.last_update = datetime.now()
+        super(DepositBalance, self).save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Deposit Balance"
+
+
+class DepositHistory(models.Model):
+    WITHDRAW = "withdraw"
+    DEPOSIT = "deposit"
+    COMMISSION = "commission"
+    FEE = "fee"
+    TRANSFER = "transfer"
+    COUPON = "coupon"
+    DepositTypes = (
+        (WITHDRAW, "Withdraw"),
+        (DEPOSIT, "Deposit"),
+        (COMMISSION, "Commission"),
+        (FEE, "Fee"),
+        (TRANSFER, "Transfer"),
+        (COUPON, "Coupon"),
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="deposit_history",
+    )
+    balance = models.DecimalField(max_digits=10, decimal_places=2)
+    change = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    txid = models.TextField(blank=True, null=True)
+    type = models.CharField(choices=DepositTypes)
+    pending = models.BooleanField(default=False)
+    registered_datetime = models.DateTimeField(default=now)
+    description = models.TextField(blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        super(DepositHistory, self).save(*args, **kwargs)
+
+        if hasattr(self.user, "deposit_balance"):
+            self.user.deposit_balance.balance = self.balance
+            self.user.deposit_balance.save()
+        else:
+            DepositBalance.objects.create(user=self.user, balance=self.balance)
+
+    class Meta:
+        verbose_name = "Deposit History"
+        verbose_name_plural = "Deposit History"

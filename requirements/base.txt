@@ -1,7 +1,7 @@
 aiohttp==3.9.1
 channels[daphne]==4.0.0
 channels-redis==4.1.0
-Django==4.2.4
+Django==5.0.2
 dj-database-url==2.1.0
 dj-rest-auth==4.0.1
 django-allauth==0.50.0
@@ -10,7 +10,7 @@ django-environ==0.10.0
 django-filter==23.2
 django-redis==5.3.0
 django-rq==2.8.1
-django-unfold==0.7.0
+django-unfold==0.20.5
 djangorestframework==3.14.0
 djangorestframework-simplejwt==5.2.2
 drf-spectacular==0.26.4

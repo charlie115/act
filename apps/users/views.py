@@ -1,42 +1,30 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
-from lib.filters import CharArrayFilter, UserUuidFilter
 from lib.views import BaseViewSet
+from users.filters import (
+    UserFavoriteAssetsFilter,
+    UserProfileFilter,
+    DepositHistoryFilter,
+)
 from users.models import (
     User,
     UserBlocklist,
     UserFavoriteAssets,
     UserProfile,
+    DepositBalance,
+    DepositHistory,
 )
 from users.serializers import (
     UserSerializer,
     UserFavoriteAssetsSerializer,
     UserProfileSerializer,
     UserBlocklistSerializer,
+    DepositBalanceSerializer,
+    DepositHistorySerializer,
 )
 
 
-###########
-# Filters #
-###########
-class UserFavoriteAssetsFilter(UserUuidFilter):
-    market_codes = CharArrayFilter(field_name="market_codes", lookup_expr="contains")
-
-    class Meta:
-        model = UserFavoriteAssets
-        fields = ("user", "base_asset", "market_codes")
-
-
-class UserProfileFilter(UserUuidFilter):
-    class Meta:
-        model = UserProfile
-        fields = ("user", "referral", "level", "points")
-
-
-#########
-# Views #
-#########
 @extend_schema(tags=["User"])
 @extend_schema_view(
     list=extend_schema(
@@ -166,3 +154,66 @@ class UserBlocklistViewSet(BaseViewSet):
     serializer_class = UserBlocklistSerializer
     filter_backends = [DjangoFilterBackend]
     http_method_names = ["get", "post", "delete"]
+
+
+@extend_schema(tags=["DepositBalance"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List deposit balance",
+        description="Returns a list of all `deposit balance`.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve a deposit balance",
+        description="Retrieves the details of an existing `deposit balance`.",
+    ),
+)
+class DepositBalanceViewSet(BaseViewSet):
+    queryset = DepositBalance.objects.all().order_by("id")
+    lookup_field = "id"
+    serializer_class = DepositBalanceSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = (
+        "user",
+        "balance",
+        "last_update",
+    )
+    http_method_names = ["get"]
+
+
+@extend_schema(tags=["DepositHistory"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List deposit history",
+        description="Returns a list of all `deposit history`.",
+    ),
+    create=extend_schema(
+        operation_id="Create a deposit history",
+        description="Creates a new `deposit history`.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve a deposit history",
+        description="Retrieves the details of an existing `deposit history`.",
+    ),
+    update=extend_schema(
+        operation_id="Fully update a deposit history",
+        description="Fully updates an existing `deposit history`.<br>"
+        "*All the previous values of the `deposit history` will be replaced with the new values provided. "
+        "Any parameters not provided will be unset.*",
+    ),
+    partial_update=extend_schema(
+        operation_id="Update a deposit history",
+        description="Updates an existing `deposit history`.<br>"
+        "*Only the parameters specified will be updated while the rest will be left unchanged.*",
+    ),
+    destroy=extend_schema(
+        operation_id="Delete a deposit history",
+        description="Deletes an existing `deposit history`.",
+    ),
+)
+class DepositHistoryViewSet(BaseViewSet):
+    queryset = DepositHistory.objects.all().order_by("id")
+    lookup_field = "id"
+    serializer_class = DepositHistorySerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = DepositHistoryFilter
+    http_method_names = ["get", "post", "put", "patch", "delete"]

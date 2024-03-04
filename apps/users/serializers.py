@@ -10,6 +10,8 @@ from users.models import (
     UserFavoriteAssets,
     UserProfile,
     UserSocialApps,
+    DepositBalance,
+    DepositHistory,
 )
 from socialaccounts.models import ProxySocialApp
 from socialaccounts.serializers import ProxySocialAppSerializer
@@ -129,3 +131,30 @@ class UserBlocklistSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserBlocklist
         fields = ("id", "target_username", "target_ip", "datetime")
+
+
+class DepositBalanceSerializer(serializers.ModelSerializer):
+    user = serializers.SlugRelatedField(queryset=User.objects.all(), slug_field="uuid")
+
+    class Meta:
+        model = DepositBalance
+        fields = ("id", "user", "balance", "last_update")
+        extra_kwargs = {
+            "last_update": {"read_only": True},
+        }
+
+
+class DepositHistorySerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
+    user = serializers.SlugRelatedField(queryset=User.objects.all(), slug_field="uuid")
+
+    class Meta:
+        model = DepositHistory
+        fields = (
+            "user",
+            "balance",
+            "change",
+            "txid",
+            "type",
+            "pending",
+            "registered_datetime",
+        )

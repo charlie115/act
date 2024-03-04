@@ -1,12 +1,9 @@
-from allauth.socialaccount.models import SocialAccount
+from django import forms
 from unfold.admin import TabularInline, StackedInline
+from unfold.admin import UnfoldBooleanWidget
 
-from users.models import (
-    UserFavoriteAssets,
-    UserManagement,
-    UserProfile,
-    UserSocialApps,
-)
+from lib.inlines import NonrelatedTabularInline
+from users.models import UserManagement, UserProfile, DepositHistory
 
 
 class ProfileInline(StackedInline):
@@ -15,21 +12,6 @@ class ProfileInline(StackedInline):
     classes = ("collapse",)
 
     def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-
-class FavoriteAssetsInline(TabularInline):
-    model = UserFavoriteAssets
-    verbose_name = "Favorite asset"
-    classes = ("collapse",)
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_change_permission(self, request, obj=None):
         return False
 
     def has_delete_permission(self, request, obj=None):
@@ -58,26 +40,23 @@ class ManagedInline(TabularInline):
         return False
 
 
-class SocialAppInline(TabularInline):
-    model = UserSocialApps
+class DepositHistoryForm(forms.ModelForm):
+    pending = forms.BooleanField(widget=UnfoldBooleanWidget())
+
+    class Meta:
+        model = DepositHistory
+        fields = "__all__"
+
+
+class DepositHistoryInline(NonrelatedTabularInline):
+    model = DepositHistory
+    form = DepositHistoryForm
+    fields = ["registered_datetime", "balance", "change", "type", "pending"]
+    show_change_link = True
     extra = 0
-    verbose_name = "Social app"
-    classes = ("collapse",)
 
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-
-class SocialAccountInline(StackedInline):
-    model = SocialAccount
-    verbose_name = "Social account"
-    classes = ("collapse",)
+    def get_form_queryset(self, obj):
+        return self.model.objects.filter(user=obj.user).order_by("-registered_datetime")
 
     def has_add_permission(self, request, obj=None):
         return False

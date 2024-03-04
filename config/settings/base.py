@@ -15,7 +15,6 @@ import os
 
 from datetime import timedelta
 from django.utils.translation import gettext_lazy as _
-from django.templatetags.static import static
 from django.urls import reverse_lazy
 from environ import Env
 from os.path import join
@@ -59,7 +58,6 @@ DJANGO_APPS = (
     "unfold",
     "unfold.contrib.filters",  # optional, if special filters are needed
     "unfold.contrib.forms",  # optional, if special form elements are needed
-    "unfold.contrib.import_export",  # optional, if django-import-export package is used
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -307,7 +305,14 @@ SPECTACULAR_SETTINGS = {
             },
             {
                 "name": "USER",
-                "tags": ["User", "UserProfile", "UserBlocklist", "UserFavoriteAssets"],
+                "tags": [
+                    "User",
+                    "UserProfile",
+                    "UserBlocklist",
+                    "UserFavoriteAssets",
+                    "DepositBalance",
+                    "DepositHistory",
+                ],
             },
             {
                 "name": "TRADE CORE",
@@ -347,16 +352,16 @@ STATIC_ROOT = os.path.normpath(os.path.join(os.path.dirname(BASE_DIR), "static")
 
 STATIC_URL = urljoin(SCRIPT_NAME, "static/")
 
-STATICFILES_DIRS = []
-
 MEDIA_ROOT = join(os.path.dirname(BASE_DIR), "media")
 
 MEDIA_URL = urljoin(SCRIPT_NAME, "media/")
 
+TEMPLATES_DIRS = ["templates"]
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": STATICFILES_DIRS,
+        "DIRS": TEMPLATES_DIRS,
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -399,12 +404,9 @@ UNFOLD = {
     "SITE_HEADER": "Django Admin",
     "SITE_URL": "/",
     "SITE_SYMBOL": "settings",  # symbol from icon set
-    "SITE_LOGO": {
-        "light": lambda request: static("logo-light.svg"),  # light mode
-        "dark": lambda request: static("logo-dark.svg"),  # dark mode
-    },
     "SHOW_HISTORY": False,  # show/hide "History" button, default: True
     "SHOW_VIEW_ON_SITE": True,  # show/hide "View on site" button, default: True
+    "ENVIRONMENT": "lib.utils.unfold_environment_callback",
     "SIDEBAR": {
         "show_search": True,  # Search in applications and models names
         "show_all_applications": True,  # Dropdown with all applications and models
@@ -434,6 +436,11 @@ UNFOLD = {
                         "title": _("User Blocklist"),
                         "icon": "person_off",
                         "link": reverse_lazy("admin:users_userblocklist_changelist"),
+                    },
+                    {
+                        "title": _("Deposit Balance"),
+                        "icon": "account_balance_wallet",
+                        "link": reverse_lazy("admin:users_depositbalance_changelist"),
                     },
                 ],
             },
@@ -484,6 +491,15 @@ UNFOLD = {
                 ],
             },
         ],
+    },
+    "EXTENSIONS": {
+        "modeltranslation": {
+            "flags": {
+                "en": "🇬🇧",
+                "kr": "🇰🇷",
+                "ch": "🇨🇳",
+            },
+        },
     },
 }
 

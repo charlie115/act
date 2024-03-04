@@ -29,14 +29,20 @@ class UserFavoriteAssetsValidatorMixin(object):
             base_asset = None
             error = None
 
-        all_market_codes = UserFavoriteAssets.objects.filter(
-            base_asset=base_asset, user=user
-        ).values_list("market_codes", flat=True)
+        if user and base_asset and market_codes:
+            if len(market_codes) > 2:
+                raise forms.ValidationError(
+                    {"market_codes": "Select a pair of market codes only."}
+                )
 
-        all_market_codes = [set(code) for code in all_market_codes]
+            all_market_codes = UserFavoriteAssets.objects.filter(
+                base_asset=base_asset, user=user
+            ).values_list("market_codes", flat=True)
 
-        if set(market_codes) in all_market_codes:
-            raise error
+            all_market_codes = [set(code) for code in all_market_codes]
+
+            if set(market_codes) in all_market_codes:
+                raise error
 
         return market_codes
 

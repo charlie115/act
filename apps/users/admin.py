@@ -1,3 +1,5 @@
+import json
+
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -5,16 +7,26 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
 from unfold.admin import ModelAdmin
+from unfold.decorators import display
+from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
+from unfold.widgets import INPUT_CLASSES, SELECT_CLASSES
 
 from users.inlines import (
     ProfileInline,
-    FavoriteAssetsInline,
     ManagersInline,
     ManagedInline,
-    SocialAccountInline,
+    DepositHistoryInline,
 )
 from users.mixins import UserFavoriteAssetsValidatorMixin
-from users.models import User, UserRole, UserBlocklist, UserManagement
+from users.models import (
+    User,
+    UserBlocklist,
+    UserFavoriteAssets,
+    UserManagement,
+    UserRole,
+    DepositBalance,
+    DepositHistory,
+)
 
 
 class UserRoleAdmin(ModelAdmin):
@@ -49,14 +61,14 @@ class UserRoleAdmin(ModelAdmin):
         return False
 
 
-class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
+class UserAdmin(BaseUserAdmin, ModelAdmin):
     list_display = (
         "email",
         "username",
         "first_name",
         "last_name",
         "is_staff",
-        "role",
+        "show_role_customized_color",
     )
     list_filter = (
         "is_staff",
@@ -80,33 +92,45 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
     )
     inlines = (
         ProfileInline,
-        SocialAccountInline,
         ManagersInline,
         ManagedInline,
-        FavoriteAssetsInline,
     )
     fieldsets = (
         (
-            None,
+            "Overview",
             {
+                "classes": ["tab"],
                 "fields": (
                     "is_active",
-                    "role",
                     "uuid",
-                    ("first_name", "last_name"),
-                    ("username", "email"),
-                    "telegram_chat_id",
+                    "email",
                     "password",
-                    "date_joined",
-                    ("last_login", "last_username_change"),
-                )
+                ),
             },
         ),
         (
-            _("Django Admin Permissions"),
+            _("Personal info"),
             {
-                "fields": ("is_staff", "groups"),
-                "classes": ("collapse",),
+                "classes": ["tab"],
+                "fields": (
+                    "username",
+                    ("first_name", "last_name"),
+                    "telegram_chat_id",
+                ),
+            },
+        ),
+        (
+            _("Permissions"),
+            {
+                "classes": ["tab"],
+                "fields": ("is_staff", "role", "groups", "user_permissions"),
+            },
+        ),
+        (
+            _("Important dates"),
+            {
+                "classes": ["tab"],
+                "fields": ("date_joined", "last_login", "last_username_change"),
             },
         ),
     )
@@ -119,6 +143,13 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
             },
         ),
     )
+    form = UserChangeForm
+    add_form = UserCreationForm
+    change_password_form = AdminPasswordChangeForm
+
+    @display(description=_("Role"), ordering="role", label=True)
+    def show_role_customized_color(self, obj):
+        return obj.role.name
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
@@ -154,7 +185,45 @@ class UserManagementAdmin(ModelAdmin):
 
 
 class UserFavoriteAssetsForm(UserFavoriteAssetsValidatorMixin, forms.ModelForm):
-    pass
+    def get_market_codes_choices():
+        with open("apps/infocore/fixtures/infocore.marketcode.json") as f:
+            market_codes = json.load(f)
+            market_codes = [
+                (market_code["fields"]["code"], market_code["fields"]["code"])
+                for market_code in market_codes
+            ]
+            return market_codes
+
+    base_asset = forms.CharField(
+        required=True,
+        widget=forms.TextInput({"class": " ".join([*INPUT_CLASSES])}),
+    )
+
+    market_codes = forms.MultipleChoiceField(
+        choices=get_market_codes_choices,
+        widget=forms.SelectMultiple(
+            {
+                "class": " ".join([*SELECT_CLASSES]),
+                "size": len(get_market_codes_choices()),
+            }
+        ),
+        help_text="Only select a <b>pair</b> of market codes.",
+    )
+
+
+class UserFavoriteAssetsAdmin(ModelAdmin):
+    list_display = [
+        "id",
+        "user",
+        "base_asset",
+        "market_codes",
+    ]
+    search_fields = [
+        "user__email",
+        "base_asset",
+        "market_codes",
+    ]
+    form = UserFavoriteAssetsForm
 
 
 class UserBlocklistAdmin(ModelAdmin):
@@ -174,7 +243,58 @@ class UserBlocklistAdmin(ModelAdmin):
         return False
 
 
+class DepositBalanceAdmin(ModelAdmin):
+    list_display = [
+        "user",
+        "balance",
+        "last_update",
+    ]
+    search_fields = [
+        "user",
+    ]
+    inlines = [DepositHistoryInline]
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class DepositHistoryAdmin(ModelAdmin):
+    list_display = [
+        "user",
+        "balance",
+        "change",
+        "type",
+        "pending",
+        "registered_datetime",
+    ]
+    list_filter = (
+        "type",
+        "pending",
+    )
+    search_fields = [
+        "user",
+    ]
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+admin.site.register(UserFavoriteAssets, UserFavoriteAssetsAdmin)
 admin.site.register(UserRole, UserRoleAdmin)
 admin.site.register(UserBlocklist, UserBlocklistAdmin)
-admin.site.register(User, CustomUserAdmin)
+admin.site.register(User, UserAdmin)
 admin.site.register(UserManagement, UserManagementAdmin)
+admin.site.register(DepositBalance, DepositBalanceAdmin)
+admin.site.register(DepositHistory, DepositHistoryAdmin)
