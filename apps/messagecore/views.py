@@ -1,6 +1,7 @@
 from django_filters import filterset
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework.filters import OrderingFilter
 from rest_framework.pagination import PageNumberPagination
 
 from lib.authentication import NodeIPAuthentication
@@ -57,10 +58,12 @@ class MessageFilter(filterset.FilterSet):
     ),
 )
 class MessageViewSet(BaseViewSet):
-    queryset = Message.objects.exclude(type=Message.MONITOR).order_by("id")
+    queryset = Message.objects.exclude(type=Message.MONITOR)
     serializer_class = MessageSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = MessageFilter
+    ordering_fields = ["id"]
+    ordering = ["-datetime"]
     http_method_names = ["get", "post", "put", "patch", "delete"]
     pagination_class = PageNumberPagination
     pagination_class.page_size = 50
