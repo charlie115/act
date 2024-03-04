@@ -57,7 +57,7 @@ class MessageFilter(filterset.FilterSet):
     ),
 )
 class MessageViewSet(BaseViewSet):
-    queryset = Message.objects.all().order_by("id")
+    queryset = Message.objects.exclude(type=Message.MONITOR).order_by("id")
     serializer_class = MessageSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = MessageFilter
