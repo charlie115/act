@@ -45,10 +45,14 @@ CMD ["start-dev-server.sh"]
 ##############
 FROM dev as test
 
-# Same as dev, just use corresponding env file for testing
 COPY ./.env.test .env
+COPY ./requirements/test.txt requirements/test.txt
+COPY ./docker/start-test-server.sh /usr/local/bin/start-test-server.sh
 
-CMD ["start-dev-server.sh"]
+RUN chmod +x /usr/local/bin/start-test-server.sh
+RUN pip install --no-cache-dir -r requirements/test.txt
+
+CMD ["start-test-server.sh"]
 
 
 ####################
