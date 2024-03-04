@@ -26,9 +26,9 @@ def generate_username():
 
 def unfold_environment_callback(request):
     env_color_dict = {
-        "Dev": "success",
-        "Test": "info",
-        "Production": "warning",
+        "dev": "success",
+        "test": "info",
+        "prod": "warning",
     }
     env = os.environ["DJANGO_SETTINGS_MODULE"].split(".")[-1]
     return [_(env), env_color_dict.get(env)]
