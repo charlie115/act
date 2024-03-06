@@ -62,7 +62,7 @@ class AcwApi:
             raise Exception("Error: " + str(response.status_code) + "\n" + response.text)
         
     def create_message_thread(self, telegram_chat_id, title, origin, type, content=None, remark=None, code=None, sent=False, send_times=1, send_term=1):
-        t = Thread(target=self.create_message, args=(telegram_chat_id, title, origin, type, content, remark, code, sent, send_times, send_term))
+        t = Thread(target=self.create_message, args=(telegram_chat_id, title, origin, type, content, remark, code, sent, send_times, send_term), daemon=True)
         t.start()
 
     def delete_message(self, id):

@@ -3,6 +3,7 @@ import os
 import datetime
 import traceback
 import pandas as pd
+from queue import Queue
 import numpy as np
 import time
 from binance.client import Client
@@ -160,25 +161,53 @@ class UserBinanceAdaptor:
         self.user_client_dict = {}
         self.user_stream_monitoring_list = []
         self.recvWindow = recvWindow
-        self.logger = KimpBotLogger("user_binance_plug", logging_dir).logger
-        self.retry_term_sec = 0.2
-        self.retry_count_limit = 2
+        self.trade_retry_term_sec = 0.2
+        self.trade_retry_limit = 2
+        self.order_info_retry_term_sec = 3
+        self.order_info_retry_limit = 20
+        self.acw_api = AcwApi()
+        self.trade_df_dict = trade_df_dict
         if db_dict is not None:
             self.postgres_client = InitPostgresDBClient(**{**db_dict, 'database': 'trade_core'})
             self.user_api_key_df = self.load_user_api_keys()
         else:
             self.postgres_client = None
             self.user_api_key_df = None
-        self.trade_df_dict = trade_df_dict
         self.market_combi_code = market_combi_code
         if market_combi_code is not None:
-            self.my_exchange = [x for x in market_combi_code.split('_') if 'BINANCE' in x][0]
-            self.counterpart_exchange = [x for x in market_combi_code.split('_') if 'BINANCE' not in x][0]
+            self.market_code = [x for x in market_combi_code.split(':') if 'BINANCE' in x][0]
+            self.market, self.quote_asset = self.market_code.split('/')
+            self.exchange = self.market.split('_')[0]
+            self.market_type = self.market.replace(self.exchange+'_','')
+            self.counterpart_market_code = [x for x in market_combi_code.split(':') if 'BINANCE' not in x][0]
+            self.counterpart_market, self.counterpart_quote_asset = self.counterpart_market_code.split('/')
+            self.counterpart_exchange = self.counterpart_market.split('_')[0]
+            self.counterpart_market_type = self.counterpart_market.replace(self.counterpart_exchange+'_','')
+            # Check whether the market_type is supported
+            if self.market_type not in ["USD_M"]:
+                raise Exception(f"Invalid market_type: {self.market_type}")
+            self.logger = KimpBotLogger(f"user_binance_plug_{self.market_code}", logging_dir).logger
+            self.logger.info(f"user_binance_plug_{self.market_code} started.")
+            self.load_user_api_keys_thread = Thread(target=self.loop_load_user_api_keys, args=(60,), daemon=True)
+            self.load_user_api_keys_thread.start()
+            # queue for handling order info
+            self.order_info_dict_queue = Queue()
+            # thread for handling order info
+            self.handle_order_info_queue_thread = Thread(target=self.handle_order_info_queue_loop, daemon=True)
+            self.handle_order_info_queue_thread.start()
         else:
-            self.my_exchange = None
+            self.market_code = None
+            self.market = None
+            self.quote_asset = None
+            self.exchange = None
+            self.market_type = None
+            self.counterpart_market_code = None
+            self.counterpart_market = None
+            self.counterpart_quote_asset = None
             self.counterpart_exchange = None
-        self.acw_api = AcwApi()
-        self.logger.info(f"user_binance_plug_logger|{market_combi_code} started.")
+            self.counterpart_market_type = None
+            self.logger = KimpBotLogger(f"user_binance_plug", logging_dir).logger
+            self.logger.info(f"user_binance_plug started.")
         
     def load_user_api_keys(self):
         conn = self.postgres_client.pool.getconn()
@@ -281,56 +310,85 @@ class UserBinanceAdaptor:
         res = client.futures_change_leverage(symbol=symbol, leverage=leverage)
         return res
 
-    def futures_order_info(self, access_key, secret_key, symbol, orderId, return_dict=None):
+    def fetch_order_info(self, access_key, secret_key, symbol, order_id, market_type, return_dict=None):
         client = self.load_user_client(access_key, secret_key)
-        if return_dict is None:
-            res = client.futures_get_order(symbol=symbol, orderId=orderId, recvWindow=self.recvWindow)
-            return res
-        else:
-            try:
-                return_dict['res'] = client.futures_get_order(symbol=symbol, orderId=orderId, recvWindow=self.recvWindow)
-                return_dict['state'] = 'OK'
-            except Exception as e:
-                self.logger.error(f"futures_order_info|{traceback.format_exc()}")
+        retry_count = 0
+        try:
+            while retry_count <= self.order_info_retry_limit:
+                try:
+                    if market_type == "USD_M":
+                        res = client.futures_get_order(symbol=symbol, orderId=order_id, recvWindow=self.recvWindow)
+                    else:
+                        raise Exception(f"market_type: {market_type} is not supported yet.")
+                    if return_dict is not None:
+                        return_dict['res'] = res
+                        return_dict['error_code'] = None
+                    return res
+                except Exception as e:
+                    if e.code in [-2013, -1000, -1001, -1008]: # Binance -Order not exist, -Unknown error, -Internal error, -SERVER BUSY
+                        time.sleep(self.order_info_retry_term_sec)
+                        retry_count += 1
+                        if retry_count == self.order_info_retry_limit:
+                            raise e
+                    else:
+                        raise e
+        except Exception as e:
+            self.logger.error(f"fetch_order_info|order_id:{order_id}\nerror:{e}\n{traceback.format_exc()}")
+            if return_dict is None:
+                raise e
+            else:
                 return_dict['res'] = e
-                return_dict['state'] = 'ERROR'
-    # Original
-    # def market_enter(self, access_key, secret_key, symbol, qty, return_dict=None):
-    #     client = self.load_user_client(access_key, secret_key)
-    #     if return_dict is None:
-    #         res = client.futures_create_order(
-    #             symbol=symbol,
-    #             side='SELL',
-    #             type='MARKET',
-    #             quantity=qty,
-    #             recvWindow=self.recvWindow
-    #             # workingType='MARK_PRICE'
-    #         )
-    #         return res
-    #     else:
-    #         try:
-    #             return_dict['res'] =  client.futures_create_order(
-    #                 symbol=symbol,
-    #                 side='SELL',
-    #                 type='MARKET',
-    #                 quantity=qty,
-    #                 recvWindow=self.recvWindow
-    #                 # workingType='MARK_PRICE'
-    #             )
-    #             return_dict['state'] = 'OK'
-    #         except Exception as e:
-    #             self.logger.error(f"market_enter|{traceback.format_exc()}")
-    #             return_dict['res'] = e
-    #             return_dict['state'] = 'ERROR'
+                return_dict['error_code'] = e.code
+
+    def save_order_info_to_db(self, trade_config_uuid, trade_uuid, res, market_type):
+        conn = self.postgres_client.pool.getconn()
+        curr = conn.cursor(cursor_factory=extras.RealDictCursor)
+        try:
+            if market_type == "USD_M":
+                order_id = str(res['orderId'])
+                executed_price = float(res['avgPrice'])
+                executed_qty = float(res['executedQty'])
+                side = res['side']
+                order_type = res['type']
+                symbol = res['symbol']
+                fee = executed_price * executed_qty * 0.0005 # TEMP
+                sql = """INSERT INTO order_history(order_id, trade_config_uuid, trade_uuid, registered_datetime, order_type, market_code, symbol, quote_asset, side, price, qty, fee, remark)
+                        VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                val = (order_id, trade_config_uuid, trade_uuid, datetime.datetime.utcnow(), order_type, self.market_code, symbol, self.quote_asset, side, executed_price, executed_qty, fee, None)
+                curr.execute(sql, val)
+                conn.commit()
+            else:
+                raise Exception(f"market_type: {market_type} is not supported yet.")
+            self.postgres_client.pool.putconn(conn)
+        except Exception as e:
+            self.logger.error(f"save_order_info_to_db|{traceback.format_exc()}")
+            self.postgres_client.pool.putconn(conn)
+            raise e
+
+    def handle_order_info_queue_loop(self):
+        self.logger.info(f"handle_order_info_queue_loop started.")
+        while True:
+            try:
+                order_info_dict = self.order_info_dict_queue.get()
+                access_key, secret_key = self.get_api_key_tup(order_info_dict['trade_config_uuid'], (False if order_info_dict['market_type'] == "SPOT" else True))
+                # API call
+                fetched_order_info_res = self.fetch_order_info(access_key, secret_key, order_info_dict['symbol'], order_info_dict['order_id'], order_info_dict['market_type'])
+                # process res and save data to db
+                self.save_order_info_to_db(order_info_dict['trade_config_uuid'], order_info_dict['trade_uuid'], fetched_order_info_res, order_info_dict['market_type'])
+            except Exception as e:
+                self.logger.error(f"handle_order_info_queue_loop|{traceback.format_exc()}")
+                self.acw_api.create_message_thread(self.admin_telegram_id, "handle_order_info_queue_loop", self.node, "monitor", str(e))
+                time.sleep(3)
+            time.sleep(0.05)
 
     def market_long(self, access_key, secret_key, symbol, qty, market_type, return_dict=None):
         client = self.load_user_client(access_key, secret_key)
 
         retry_count = 0
 
-        while retry_count <= self.retry_count_limit:
+        while retry_count <= self.trade_retry_limit:
             if retry_count >= 1:
-                self.logger.info(f"market_enter|retry_count: {retry_count}, retry_term_sec: {self.retry_term_sec}, retry_count_limit: {self.retry_count_limit}") # For TESTING
+                self.logger.info(f"market_enter|retry_count: {retry_count}, retry_term_sec: {self.trade_retry_term_sec}, retry_count_limit: {self.trade_retry_limit}") # For TESTING
             try:
                 if market_type == "USD_M":
                     res = client.futures_create_order(
@@ -347,7 +405,7 @@ class UserBinanceAdaptor:
                 else:
                     raise Exception(f"market_type: {market_type} is not supported yet.")
             except Exception as e:
-                if e.code not in [-1000, -1001] or retry_count == self.retry_count_limit:
+                if e.code not in [-1000, -1001, -1008] or retry_count >= self.trade_retry_limit:
                     if return_dict is None:
                         raise e
                     else:
@@ -356,41 +414,14 @@ class UserBinanceAdaptor:
                         return
             retry_count += 1
 
-    # # Original
-    # def market_exit(self, access_key, secret_key, symbol, qty, return_dict=None):
-    #     client = self.load_user_client(access_key, secret_key)
-    #     if return_dict is None:
-    #         res = client.futures_create_order(
-    #             symbol=symbol,
-    #             side='BUY',
-    #             type='MARKET',
-    #             quantity=qty,
-    #             recvWindow=self.recvWindow
-    #         )
-    #         return res
-    #     else:
-    #         try:
-    #             return_dict['res'] = client.futures_create_order(
-    #             symbol=symbol,
-    #             side='BUY',
-    #             type='MARKET',
-    #             quantity=qty,
-    #             recvWindow=self.recvWindow
-    #         )
-    #             return_dict['state'] = 'OK'
-    #         except Exception as e:
-    #             self.logger.error(f"market_exit|{traceback.format_exc()}")
-    #             return_dict['res'] = e
-    #             return_dict['state'] = 'ERROR'
-
     def market_short(self, access_key, secret_key, symbol, qty, market_type, return_dict=None):
         client = self.load_user_client(access_key, secret_key)
 
         retry_count = 0
 
-        while retry_count <= self.retry_count_limit:
+        while retry_count <= self.trade_retry_limit:
             if retry_count >= 1:
-                self.logger.info(f"market_short|retry_count: {retry_count}, retry_term_sec: {self.retry_term_sec}, retry_count_limit: {self.retry_count_limit}") # For TESTING
+                self.logger.info(f"market_short|retry_count: {retry_count}, retry_term_sec: {self.trade_retry_term_sec}, retry_count_limit: {self.trade_retry_limit}") # For TESTING
             try:
                 if market_type == "USD_M":
                     res = client.futures_create_order(
@@ -407,7 +438,7 @@ class UserBinanceAdaptor:
                 else:
                     raise Exception(f"market_type: {market_type} is not supported yet.")
             except Exception as e:
-                if e.code not in [-1000, -1001] or retry_count == self.retry_count_limit:
+                if e.code not in [-1000, -1001, -1008] or retry_count >= self.trade_retry_limit:
                     if return_dict is None:
                         raise e
                     else:
@@ -415,44 +446,13 @@ class UserBinanceAdaptor:
                         return_dict['error_code'] = e.code
                         return
             retry_count += 1
-    # Original
-    # def position_information(self, access_key, secret_key, symbol, return_dict=None):
-    #     client = self.load_user_client(access_key, secret_key)
-    #     if return_dict is None:
-    #         res = client.futures_position_information()
-    #         position_df = pd.DataFrame(res)
-    #         symbol_df = position_df[position_df['symbol']==symbol]
-    #         if len(symbol_df) == 0:
-    #             position_qty = 0
-    #             liquidation_price = None
-    #         else:
-    #             position_qty = abs(float(symbol_df['positionAmt'].iloc[0]))
-    #             liquidation_price = float(symbol_df['liquidationPrice'].iloc[0])
-    #         return (position_qty, liquidation_price)
-    #     else:
-    #         try:
-    #             res = client.futures_position_information()
-    #             position_df = pd.DataFrame(res)
-    #             symbol_df = position_df[position_df['symbol']==symbol]
-    #             if len(symbol_df) == 0:
-    #                 position_qty = 0
-    #                 liquidation_price = None
-    #             else:
-    #                 position_qty = abs(float(symbol_df['positionAmt'].iloc[0]))
-    #                 liquidation_price = float(symbol_df['liquidationPrice'].iloc[0])
-    #             return_dict['res'] = (position_qty, liquidation_price)
-    #             return_dict['state'] = 'OK'
-    #         except Exception as e:
-    #             self.logger.error(f"position_information|{traceback.format_exc()}")
-    #             return_dict['res'] = e
-    #             return_dict['state'] = 'ERROR'
 
     def position_information(self, access_key, secret_key, symbol, return_dict=None):
         client = self.load_user_client(access_key, secret_key)
 
         retry_count = 0
 
-        while retry_count <= self.retry_count_limit:
+        while retry_count <= self.trade_retry_limit:
             try:
                 res = client.futures_position_information()
                 position_df = pd.DataFrame(res)
@@ -468,7 +468,7 @@ class UserBinanceAdaptor:
                     return_dict['state'] = 'OK'
                 return (position_qty, liquidation_price)
             except Exception as e:
-                if e.code not in [-1000, -1001] or retry_count == self.retry_count_limit:
+                if e.code not in [-1000, -1001, -1008] or retry_count >= self.trade_retry_limit:
                     if return_dict is None:
                         raise e
                     else:
@@ -478,8 +478,6 @@ class UserBinanceAdaptor:
             retry_count += 1
 
     def all_position_information(self, access_key, secret_key, market_type='USD_M', return_dict=None):
-        if market_type not in ["USD_M", 'COIN_M']:
-            raise Exception(f"Invalid market_type: {market_type}")
         client = self.load_user_client(access_key, secret_key)
         if market_type == "USD_M":
             res = client.futures_position_information()
@@ -654,8 +652,6 @@ class UserBinanceAdaptor:
 
     def start_user_socket_stream(self, market_type, counterpart_margin_call_callback, counterpart_liquidation_callback, loop_secs=3, monitor_loop_secs=2.5):
         # A user should have at least one trade_df setting to start user socket stream.
-        if market_type.upper() not in ["USD_M"]:
-            raise Exception(f"market_type: {market_type} is not supported yet.")
         self.logger.info(f"start_socket_stream|start_socket_stream started.")
         def monitor_user_stream_loop():
             input_type = 'monitor'
@@ -728,3 +724,32 @@ class UserBinanceAdaptor:
                 time.sleep(monitor_loop_secs)
         self.start_socket_stream_thread = Thread(target=monitor_user_stream_loop, daemon=True)
         self.start_socket_stream_thread.start()
+
+    def calculate_enter_qty(self, base_asset, dollar, bp, LS_premium, SL_premium, trade_capital, market_type, capital_currency='KRW'):
+        if capital_currency not in ["KRW"]:
+            raise Exception(f"Invalid currency: {capital_currency}")
+        if market_type not in ["USD_M"]:
+            raise Exception(f"Invalid market_type: {market_type}")
+        usdt_converted_dollar = (100+(LS_premium+SL_premium)/2)/100 * dollar
+        value_usd = trade_capital/(usdt_converted_dollar*1.005) # 0.5% margin for the enter amount of KRW
+
+        # BTC, ETH, BCH, LTC -> 0.001 까지 가능
+        if base_asset in ['BTC','ETH','BCH','LTC']:
+            enter_quantity = round(value_usd / bp, 3)
+            if enter_quantity*bp > value_usd:
+                enter_quantity = round((enter_quantity - 0.001), 3)
+
+        # ETC, NEO, LINK -> 0.01 까지 가능
+        elif base_asset in ['ETC','NEO', 'LINK']:
+            enter_quantity = round(value_usd / bp, 2)
+            if enter_quantity*bp > value_usd:
+                enter_quantity = round((enter_quantity - 0.01), 2)
+        else:
+            enter_quantity = value_usd // bp
+        return enter_quantity
+        # if enter_quantity == 0:
+        #     body = f"투입금액이 {base_asset}USDT 1개의 가격보다 낮습니다. \n주문을 취소합니다."
+        #     self.acw_api.create_message(self.admin_telegram_id, "주문취소", self.node, 'warning', body)
+        #     raise Exception(body)
+        # else:
+        #     return enter_quantity

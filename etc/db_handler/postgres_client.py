@@ -46,6 +46,8 @@ class InitDBClient:
         self.create_trade()
         self.create_repeat_trade()
         self.create_exchange_api_key()
+        self.create_order_history()
+        self.create_trade_history()
 
     def check_table_exist(self, table_name):
         query = f"""
@@ -136,12 +138,54 @@ class InitDBClient:
                 trigger_switch SMALLINT,
                 trade_switch SMALLINT,
                 trade_capital INTEGER,
+                last_trade_history_uuid UUID,
+                status TEXT,
+                remark TEXT,
+                FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE
+            )"""
+        conn = self.get_conn()
+        curr = conn.cursor()
+        curr.execute(query)
+        conn.commit()
+        curr.close()
+        conn.close()
+        if self.logger is not None:
+            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
+        else:
+            print(f"InitDBClient|TABLE: {table_name} created.")
+
+    def create_trade_log(self, table_name='trade_log'):
+        # First check whether the table exists
+        if self.check_table_exist(table_name):
+            if self.logger is not None:
+                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
+            else:
+                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            return
+        query = f"""
+            CREATE TABLE IF NOT EXISTS {table_name}
+            (
+                id SERIAL PRIMARY KEY,
+                uuid UUID UNIQUE,
+                trade_config_uuid UUID NOT NULL,
+                registered_datetime TIMESTAMP,
+                last_updated_datetime TIMESTAMP,
+                base_asset TEXT NOT NULL,
+                usdt_conversion BOOLEAN NOT NULL,
+                low NUMERIC(8, 3) NOT NULL,
+                high NUMERIC(8, 3) NOT NULL,
+                trigger_switch SMALLINT,
+                trade_switch SMALLINT,
+                trade_capital INTEGER,
                 enter_target_market_order_id TEXT,
                 enter_origin_market_order_id TEXT,
                 exit_target_market_order_id TEXT,
                 exit_origin_market_order_id TEXT,
                 status TEXT,
                 remark TEXT,
+                deleted BOOLEAN,
                 FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE
@@ -222,6 +266,151 @@ class InitDBClient:
                 passphrase BYTEA,
                 remark TEXT,
                 FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE
+            )"""
+        conn = self.get_conn()
+        curr = conn.cursor()
+        curr.execute(query)
+        conn.commit()
+        curr.close()
+        conn.close()
+        if self.logger is not None:
+            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
+        else:
+            print(f"InitDBClient|TABLE: {table_name} created.")
+
+    def create_order_history(self, table_name='order_history'):
+        # First check whether the table exists
+        if self.check_table_exist(table_name):
+            if self.logger is not None:
+                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
+            else:
+                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            return
+        query = f"""
+            CREATE TABLE IF NOT EXISTS {table_name}
+            (
+                id SERIAL PRIMARY KEY,
+                order_id TEXT UNIQUE,
+                trade_config_uuid UUID NOT NULL,
+                trade_uuid UUID NOT NULL,
+                registered_datetime TIMESTAMP,
+                order_type TEXT NOT NULL,
+                market_code TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                quote_asset TEXT NOT NULL,
+                side TEXT NOT NULL,
+                price NUMERIC(13, 3) NOT NULL,
+                qty NUMERIC(21, 7) NOT NULL,
+                fee NUMERIC(9, 3),
+                remark TEXT,
+                FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE,
+                FOREIGN KEY (trade_uuid) REFERENCES trade_log(uuid)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE
+            )"""
+        conn = self.get_conn()
+        curr = conn.cursor()
+        curr.execute(query)
+        conn.commit()
+        curr.close()
+        conn.close()
+        if self.logger is not None:
+            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
+        else:
+            print(f"InitDBClient|TABLE: {table_name} created.")
+
+    def create_trade_history(self, table_name='trade_history'):
+        # First check whether the table exists
+        if self.check_table_exist(table_name):
+            if self.logger is not None:
+                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
+            else:
+                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            return
+        query = f"""
+            CREATE TABLE IF NOT EXISTS {table_name}
+            (
+                id SERIAL PRIMARY KEY,
+                uuid UUID DEFAULT gen_random_uuid() UNIQUE,
+                trade_config_uuid UUID NOT NULL,
+                trade_uuid UUID NOT NULL,
+                registered_datetime TIMESTAMP,
+                trade_side TEXT NOT NULL,
+                base_asset TEXT NOT NULL,
+                target_order_id TEXT NOT NULL,
+                origin_order_id TEXT NOT NULL,
+                dollar NUMERIC(5, 1) NOT NULL,
+                remark TEXT,
+                FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE,
+                FOREIGN KEY (trade_uuid) REFERENCES trade_log(uuid)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE,
+                FOREIGN KEY (target_order_id) REFERENCES order_history(order_id)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE,
+                FOREIGN KEY (origin_order_id) REFERENCES order_history(order_id)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE
+            )"""
+        conn = self.get_conn()
+        curr = conn.cursor()
+        curr.execute(query)
+        conn.commit()
+        curr.close()
+        conn.close()
+        if self.logger is not None:
+            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
+        else:
+            print(f"InitDBClient|TABLE: {table_name} created.")
+
+    def create_pnl_history(self, table_name='pnl_history'):
+        # First check whether the table exists
+        if self.check_table_exist(table_name):
+            if self.logger is not None:
+                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
+            else:
+                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            return
+        query = f"""
+            CREATE TABLE IF NOT EXISTS {table_name}
+            (
+                id SERIAL PRIMARY KEY,
+                uuid UUID DEFAULT gen_random_uuid() UNIQUE,
+                trade_config_uuid UUID NOT NULL,
+                trade_uuid UUID NOT NULL,
+                registered_datetime TIMESTAMP,
+                market_combi_code TEXT NOT NULL,
+                enter_trade_history_uuid UUID NOT NULL,
+                exit_trade_history_uuid UUID NOT NULL,
+                target_currency TEXT NOT NULL,
+                target_pnl NUMERIC(13, 6) NOT NULL,
+                target_total_fee NUMERIC(13, 6) NOT NULL,
+                target_pnl_after_fee NUMERIC(13, 6) NOT NULL,
+                origin_currency TEXT NOT NULL,
+                origin_pnl NUMERIC(13, 6) NOT NULL,
+                origin_total_fee NUMERIC(13, 6) NOT NULL,
+                origin_pnl_after_fee NUMERIC(13, 6) NOT NULL,
+                total_currency TEXT NOT NULL,
+                total_pnl NUMERIC(13, 6) NOT NULL,
+                total_pnl_after_fee NUMERIC(13, 6) NOT NULL,
+                total_pnl_after_fee_kimp NUMERIC(13, 6),
+                remark TEXT,
+                FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE,
+                FOREIGN KEY (trade_uuid) REFERENCES trade_log(uuid)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE,
+                FOREIGN KEY (enter_trade_history_uuid) REFERENCES trade_history(uuid)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE,
+                FOREIGN KEY (enter_trade_history_uuid) REFERENCES trade_history(order_id)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE
             )"""
