@@ -210,6 +210,39 @@ class UserUpbitAdaptor:
             return_dict['res'] = result_df
             return_dict['error_code'] = None
 
+    def position_information(self, access_key, secret_key, market_type, symbol, return_dict=None):
+        upbit_client = self.load_user_client(access_key, secret_key)
+        if market_type == 'SPOT':
+            res = upbit_client.Account.Account_info()
+            if res['response']['ok'] is False:
+                if return_dict is not None:
+                    return_dict['res'] = res
+                    return_dict['error_code'] = res['result']['error']['name']
+                    return
+                raise Exception(res['result']['error']['message'])
+            position_df = pd.DataFrame(res['result'])
+            symbol_df = position_df[position_df['currency']==symbol]['balance']
+            if len(symbol_df) == 0:
+                upbit_remaining_qty = 0
+            else:
+                upbit_remaining_qty = float(symbol_df.iloc[0])
+                if return_dict is not None:
+                    return_dict['res'] = upbit_remaining_qty
+                    return_dict['error_code'] = None
+            return upbit_remaining_qty
+        else:
+            raise Exception(f"market_type: {market_type} is not supported yet.")
+
+    def all_position_information(self, access_key, secret_key, market_type='SPOT', return_dict=None):
+        if market_type == "SPOT":
+            return self.get_spot_balance(access_key, secret_key, return_dict=return_dict)
+        elif market_type == "USD_M":
+            raise Exception(f"market_type: {market_type} is not supported yet.")
+        elif market_type == "COIN_M":
+            raise Exception(f"market_type: {market_type} is not supported yet.")
+        else:
+            raise Exception(f"Invalid market_type: {market_type}")
+        
     def get_balance(self, access_key, secret_key, market_type='SPOT', return_dict=None):
         if market_type == "SPOT":
             return self.get_spot_balance(access_key, secret_key, return_dict=return_dict)

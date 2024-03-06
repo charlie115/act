@@ -47,30 +47,14 @@ class InitTrigger:
         self.logger.info("trade_config_df_dict, trade_df_dict have been initialized")
         time.sleep(20)
 
-    def is_table_empty(self, conn, table_name):
-        with conn.cursor() as cur:
-            cur.execute(f"SELECT COUNT(*) FROM {table_name}")
-            count = cur.fetchone()[0]
-            return count == 0
-
-    def get_column_names(self, conn, table_name):
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_schema = 'public' AND table_name = %s
-                ORDER BY ordinal_position;
-            """, (table_name,))
-            return [row[0] for row in cur.fetchall()]
-
     def load_exchange_config(self, table_name='trade_config'):
         try:
             # First check whether the table is empty
             conn = self.postgres_client.pool.getconn()
             curr = conn.cursor(cursor_factory=extras.RealDictCursor)
-            if self.is_table_empty(conn, table_name):
+            if self.postgres_client.is_table_empty(table_name):
                 # # Get the column names
-                # column_names = self.get_column_names(conn, table_name)
+                # column_names = self.postgres_client.get_column_names(table_name)
                 # # Create empty dataframe
                 # self.exchange_config_df = pd.DataFrame(columns=column_names)
                 pass
@@ -104,9 +88,9 @@ class InitTrigger:
         target_market_code, origin_market_code = market_combi_code.split(':')
         try:
             # First check whether the table is empty
-            if self.is_table_empty(conn, table_name):
+            if self.postgres_client.is_table_empty(table_name):
                 # Get the column names
-                column_names = self.get_column_names(conn, table_name)
+                column_names = self.postgres_client.get_column_names(conn, table_name)
                 # Create empty dataframe
                 trade_df_dict[market_combi_code] = pd.DataFrame(columns=column_names)
             else:

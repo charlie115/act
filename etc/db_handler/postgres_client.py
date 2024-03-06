@@ -44,10 +44,12 @@ class InitDBClient:
     def create_all_tables(self):
         self.create_trade_config()
         self.create_trade()
+        self.create_trade_log()
         self.create_repeat_trade()
         self.create_exchange_api_key()
         self.create_order_history()
         self.create_trade_history()
+        self.create_pnl_history()
 
     def check_table_exist(self, table_name):
         query = f"""
@@ -62,6 +64,27 @@ class InitDBClient:
         curr.execute(query)
         exist_flag = curr.fetchone()[0]
         return exist_flag
+    
+    def is_table_empty(self, table_name):
+        conn = self.get_conn()
+        cur = conn.cursor()        
+        cur.execute(f"SELECT COUNT(*) FROM {table_name}")
+        count = cur.fetchone()[0]
+        conn.close()
+        return count == 0
+
+    def get_column_names(self, table_name):
+        conn = self.get_conn()
+        curr = conn.cursor()
+        curr.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' AND table_name = %s
+            ORDER BY ordinal_position;
+        """, (table_name,))
+        column_names = [row[0] for row in curr.fetchall()]
+        conn.close()
+        return column_names
 
     def create_trade_config(self, table_name='trade_config'):
         # First check whether the table exists
@@ -301,9 +324,9 @@ class InitDBClient:
                 symbol TEXT NOT NULL,
                 quote_asset TEXT NOT NULL,
                 side TEXT NOT NULL,
-                price NUMERIC(13, 3) NOT NULL,
-                qty NUMERIC(21, 7) NOT NULL,
-                fee NUMERIC(9, 3),
+                price NUMERIC(21, 11) NOT NULL,
+                qty NUMERIC(22, 9) NOT NULL,
+                fee NUMERIC(15, 9),
                 remark TEXT,
                 FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
                     ON DELETE CASCADE
@@ -343,6 +366,9 @@ class InitDBClient:
                 base_asset TEXT NOT NULL,
                 target_order_id TEXT NOT NULL,
                 origin_order_id TEXT NOT NULL,
+                target_premium_value NUMERIC(8, 3) NOT NULL,
+                executed_premium_value NUMERIC(8, 3) NOT NULL,
+                slippage_p NUMERIC(6, 3) NOT NULL,
                 dollar NUMERIC(5, 1) NOT NULL,
                 remark TEXT,
                 FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
@@ -388,6 +414,7 @@ class InitDBClient:
                 market_combi_code TEXT NOT NULL,
                 enter_trade_history_uuid UUID NOT NULL,
                 exit_trade_history_uuid UUID NOT NULL,
+                realized_premium_gap_p NUMERIC(6, 3) NOT NULL,
                 target_currency TEXT NOT NULL,
                 target_pnl NUMERIC(13, 6) NOT NULL,
                 target_total_fee NUMERIC(13, 6) NOT NULL,
@@ -410,7 +437,7 @@ class InitDBClient:
                 FOREIGN KEY (enter_trade_history_uuid) REFERENCES trade_history(uuid)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE,
-                FOREIGN KEY (enter_trade_history_uuid) REFERENCES trade_history(order_id)
+                FOREIGN KEY (exit_trade_history_uuid) REFERENCES trade_history(uuid)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE
             )"""

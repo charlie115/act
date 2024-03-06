@@ -447,14 +447,15 @@ class UserBinanceAdaptor:
                         return
             retry_count += 1
 
-    def position_information(self, access_key, secret_key, symbol, return_dict=None):
+    def position_information(self, access_key, secret_key, market_type, symbol, return_dict=None):
         client = self.load_user_client(access_key, secret_key)
-
         retry_count = 0
-
         while retry_count <= self.trade_retry_limit:
             try:
-                res = client.futures_position_information()
+                if market_type == "USD_M":
+                    res = client.futures_position_information()
+                else:
+                    raise Exception(f"market_type: {market_type} is not supported yet.")
                 position_df = pd.DataFrame(res)
                 symbol_df = position_df[position_df['symbol']==symbol]
                 if len(symbol_df) == 0:
@@ -465,7 +466,7 @@ class UserBinanceAdaptor:
                     liquidation_price = float(symbol_df['liquidationPrice'].iloc[0])
                 if return_dict is not None:
                     return_dict['res'] = (position_qty, liquidation_price)
-                    return_dict['state'] = 'OK'
+                    return_dict['error_code'] = None
                 return (position_qty, liquidation_price)
             except Exception as e:
                 if e.code not in [-1000, -1001, -1008] or retry_count >= self.trade_retry_limit:
@@ -473,7 +474,7 @@ class UserBinanceAdaptor:
                         raise e
                     else:
                         return_dict['res'] = e
-                        return_dict['state'] = 'ERROR'
+                        return_dict['error_code'] = e.code
                         return
             retry_count += 1
 
@@ -494,11 +495,11 @@ class UserBinanceAdaptor:
         else:
             try:
                 return_dict['res'] = position_df
-                return_dict['state'] = 'OK'
+                return_dict['error_code'] = None
             except Exception as e:
                 self.logger.error(f"all_position_information|{traceback.format_exc()}")
                 return_dict['res'] = e
-                return_dict['state'] = 'ERROR'
+                return_dict['error_code'] = e.code
 
     def get_futures_account(self, access_key, secret_key, return_dict=None):
         client = self.load_user_client(access_key, secret_key)
