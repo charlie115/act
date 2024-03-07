@@ -6,11 +6,11 @@ import BlockIcon from '@mui/icons-material/Block';
 
 export default function renderIconCell({ cell, row, isMobile }) {
   return (
-    <Box sx={{ textAlign: 'center' }}>
+    <Box sx={{ display: 'flex', textAlign: 'center' }}>
       {cell.getValue() ? (
         <img
           loading="lazy"
-          width={isMobile ? '12' : '16'}
+          width={isMobile ? '12' : '20'}
           src={cell.getValue()}
           alt={row.original.name}
         />

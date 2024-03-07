@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
+import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
@@ -23,6 +24,7 @@ export default function DropdownMenu({
   options = [],
   value,
   onSelectItem,
+  showBadge,
   tooltipTitle,
   buttonProps,
   buttonStyle,
@@ -74,7 +76,16 @@ export default function DropdownMenu({
           variant="outlined"
           {...buttonProps}
           endIcon={<ArrowDropDownIcon fontSize="small" />}
-          startIcon={value?.icon}
+          startIcon={
+            <Badge
+              color="error"
+              variant="dot"
+              invisible={!showBadge}
+              anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+            >
+              {value?.icon}
+            </Badge>
+          }
           onClick={handleToggle}
           sx={{
             alignSelf: 'stretch',
@@ -124,14 +135,25 @@ export default function DropdownMenu({
                   onKeyDown={handleListKeyDown}
                   sx={{ minWidth: 150 }}
                 >
-                  {options.map((item) => (
+                  {options.map((item, idx) => (
                     <MenuItem
                       key={item.value}
                       disabled={item.disabled}
                       selected={item.value === value.value}
                       onClick={(e) => handleSelect(e, item)}
                     >
-                      {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
+                      {item.icon && (
+                        <ListItemIcon>
+                          <Badge
+                            color="error"
+                            variant="dot"
+                            invisible={!item.showBadge}
+                          >
+                            {item.icon}
+                          </Badge>
+                        </ListItemIcon>
+                      )}
+
                       <ListItemText>{item.label}</ListItemText>
                       {item.secondaryIcon && item.secondaryIcon}
                     </MenuItem>

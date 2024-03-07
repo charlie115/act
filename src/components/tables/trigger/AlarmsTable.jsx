@@ -72,7 +72,7 @@ export default function AlarmsTable({
       baseAsset,
       tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid,
     },
-    { skip: !tradeConfigAllocation }
+    { skip: !tradeConfigAllocation, pollingInterval: 1000 * 60 }
   );
 
   const [
@@ -162,7 +162,13 @@ export default function AlarmsTable({
     ({ row: { original, toggleExpanded }, meta }) => (
       <Box sx={{ bgcolor: 'background.default' }}>
         <UpdateAlarmForm
-          row={original}
+          baseAsset={original.baseAsset}
+          defaultEntry={original.entry}
+          defaultExit={original.exit}
+          isTether={original.isTether}
+          tradeConfigUuid={original.trade_config_uuid}
+          usdtConversion={original.usdt_conversion}
+          uuid={original.uuid}
           onAlarmConfigChange={meta.onAlarmConfigChange}
           toggleExpanded={toggleExpanded}
         />

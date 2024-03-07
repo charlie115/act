@@ -49,6 +49,7 @@ const CreateAlarmForm = forwardRef(
       isTetherPriceView,
       tradeConfigAllocation,
       onAlarmConfigChange,
+      onCreateSuccess,
     },
     ref
   ) => {
@@ -149,13 +150,14 @@ const CreateAlarmForm = forwardRef(
           message: t('Successfully registered alarm.'),
           status: 'success',
         });
+        if (onCreateSuccess) onCreateSuccess(tradeResults);
       } else if (tradeResults.isError) {
         setAlertMessage({
           message: t('An error occurred. Please try again.'),
           status: 'error',
         });
       }
-    }, [tradeResults.isError, tradeResults.isSuccess]);
+    }, [tradeResults]);
 
     useEffect(() => {
       if (entry && exit) trigger(['entry', 'exit']);
@@ -260,6 +262,7 @@ const CreateAlarmForm = forwardRef(
                 >
                   <InputLabel>{t('Entry')}</InputLabel>
                   <Input
+                    autoFocus
                     disabled={disabled}
                     readOnly={isDollarFetching || isLoading}
                     type="number"

@@ -19,7 +19,7 @@ const getConnection = async () => {
 
 const api = websocketApi.injectEndpoints({
   endpoints: (build) => ({
-    getMessages: build.query({
+    getChatMessages: build.query({
       keepUnusedDataFor: 300,
       queryFn: () => ({ data: { message: null } }),
       onCacheEntryAdded: async (
@@ -64,7 +64,7 @@ const api = websocketApi.injectEndpoints({
         }, 35000);
       },
     }),
-    sendMessage: build.mutation({
+    sendChatMessage: build.mutation({
       queryFn: async ({ username, message, email }) => {
         const socket = await getConnection();
         socket.send(JSON.stringify({ username, message, email }));
@@ -75,4 +75,4 @@ const api = websocketApi.injectEndpoints({
 });
 
 export default api;
-export const { useGetMessagesQuery, useSendMessageMutation } = api;
+export const { useGetChatMessagesQuery, useSendChatMessageMutation } = api;

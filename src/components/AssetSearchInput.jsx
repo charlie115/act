@@ -1,11 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import LinearProgress from '@mui/material/LinearProgress';
 import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 
+import AddIcon from '@mui/icons-material/Add';
 import BlockIcon from '@mui/icons-material/Block';
 import SearchIcon from '@mui/icons-material/Search';
 
@@ -25,12 +28,16 @@ export default function AssetSearchInput({
   onChange,
   onSelect,
 }) {
+  const inputRef = useRef();
   const { t } = useTranslation();
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  const [open, setOpen] = React.useState(false);
   const [options, setOptions] = useState([]);
+
+  const [selected, setSelected] = useState('');
 
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearchValue = useDebounce(searchValue, 500);
@@ -63,12 +70,32 @@ export default function AssetSearchInput({
       size="small"
       options={options}
       loading={options.length === 0 && isFetching}
-      isOptionEqualToValue={(option, value) => option === value}
+      isOptionEqualToValue={(option, value) =>
+        option.toLowerCase() === value.toLowerCase()
+      }
       getOptionLabel={(option) => option}
+      open={open}
+      onOpen={() => {
+        setOpen(true);
+      }}
+      onClose={() => {
+        setOpen(false);
+      }}
+      inputValue={searchValue}
+      value={selected}
+      onChange={(event, newValue) => {
+        onChange(newValue);
+        if (onSelect && !newValue) {
+          setSelected('');
+          onSelect('');
+        }
+      }}
+      onInputChange={(event, newValue) => setSearchValue(newValue)}
       renderInput={(params) => (
         <>
           <TextField
             {...params}
+            inputRef={inputRef}
             label={t('Search')}
             InputProps={{
               ...params.InputProps,
@@ -82,8 +109,6 @@ export default function AssetSearchInput({
           {isFetching && options.length === 0 && <LinearProgress />}
         </>
       )}
-      onChange={(event, newValue) => onSelect(newValue)}
-      onInputChange={(event, newValue) => setSearchValue(newValue)}
       renderOption={(props, option) => (
         <Box
           component="li"
@@ -98,7 +123,18 @@ export default function AssetSearchInput({
           ) : (
             <BlockIcon color="secondary" sx={{ fontSize: 12 }} />
           )}
-          {option}
+          <Typography sx={{ mr: 'auto' }}>{option}</Typography>
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(option);
+              setSelected(option);
+              setOpen(false);
+              inputRef.current?.blur();
+            }}
+          >
+            <AddIcon />
+          </IconButton>
         </Box>
       )}
       sx={{ width: 215 }}

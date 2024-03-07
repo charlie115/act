@@ -35,7 +35,7 @@ import {
   useGetPastMessagesQuery,
   useGetRandomUsernameQuery,
 } from 'redux/api/drf/chat';
-import { useGetMessagesQuery } from 'redux/api/websocket/chat';
+import { useGetChatMessagesQuery } from 'redux/api/websocket/chat';
 
 import useRefWithCallback from 'hooks/useRefWithCallback';
 
@@ -108,7 +108,7 @@ export default function ChatWidget({ isVisible }) {
     { page: pastMessagesPage, tz: timezone },
     { skip: pastMessagesPage === null || !active }
   );
-  const { data } = useGetMessagesQuery({}, { skip: !active });
+  const { data } = useGetChatMessagesQuery({}, { skip: !active });
 
   useGetRandomUsernameQuery(
     {},
@@ -189,7 +189,7 @@ export default function ChatWidget({ isVisible }) {
       timeout = setTimeout(() => {
         setActive(false);
       }, 300000);
-    } else if (!active) setActive(true);
+    } else setActive((state) => !state);
 
     return () => {
       if (timeout) clearTimeout(timeout);

@@ -17,12 +17,12 @@ import { styled } from '@mui/material/styles';
 
 import { useSelector } from 'react-redux';
 
-import { useSendMessageMutation } from 'redux/api/websocket/chat';
+import { useSendChatMessageMutation } from 'redux/api/websocket/chat';
 
 function ChatInput({ open, user, disabled }) {
   const inputRef = useRef();
 
-  const [sendMessage] = useSendMessageMutation();
+  const [sendMessage] = useSendChatMessageMutation();
 
   const [emojiPickerAnchorEl, setEmojiPickerAnchorEl] = useState(null);
 
@@ -133,6 +133,10 @@ function ChatInput({ open, user, disabled }) {
 
 const InputContainer = styled(Box)(({ theme }) => ({
   backgroundColor: theme.palette.light.main,
+  // backgroundColor:
+  //   theme.palette.mode === 'dark'
+  //     ? theme.palette.light.main
+  //     : theme.palette.grey['100'],
   borderRadius: 4,
   flex: 1,
   minHeight: 80,

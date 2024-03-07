@@ -37,7 +37,6 @@ import {
 import { useSelector } from 'react-redux';
 
 import isFunction from 'lodash/isFunction';
-import orderBy from 'lodash/orderBy';
 
 import isKoreanMarket from 'utils/isKoreanMarket';
 
@@ -207,83 +206,75 @@ export default function TriggersTable({
     [i18n.language, isMobile]
   );
 
-  const tableData = useMemo(
-    () =>
-      !selectedAsset || data?.find((o) => o.base_asset === selectedAsset)
-        ? orderBy(
-            data?.filter((item) => {
-              if (!item) return false;
+  const tableData = useMemo(() => {
+    if (!data) return [];
+    if (selectedAsset)
+      return [
+        {
+          uuid: `add-${selectedAsset}`,
+          baseAsset: selectedAsset,
+          name: selectedAsset,
+          icon: assetsData?.[selectedAsset]?.icon,
+          marketCodes: {
+            targetMarketCode: selectedMarketCodeCombination?.target.value,
+            originMarketCode: selectedMarketCodeCombination?.origin.value,
+          },
+          status: null,
+          add: true,
+        },
+      ];
+    return data
+      ?.filter((item) => {
+        if (!item) return false;
 
-              let flag = selectedMarketCodeCombination?.value === 'ALL';
-              if (selectedMarketCodeCombination?.value !== 'ALL')
-                flag =
-                  selectedMarketCodeCombination?.tradeConfigUuid ===
-                  item.trade_config_uuid;
-              if (selectedTriggerType?.value !== 'ALL')
-                flag =
-                  flag && selectedTriggerType?.value === 'alarms'
-                    ? item.trade_capital === null
-                    : item.trade_capital !== null;
-              return flag;
-            }) || [],
-            'registered_datetime',
-            'desc'
-          ).map((trade) => {
-            const tradeConfig = tradeConfigAllocations.find(
-              (o) => o.uuid === trade.trade_config_uuid
-            );
-            return {
-              ...trade,
-              baseAsset: trade.base_asset,
-              name: trade.base_asset,
-              entry: trade.low,
-              exit: trade.high,
-              created: DateTime.fromISO(
-                trade.registered_datetime
-              ).toLocaleString(DateTime.DATETIME_MED),
-              isTether: trade.usdt_conversion,
-              isDeleteLoading,
-              status: trade.trigger_switch,
-              marketCodes: {
-                targetMarketCode: tradeConfig.target.value,
-                originMarketCode: tradeConfig.origin.value,
-              },
-              icon: assetsData?.[trade.base_asset]?.icon,
-            };
-          })
-        : [
-            {
-              uuid: selectedAsset,
-              baseAsset: selectedAsset,
-              name: selectedAsset,
-              icon: assetsData?.[selectedAsset]?.icon,
-              marketCodes: {
-                targetMarketCode: selectedMarketCodeCombination?.target.value,
-                originMarketCode: selectedMarketCodeCombination?.origin.value,
-              },
-              status: null,
-              add: true,
-            },
-          ],
-    [
-      data,
-      assetsData,
-      selectedAsset,
-      selectedMarketCodeCombination,
-      selectedTriggerType,
-      tradeConfigAllocations,
-      isDeleteLoading,
-    ]
-  );
+        let flag = selectedMarketCodeCombination?.value === 'ALL';
+        if (selectedMarketCodeCombination?.value !== 'ALL')
+          flag =
+            selectedMarketCodeCombination?.tradeConfigUuid ===
+            item.trade_config_uuid;
+        if (selectedTriggerType?.value !== 'ALL')
+          flag =
+            flag && selectedTriggerType?.value === 'alarms'
+              ? item.trade_capital === null
+              : item.trade_capital !== null;
+        return flag;
+      })
+      .map((trade) => {
+        const tradeConfig = tradeConfigAllocations.find(
+          (o) => o.uuid === trade.trade_config_uuid
+        );
+        return {
+          ...trade,
+          baseAsset: trade.base_asset,
+          name: trade.base_asset,
+          entry: trade.low,
+          exit: trade.high,
+          created: DateTime.fromISO(trade.registered_datetime).toLocaleString(
+            DateTime.DATETIME_MED
+          ),
+          isTether: trade.usdt_conversion,
+          isDeleteLoading,
+          status: trade.trigger_switch,
+          marketCodes: {
+            targetMarketCode: tradeConfig.target.value,
+            originMarketCode: tradeConfig.origin.value,
+          },
+          icon: assetsData?.[trade.base_asset]?.icon,
+        };
+      });
+  }, [
+    data,
+    assetsData,
+    selectedAsset,
+    selectedMarketCodeCombination,
+    selectedTriggerType,
+    tradeConfigAllocations,
+    isDeleteLoading,
+  ]);
 
   useEffect(() => {
-    if (
-      selectedAsset &&
-      tableData.length === 1 &&
-      tableData[0].uuid === selectedAsset
-    )
-      tableRef.current.toggleAllRowsExpanded(true);
-    else tableRef.current.toggleAllRowsExpanded(false);
+    if (selectedAsset)
+      tableRef.current.getRow(`add-${selectedAsset}`)?.toggleExpanded(true);
   }, [tableData, selectedAsset]);
 
   const onAlarmConfigChange = useCallback((value) => setAlarmConfig(value), []);
@@ -314,6 +305,7 @@ export default function TriggersTable({
               marketCodes={original.marketCodes}
               tradeConfigAllocation={meta.tradeConfigAllocation}
               onAlarmConfigChange={onAlarmConfigChange}
+              onCreateSuccess={() => setSelectedAsset('')}
             />
           </Box>
         ) : (
@@ -366,7 +358,7 @@ export default function TriggersTable({
           <Typography sx={{ fontWeight: 700 }}>
             {t('{{selected}} of {{total}} selected', {
               selected: Object.keys(rowSelection).length,
-              total: data.length,
+              total: data?.length,
             })}
           </Typography>
           <IconButton

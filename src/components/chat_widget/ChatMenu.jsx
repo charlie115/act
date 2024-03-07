@@ -43,7 +43,7 @@ export default function ChatMenu() {
         aria-controls={open ? 'chat-menu' : undefined}
         aria-haspopup="true"
         aria-expanded={open ? 'true' : undefined}
-        color="white"
+        color="text"
         onClick={(event) => {
           setAnchorEl(event.currentTarget);
           setOpen((state) => !state);

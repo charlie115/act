@@ -5,11 +5,11 @@ import AddIcon from '@mui/icons-material/Add';
 
 import i18n from 'configs/i18n';
 
-export default function renderValueCell({ cell, row: { original } }) {
+export default function renderValueCell({ cell, column, row: { original } }) {
   if (original.add)
     return (
       <AddIcon
-        color="success"
+        color={column.id === 'entry' ? 'accent' : 'warning'}
         className="animate__animated animate__heartBeat animate__infinite"
       />
     );
