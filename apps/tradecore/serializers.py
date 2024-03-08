@@ -216,10 +216,7 @@ class TradesViewSetFilterSerializer(serializers.Serializer):
     trigger_switch = serializers.IntegerField(required=False)
     trade_switch = serializers.IntegerField(required=False)
     trade_capital = serializers.IntegerField(required=False)
-    enter_target_market_order_id = serializers.CharField(required=False)
-    enter_origin_market_order_id = serializers.CharField(required=False)
-    exit_target_market_order_id = serializers.CharField(required=False)
-    exit_origin_market_order_id = serializers.CharField(required=False)
+    last_trade_history_uuid = serializers.UUIDField(required=False)
     status = serializers.CharField(required=False)
     remark = serializers.CharField(required=False)
 
@@ -236,10 +233,7 @@ class TradesViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     trigger_switch = serializers.IntegerField(required=False)
     trade_switch = serializers.IntegerField(required=False)
     trade_capital = serializers.FloatField(required=False)
-    enter_target_market_order_id = serializers.CharField(required=False)
-    enter_origin_market_order_id = serializers.CharField(required=False)
-    exit_target_market_order_id = serializers.CharField(required=False)
-    exit_origin_market_order_id = serializers.CharField(required=False)
+    last_trade_history_uuid = serializers.UUIDField(required=False)
     status = serializers.CharField(required=False)
     remark = serializers.CharField(required=False)
 

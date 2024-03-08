@@ -1,3 +1,6 @@
+import json
+
+from django.core.serializers.json import DjangoJSONEncoder
 from django_filters import BaseCSVFilter, CharFilter, FilterSet
 
 
@@ -20,9 +23,12 @@ def filter_list_of_dictionaries(dict_params, data_to_filter):
         _description_
     """
 
-    filtered_data = filter(
-        lambda item: all((item[k] == v for (k, v) in dict_params.items())),
-        data_to_filter,
-    )
-
-    return filtered_data
+    try:
+        dict_params = json.loads(json.dumps(dict_params, cls=DjangoJSONEncoder))
+        filtered_data = filter(
+            lambda item: all((item[k] == v for (k, v) in dict_params.items())),
+            data_to_filter,
+        )
+        return filtered_data
+    except Exception:
+        return data_to_filter
