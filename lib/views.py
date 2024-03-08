@@ -41,7 +41,7 @@ class BaseViewSet(viewsets.ModelViewSet):
             Others = self only
         """
 
-        if self.request.user:
+        if self.request.user and isinstance(self.request.user, User):
             # If ADMIN, return all objects
             if self.request.user.role.name == UserRole.ADMIN:
                 return queryset
