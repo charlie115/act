@@ -155,7 +155,7 @@ class InitBinanceAdaptor:
 
 ################################################################################################################################################
 class UserBinanceAdaptor:
-    def __init__(self, admin_telegram_id, node=None, db_dict=None, trade_df_dict=None, market_combi_code=None, recvWindow=45000, logging_dir=None):
+    def __init__(self, admin_telegram_id, node=None, db_dict=None, trade_df_dict=None, market_code_combination=None, recvWindow=45000, logging_dir=None):
         self.admin_telegram_id = admin_telegram_id
         self.node = node
         self.user_client_dict = {}
@@ -173,20 +173,21 @@ class UserBinanceAdaptor:
         else:
             self.postgres_client = None
             self.user_api_key_df = None
-        self.market_combi_code = market_combi_code
-        if market_combi_code is not None:
-            self.market_code = [x for x in market_combi_code.split(':') if 'BINANCE' in x][0]
+        self.market_code_combination = market_code_combination
+        if market_code_combination is not None:
+            self.market_code = [x for x in market_code_combination.split(':') if 'BINANCE' in x][0]
             self.market, self.quote_asset = self.market_code.split('/')
             self.exchange = self.market.split('_')[0]
             self.market_type = self.market.replace(self.exchange+'_','')
-            self.counterpart_market_code = [x for x in market_combi_code.split(':') if 'BINANCE' not in x][0]
+            self.counterpart_market_code = [x for x in market_code_combination.split(':') if 'BINANCE' not in x][0]
             self.counterpart_market, self.counterpart_quote_asset = self.counterpart_market_code.split('/')
             self.counterpart_exchange = self.counterpart_market.split('_')[0]
             self.counterpart_market_type = self.counterpart_market.replace(self.counterpart_exchange+'_','')
             # Check whether the market_type is supported
             if self.market_type not in ["USD_M"]:
                 raise Exception(f"Invalid market_type: {self.market_type}")
-            self.logger = KimpBotLogger(f"user_binance_plug_{self.market_code}", logging_dir).logger
+            logger_name = self.market_code.replace('/', '__')
+            self.logger = KimpBotLogger(f"user_binance_plug_{logger_name}", logging_dir).logger
             self.logger.info(f"user_binance_plug_{self.market_code} started.")
             self.load_user_api_keys_thread = Thread(target=self.loop_load_user_api_keys, args=(60,), daemon=True)
             self.load_user_api_keys_thread.start()
@@ -549,7 +550,7 @@ class UserBinanceAdaptor:
                     body = f"마진콜 모니터링 설정에 따라, 자동거래에 진입되어 있는 {self.my_exchange}와 {self.counterpart_exchange}의 포지션을 자동정리합니다."
                     self.acw_api.create_message_thread(telegram_id, "마진콜 자동정리", self.node, 'info', body)
 
-                    trade_df = self.trade_df_dict.get(self.market_combi_code)
+                    trade_df = self.trade_df_dict.get(self.market_code_combination)
                     waiting_df = trade_df[(trade_df['trade_config_uuid']==trade_config_uuid)&(trade_df['base_asset']==base_asset)&(self.addcoin_df['trade_switch']==-1)]
                     if len(waiting_df) == 0:
                         body = f"{base_asset}USDT는 차익거래에 진입되어있는 상태가 아닙니다.\n"
@@ -662,7 +663,7 @@ class UserBinanceAdaptor:
                     while True:
                         time.sleep(loop_secs)
                         # Add monitoring thread if there isn't one
-                        trade_df = self.trade_df_dict.get(self.market_combi_code)
+                        trade_df = self.trade_df_dict.get(self.market_code_combination)
                         if len(trade_df) == 0:
                             continue
                         unique_trade_df = trade_df.drop_duplicates(subset=['trade_config_uuid'])
@@ -676,7 +677,7 @@ class UserBinanceAdaptor:
 
                         for row_tup in unique_trade_df.iterrows():
                             row = row_tup[1]
-                            if 'BINANCE' in self.market_combi_code.split(':')[0]:
+                            if 'BINANCE' in self.market_code_combination.split(':')[0]:
                                 margin_call_mode = row['target_market_margin_call']
                             else:
                                 margin_call_mode = row['origin_market_margin_call']
@@ -733,24 +734,21 @@ class UserBinanceAdaptor:
             raise Exception(f"Invalid market_type: {market_type}")
         usdt_converted_dollar = (100+(LS_premium+SL_premium)/2)/100 * dollar
         value_usd = trade_capital/(usdt_converted_dollar*1.005) # 0.5% margin for the enter amount of KRW
+        
+        bp_usd = bp / usdt_converted_dollar
 
         # BTC, ETH, BCH, LTC -> 0.001 까지 가능
         if base_asset in ['BTC','ETH','BCH','LTC']:
-            enter_quantity = round(value_usd / bp, 3)
-            if enter_quantity*bp > value_usd:
+            enter_quantity = round(value_usd / bp_usd, 3)
+            if enter_quantity*bp_usd > value_usd:
                 enter_quantity = round((enter_quantity - 0.001), 3)
 
         # ETC, NEO, LINK -> 0.01 까지 가능
         elif base_asset in ['ETC','NEO', 'LINK']:
-            enter_quantity = round(value_usd / bp, 2)
-            if enter_quantity*bp > value_usd:
+            enter_quantity = round(value_usd / bp_usd, 2)
+            if enter_quantity*bp_usd > value_usd:
                 enter_quantity = round((enter_quantity - 0.01), 2)
         else:
-            enter_quantity = value_usd // bp
+            enter_quantity = value_usd // bp_usd
+                        
         return enter_quantity
-        # if enter_quantity == 0:
-        #     body = f"투입금액이 {base_asset}USDT 1개의 가격보다 낮습니다. \n주문을 취소합니다."
-        #     self.acw_api.create_message(self.admin_telegram_id, "주문취소", self.node, 'warning', body)
-        #     raise Exception(body)
-        # else:
-        #     return enter_quantity

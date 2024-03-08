@@ -70,10 +70,7 @@ class TradeBase(BaseModel):
     trigger_switch: Optional[int] = None
     trade_switch: Optional[int] = None
     trade_capital: Optional[Decimal] = None
-    enter_target_market_order_id: Optional[str] = None
-    enter_origin_market_order_id: Optional[str] = None
-    exit_target_market_order_id: Optional[str] = None
-    exit_origin_market_order_id: Optional[str] = None
+    last_trade_history_uuid: Optional[UUID] = None
     status: Optional[str] = None
     remark: Optional[str] = None
 

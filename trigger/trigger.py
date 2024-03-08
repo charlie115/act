@@ -11,13 +11,13 @@ from psycopg2 import extras
 from etc.acw_api import AcwApi
 
 class InitTrigger:
-    def __init__(self, admin_telegram_id, node, server_check_status_list, get_premium_df, enabled_markets, register_monitor_msg, remote_redis_client, db_dict, mongo_client, postgres_client, logging_dir):
+    def __init__(self, admin_telegram_id, node, server_check_status_list, get_premium_df, enabled_market_code_combinations, register_monitor_msg, remote_redis_client, db_dict, mongo_client, postgres_client, logging_dir):
         self.admin_telegram_id = admin_telegram_id
         self.node = node
         self.acw_api = AcwApi(prod=False)
         self.server_check_status_list = server_check_status_list
         self.get_premium_df = get_premium_df
-        self.enabled_markets = enabled_markets
+        self.enabled_market_code_combinations = enabled_market_code_combinations
         self.register_monitor_msg = register_monitor_msg
         self.remote_redis_client = remote_redis_client
         self.db_dict = db_dict
@@ -35,12 +35,14 @@ class InitTrigger:
 
         self.trade_proc_dict = {}
         self.alarm_proc_dict = {}
-        for each_market_combi_code in self.enabled_markets:        
-            self.trade_proc_dict[each_market_combi_code] = Process(target=self.start_trigger_loop, args=(each_market_combi_code, self.trade_df_dict, False, 'trade', 2), daemon=True)
-            self.trade_proc_dict[each_market_combi_code].start()
-            self.alarm_proc_dict[each_market_combi_code] = Process(target=self.start_trigger_loop, args=(each_market_combi_code, self.alarm_df_dict, True, 'trade', 2), daemon=True)
-            self.alarm_proc_dict[each_market_combi_code].start()
-        # while self.user_info_dict_initiated is False or self.exchange_config_df_dict_initiated is False or [self.trade_df_dict.get(each_market_combi_code) for each_market_combi_code in self.enabled_markets].count(None) != 0:
+        for each_market_code_combination in self.enabled_market_code_combinations:
+            # Temporary until the api is ready from ACW
+            if each_market_code_combination in ["UPBIT_SPOT/KRW:BINANCE_USD_M/USDT"]:
+                self.trade_proc_dict[each_market_code_combination] = Process(target=self.start_trigger_loop, args=(each_market_code_combination, self.trade_df_dict, False, 'trade', 2), daemon=True)
+                self.trade_proc_dict[each_market_code_combination].start()
+            self.alarm_proc_dict[each_market_code_combination] = Process(target=self.start_trigger_loop, args=(each_market_code_combination, self.alarm_df_dict, True, 'trade', 2), daemon=True)
+            self.alarm_proc_dict[each_market_code_combination].start()
+        # while self.user_info_dict_initiated is False or self.exchange_config_df_dict_initiated is False or [self.trade_df_dict.get(each_market_code_combination) for each_market_code_combination in self.enabled_markets].count(None) != 0:
         #     time.sleep(0.2)
         # while self.user_info_dict_initiated is False:
         #     time.sleep(0.2)
@@ -65,8 +67,8 @@ class InitTrigger:
                 origin_market_code_unique = exchange_config_df['origin_market_code'].unique()
                 for target_market_code in target_market_code_unique:
                     for origin_market_code in origin_market_code_unique:
-                        market_combi_code = f"{target_market_code}:{origin_market_code}"
-                        self.exchange_config_df_dict[market_combi_code] = exchange_config_df[(exchange_config_df['target_market_code'] == target_market_code) & (exchange_config_df['origin_market_code'] == origin_market_code)]
+                        market_code_combination = f"{target_market_code}:{origin_market_code}"
+                        self.exchange_config_df_dict[market_code_combination] = exchange_config_df[(exchange_config_df['target_market_code'] == target_market_code) & (exchange_config_df['origin_market_code'] == origin_market_code)]
             self.postgres_client.pool.putconn(conn)
             if self.exchange_config_df_dict_initiated is False:
                 self.exchange_config_df_dict_initiated = True
@@ -84,15 +86,15 @@ class InitTrigger:
             self.load_exchange_config(table_name)
             time.sleep(loop_interval_secs)
 
-    def load_trade_df(self, conn, curr, market_combi_code, trade_df_dict, alarm_only, table_name='trade'):
-        target_market_code, origin_market_code = market_combi_code.split(':')
+    def load_trade_df(self, conn, curr, market_code_combination, trade_df_dict, alarm_only, table_name='trade'):
+        target_market_code, origin_market_code = market_code_combination.split(':')
         try:
             # First check whether the table is empty
             if self.postgres_client.is_table_empty(table_name):
                 # Get the column names
                 column_names = self.postgres_client.get_column_names(conn, table_name)
                 # Create empty dataframe
-                trade_df_dict[market_combi_code] = pd.DataFrame(columns=column_names)
+                trade_df_dict[market_code_combination] = pd.DataFrame(columns=column_names)
             else:
                 if alarm_only:
                     sql = """
@@ -101,20 +103,21 @@ class InitTrigger:
                     trade_config.target_market_safe_reverse, trade_config.origin_market_safe_reverse, trade_config.target_market_risk_threshold_p, trade_config.origin_market_risk_threshold_p, trade_config.repeat_limit_p,
                     trade_config.repeat_limit_direction, trade_config.repeat_num_limit
                     FROM trade
-                    JOIN trade_config ON trade.trade_config_uuid = trade_config.uuid WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s AND trade.trade_capital is null"""
+                    JOIN trade_config ON trade.trade_config_uuid = trade_config.uuid WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s AND trade.trade_switch is null"""
                     val = (target_market_code, origin_market_code)
                 else:
+                    # trade trigger only!
                     sql = """
                     SELECT trade.*, trade_config, trade_config.service_datetime_end, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code, trade_config.send_times, trade_config.send_term,
                     trade_config.target_market_cross, trade_config.target_market_leverage, trade_config.origin_market_cross, trade_config.origin_market_leverage, trade_config.target_market_margin_call, trade_config.origin_market_margin_call,
                     trade_config.target_market_safe_reverse, trade_config.origin_market_safe_reverse, trade_config.target_market_risk_threshold_p, trade_config.origin_market_risk_threshold_p, trade_config.repeat_limit_p,
                     trade_config.repeat_limit_direction, trade_config.repeat_num_limit
                     FROM trade
-                    JOIN trade_config ON trade.trade_config_uuid = trade_config.uuid WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s AND trade_config.service_datetime_end > %s AND trade.trade_capital is not null"""
+                    JOIN trade_config ON trade.trade_config_uuid = trade_config.uuid WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s AND trade_config.service_datetime_end > %s AND trade.trade_switch is not null"""
                     val = (target_market_code, origin_market_code, pd.Timestamp.now())
                 curr.execute(sql, val)
                 trade_df = pd.DataFrame(curr.fetchall())
-                trade_df_dict[market_combi_code] = trade_df
+                trade_df_dict[market_code_combination] = trade_df
                 return trade_df
         except Exception as e:
             title = f"Error in load_trade_df"
@@ -122,29 +125,31 @@ class InitTrigger:
             self.logger.error(full_content)
             self.acw_api.create_message(self.admin_telegram_id, title, self.node, "monitor", full_content, code=None)
         
-    def start_trigger_loop(self, market_combi_code, trade_df_dict, alarm_only=True, table_name='trade', loop_interval_secs=5):
-        self.logger.info(f"start_trigger_loop: {market_combi_code} | alarm_only: {alarm_only} | table_name: {table_name} | loop_interval_secs: {loop_interval_secs}")
+    def start_trigger_loop(self, market_code_combination, trade_df_dict, alarm_only=True, table_name='trade', loop_interval_secs=5):
+        self.logger.info(f"start_trigger_loop: {market_code_combination} | alarm_only: {alarm_only} | table_name: {table_name} | loop_interval_secs: {loop_interval_secs}")
         postgres_client = InitPostgresDBClient(**{**self.db_dict, 'database': 'trade_core'})
         conn = postgres_client.pool.getconn()
         curr = conn.cursor(cursor_factory=extras.RealDictCursor)
-        self.logger.info(f"postgres client has been initiated for {market_combi_code}")
-        # Initiate user exchange adaptor
-        user_exchange_adaptor = UserExchangeAdaptor(admin_telegram_id=self.admin_telegram_id, node=self.node, db_dict=self.db_dict, trade_df_dict=self.trade_df_dict, market_combi_code=market_combi_code, logging_dir=self.logging_dir)
+        self.logger.info(f"postgres client has been initiated for {market_code_combination}")
+        if alarm_only:
+            user_exchange_adaptor = None
+        else: # Initiate user exchange adaptor
+            user_exchange_adaptor = UserExchangeAdaptor(admin_telegram_id=self.admin_telegram_id, node=self.node, db_dict=self.db_dict, trade_df_dict=self.trade_df_dict, market_code_combination=market_code_combination, logging_dir=self.logging_dir)
         while True:
             try:
-                trade_df = self.load_trade_df(conn, curr, market_combi_code, trade_df_dict, alarm_only, table_name)
+                trade_df = self.load_trade_df(conn, curr, market_code_combination, trade_df_dict, alarm_only, table_name)
                 # Loading data done
                 if len(trade_df) == 0 or trade_df is None:
                     time.sleep(loop_interval_secs)
                     continue
 
-                premium_df = self.get_premium_df(*market_combi_code.split(':'))
+                premium_df = self.get_premium_df(*market_code_combination.split(':'))
                 merged_df = trade_df.merge(premium_df, on='base_asset')
                 merged_df['SL_premium_value'] = merged_df.apply(lambda x: x['SL_premium'] if x['usdt_conversion'] == False else (1+x['SL_premium']/100)*x['dollar'], axis=1)
                 merged_df['LS_premium_value'] = merged_df.apply(lambda x: x['LS_premium'] if x['usdt_conversion'] == False else (1+x['LS_premium']/100)*x['dollar'], axis=1)
 
                 # switch None: 최초, 0: 하향돌파 시, 1: 상향돌파 시
-                # auto_trade_switch 0: 진입대기, -1: 탈출대기, 1:탈출완료, 2:탈출에러
+                # trade_switch 0: 진입대기, -1: 탈출대기, -2: 진입에러, 1:탈출완료, 2:탈출에러, 3: 거래 진행 중
                 # case 1. switch None or False(0), High 돌파
                 high_break_trade_df = (merged_df[((merged_df['trigger_switch'].isnull())|(merged_df['trigger_switch']==False))
                             &(merged_df['SL_premium_value']>=merged_df['high'])&(merged_df['trade_switch']!=3)])
@@ -153,15 +158,14 @@ class InitTrigger:
                 low_break_trade_df = (merged_df[((merged_df['trigger_switch'].isnull())|(merged_df['trigger_switch']==True))
                             &(merged_df['LS_premium_value']<=merged_df['low'])&(merged_df['trade_switch']!=3)])
 
-                # trade_swtich == 0: 진입대기, -1: 탈출대기, 1:탈출완료, 2:탈출에러, 3:거래 진행 중
                 if len(high_break_trade_df) != 0:
                     high_break_trigger_uuid_list = high_break_trade_df['uuid'].to_list()
                     # UPDATE database
-                    if alarm_only:
-                        sql = f"UPDATE {table_name} SET trigger_switch = 1 WHERE uuid IN %s"
-                    else:
-                        sql = f"UPDATE {table_name} SET trigger_switch = 1, trade_switch = 3 WHERE uuid IN %s"
+                    sql = f"UPDATE {table_name} SET trigger_switch = 1 WHERE uuid IN %s"
                     curr.execute(sql, (tuple(high_break_trigger_uuid_list),))
+                    if not alarm_only: # trade triggers only
+                        sql = f"UPDATE {table_name} SET trade_switch = 3 WHERE uuid IN %s AND trade_switch = -1"
+                        curr.execute(sql, (tuple(high_break_trigger_uuid_list),))
                     conn.commit()
                     self.high_break(high_break_trade_df, user_exchange_adaptor, alarm_only)
 
@@ -170,8 +174,8 @@ class InitTrigger:
                     # UPDATE database
                     if alarm_only:
                         sql = f"UPDATE {table_name} SET trigger_switch = 0 WHERE uuid IN %s"
-                    else:
-                        sql = f"UPDATE {table_name} SET trigger_switch = 0, trade_switch = 3 WHERE uuid IN %s"
+                    else: # trade triggers only
+                        sql = f"UPDATE {table_name} SET trigger_switch = 0, trade_switch = 3 WHERE uuid IN %s AND trade_switch = 0"
                     curr.execute(sql, (tuple(low_break_trigger_uuid_list),))
                     conn.commit()
                     self.low_break(low_break_trade_df, user_exchange_adaptor, alarm_only)
@@ -192,56 +196,64 @@ class InitTrigger:
     def high_break(self, high_break_trade_df, user_exchange_adaptor, alarm_only):
         for row_tup in high_break_trade_df.iterrows():
             def row_thread(row_tup):
-                row = row_tup[1]
-                # ls_premium = row['LS_premium']
-                # ls_premium_value = row['LS_premium_value']
-                # sl_premium = row['SL_premium']
-                # sl_premium_value = row['SL_premium_value']
+                try:
+                    row = row_tup[1]
+                    # ls_premium = row['LS_premium']
+                    # ls_premium_value = row['LS_premium_value']
+                    # sl_premium = row['SL_premium']
+                    # sl_premium_value = row['SL_premium_value']
+                    
+                    if not alarm_only: # trade triggers only
+                        user_exchange_adaptor.short_long_trade(row)
 
-                msg_title = f"{row['base_asset']}/{row['quote_asset']} 프리미엄 상향돌파"
-                msg_content = f"{row['target_market_code']}:{row['origin_market_code']}\n"
-                msg_content += f"현재 SL:{round(row['SL_premium_value'], 3)}, 설정된 탈출값: {row['high']}\n"
-                if pd.isnull(row['tp']):
-                    current_price = (row['ap'] + row['bp'])/2
-                else:
-                    current_price = row['tp']
-                msg_content += f"현재가격: {current_price}({round(row['scr'],2)}%)"
-                msg_full = f"{msg_title}\n{msg_content}"
-                self.acw_api.create_message_thread(row['telegram_id'], msg_title, self.node, 'info', msg_full, send_times=row['send_times'], send_term=row['send_term'])
+                    msg_title = f"{row['base_asset']}/{row['quote_asset']} 프리미엄 상향돌파"
+                    msg_content = f"{row['target_market_code']}:{row['origin_market_code']}\n"
+                    msg_content += f"현재 SL:{round(row['SL_premium_value'], 3)}, 설정된 탈출값: {row['high']}\n"
+                    if pd.isnull(row['tp']):
+                        current_price = (row['ap'] + row['bp'])/2
+                    else:
+                        current_price = row['tp']
+                    msg_content += f"현재가격: {current_price}({round(row['scr'],2)}%)"
+                    msg_full = f"{msg_title}\n{msg_content}"
+                    self.acw_api.create_message_thread(row['telegram_id'], msg_title, self.node, 'info', msg_full, send_times=row['send_times'], send_term=row['send_term'])
+                except Exception as e:
+                    title = f"Error in high_break"
+                    full_content = f"{title}: {e}\n{traceback.format_exc()}"
+                    self.logger.error(full_content)
+                    self.acw_api.create_message(self.admin_telegram_id, title, self.node, "monitor", full_content, code=None)
             row_thread = Thread(target=row_thread, args=(row_tup,), daemon=True)
             row_thread.start()
 
     def low_break(self, low_break_trade_df, user_exchange_adaptor, alarm_only):
         for row_tup in low_break_trade_df.iterrows():
             def row_thread(row_tup):
-                row = row_tup[1]
-                # base_asset = row['base_asset']
-                # quote_asset = row['quote_asset']
+                try:
+                    row = row_tup[1]
+                    # base_asset = row['base_asset']
+                    # quote_asset = row['quote_asset']
 
-                # ls_premium = row['LS_premium']
-                # ls_premium_value = row['LS_premium_value']
-                # sl_premium = row['SL_premium']
-                # sl_premium_value = row['SL_premium_value']
+                    # ls_premium = row['LS_premium']
+                    # ls_premium_value = row['LS_premium_value']
+                    # sl_premium = row['SL_premium']
+                    # sl_premium_value = row['SL_premium_value']
 
-                # Load api keys
-                
-                # Enter
-
-
-
-
-
-
-
-                msg_title = f"{row['base_asset']}/{row['quote_asset']} 프리미엄 하향돌파"
-                msg_content = f"{row['target_market_code']}:{row['origin_market_code']}\n"
-                msg_content += f"현재 LS:{round(row['LS_premium_value'], 3)}, 설정된 진입값: {row['low']}\n"
-                if pd.isnull(row['tp']):
-                    current_price = (row['ap'] + row['bp'])/2
-                else:
-                    current_price = row['tp']
-                msg_content += f"현재가격: {current_price}({round(row['scr'],2)}%)"
-                msg_full = f"{msg_title}\n{msg_content}"
-                self.acw_api.create_message_thread(row['telegram_id'], msg_title, self.node, 'info', msg_full, send_times=row['send_times'], send_term=row['send_term'])
+                    if not alarm_only: # trade triggers only
+                        user_exchange_adaptor.long_short_trade(row)
+                    
+                    msg_title = f"{row['base_asset']}/{row['quote_asset']} 프리미엄 하향돌파"
+                    msg_content = f"{row['target_market_code']}:{row['origin_market_code']}\n"
+                    msg_content += f"현재 LS:{round(row['LS_premium_value'], 3)}, 설정된 진입값: {row['low']}\n"
+                    if pd.isnull(row['tp']):
+                        current_price = (row['ap'] + row['bp'])/2
+                    else:
+                        current_price = row['tp']
+                    msg_content += f"현재가격: {current_price}({round(row['scr'],2)}%)"
+                    msg_full = f"{msg_title}\n{msg_content}"
+                    self.acw_api.create_message_thread(row['telegram_id'], msg_title, self.node, 'info', msg_full, send_times=row['send_times'], send_term=row['send_term'])
+                except Exception as e:
+                    title = f"Error in low_break"
+                    full_content = f"{title}: {e}\n{traceback.format_exc()}"
+                    self.logger.error(full_content)
+                    self.acw_api.create_message(self.admin_telegram_id, title, self.node, "monitor", full_content, code=None)
             row_thread = Thread(target=row_thread, args=(row_tup,), daemon=True)
             row_thread.start()

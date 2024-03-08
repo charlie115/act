@@ -96,13 +96,13 @@ class InitUpbitAdaptor:
 ################################################################################################################################################
             
 class UserUpbitAdaptor:
-    def __init__(self, admin_telegram_id, node=None, db_dict=None, trade_df_dict=None, market_combi_code=None, logging_dir=None):
+    def __init__(self, admin_telegram_id, node=None, db_dict=None, trade_df_dict=None, market_code_combination=None, logging_dir=None):
         self.user_client_dict = {}
         self.admin_telegram_id = admin_telegram_id
         self.node = node
         self.db_dict = db_dict
         self.trade_df_dict = trade_df_dict
-        self.market_combi_code = market_combi_code
+        self.market_code_combination = market_code_combination
         self.trade_retry_term_sec = 0.2
         self.trade_retry_limit = 2
         self.order_info_retry_term_sec = 2
@@ -115,20 +115,21 @@ class UserUpbitAdaptor:
             self.postgres_client = None
             self.user_api_key_df = None
         self.trade_df_dict = trade_df_dict
-        self.market_combi_code = market_combi_code
-        if market_combi_code is not None:
-            self.market_code = [x for x in market_combi_code.split(':') if 'UPBIT' in x][0]
+        self.market_code_combination = market_code_combination
+        if market_code_combination is not None:
+            self.market_code = [x for x in market_code_combination.split(':') if 'UPBIT' in x][0]
             self.market, self.quote_asset = self.market_code.split('/')
             self.exchange = self.market.split('_')[0]
             self.market_type = self.market.replace(self.exchange+'_','')
-            self.counterpart_market_code = [x for x in market_combi_code.split(':') if 'UPBIT' not in x][0]
+            self.counterpart_market_code = [x for x in market_code_combination.split(':') if 'UPBIT' not in x][0]
             self.counterpart_market, self.counterpart_quote_asset = self.counterpart_market_code.split('/')
             self.counterpart_exchange = self.counterpart_market.split('_')[0]
             self.counterpart_market_type = self.counterpart_market.replace(self.counterpart_exchange+'_','')
             # Check whether the market_type is supported
             if self.market_type not in ["SPOT"]:
                 raise Exception(f"Invalid market_type: {self.market_type}")
-            self.logger = KimpBotLogger(f"user_upbit_plug_{self.market_code}", logging_dir).logger
+            logger_name = self.market_code.replace('/', '__')
+            self.logger = KimpBotLogger(f"user_upbit_plug_{logger_name}", logging_dir).logger
             self.logger.info(f"user_upbit_plug_{self.market_code} started.")
             self.load_user_api_keys_thread = Thread(target=self.loop_load_user_api_keys, args=(60,), daemon=True)
             self.load_user_api_keys_thread.start()

@@ -34,7 +34,7 @@ monitor_bot_api_url = config['monitor_setting']['monitor_bot_api_url']
 admin_telegram_id = config['telegram_admin_id']['charlie1155']
 
 # initialize exchange adaptors
-user_exchange_adaptor = UserExchangeAdaptor(admin_telegram_id=admin_telegram_id, logging_dir=upper_dir+logging_dir)
+user_exchange_adaptor = UserExchangeAdaptor(admin_telegram_id=admin_telegram_id, logging_dir=logging_dir)
 
 # Dependency to get the async database session
 async def get_db():
@@ -294,8 +294,6 @@ async def delete_exchange_api_key(uuid: UUID, db: AsyncSession):
     await db.delete(exchange_api_key)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
 
 
 

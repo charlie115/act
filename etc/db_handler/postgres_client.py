@@ -199,16 +199,10 @@ class InitDBClient:
                 usdt_conversion BOOLEAN NOT NULL,
                 low NUMERIC(8, 3) NOT NULL,
                 high NUMERIC(8, 3) NOT NULL,
-                trigger_switch SMALLINT,
-                trade_switch SMALLINT,
                 trade_capital INTEGER,
-                enter_target_market_order_id TEXT,
-                enter_origin_market_order_id TEXT,
-                exit_target_market_order_id TEXT,
-                exit_origin_market_order_id TEXT,
+                deleted BOOLEAN,
                 status TEXT,
                 remark TEXT,
-                deleted BOOLEAN,
                 FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE
@@ -411,7 +405,7 @@ class InitDBClient:
                 trade_config_uuid UUID NOT NULL,
                 trade_uuid UUID NOT NULL,
                 registered_datetime TIMESTAMP,
-                market_combi_code TEXT NOT NULL,
+                market_code_combination TEXT NOT NULL,
                 enter_trade_history_uuid UUID NOT NULL,
                 exit_trade_history_uuid UUID NOT NULL,
                 realized_premium_gap_p NUMERIC(6, 3) NOT NULL,

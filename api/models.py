@@ -56,15 +56,30 @@ class Trade(Base):
     trigger_switch = Column(SmallInteger)
     trade_switch = Column(SmallInteger)
     trade_capital = Column(Integer)
-    enter_target_market_order_id = Column(Text)
-    enter_origin_market_order_id = Column(Text)
-    exit_target_market_order_id = Column(Text)
-    exit_origin_market_order_id = Column(Text)
+    last_trade_history_uuid = Column(ForeignKey('trade_history.uuid', ondelete='SET NULL', onupdate='CASCADE'))
     status = Column(Text)
     remark = Column(Text)
 
     trade_config = relationship('TradeConfig')
+    
+class TradeLog(Base):
+    __tablename__ = 'trade_log'
 
+    id = Column(Integer, primary_key=True, server_default=text("nextval('trade_id_seq'::regclass)"))
+    uuid = Column(UUID(as_uuid=True), nullable=False)
+    trade_config_uuid = Column(ForeignKey('trade_config.uuid', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    registered_datetime = Column(DateTime)
+    last_updated_datetime = Column(DateTime)
+    base_asset = Column(Text, nullable=False)
+    usdt_conversion = Column(Boolean, nullable=False)
+    low = Column(Numeric(8, 3), nullable=False)
+    high = Column(Numeric(8, 3), nullable=False)
+    trade_capital = Column(Integer)
+    deleted = Column(Boolean)
+    status = Column(Text)
+    remark = Column(Text)
+
+    trade_config = relationship('TradeConfig')
 
 class RepeatTrade(Base):
     __tablename__ = 'repeat_trade'
@@ -104,3 +119,79 @@ class ExchangeApiKey(Base):
     remark = Column(Text)
 
     trade_config = relationship('TradeConfig')
+    
+class OrderHistory(Base):
+    __tablename__ = 'order_history'
+    
+    id = Column(Integer, primary_key=True, server_default=text("nextval('order_history_id_seq'::regclass)"))
+    order_id = Column(Text, unique=True, nullable=False)
+    trade_config_uuid = Column(ForeignKey('trade_config.uuid', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    trade_uuid = Column(ForeignKey('trade_log.uuid', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    registered_datetime = Column(DateTime)
+    order_type = Column(Text, nullable=False)
+    market_code = Column(Text, nullable=False)
+    symbol = Column(Text, nullable=False)
+    quote_asset = Column(Text, nullable=False)
+    side = Column(Text, nullable=False)
+    price = Column(Numeric(21, 11), nullable=False)
+    qty = Column(Numeric(22, 9), nullable=False)
+    fee = Column(Numeric(15, 9))
+    remark = Column(Text)
+
+    trade_config = relationship('TradeConfig')
+    trade_log = relationship('TradeLog')
+
+class TradeHistory(Base):
+    __tablename__ = "trade_history"
+
+    id = Column(Integer, primary_key=True, server_default=text("nextval('trade_history_id_seq'::regclass)"))
+    uuid = Column(UUID(as_uuid=True), unique=True, server_default=text("gen_random_uuid()"))
+    trade_config_uuid = Column(ForeignKey('trade_config.uuid', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    trade_uuid = Column(ForeignKey('trade_log.uuid', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    registered_datetime = Column(DateTime)
+    trade_side = Column(Text, nullable=False)
+    base_asset = Column(Text, nullable=False)
+    target_order_id = Column(ForeignKey('order_history.order_id', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    origin_order_id = Column(ForeignKey('order_history.order_id', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    target_premium_value = Column(Numeric(8, 3), nullable=False)
+    executed_premium_value = Column(Numeric(8, 3), nullable=False)
+    slippage_p = Column(Numeric(6, 3), nullable=False)
+    dollar = Column(Numeric(5, 1), nullable=False)
+    remark = Column(Text)
+
+    # Relationships (optional, for ORM use)
+    origin_order = relationship('OrderHistory', primaryjoin='TradeHistory.origin_order_id == OrderHistory.order_id')
+    target_order = relationship('OrderHistory', primaryjoin='TradeHistory.target_order_id == OrderHistory.order_id')
+    trade_config = relationship('TradeConfig')
+    trade_log = relationship('TradeLog')
+    
+class PnlHistory(Base):
+    __tablename__ = 'pnl_history'
+
+    id = Column(Integer, primary_key=True, server_default=text("nextval('pnl_history_id_seq'::regclass)"))
+    uuid = Column(UUID(as_uuid=True), unique=True, server_default=text("gen_random_uuid()"))
+    trade_config_uuid = Column(ForeignKey('trade_config.uuid', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    trade_uuid = Column(ForeignKey('trade_log.uuid', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    registered_datetime = Column(DateTime)
+    market_code_combination = Column(Text, nullable=False)
+    enter_trade_history_uuid = Column(ForeignKey('trade_history.uuid', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    exit_trade_history_uuid = Column(ForeignKey('trade_history.uuid', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    realized_premium_gap_p = Column(Numeric(6, 3), nullable=False)
+    target_currency = Column(Text, nullable=False)
+    target_pnl = Column(Numeric(13, 6), nullable=False)
+    target_total_fee = Column(Numeric(13, 6), nullable=False)
+    target_pnl_after_fee = Column(Numeric(13, 6), nullable=False)
+    origin_currency = Column(Text, nullable=False)
+    origin_pnl = Column(Numeric(13, 6), nullable=False)
+    origin_total_fee = Column(Numeric(13, 6), nullable=False)
+    origin_pnl_after_fee = Column(Numeric(13, 6), nullable=False)
+    total_currency = Column(Text, nullable=False)
+    total_pnl = Column(Numeric(13, 6), nullable=False)
+    total_pnl_after_fee = Column(Numeric(13, 6), nullable=False)
+    total_pnl_after_fee_kimp = Column(Numeric(13, 6))
+    remark = Column(Text)
+
+    trade_history = relationship('TradeHistory', primaryjoin='PnlHistory.enter_trade_history_uuid == TradeHistory.uuid')
+    trade_history1 = relationship('TradeHistory', primaryjoin='PnlHistory.exit_trade_history_uuid == TradeHistory.uuid')
+    trade_config = relationship('TradeConfig')
+    trade_log = relationship('TradeLog')
