@@ -18,6 +18,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
+import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
@@ -272,6 +273,14 @@ export default function TriggersTable({
     isDeleteLoading,
   ]);
 
+  const assetSearchProps = useMemo(
+    () => ({
+      apiOptions: { skip: !marketCodes },
+      apiParams: { ...marketCodes, interval: '1T' },
+    }),
+    [marketCodes]
+  );
+
   useEffect(() => {
     if (selectedAsset)
       tableRef.current.getRow(`add-${selectedAsset}`)?.toggleExpanded(true);
@@ -344,13 +353,14 @@ export default function TriggersTable({
           }}
         />
         <AssetSearchInput
-          apiOptions={{ skip: !marketCodes }}
-          apiParams={{ ...marketCodes, interval: '1T' }}
+          showSelect
           onChange={(value) => setGlobalFilter(value)}
           onSelect={(value) => {
             setGlobalFilter(value);
             setSelectedAsset(value);
           }}
+          selectIcon={<AddIcon />}
+          {...assetSearchProps}
         />
       </Stack>
       {Object.keys(rowSelection).length > 0 && (

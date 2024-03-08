@@ -225,24 +225,20 @@ export const TRADING_VIEW_TICKER_SYMBOLS = [
     proName: 'FX_IDC:USDKRW',
   },
   {
-    description: '나스닥',
-    proName: 'FOREXCOM:NSXUSD',
-  },
-  {
-    description: 'S&P 500',
-    proName: 'FOREXCOM:SPXUSD',
+    description: '테더',
+    proName: 'USDTKRW',
   },
   {
     description: 'BTC도미넌스',
     proName: 'CRYPTOCAP:BTC.D',
   },
   {
-    description: '코스피',
-    proName: 'KRX:KOSPI',
+    description: '나스닥',
+    proName: 'FOREXCOM:NSXUSD',
   },
   {
-    // description: '코스닥',
-    proName: 'KRX:KOSDAQ',
+    description: '코스피',
+    proName: 'KRX:KOSPI',
   },
 ];
 

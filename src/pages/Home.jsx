@@ -1,15 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
-import InputAdornment from '@mui/material/InputAdornment';
-import OutlinedInput from '@mui/material/OutlinedInput';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
-
-import CloseIcon from '@mui/icons-material/Close';
-import SearchIcon from '@mui/icons-material/Search';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
@@ -25,6 +20,7 @@ import { DateTime } from 'luxon';
 
 import isKoreanMarket from 'utils/isKoreanMarket';
 
+import AssetSearchInput from 'components/AssetSearchInput';
 import MarketCodeMenu from 'components/MarketCodeMenu';
 import PremiumTable from 'components/tables/premium/PremiumTable';
 
@@ -43,13 +39,12 @@ function Home() {
   const [marketCodes, setMarketCodes] = useState(null);
 
   const [searchValue, setSearchValue] = useState('');
-  const debouncedSearchValue = useDebounce(searchValue, 500);
+  const debouncedSearchValue = useDebounce(searchValue, 300);
 
   const [lastActive, setLastActive] = useState();
   const [queryKey, setQueryKey] = useState(DateTime.now().toMillis());
 
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isSmallScreen = useMediaQuery('(max-width:420px)');
 
   const isTetherPriceView = useSelector(
     (state) => state.home.priceView === 'tether'
@@ -72,6 +67,19 @@ function Home() {
       }
     }
   }, [isFocused]);
+
+  const assetSearchProps = useMemo(
+    () => ({
+      apiOptions: { skip: !marketCodes },
+      apiParams: {
+        ...marketCodes,
+        queryKey,
+        interval: '1T',
+        component: 'premium-table',
+      },
+    }),
+    [marketCodes, queryKey]
+  );
 
   const renderTetherToggle = () =>
     marketCodes ? (
@@ -125,35 +133,9 @@ function Home() {
           sx={{ mb: 2 }}
         >
           <MarketCodeMenu onChange={(value) => setMarketCodes(value)} />
-          <OutlinedInput
-            size="small"
-            placeholder={t('Search')}
-            onChange={(e) => setSearchValue(e.target.value)}
-            value={searchValue}
-            startAdornment={
-              <InputAdornment position="start">
-                <SearchIcon sx={isMobile ? { fontSize: '1em' } : {}} />
-              </InputAdornment>
-            }
-            endAdornment={
-              <InputAdornment
-                position="end"
-                sx={{ cursor: 'pointer', ':hover': { opacity: 0.5 } }}
-              >
-                <CloseIcon
-                  onClick={() => {
-                    setSearchValue('');
-                  }}
-                  sx={isMobile ? { fontSize: '1em' } : {}}
-                />
-              </InputAdornment>
-            }
-            inputProps={{
-              style: isSmallScreen ? { height: '0.5em', width: 60 } : {},
-            }}
-            sx={{
-              '& .MuiInputBase-root': { px: { xs: 0.5, sm: 1 } },
-            }}
+          <AssetSearchInput
+            onChange={(value) => setSearchValue(value)}
+            {...assetSearchProps}
           />
         </Stack>
         <Box>

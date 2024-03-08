@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-import Autocomplete from '@mui/material/Autocomplete';
+import Autocomplete, { autocompleteClasses } from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -8,8 +8,8 @@ import LinearProgress from '@mui/material/LinearProgress';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
-import AddIcon from '@mui/icons-material/Add';
 import BlockIcon from '@mui/icons-material/Block';
+import DoneIcon from '@mui/icons-material/Done';
 import SearchIcon from '@mui/icons-material/Search';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -27,6 +27,8 @@ export default function AssetSearchInput({
   apiParams,
   onChange,
   onSelect,
+  selectIcon,
+  showSelect,
 }) {
   const inputRef = useRef();
   const { t } = useTranslation();
@@ -111,33 +113,50 @@ export default function AssetSearchInput({
       )}
       renderOption={(props, option) => (
         <Box
+          {...props}
           component="li"
           sx={{
-            '& > img': { mr: 2, flexShrink: 0 },
-            '& > svg': { mr: 2, flexShrink: 0 },
+            '& .asset-icon': { mr: 1, flexShrink: 0 },
+            [`&.${autocompleteClasses.option}`]: {
+              px: 1,
+              py: 0.5,
+              pr: 0,
+              '& > p': { fontSize: '1em' },
+            },
           }}
-          {...props}
         >
           {assetsData?.[option]?.icon ? (
-            <img width="12" src={assetsData[option].icon} alt="" />
+            <img
+              className="asset-icon"
+              width="12"
+              src={assetsData[option].icon}
+              alt=""
+            />
           ) : (
-            <BlockIcon color="secondary" sx={{ fontSize: 12 }} />
+            <BlockIcon
+              className="asset-icon"
+              color="secondary"
+              sx={{ fontSize: 12 }}
+            />
           )}
           <Typography sx={{ mr: 'auto' }}>{option}</Typography>
-          <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(option);
-              setSelected(option);
-              setOpen(false);
-              inputRef.current?.blur();
-            }}
-          >
-            <AddIcon />
-          </IconButton>
+          {showSelect && (
+            <IconButton
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(option);
+                setSelected(option);
+                setOpen(false);
+                inputRef.current?.blur();
+              }}
+              sx={{ alignSelf: 'flex-end' }}
+            >
+              {selectIcon || <DoneIcon />}
+            </IconButton>
+          )}
         </Box>
       )}
-      sx={{ width: 215 }}
+      sx={isMobile ? { height: '0.5em', width: 125 } : { width: 215 }}
     />
   );
 }
