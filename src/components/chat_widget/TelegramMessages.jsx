@@ -39,12 +39,7 @@ import {
   ScrollToBottomIcon,
 } from './StyledChatComponents';
 
-export default function TelegramMessages({
-  active,
-  display,
-  isOpen,
-  onNewMessages,
-}) {
+export default function TelegramMessages({ display, isOpen, onNewMessages }) {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -74,7 +69,7 @@ export default function TelegramMessages({
   const [patchMessage] = usePatchMessageMutation();
   const { data, isLoading } = useGetMessagesQuery(
     {},
-    { skip: !loggedin || !telegramBot || !active, pollingInterval: 3000 }
+    { skip: !loggedin || !telegramBot, pollingInterval: 3000 }
   );
   const {
     data: pastData,
@@ -82,7 +77,7 @@ export default function TelegramMessages({
     isSuccess: isPastSuccess,
   } = useGetMessagesQuery(
     { page: pastPage, tz: timezone },
-    { skip: !pastPage || !active }
+    { skip: !pastPage }
   );
 
   const messageList = useMemo(

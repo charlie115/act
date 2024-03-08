@@ -14,7 +14,7 @@ import { useGetChatMessagesQuery } from 'redux/api/websocket/chat';
 
 import { usePrevious } from '@uidotdev/usehooks';
 
-import sortBy from 'lodash/sortBy';
+import uniqBy from 'lodash/uniqBy';
 
 import useElementScroll from 'hooks/useElementScroll';
 
@@ -62,6 +62,7 @@ export default function CommunityMessages({
     { page: pastPage, tz: timezone },
     { skip: !active }
   );
+  // console.log('pastData: ', pastData?.results);
 
   const messageList = useMemo(
     () =>
@@ -101,13 +102,13 @@ export default function CommunityMessages({
 
   useEffect(() => {
     if (pastData?.results?.length > 0)
-      setSeenMessages((state) => [
-        ...sortBy(pastData?.results, 'datetime').map((item, idx) => ({
-          ...item,
-          id: `past-${idx}-${item.datetime}`,
-        })),
-        ...state,
-      ]);
+      setSeenMessages((state) => {
+        const reversed = [...pastData.results].reverse();
+        return uniqBy(
+          [...reversed, ...state],
+          (o) => `${o.username}-${o.datetime}`
+        ).map((o) => ({ ...o, id: `${o.username}-${o.datetime}` }));
+      });
   }, [pastData]);
 
   useEffect(() => {

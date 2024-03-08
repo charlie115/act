@@ -3,6 +3,7 @@ import drfApi from 'redux/api/drf';
 const api = drfApi.injectEndpoints({
   endpoints: (builder) => ({
     getPastMessages: builder.query({
+      keepUnusedDataFor: 1,
       query: (params) => ({
         url: '/chat/past/',
         params,
