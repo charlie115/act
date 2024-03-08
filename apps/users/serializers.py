@@ -44,7 +44,7 @@ class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer
 
     class Meta:
         model = UserProfile
-        fields = ("referral", "level", "points", "picture")
+        fields = ("level", "points", "picture")
 
 
 class UserSerializer(serializers.ModelSerializer):

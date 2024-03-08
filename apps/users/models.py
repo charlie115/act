@@ -155,7 +155,6 @@ class UserProfile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile"
     )
-    referral = models.CharField(max_length=150, blank=True, null=True)
     level = models.IntegerField(
         default=1, validators=[MinValueValidator(1), MaxValueValidator(5)]
     )

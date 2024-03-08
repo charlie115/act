@@ -62,21 +62,21 @@ class UserRoleAdmin(ModelAdmin):
 
 
 class UserAdmin(BaseUserAdmin, ModelAdmin):
-    list_display = (
+    list_display = [
         "email",
         "username",
         "first_name",
         "last_name",
         "is_staff",
         "show_role_customized_color",
-    )
-    list_filter = (
+    ]
+    list_filter = [
         "is_staff",
         "is_superuser",
         "is_active",
         "groups",
         "role",
-    )
+    ]
     search_fields = [
         "email",
         "username",
@@ -84,18 +84,20 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
         "last_name",
         "profile__referral",
     ]
-    readonly_fields = (
+    readonly_fields = [
         "uuid",
         "date_joined",
         "last_login",
         "last_username_change",
-    )
-    ordering = ("email",)
-    inlines = (
+    ]
+    ordering = [
+        "email",
+    ]
+    inlines = [
         ProfileInline,
         ManagersInline,
         ManagedInline,
-    )
+    ]
     fieldsets = (
         (
             "Overview",
@@ -154,7 +156,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
-            return self.readonly_fields + ("email", "telegram_chat_id")
+            return self.readonly_fields + ["email", "telegram_chat_id"]
         return self.readonly_fields
 
     def get_inlines(self, request, obj=None):

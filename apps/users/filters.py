@@ -15,7 +15,7 @@ class UserFavoriteAssetsFilter(UserUuidFilter):
 class UserProfileFilter(UserUuidFilter):
     class Meta:
         model = UserProfile
-        fields = ("user", "referral", "level", "points")
+        fields = ("user", "level", "points")
 
 
 class DepositHistoryFilter(filterset.FilterSet):
