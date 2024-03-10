@@ -210,17 +210,23 @@ class UserBinanceAdaptor:
             self.logger = KimpBotLogger(f"user_binance_plug", logging_dir).logger
             self.logger.info(f"user_binance_plug started.")
         
-    def load_user_api_keys(self):
-        conn = self.postgres_client.pool.getconn()
-        curr = conn.cursor(cursor_factory=extras.RealDictCursor)
-        sql = "SELECT * FROM exchange_api_key WHERE exchange='BINANCE'"
-        curr.execute(sql)
-        user_api_key_df = pd.DataFrame(curr.fetchall())
-        self.postgres_client.pool.putconn(conn)
-        user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].applymap(lambda x: x.tobytes() if isinstance(x, memoryview) else x)
-        user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].applymap(lambda x: decrypt_data(x).decode('utf-8') if x is not None else None)
-        self.user_api_key_df = user_api_key_df
-        return user_api_key_df
+    def load_user_api_keys(self, table_name='exchange_api_key'):
+        # Check first whether the table is empty or not
+        if self.postgres_client.is_table_empty(table_name):
+            column_names = self.postgres_client.get_column_names(table_name)
+            # create empty dataframe
+            user_api_key_df = pd.DataFrame(columns=column_names)
+        else:
+            conn = self.postgres_client.pool.getconn()
+            curr = conn.cursor(cursor_factory=extras.RealDictCursor)
+            sql = f"SELECT * FROM {table_name} WHERE exchange='BINANCE'"
+            curr.execute(sql)
+            user_api_key_df = pd.DataFrame(curr.fetchall())
+            self.postgres_client.pool.putconn(conn)
+            user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].applymap(lambda x: x.tobytes() if isinstance(x, memoryview) else x)
+            user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].applymap(lambda x: decrypt_data(x).decode('utf-8') if x is not None else None)
+            self.user_api_key_df = user_api_key_df
+            return user_api_key_df
 
     def loop_load_user_api_keys(self, loop_interval_secs=60):
         self.logger.info(f"loop_load_user_api_keys started.")
