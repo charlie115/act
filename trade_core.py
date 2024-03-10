@@ -323,15 +323,15 @@ class InitCore:
             integrity_flag = False
         return integrity_flag, dollar_update_status_str
     
-    def reinitiate_dollar_update_thread(self):
-        before_reinitiate = "Before reinit:  " + self.dollar_update_thread_status()[1]
-        self.update_dollar_thread = Thread(target=self.fetch_dollar_loop, args=(self.update_dollar_return_dict, self.update_dollar_logger), daemon=True)
-        self.update_dollar_thread.start()
-        time.sleep(1)
-        after_reinitiate = "After reinit: " + self.dollar_update_thread_status()[1]
-        self.logger.info(f"reinitiate_dollar_update_thread|{before_reinitiate} -> {after_reinitiate}")
-        self.logger.info("reinitiate_dollar_update_thread|dollar_update_thread has been reinitiated.")
-        return before_reinitiate + "\n" + after_reinitiate
+    # def reinitiate_dollar_update_thread(self):
+    #     before_reinitiate = "Before reinit:  " + self.dollar_update_thread_status()[1]
+    #     self.update_dollar_thread = Thread(target=self.fetch_dollar_loop, args=(self.update_dollar_return_dict, self.update_dollar_logger), daemon=True)
+    #     self.update_dollar_thread.start()
+    #     time.sleep(1)
+    #     after_reinitiate = "After reinit: " + self.dollar_update_thread_status()[1]
+    #     self.logger.info(f"reinitiate_dollar_update_thread|{before_reinitiate} -> {after_reinitiate}")
+    #     self.logger.info("reinitiate_dollar_update_thread|dollar_update_thread has been reinitiated.")
+    #     return before_reinitiate + "\n" + after_reinitiate
 
     def get_symbol_list(self, target_market): # E.g) UPBIT_SPOT, BINANCE_SPOT, BINANCE_USD_M, BINANCE_COIN_M
         target_exchange = target_market.split('_')[0]
@@ -551,8 +551,7 @@ class InitCore:
             # raise original exception
             raise e
         return premium_df
-
-        
+    
     def fetch_dollar(self, update_dollar_logger, url='https://finance.naver.com/marketindex/exchangeDegreeCountQuote.naver?marketindexCd=FX_USDKRW', timedelta_hours=9):
         # global DOLLAR_INFO_DICT
         # return_dict = {
@@ -574,6 +573,7 @@ class InitCore:
             # self.dollar_dict = dollar_dict
             update_dollar_logger.info(f"fetch_dollar|Dollar price ({self.update_dollar_return_dict['price']} KRW) has been updated.")
         except Exception as e:
+            self.register_monitor_msg.register(self.admin_telegram_id, self.node, 'error', f"fetch_dollar|Exception occured! Error: {e}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
             # print(f'Except executed in get_dollar function, {e}')
             update_dollar_logger.warning(f"fetch_dollar|Exception occured! Error: {e}, pd.read_html(url): {pd.read_html(url)}")
             exchange_rate = pd.read_html(url)[1]
@@ -585,7 +585,11 @@ class InitCore:
 
     def fetch_dollar_loop(self, update_dollar_logger, loop_time=30):
         while True:
-            self.fetch_dollar(update_dollar_logger)
+            try:
+                self.fetch_dollar(update_dollar_logger)
+            except Exception as e:
+                update_dollar_logger.error(f"fetch_dollar_loop|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
+                self.register_monitor_msg.register(self.admin_telegram_id, self.node, 'error', f"fetch_dollar_loop|Exception occured! Error: {e}, traceback: {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
             time.sleep(loop_time)
 
     # TESTTEST

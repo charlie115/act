@@ -14,7 +14,7 @@ class InitTrigger:
     def __init__(self, admin_telegram_id, node, server_check_status_list, get_premium_df, enabled_market_code_combinations, register_monitor_msg, remote_redis_client, db_dict, mongo_client, postgres_client, logging_dir):
         self.admin_telegram_id = admin_telegram_id
         self.node = node
-        self.acw_api = AcwApi(prod=False)
+        self.acw_api = AcwApi()
         self.server_check_status_list = server_check_status_list
         self.get_premium_df = get_premium_df
         self.enabled_market_code_combinations = enabled_market_code_combinations
