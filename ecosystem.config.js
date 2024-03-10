@@ -5,6 +5,7 @@ module.exports = {
     interpreter: 'python3.9',
     args: "-p 2",
     restart_delay: 3000,
+    autorestart: false,
   },
   ],
 
