@@ -5,6 +5,7 @@
         "info_core":
         {
             "MASTER": true,
+            "prod": true,
             "db_settings": "mongodb_docker",
             "redis_settings": "redis_docker",
             "telegram_bot_name": "info_core_bot",
@@ -15,17 +16,19 @@
         "info_core_dev":
         {
             "MASTER": true,
+            "prod": false,
             "db_settings": "dev_mongodb_docker",
             "redis_settings": "dev_redis_docker",
             "telegram_bot_name": "info_core_dev_bot",
             "reference_node": null,
             "enabled_market_klines": [
-                "BITHUMB_SPOT/KRW:OKX_USD_M/USDT"
+                "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT"
             ]
         },
         "kline_generator1":
         {
             "MASTER": false,
+            "prod": true,
             "db_settings": "mongodb_remote",
             "redis_settings": "redis_remote",
             "telegram_bot_name": null,
@@ -48,6 +51,7 @@
         "kline_generator2":
         {
             "MASTER": false,
+            "prod": true,
             "db_settings": "mongodb_remote",
             "redis_settings": "redis_remote",
             "telegram_bot_name": null,
@@ -81,6 +85,11 @@
     {
         "monitor_bot": "kp_trade_monitor",
         "monitor_bot_api_url": "http://221.148.128.213:22180/api/monitor_v1/monitorbot/"
+    },
+    "acw_setting":
+    {
+        "dev_url": "https://acw-test.orbitholdings.org/api/",
+        "prod_url": "https://arbicrypto.net/api/"
     },
     "database_setting":
     {

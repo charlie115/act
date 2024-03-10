@@ -601,6 +601,7 @@ class InitCore:
             self.redis_client_db0.set_dict('INFO_CORE|dollar', dict_for_redis)
             update_dollar_logger.info(f"fetch_dollar|Dollar price ({self.update_dollar_return_dict['price']} KRW) has been updated.")
         except Exception as e:
+            self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"fetch_dollar|Exception occured! Error: {e}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
             # print(f'Except executed in get_dollar function, {e}')
             update_dollar_logger.warning(f"fetch_dollar|Exception occured! Error: {e}, pd.read_html(url): {pd.read_html(url)}")
             exchange_rate = pd.read_html(url)[1]
@@ -612,7 +613,10 @@ class InitCore:
 
     def fetch_dollar_loop(self, update_dollar_logger, loop_time=30):
         while True:
-            self.fetch_dollar(update_dollar_logger)
+            try:
+                self.fetch_dollar(update_dollar_logger)
+            except Exception as e:
+                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"fetch_dollar_loop|Exception occured! Error: {e}, {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
             time.sleep(loop_time)
 
     # TESTTEST
