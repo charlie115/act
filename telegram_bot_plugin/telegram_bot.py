@@ -99,7 +99,7 @@ class InitTelegramBot:
         self.core = core
         self.check_status = core.check_status
         self.dollar_update_thread_status = core.dollar_update_thread_status
-        self.reinitiate_dollar_update_thread = core.reinitiate_dollar_update_thread
+        # self.reinitiate_dollar_update_thread = core.reinitiate_dollar_update_thread
         self.get_dollar_dict = core.get_dollar_dict
         self.admin_id_list = admin_id_list
         self.telegram_bot_logger = KimpBotLogger("telegram_bot_logger", logging_dir).logger
