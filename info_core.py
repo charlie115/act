@@ -17,6 +17,7 @@ from kline_generator.kline_core import InitKlineCore
 from arbitrage_generator.arbitrage_core import InitAbitrageCore
 import _pickle as pickle
 from threading import Thread
+from multiprocessing import Manager
 from multiprocessing import Process
 import time
 import datetime
