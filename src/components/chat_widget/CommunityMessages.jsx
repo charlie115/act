@@ -62,7 +62,6 @@ export default function CommunityMessages({
     { page: pastPage, tz: timezone },
     { skip: !active }
   );
-  // console.log('pastData: ', pastData?.results);
 
   const messageList = useMemo(
     () =>

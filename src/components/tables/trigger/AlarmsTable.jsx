@@ -140,6 +140,7 @@ export default function AlarmsTable({
     () =>
       orderBy(trades || [], 'registered_datetime', 'desc').map((trade) => ({
         ...trade,
+        baseAsset: trade.base_asset,
         entry: trade.low,
         exit: trade.high,
         created: DateTime.fromISO(trade.registered_datetime).toLocaleString(
