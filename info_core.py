@@ -187,9 +187,9 @@ class InitCore:
             self.arbitrage_generator = InitAbitrageCore(self.admin_id, self.node, self.info_dict, self.register_monitor_msg, self.total_enabled_market_klines, self.db_client, logging_dir)
 
         # Loading convert rate
-        self.convert_rate_dict = {}
+        self.convert_rate_dict = Manager().dict()
         self.convert_rate_initialized = False
-        self.update_convert_rate_dict_thread = Thread(target=self.update_convert_rate_dict, daemon=True)
+        self.update_convert_rate_dict_thread = Thread(target=self.update_convert_rate_dict, args=(self.convert_rate_dict,), daemon=True)
         self.update_convert_rate_dict_thread.start()
         while self.convert_rate_initialized is False:
             time.sleep(0.2)
@@ -502,14 +502,14 @@ class InitCore:
                 raise Exception(f"Cannot find the convert rate for {title}")
         return convert_rate
 
-    def update_convert_rate_dict(self, loop_time_secs=30):
+    def update_convert_rate_dict(self, convert_rate_dict, loop_time_secs=30):
         while True:
             try:
                 for each_market_combi in self.enabled_market_klines:
                     target_market_code, origin_market_code = each_market_combi.split(':')
                     target_market, target_quote_asset = target_market_code.split('/')
                     origin_market, origin_quote_asset = origin_market_code.split('/')
-                    self.convert_rate_dict[each_market_combi] = self.convert_asset_rate(origin_market, origin_quote_asset, target_market, target_quote_asset)
+                    convert_rate_dict[each_market_combi] = self.convert_asset_rate(origin_market, origin_quote_asset, target_market, target_quote_asset)
                 if self.convert_rate_initialized is False:
                     self.convert_rate_initialized = True
             except Exception as e:

@@ -2,17 +2,6 @@
     "node": "info_core_dev",
     "node_settings":
     {
-        "info_core":
-        {
-            "MASTER": true,
-            "prod": true,
-            "db_settings": "mongodb_docker",
-            "redis_settings": "redis_docker",
-            "telegram_bot_name": "info_core_bot",
-            "reference_node": null,
-            "enabled_market_klines": [
-            ]
-        },
         "info_core_dev":
         {
             "MASTER": true,
@@ -22,7 +11,30 @@
             "telegram_bot_name": "info_core_dev_bot",
             "reference_node": null,
             "enabled_market_klines": [
+                
+            ]
+        },
+        "kline_generator1_dev":
+        {
+            "MASTER": false,
+            "prod": false,
+            "db_settings": "dev_mongodb_remote",
+            "redis_settings": "dev_redis_remote",
+            "telegram_bot_name": null,
+            "reference_node": "info_core_dev_bot",
+            "enabled_market_klines": [
                 "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT"
+            ]
+        },
+        "info_core":
+        {
+            "MASTER": true,
+            "prod": true,
+            "db_settings": "mongodb_docker",
+            "redis_settings": "redis_docker",
+            "telegram_bot_name": "info_core_bot",
+            "reference_node": null,
+            "enabled_market_klines": [
             ]
         },
         "kline_generator1":
@@ -185,14 +197,14 @@
         },
         "dev_mongodb_remote":
         {
-            "host": "221.148.128.212",
+            "host": "14.52.68.128",
             "port": 27018,
             "user": "test",
             "passwd": "CommunityMongodb123!"
         },
         "dev_redis_remote":
         {
-            "host": "221.148.128.212",
+            "host": "14.52.68.128",
             "port": 26379,
             "passwd": "CommunityRedis123!"
         },
