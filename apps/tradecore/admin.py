@@ -1,8 +1,12 @@
+import re
+
+from django import forms
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
 from unfold.admin import ModelAdmin, TabularInline
+from unfold.widgets import SELECT_CLASSES
 
 from tradecore.models import (
     EnabledMarketCodeCombination,
@@ -23,6 +27,19 @@ class UsersInline(TabularInline):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class EnabledMarketCodeCombinationForm(forms.ModelForm):
+    target = forms.ChoiceField(
+        widget=forms.Select({"class": " ".join([*SELECT_CLASSES, "w-72"])}),
+    )
+    origin = forms.ChoiceField(
+        widget=forms.Select({"class": " ".join([*SELECT_CLASSES, "w-72"])}),
+    )
+
+    class Meta:
+        model = EnabledMarketCodeCombination
+        fields = "__all__"
 
 
 class EnabledMarketCodeCombinationAdmin(ModelAdmin):
@@ -58,20 +75,36 @@ class NodeAdmin(ModelAdmin):
         UsersInline,
     ]
 
+    def changelist_view(self, request, *args, **kwargs):
+        self.request = request
+        return super().changelist_view(request, *args, **kwargs)
+
     def get_market_code_combinations(self, obj):
+        mobile_agent_regex = re.compile(
+            r".*(iphone|mobile|androidtouch)", re.IGNORECASE
+        )
+
         bg_color = {True: "green", False: "red"}
         trade_class = "px-2 py-1 rounded text-xxs bg-{bg_color}-100 text-{bg_color}-500 dark:bg-{bg_color}-500/20"
 
-        return mark_safe(
-            "".join(
-                [
+        new_line = ""
+        market_code_combinations = []
+
+        for market_code_combo in obj.market_code_combinations.all():
+            if mobile_agent_regex.match(self.request.META["HTTP_USER_AGENT"]):
+                new_line = "<br>"
+                market_code_combinations.append(
+                    f"{market_code_combo.target.code}:{market_code_combo.origin.code}<br>"
+                    f"Trade Support={market_code_combo.trade_support}<br>"
+                )
+            else:
+                market_code_combinations.append(
                     f"<p class='my-2'>{market_code_combo.target.code}:{market_code_combo.origin.code}&nbsp;&nbsp;"
                     f"<small class='{trade_class.format(bg_color=bg_color[market_code_combo.trade_support])}'>"
                     "Trade Support</small></p>"
-                    for market_code_combo in obj.market_code_combinations.all()
-                ]
-            )
-        )
+                )
+
+        return mark_safe(new_line.join(market_code_combinations))
 
     get_market_code_combinations.short_description = "Market Code Combinations"
     get_market_code_combinations.allow_tags = True

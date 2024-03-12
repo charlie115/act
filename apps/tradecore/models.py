@@ -4,9 +4,6 @@ from django.db import models
 from infocore.models import MarketCode
 from users.models import User
 
-from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
-
 
 class EnabledMarketCodeCombination(models.Model):
     target = models.ForeignKey(
@@ -20,16 +17,6 @@ class EnabledMarketCodeCombination(models.Model):
         related_name="origin",
     )
     trade_support = models.BooleanField(default=False)
-
-    def validate_origin(self, origin):
-        if self.target == origin:
-            raise ValidationError(
-                {"origin": [_("origin cannot be the same as target")]}
-            )
-
-    def clean(self) -> None:
-        self.validate_origin(self.origin)
-        return super().clean()
 
     def __str__(self):
         return f"{self.target}:{self.origin} Trade={self.trade_support}"
