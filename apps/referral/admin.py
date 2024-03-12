@@ -2,8 +2,9 @@ from django import forms
 from django.contrib import admin
 
 from unfold.admin import ModelAdmin
-from unfold.widgets import INPUT_CLASSES
+from unfold.widgets import INPUT_CLASSES, SELECT_CLASSES
 
+from infocore.models import MarketCode
 from referral.mixins import ReferralCodeMixin
 from referral.models import ReferralCode, ReferralGroup, Referral
 
@@ -11,6 +12,20 @@ from referral.models import ReferralCode, ReferralGroup, Referral
 class ReferralCodeForm(ReferralCodeMixin, forms.ModelForm):
     code = forms.CharField(
         widget=forms.TextInput({"class": " ".join([*INPUT_CLASSES, "w-72"])}),
+    )
+    target_market_code = forms.ChoiceField(
+        choices=[
+            (market_code.code, market_code.code)
+            for market_code in MarketCode.objects.all()
+        ],
+        widget=forms.Select({"class": " ".join([*SELECT_CLASSES, "w-72"])}),
+    )
+    origin_market_code = forms.ChoiceField(
+        choices=[
+            (market_code.code, market_code.code)
+            for market_code in MarketCode.objects.all()
+        ],
+        widget=forms.Select({"class": " ".join([*SELECT_CLASSES, "w-72"])}),
     )
     contact = forms.CharField(
         required=False,
