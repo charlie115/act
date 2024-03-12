@@ -12,6 +12,7 @@ export default function BrandLogo({ onClick, size = 140, sx }) {
         cursor: onClick ? 'pointer' : null,
         display: 'flex',
         alignItems: 'center',
+        position: 'relative',
         ...sx,
       }}
     >
@@ -19,8 +20,14 @@ export default function BrandLogo({ onClick, size = 140, sx }) {
         component="img"
         src={noBgLogo}
         alt="ArbiCrypto"
-        sx={{ width: size }}
+        sx={{ width: size, mr: 0.5 }}
       />
+      <Box
+        component="small"
+        sx={{ alignSelf: 'flex-end', color: 'secondary.main', fontSize: 8 }}
+      >
+        {process.env.REACT_APP_VERSION}
+      </Box>
     </Box>
   );
 }

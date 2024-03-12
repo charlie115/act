@@ -18,6 +18,7 @@ import Paper from '@mui/material/Paper';
 import Popper from '@mui/material/Popper';
 import Stack from '@mui/material/Stack';
 
+import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 
@@ -89,7 +90,6 @@ const MarketCodeCombinationSelector = forwardRef(
               md: '0.8rem',
               lg: '0.85rem',
             },
-            // height: '100%',
             '& .MuiButton-startIcon>*:nth-of-type(1)': {
               fontSize: {
                 xs: '0.65rem',
@@ -105,13 +105,13 @@ const MarketCodeCombinationSelector = forwardRef(
           <Box sx={{ mr: 'auto' }}>
             {value?.target && value?.origin ? (
               <Stack alignItems="center" direction="row" spacing={1}>
-                {value.target.icon} <Box>{value.target.label}</Box>
+                {value.target.icon} <Box>{value.target.getLabel()}</Box>
                 <SyncAltIcon color="accent" fontSize="small" />
                 {value.origin.icon}
-                <Box>{value.origin.label}</Box>
+                <Box>{value.origin.getLabel()}</Box>
               </Stack>
             ) : (
-              value?.label
+              value?.getLabel()
             )}
           </Box>
         </Button>
@@ -147,14 +147,20 @@ const MarketCodeCombinationSelector = forwardRef(
                         disabled={item.disabled}
                         selected={item.value === value.value}
                         onClick={(e) => handleSelect(e, item)}
+                        sx={{
+                          opacity:
+                            item.tradeConfigUuid || item.value === 'ALL'
+                              ? 1
+                              : 0.5,
+                        }}
                       >
                         {item.target && item.origin ? (
                           <>
                             {item.target.icon && (
                               <ListItemIcon>{item.target.icon}</ListItemIcon>
                             )}
-                            <ListItemText sx={{}}>
-                              {item.target.label}
+                            <ListItemText>
+                              {item.target.getLabel()}
                             </ListItemText>
                             <SyncAltIcon
                               color="accent"
@@ -164,14 +170,19 @@ const MarketCodeCombinationSelector = forwardRef(
                             {item.origin.icon && (
                               <ListItemIcon>{item.origin.icon}</ListItemIcon>
                             )}
-                            <ListItemText>{item.origin.label}</ListItemText>
+                            <ListItemText>
+                              {item.origin.getLabel()}
+                            </ListItemText>
+                            {!item.tradeConfigUuid && (
+                              <AddIcon color="success" sx={{ fontSize: 16 }} />
+                            )}
                           </>
                         ) : (
                           <>
                             {item.icon && (
                               <ListItemIcon>{item.icon}</ListItemIcon>
                             )}
-                            <ListItemText>{item.label}</ListItemText>
+                            <ListItemText>{item.getLabel()}</ListItemText>
                             {item.secondaryIcon && item.secondaryIcon}
                           </>
                         )}

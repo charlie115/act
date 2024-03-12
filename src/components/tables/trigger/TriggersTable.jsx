@@ -65,6 +65,7 @@ export default function TriggersTable({
   tradeConfigUuids,
 }) {
   const tableRef = useRef();
+  const assetSearchRef = useRef();
   const { i18n, t } = useTranslation();
 
   const theme = useTheme();
@@ -224,6 +225,7 @@ export default function TriggersTable({
           add: true,
         },
       ];
+
     return data
       ?.filter((item) => {
         if (!item) return false;
@@ -280,6 +282,15 @@ export default function TriggersTable({
     }),
     [marketCodes]
   );
+
+  useEffect(() => {
+    if (
+      selectedMarketCodeCombination &&
+      selectedMarketCodeCombination.value !== 'ALL' &&
+      !selectedMarketCodeCombination.tradeConfigUuid
+    )
+      assetSearchRef?.current?.open();
+  }, [selectedMarketCodeCombination]);
 
   useEffect(() => {
     if (selectedAsset)
@@ -352,16 +363,27 @@ export default function TriggersTable({
             minWidth: isMobile ? 190 : 220,
           }}
         />
-        <AssetSearchInput
-          showSelect
-          onChange={(value) => setGlobalFilter(value)}
-          onSelect={(value) => {
-            setGlobalFilter(value);
-            setSelectedAsset(value);
-          }}
-          selectIcon={<AddIcon />}
-          {...assetSearchProps}
-        />
+        <Box
+          className={
+            selectedMarketCodeCombination &&
+            selectedMarketCodeCombination.value !== 'ALL' &&
+            !selectedMarketCodeCombination.tradeConfigUuid
+              ? 'animate__animated animate__pulse animate__repeat-2'
+              : undefined
+          }
+        >
+          <AssetSearchInput
+            showSelect
+            ref={assetSearchRef}
+            onChange={(value) => setGlobalFilter(value)}
+            onSelect={(value) => {
+              setGlobalFilter(value);
+              setSelectedAsset(value);
+            }}
+            selectIcon={<AddIcon />}
+            {...assetSearchProps}
+          />
+        </Box>
       </Stack>
       {Object.keys(rowSelection).length > 0 && (
         <Stack alignItems="center" direction="row" spacing={2} sx={{ mb: 2 }}>

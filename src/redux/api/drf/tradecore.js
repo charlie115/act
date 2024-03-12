@@ -12,8 +12,8 @@ const api = drfApi.injectEndpoints({
       }),
     }),
     getTradeConfig: builder.query({
-      providesTags: ['TradeConfig'],
       keepUnusedDataFor: 1,
+      providesTags: ['TradeConfig'],
       query: ({ uuid, ...params }) => ({
         url: `/tradecore/trade-config/${uuid}/`,
         params,

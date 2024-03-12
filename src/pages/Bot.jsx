@@ -14,10 +14,15 @@ import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 
+import { useGetNodesQuery } from 'redux/api/drf/tradecore';
+
 import { useSelector } from 'react-redux';
 
 import { useTranslation } from 'react-i18next';
 import i18n from 'configs/i18n';
+
+import sortBy from 'lodash/sortBy';
+import uniqBy from 'lodash/uniqBy';
 
 import a11yProps from 'utils/a11yProps';
 
@@ -77,6 +82,8 @@ export default function Bot() {
 
   const { loggedin, user } = useSelector((state) => state.auth);
 
+  const { data: nodes } = useGetNodesQuery();
+
   const tradeConfigAllocations = useMemo(
     () =>
       user?.trade_config_allocations?.map((tradeConfig) => {
@@ -109,52 +116,105 @@ export default function Bot() {
     useState();
 
   useEffect(() => {
-    const marketCodes = [
-      {
-        label: t('All'),
-        value: 'ALL',
-        icon: <CheckBoxIcon />,
-      },
-    ].concat(
-      tradeConfigAllocations?.map((item) => ({
-        value: item.value,
-        target: {
-          ...item.target,
-          label: item.target.getLabel(),
-          icon: (
-            <Box
-              component="img"
-              src={item.target.icon}
-              alt={item.target.getLabel()}
-              sx={{
-                height: { xs: 16, md: 18 },
-                width: { xs: 16, md: 18 },
-              }}
-            />
+    if (nodes?.results?.length > 0) {
+      const nodeMarketCodes = nodes.results.reduce(
+        (acc, curr) =>
+          acc.concat(
+            curr.market_code_services?.map((item) => ({
+              marketCodeCombination: item,
+              ...curr,
+            }))
           ),
+        []
+      );
+      const uniqNodeMarketCodes = uniqBy(
+        nodeMarketCodes,
+        'marketCodeCombination'
+      );
+      const marketCodes = [
+        {
+          label: t('All'),
+          getLabel: () => i18n.t('All'),
+          value: 'ALL',
+          icon: <CheckBoxIcon />,
         },
-        origin: {
-          ...item.origin,
-          label: item.origin.getLabel(),
-          icon: (
-            <Box
-              component="img"
-              src={item.origin.icon}
-              alt={item.origin.getLabel()}
-              sx={{
-                height: { xs: 16, md: 18 },
-                width: { xs: 16, md: 18 },
-              }}
-            />
-          ),
-        },
-        tradeConfigUuid: item.uuid,
-      }))
-    );
-    setMarketCodeCombinationList(marketCodes);
-    if (!selectedMarketCodeCombination)
-      setSelectedMarketCodeCombination(marketCodes[0]);
-  }, [selectedMarketCodeCombination, tradeConfigAllocations, language]);
+      ].concat(
+        sortBy(
+          uniqNodeMarketCodes.map((item) => {
+            const [targetMarket, originMarket] =
+              item.marketCodeCombination.split(':');
+            const target = MARKET_CODE_LIST.find(
+              (o) => o.value === targetMarket
+            );
+            const origin = MARKET_CODE_LIST.find(
+              (o) => o.value === originMarket
+            );
+            const tradeConfigAllocation = user?.trade_config_allocations?.find(
+              (tradeConfig) =>
+                tradeConfig.target_market_code === targetMarket &&
+                tradeConfig.origin_market_code === originMarket
+            );
+            return {
+              ...item,
+              target: {
+                ...target,
+                icon: (
+                  <Box
+                    component="img"
+                    src={target.icon}
+                    alt={target.getLabel()}
+                    sx={{
+                      height: { xs: 16, md: 18 },
+                      width: { xs: 16, md: 18 },
+                    }}
+                  />
+                ),
+              },
+              origin: {
+                ...origin,
+                icon: (
+                  <Box
+                    component="img"
+                    src={origin.icon}
+                    alt={origin.getLabel()}
+                    sx={{
+                      height: { xs: 16, md: 18 },
+                      width: { xs: 16, md: 18 },
+                    }}
+                  />
+                ),
+              },
+              tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid,
+              value: item.marketCodeCombination,
+            };
+          }),
+          'tradeConfigUuid'
+        )
+      );
+      setMarketCodeCombinationList(marketCodes);
+      if (!selectedMarketCodeCombination)
+        setSelectedMarketCodeCombination(marketCodes[0]);
+      else if (
+        selectedMarketCodeCombination.value !== 'ALL' &&
+        !selectedMarketCodeCombination.tradeConfigUuid
+      ) {
+        const tradeConfigAllocation = user?.trade_config_allocations?.find(
+          (tradeConfig) =>
+            tradeConfig.target_market_code ===
+              selectedMarketCodeCombination.target.value &&
+            tradeConfig.origin_market_code ===
+              selectedMarketCodeCombination.origin.value
+        );
+        if (tradeConfigAllocation)
+          setSelectedMarketCodeCombination((state) => ({
+            ...state,
+            tradeConfigUuid: tradeConfigAllocation.trade_config_uuid,
+          }));
+      }
+    }
+  }, [nodes, selectedMarketCodeCombination, user?.trade_config_allocations]);
+
+  useEffect(() => {}, [language]);
 
   if (!loggedin)
     return <Navigate replace to="/login" state={{ from: location }} />;
@@ -224,6 +284,7 @@ export default function Bot() {
                   selectedMarketCodeCombination={selectedMarketCodeCombination}
                   tradeConfigAllocations={tradeConfigAllocations}
                   tradeConfigUuids={tradeConfigUuids}
+                  onChangeTabHandler={(newTab) => setCurrentTab(newTab)}
                 />
               </Box>
             )}

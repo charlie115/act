@@ -27,5 +27,15 @@
     "**/Thumbs.db": true,
     "**/node_modules": false
   },
-  "sqltools.connections": []
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "server": "14.52.68.128",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "[TEST] Postgres",
+      "database": "community",
+      "username": "test"
+    }
+  ]
 }

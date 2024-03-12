@@ -1,4 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import Autocomplete, { autocompleteClasses } from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
@@ -22,141 +29,152 @@ import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
 
 import { useDebounce } from '@uidotdev/usehooks';
 
-export default function AssetSearchInput({
-  apiOptions,
-  apiParams,
-  onChange,
-  onSelect,
-  selectIcon,
-  showSelect,
-}) {
-  const inputRef = useRef();
-  const { t } = useTranslation();
+const AssetSearchInput = forwardRef(
+  (
+    { apiOptions, apiParams, onChange, onSelect, selectIcon, showSelect },
+    ref
+  ) => {
+    const inputRef = useRef();
+    const { t } = useTranslation();
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const [open, setOpen] = React.useState(false);
-  const [options, setOptions] = useState([]);
+    const [open, setOpen] = React.useState(false);
+    const [options, setOptions] = useState([]);
 
-  const [selected, setSelected] = useState('');
+    const [selected, setSelected] = useState('');
 
-  const [searchValue, setSearchValue] = useState('');
-  const debouncedSearchValue = useDebounce(searchValue, 500);
+    const [searchValue, setSearchValue] = useState('');
+    const debouncedSearchValue = useDebounce(searchValue, 500);
 
-  const { data: assetsData } = useGetAssetsQuery();
-  const { data, isFetching } = useGetRealTimeKlineQuery(apiParams, apiOptions);
+    useImperativeHandle(
+      ref,
+      () => ({
+        open: () => setOpen(true),
+      }),
+      []
+    );
 
-  const assets = useMemo(
-    () =>
-      Object.keys(data ?? {})
-        .sort()
-        .join(),
-    [data]
-  );
+    const { data: assetsData } = useGetAssetsQuery();
+    const { currentData, isFetching } = useGetRealTimeKlineQuery(
+      apiParams,
+      apiOptions
+    );
 
-  useEffect(() => {
-    if (assets) setOptions(assets.split(','));
-    else setOptions([]);
-  }, [assets]);
+    const assets = useMemo(
+      () =>
+        Object.keys(currentData ?? {})
+          .sort()
+          .join(),
+      [currentData]
+    );
 
-  useEffect(() => {
-    onChange(debouncedSearchValue);
-  }, [debouncedSearchValue]);
+    useEffect(() => {
+      if (assets) setOptions(assets.split(','));
+      else setOptions([]);
+    }, [assets]);
 
-  return (
-    <Autocomplete
-      autoHighlight
-      freeSolo
-      id="asset-search-input"
-      size="small"
-      options={options}
-      loading={options.length === 0 && isFetching}
-      isOptionEqualToValue={(option, value) =>
-        option.toLowerCase() === value.toLowerCase()
-      }
-      getOptionLabel={(option) => option}
-      open={open}
-      onOpen={() => {
-        setOpen(true);
-      }}
-      onClose={() => {
-        setOpen(false);
-      }}
-      inputValue={searchValue}
-      value={selected}
-      onChange={(event, newValue) => {
-        onChange(newValue);
-        if (onSelect && !newValue) {
-          setSelected('');
-          onSelect('');
+    useEffect(() => {
+      onChange(debouncedSearchValue);
+    }, [debouncedSearchValue]);
+
+    return (
+      <Autocomplete
+        autoHighlight
+        freeSolo
+        id="asset-search-input"
+        size="small"
+        options={options}
+        loading={options.length === 0 && isFetching}
+        isOptionEqualToValue={(option, value) =>
+          option.toLowerCase() === value.toLowerCase()
         }
-      }}
-      onInputChange={(event, newValue) => setSearchValue(newValue)}
-      renderInput={(params) => (
-        <>
-          <TextField
-            {...params}
-            inputRef={inputRef}
-            label={t('Search')}
-            InputProps={{
-              ...params.InputProps,
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={isMobile ? { fontSize: '0.8em' } : {}} />
-                </InputAdornment>
-              ),
-            }}
-          />
-          {isFetching && options.length === 0 && <LinearProgress />}
-        </>
-      )}
-      renderOption={(props, option) => (
-        <Box
-          {...props}
-          component="li"
-          sx={{
-            '& .asset-icon': { mr: 1, flexShrink: 0 },
-            [`&.${autocompleteClasses.option}`]: {
-              px: 1,
-              py: 0.5,
-              pr: 0,
-              '& > p': { fontSize: '1em' },
-            },
-          }}
-        >
-          {assetsData?.[option]?.icon ? (
-            <img
-              className="asset-icon"
-              width="12"
-              src={assetsData[option].icon}
-              alt=""
-            />
-          ) : (
-            <BlockIcon
-              className="asset-icon"
-              color="secondary"
-              sx={{ fontSize: 12 }}
-            />
-          )}
-          <Typography sx={{ mr: 'auto' }}>{option}</Typography>
-          {showSelect && (
-            <IconButton
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(option);
-                setSelected(option);
-                setOpen(false);
-                inputRef.current?.blur();
+        getOptionLabel={(option) => option}
+        open={open}
+        onOpen={() => {
+          setOpen(true);
+        }}
+        onClose={() => {
+          setOpen(false);
+        }}
+        inputValue={searchValue}
+        value={selected}
+        onChange={(event, newValue) => {
+          onChange(newValue);
+          if (onSelect && !newValue) {
+            setSelected('');
+            onSelect('');
+          }
+        }}
+        onInputChange={(event, newValue) => setSearchValue(newValue)}
+        renderInput={(params) => (
+          <>
+            <TextField
+              {...params}
+              inputRef={inputRef}
+              label={t('Search')}
+              InputProps={{
+                ...params.InputProps,
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={isMobile ? { fontSize: '0.8em' } : {}} />
+                  </InputAdornment>
+                ),
               }}
-              sx={{ alignSelf: 'flex-end' }}
-            >
-              {selectIcon || <DoneIcon />}
-            </IconButton>
-          )}
-        </Box>
-      )}
-      sx={isMobile ? { height: '0.5em', width: 125 } : { width: 215 }}
-    />
-  );
-}
+            />
+            {isFetching && options.length === 0 && <LinearProgress />}
+          </>
+        )}
+        renderOption={(props, option) => (
+          <Box
+            {...props}
+            component="li"
+            sx={{
+              '& .asset-icon': { mr: 1, flexShrink: 0 },
+              [`&.${autocompleteClasses.option}`]: {
+                px: 1,
+                py: 0.5,
+                pr: 0,
+                '& > p': { fontSize: '1em' },
+              },
+            }}
+          >
+            {assetsData?.[option]?.icon ? (
+              <img
+                className="asset-icon"
+                width="12"
+                src={assetsData[option].icon}
+                alt=""
+              />
+            ) : (
+              <BlockIcon
+                className="asset-icon"
+                color="secondary"
+                sx={{ fontSize: 12 }}
+              />
+            )}
+            <Typography sx={{ mr: 'auto' }}>{option}</Typography>
+            {showSelect && (
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(option);
+                  setSelected(option);
+                  setOpen(false);
+                  inputRef.current?.blur();
+                }}
+                sx={{ alignSelf: 'flex-end' }}
+              >
+                {selectIcon || <DoneIcon />}
+              </IconButton>
+            )}
+          </Box>
+        )}
+        sx={isMobile ? { height: '0.5em', width: 125 } : { width: 215 }}
+      />
+    );
+  }
+);
+
+export default AssetSearchInput;

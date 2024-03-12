@@ -11,13 +11,17 @@ import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import Typography from '@mui/material/Typography';
 
+import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import Replay5Icon from '@mui/icons-material/Replay5';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import TimesOneMobiledataIcon from '@mui/icons-material/TimesOneMobiledata';
+
+import { useTheme } from '@mui/material/styles';
 
 import { Controller, useForm } from 'react-hook-form';
 
@@ -31,30 +35,32 @@ import { useTranslation } from 'react-i18next';
 export default function BotSettings({
   marketCodeSelectorRef,
   selectedMarketCodeCombination,
+  onChangeTabHandler,
 }) {
   const { t } = useTranslation();
+  const theme = useTheme();
 
   const [isEditingCount, setIsEditingCount] = useState(false);
   const [isEditingInterval, setIsEditingInterval] = useState(false);
 
   const [putTradeConfig] = usePutTradeConfigMutation();
 
-  const { data } = useGetTradeConfigQuery(
+  const { currentData } = useGetTradeConfigQuery(
     { uuid: selectedMarketCodeCombination?.tradeConfigUuid },
     { skip: !selectedMarketCodeCombination?.tradeConfigUuid }
   );
 
   const countForm = useForm({
-    defaultValues: { count: data?.send_times },
+    defaultValues: { count: currentData?.send_times },
     mode: 'all',
   });
   const onCountSubmit = async (formData) => {
     try {
       await putTradeConfig({
-        uuid: data.uuid,
-        acw_user_uuid: data.acw_user_uuid,
-        target_market_code: data.target_market_code,
-        origin_market_code: data.origin_market_code,
+        uuid: currentData.uuid,
+        acw_user_uuid: currentData.acw_user_uuid,
+        target_market_code: currentData.target_market_code,
+        origin_market_code: currentData.origin_market_code,
         send_times: formData.count,
       });
       countForm.reset();
@@ -65,16 +71,16 @@ export default function BotSettings({
   };
 
   const intervalForm = useForm({
-    defaultValues: { interval: data?.send_term },
+    defaultValues: { interval: currentData?.send_term },
     mode: 'all',
   });
   const onIntervalSubmit = async (formData) => {
     try {
       await putTradeConfig({
-        uuid: data.uuid,
-        acw_user_uuid: data.acw_user_uuid,
-        target_market_code: data.target_market_code,
-        origin_market_code: data.origin_market_code,
+        uuid: currentData.uuid,
+        acw_user_uuid: currentData.acw_user_uuid,
+        target_market_code: currentData.target_market_code,
+        origin_market_code: currentData.origin_market_code,
         send_term: formData.interval,
       });
       intervalForm.reset();
@@ -85,11 +91,11 @@ export default function BotSettings({
   };
 
   useEffect(() => {
-    if (data) {
-      countForm.setValue('count', data.send_times);
-      intervalForm.setValue('interval', data.send_term);
+    if (currentData) {
+      countForm.setValue('count', currentData.send_times);
+      intervalForm.setValue('interval', currentData.send_term);
     }
-  }, [data]);
+  }, [currentData]);
 
   return (
     <Box
@@ -122,160 +128,200 @@ export default function BotSettings({
                     onClick={() => marketCodeSelectorRef.current.toggle()}
                   >
                     {selectedMarketCodeCombination?.target.icon}
-                    <Box>{selectedMarketCodeCombination?.target.label}</Box>
+                    <Box>
+                      {selectedMarketCodeCombination?.target.getLabel()}
+                    </Box>
                     <SyncAltIcon color="accent" fontSize="small" />
                     {selectedMarketCodeCombination?.origin.icon}
-                    <Box>{selectedMarketCodeCombination?.origin.label}</Box>
+                    <Box>
+                      {selectedMarketCodeCombination?.origin.getLabel()}
+                    </Box>
+                    <Box
+                      sx={{
+                        alignSelf: 'center',
+                        bgcolor:
+                          theme.palette.mode === 'dark'
+                            ? 'grey.700'
+                            : 'grey.100',
+                        borderRadius: 1,
+                        display: 'inline',
+                        fontWeight: 700,
+                        px: 1,
+                      }}
+                    >
+                      {selectedMarketCodeCombination?.name}
+                    </Box>
                   </Stack>
                 </TableCell>
               </TableRow>
             </TableHead>
-            {data && (
-              <TableBody>
-                <TableRow
-                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                >
-                  <TableCell align="right" sx={{ p: 0, width: 16 }}>
-                    <TimesOneMobiledataIcon />
-                  </TableCell>
-                  <TableCell sx={{ fontSize: 16 }}>
-                    {t('Telegram Message Alarm Count')}
-                  </TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{ fontSize: 16, fontWeight: 700, width: 120 }}
-                  >
-                    {isEditingCount ? (
-                      <Box
-                        id="update-count-form"
-                        component="form"
-                        autoComplete="off"
-                        onSubmit={countForm.handleSubmit(onCountSubmit)}
-                      >
-                        <Controller
-                          name="count"
-                          control={countForm.control}
-                          rules={{ required: true }}
-                          render={({ field, fieldState }) => (
-                            <FormControl
-                              error={!!fieldState.error}
-                              variant="standard"
-                            >
-                              <Input
-                                autoFocus
-                                // readOnly={isLoading}
-                                type="number"
-                                inputProps={{ step: 1 }}
-                                {...field}
-                              />
-                            </FormControl>
-                          )}
-                        />
-                      </Box>
-                    ) : (
-                      data.send_times
-                    )}
-                  </TableCell>
-                  <TableCell sx={{ width: 80 }}>
-                    {isEditingCount ? (
-                      <Stack alignItems="center" direction="row" spacing={0}>
-                        <IconButton
-                          color="success"
-                          type="submit"
-                          form="update-count-form"
-                        >
-                          <CheckIcon />
-                        </IconButton>
-                        <IconButton
-                          color="error"
-                          onClick={() => setIsEditingCount(false)}
-                        >
-                          <CloseIcon />
-                        </IconButton>
-                      </Stack>
-                    ) : (
-                      <IconButton
-                        size="small"
-                        onClick={() => setIsEditingCount(true)}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    )}
+            <TableBody>
+              {!selectedMarketCodeCombination.tradeConfigUuid && (
+                <TableRow>
+                  <TableCell align="center">
+                    <Typography sx={{ mb: 2 }}>
+                      {t(
+                        'You do not have an existing allocation with this market code combination.'
+                      )}
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      endIcon={<AddIcon size="small" />}
+                      onClick={() => onChangeTabHandler(0)}
+                    >
+                      {t('Add')}
+                    </Button>
                   </TableCell>
                 </TableRow>
-                <TableRow
-                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                >
-                  <TableCell align="right" sx={{ p: 0, width: 16 }}>
-                    <Replay5Icon />
-                  </TableCell>
-                  <TableCell sx={{ fontSize: 16 }}>
-                    {t('Telegram Message Notification Interval')}
-                  </TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{ fontSize: 16, fontWeight: 700, width: 120 }}
+              )}
+              {currentData && (
+                <>
+                  <TableRow
+                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                   >
-                    {isEditingInterval ? (
-                      <Box
-                        id="update-interval-form"
-                        component="form"
-                        autoComplete="off"
-                        onSubmit={intervalForm.handleSubmit(onIntervalSubmit)}
-                      >
-                        <Controller
-                          name="interval"
-                          control={intervalForm.control}
-                          rules={{ required: true }}
-                          render={({ field, fieldState }) => (
-                            <FormControl
-                              error={!!fieldState.error}
-                              variant="standard"
-                            >
-                              <Input
-                                autoFocus
-                                // readOnly={isLoading}
-                                type="number"
-                                inputProps={{ step: 1 }}
-                                {...field}
-                              />
-                            </FormControl>
-                          )}
-                        />
-                      </Box>
-                    ) : (
-                      data.send_term
-                    )}
-                  </TableCell>
-                  <TableCell sx={{ width: 80 }}>
-                    {isEditingInterval ? (
-                      <Stack alignItems="center" direction="row" spacing={0}>
-                        <IconButton
-                          color="success"
-                          type="submit"
-                          form="update-interval-form"
+                    <TableCell align="right" sx={{ p: 0, width: 16 }}>
+                      <TimesOneMobiledataIcon />
+                    </TableCell>
+                    <TableCell sx={{ fontSize: 16 }}>
+                      {t('Telegram Message Alarm Count')}
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontSize: 16, fontWeight: 700, width: 120 }}
+                    >
+                      {isEditingCount ? (
+                        <Box
+                          id="update-count-form"
+                          component="form"
+                          autoComplete="off"
+                          onSubmit={countForm.handleSubmit(onCountSubmit)}
                         >
-                          <CheckIcon />
-                        </IconButton>
+                          <Controller
+                            name="count"
+                            control={countForm.control}
+                            rules={{ required: true }}
+                            render={({ field, fieldState }) => (
+                              <FormControl
+                                error={!!fieldState.error}
+                                variant="standard"
+                              >
+                                <Input
+                                  autoFocus
+                                  // readOnly={isLoading}
+                                  type="number"
+                                  inputProps={{ step: 1 }}
+                                  {...field}
+                                />
+                              </FormControl>
+                            )}
+                          />
+                        </Box>
+                      ) : (
+                        currentData.send_times
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ width: 80 }}>
+                      {isEditingCount ? (
+                        <Stack alignItems="center" direction="row" spacing={0}>
+                          <IconButton
+                            color="success"
+                            type="submit"
+                            form="update-count-form"
+                          >
+                            <CheckIcon />
+                          </IconButton>
+                          <IconButton
+                            color="error"
+                            onClick={() => setIsEditingCount(false)}
+                          >
+                            <CloseIcon />
+                          </IconButton>
+                        </Stack>
+                      ) : (
                         <IconButton
-                          color="error"
-                          onClick={() => setIsEditingInterval(false)}
+                          size="small"
+                          onClick={() => setIsEditingCount(true)}
                         >
-                          <CloseIcon />
+                          <EditIcon />
                         </IconButton>
-                      </Stack>
-                    ) : (
-                      <IconButton
-                        size="small"
-                        onClick={() => setIsEditingInterval(true)}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    )}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            )}
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow
+                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                  >
+                    <TableCell align="right" sx={{ p: 0, width: 16 }}>
+                      <Replay5Icon />
+                    </TableCell>
+                    <TableCell sx={{ fontSize: 16 }}>
+                      {t('Telegram Message Notification Interval')}
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontSize: 16, fontWeight: 700, width: 120 }}
+                    >
+                      {isEditingInterval ? (
+                        <Box
+                          id="update-interval-form"
+                          component="form"
+                          autoComplete="off"
+                          onSubmit={intervalForm.handleSubmit(onIntervalSubmit)}
+                        >
+                          <Controller
+                            name="interval"
+                            control={intervalForm.control}
+                            rules={{ required: true }}
+                            render={({ field, fieldState }) => (
+                              <FormControl
+                                error={!!fieldState.error}
+                                variant="standard"
+                              >
+                                <Input
+                                  autoFocus
+                                  // readOnly={isLoading}
+                                  type="number"
+                                  inputProps={{ step: 1 }}
+                                  {...field}
+                                />
+                              </FormControl>
+                            )}
+                          />
+                        </Box>
+                      ) : (
+                        currentData.send_term
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ width: 80 }}>
+                      {isEditingInterval ? (
+                        <Stack alignItems="center" direction="row" spacing={0}>
+                          <IconButton
+                            color="success"
+                            type="submit"
+                            form="update-interval-form"
+                          >
+                            <CheckIcon />
+                          </IconButton>
+                          <IconButton
+                            color="error"
+                            onClick={() => setIsEditingInterval(false)}
+                          >
+                            <CloseIcon />
+                          </IconButton>
+                        </Stack>
+                      ) : (
+                        <IconButton
+                          size="small"
+                          onClick={() => setIsEditingInterval(true)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                </>
+              )}
+            </TableBody>
           </Table>
         )}
       </Box>
