@@ -120,8 +120,9 @@ export default function Bot() {
       const nodeMarketCodes = nodes.results.reduce(
         (acc, curr) =>
           acc.concat(
-            curr.market_code_services?.map((item) => ({
-              marketCodeCombination: item,
+            curr.market_code_combinations?.map((item) => ({
+              marketCodeCombination: item.market_code_combination,
+              tradeSupport: item.trade_support,
               ...curr,
             }))
           ),
