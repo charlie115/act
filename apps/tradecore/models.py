@@ -4,6 +4,45 @@ from django.db import models
 from infocore.models import MarketCode
 from users.models import User
 
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
+
+
+class EnabledMarketCodeCombination(models.Model):
+    target = models.ForeignKey(
+        MarketCode,
+        on_delete=models.CASCADE,
+        related_name="target",
+    )
+    origin = models.ForeignKey(
+        MarketCode,
+        on_delete=models.CASCADE,
+        related_name="origin",
+    )
+    trade_support = models.BooleanField(default=False)
+
+    def validate_origin(self, origin):
+        if self.target == origin:
+            raise ValidationError(
+                {"origin": [_("origin cannot be the same as target")]}
+            )
+
+    def clean(self) -> None:
+        self.validate_origin(self.origin)
+        return super().clean()
+
+    def __str__(self):
+        return f"{self.target}:{self.origin} Trade={self.trade_support}"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["target", "origin"],
+                name="unique__target__origin",
+            )
+        ]
+        verbose_name = "Enabled Market Code Combination"
+
 
 class Node(models.Model):
     name = models.CharField(max_length=150)
@@ -15,37 +54,12 @@ class Node(models.Model):
     description = models.CharField(max_length=255, blank=True, null=True)
     max_user_count = models.IntegerField(default=300)
     users = models.ManyToManyField(User, related_name="nodes")
+    market_code_combinations = models.ManyToManyField(
+        EnabledMarketCodeCombination, blank=True
+    )
 
     def __str__(self):
         return self.name
-
-
-class NodeMarketCodeService(models.Model):
-    node = models.ForeignKey(
-        Node, on_delete=models.CASCADE, related_name="market_code_services"
-    )
-    target = models.ForeignKey(
-        MarketCode,
-        on_delete=models.DO_NOTHING,
-        related_name="target",
-    )
-    origin = models.ForeignKey(
-        MarketCode,
-        on_delete=models.DO_NOTHING,
-        related_name="origin",
-    )
-
-    def __str__(self):
-        return f"[{self.node}] {self.target}:{self.origin}"
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["node", "target", "origin"],
-                name="unique__node__target__origin",
-            )
-        ]
-        verbose_name = "Node MarketCode Service"
 
 
 class TradeConfigAllocation(models.Model):

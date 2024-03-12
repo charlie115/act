@@ -25,10 +25,10 @@ from tradecore.serializers import (
 
 class NodeFilter(FilterSet):
     description__contains = CharFilter(field_name="description", lookup_expr="contains")
-    market_code_services = CharFilter(
-        field_name="market_code_services",
+    market_code_combinations = CharFilter(
+        field_name="market_code_combinations",
         method="filter_market_code",
-        help_text="Filter from a list of enabled market code services in the node.<br>"
+        help_text="Filter from a list of enabled market code combinations in the node.<br>"
         "Format:`{target}:{origin}`<br>"
         "Example: `UPBIT_SPOT/KRW:UPBIT_SPOT/BTC`",
     )
@@ -36,9 +36,9 @@ class NodeFilter(FilterSet):
     def filter_market_code(self, queryset, name, value):
         return queryset.annotate(
             market_code=Concat(
-                "market_code_services__target__code",
+                "market_code_combinations__target__code",
                 Value(":"),
-                "market_code_services__origin__code",
+                "market_code_combinations__origin__code",
                 output_field=CharField(),
             )
         ).filter(market_code=value)
@@ -50,7 +50,7 @@ class NodeFilter(FilterSet):
             "url",
             "description",
             "max_user_count",
-            "market_code_services",
+            "market_code_combinations",
         )
 
 

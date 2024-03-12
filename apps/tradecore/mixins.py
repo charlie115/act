@@ -6,6 +6,12 @@ from rest_framework import exceptions
 from urllib.parse import urljoin
 
 from lib.permissions import ACWBasePermission
+from lib.status import (
+    HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
+    HTTP_404_NOT_FOUND,
+)
 from tradecore.models import TradeConfigAllocation
 from users.models import User, UserRole
 
@@ -114,6 +120,15 @@ class TradeCoreMixin(object):
             detail = api_response.json()
         except Exception:
             detail = api_response.content
+
+        if api_response.status_code == HTTP_400_BAD_REQUEST:
+            raise exceptions.ParseError
+        if api_response.status_code == HTTP_401_UNAUTHORIZED:
+            raise exceptions.AuthenticationFailed
+        if api_response.status_code == HTTP_403_FORBIDDEN:
+            raise exceptions.PermissionDenied
+        if api_response.status_code == HTTP_404_NOT_FOUND:
+            raise exceptions.NotFound
 
         exception = exceptions.APIException(detail=detail)
         exception.status_code = api_response.status_code

@@ -5,8 +5,8 @@ from django.utils.safestring import mark_safe
 from unfold.admin import ModelAdmin, TabularInline
 
 from tradecore.models import (
+    EnabledMarketCodeCombination,
     Node,
-    NodeMarketCodeService,
     TradeConfigAllocation,
 )
 
@@ -25,36 +25,56 @@ class UsersInline(TabularInline):
         return False
 
 
-class NodeMarketCodeServiceInline(TabularInline):
-    model = NodeMarketCodeService
-    extra = 0
-    verbose_name = "Market Code Service"
-
-    def has_change_permission(self, request, obj=None):
-        return False
+class EnabledMarketCodeCombinationAdmin(ModelAdmin):
+    list_display = [
+        "target",
+        "origin",
+        "trade_support",
+    ]
+    list_filter = [
+        "target",
+        "origin",
+        "trade_support",
+    ]
+    search_fields = [
+        "target",
+        "origin",
+        "trade_support",
+    ]
 
 
 class NodeAdmin(ModelAdmin):
-    fields = ["name", "url", "description", "max_user_count"]
-    list_display = ["name", "url", "description", "get_market_code_services"]
+    fields = [
+        "name",
+        "url",
+        "description",
+        "max_user_count",
+        "market_code_combinations",
+    ]
+    list_display = ["name", "url", "description", "get_market_code_combinations"]
     search_fields = ["name", "url"]
-    inlines = (
-        NodeMarketCodeServiceInline,
+    autocomplete_fields = ["market_code_combinations"]
+    inlines = [
         UsersInline,
-    )
+    ]
 
-    def get_market_code_services(self, obj):
+    def get_market_code_combinations(self, obj):
+        bg_color = {True: "green", False: "red"}
+        trade_class = "px-2 py-1 rounded text-xxs bg-{bg_color}-100 text-{bg_color}-500 dark:bg-{bg_color}-500/20"
+
         return mark_safe(
-            "<br>".join(
+            "".join(
                 [
-                    f"{market_code_service.target.code}:{market_code_service.origin.code}"
-                    for market_code_service in obj.market_code_services.all()
+                    f"<p class='my-2'>{market_code_combo.target.code}:{market_code_combo.origin.code}&nbsp;&nbsp;"
+                    f"<small class='{trade_class.format(bg_color=bg_color[market_code_combo.trade_support])}'>"
+                    "Trade Support</small></p>"
+                    for market_code_combo in obj.market_code_combinations.all()
                 ]
             )
         )
 
-    get_market_code_services.short_description = "Market Code Services"
-    get_market_code_services.allow_tags = True
+    get_market_code_combinations.short_description = "Market Code Combinations"
+    get_market_code_combinations.allow_tags = True
 
 
 class TradeConfigAllocationAdmin(ModelAdmin):
@@ -100,5 +120,6 @@ class TradeConfigAllocationAdmin(ModelAdmin):
         return False
 
 
+admin.site.register(EnabledMarketCodeCombination, EnabledMarketCodeCombinationAdmin)
 admin.site.register(Node, NodeAdmin)
 admin.site.register(TradeConfigAllocation, TradeConfigAllocationAdmin)

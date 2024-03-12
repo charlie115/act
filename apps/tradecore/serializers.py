@@ -8,19 +8,22 @@ from users.models import User
 
 
 class NodeSerializer(serializers.ModelSerializer):
-    market_code_services = serializers.SerializerMethodField(
+    market_code_combinations = serializers.SerializerMethodField(
         default=[],
-        help_text="Returns a list of all the enabled market code services in the node.<br>"
+        help_text="Returns a list of all the enabled market code combinations in the node.<br>"
         "Format:`{target}:{origin}`<br>"
         "Example: `UPBIT_SPOT/KRW:UPBIT_SPOT/BTC`",
     )
 
-    def get_market_code_services(self, obj):
-        market_code_services = [
-            f"{market_code_service.target}:{market_code_service.origin}"
-            for market_code_service in obj.market_code_services.all()
+    def get_market_code_combinations(self, obj):
+        market_code_combinations = [
+            {
+                "market_code_combination": f"{market_code_combination.target}:{market_code_combination.origin}",
+                "trade_support": market_code_combination.trade_support,
+            }
+            for market_code_combination in obj.market_code_combinations.all()
         ]
-        return market_code_services
+        return market_code_combinations
 
     class Meta:
         model = Node
@@ -30,7 +33,7 @@ class NodeSerializer(serializers.ModelSerializer):
             "url",
             "description",
             "max_user_count",
-            "market_code_services",
+            "market_code_combinations",
         )
 
 
@@ -152,8 +155,8 @@ class TradeConfigViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     def allocate_user_trade(self, user, data):
         nodes = (
             Node.objects.filter(
-                market_code_services__target__code=data.get("target_market_code"),
-                market_code_services__origin__code=data.get("origin_market_code"),
+                market_code_combinations__target__code=data.get("target_market_code"),
+                market_code_combinations__origin__code=data.get("origin_market_code"),
             )
             .annotate(user_count=Count("users"))
             .order_by("user_count", "id")

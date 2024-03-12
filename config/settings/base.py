@@ -465,9 +465,11 @@ UNFOLD = {
                 "separator": True,
                 "items": [
                     {
-                        "title": _("Market Codes"),
+                        "title": _("Enabled Market Code Combinations"),
                         "icon": "sync_alt",
-                        "link": reverse_lazy("admin:infocore_marketcode_changelist"),
+                        "link": reverse_lazy(
+                            "admin:tradecore_enabledmarketcodecombination_changelist"
+                        ),
                     },
                     {
                         "title": _("Nodes"),
