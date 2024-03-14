@@ -49,6 +49,11 @@ class TradeConfigAllocationSerializer(serializers.ModelSerializer):
         )
 
 
+#######################
+# For trade_core APIs #
+#######################
+
+
 class TradeConfigViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     uuid = serializers.UUIDField(read_only=True)
     user = serializers.UUIDField(required=False)
@@ -191,6 +196,8 @@ class TradeConfigViewSetSerializer(TradeCoreMixin, serializers.Serializer):
 
 
 class TradesViewSetQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    """Separate validation for query"""
+
     trade_config_uuid = serializers.UUIDField()
 
     def validate(self, attrs):
@@ -282,6 +289,55 @@ class TradesViewSetSerializer(TradeCoreMixin, serializers.Serializer):
         )
 
         if api_response.status_code == HTTP_200_OK:
+            return api_response.json()
+
+        self.handle_exception_from_api(api_response)
+
+
+class ExchangeApiKeyViewSetQueryParamsSerializer(
+    TradeCoreMixin, serializers.Serializer
+):
+    """Separate validation for query"""
+
+    trade_config_uuid = serializers.UUIDField()
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)
+
+
+class ExchangeApiKeyViewSetSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    uuid = serializers.UUIDField(read_only=True)
+    registered_datetime = serializers.DateTimeField(read_only=True)
+    last_updated_datetime = serializers.DateTimeField(read_only=True)
+    market_code = serializers.CharField()
+    exchange = serializers.CharField(required=False)
+    spot = serializers.BooleanField(required=False)
+    futures = serializers.BooleanField(required=False)
+    access_key = serializers.CharField()
+    secret_key = serializers.CharField(write_only=True)
+    passphrase = serializers.CharField(required=False, write_only=True)
+    remark = serializers.CharField(required=False)
+
+    def create(self, validated_data):
+        node = self.get_node(validated_data.get("trade_config_uuid"))
+
+        api_response = self.tradecore_create_api(
+            url=node.url,
+            endpoint=self.context["view"].tradecore_api_endpoint,
+            data=validated_data,
+        )
+
+        if api_response.status_code == HTTP_201_CREATED:
             return api_response.json()
 
         self.handle_exception_from_api(api_response)

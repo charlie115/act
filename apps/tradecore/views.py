@@ -20,6 +20,8 @@ from tradecore.serializers import (
     TradesViewSetQueryParamsSerializer,
     TradesViewSetFilterSerializer,
     TradesViewSetSerializer,
+    ExchangeApiKeyViewSetQueryParamsSerializer,
+    ExchangeApiKeyViewSetSerializer,
 )
 
 
@@ -110,7 +112,7 @@ class NodeViewSet(BaseViewSet):
 
 
 ###################
-# Trade Core APIs #
+# trade_core APIs #
 ###################
 
 
@@ -346,5 +348,126 @@ class TradesViewSet(
             return response.Response(status=HTTP_204_NO_CONTENT)
         elif api_response.status_code == HTTP_404_NOT_FOUND:
             raise exceptions.NotFound(api_response.json().get("detail"))
+
+        self.handle_exception_from_api(api_response)
+
+
+@extend_schema(tags=["ExchangeAPIKey"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List exchange api keys",
+        description="Returns a list of all  `exchange api keys`.",
+    ),
+    create=extend_schema(
+        operation_id="Create an exchange api key",
+        description="Creates a new `exchange api key`.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve an exchange api key",
+        description="Retrieves the details of an existing `exchange api key`.",
+    ),
+    destroy=extend_schema(
+        operation_id="Delete an exchange api key",
+        description="Deletes an existing `exchange api key`.",
+    ),
+)
+class ExchangeApiKeyViewSet(
+    TradeCoreMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = ExchangeApiKeyViewSetSerializer
+    permission_classes = [IsAdmin | IsInternal | IsManager | IsUser]
+    lookup_field = "uuid"
+    tradecore_api_endpoint = "exchange-api-key/"
+    http_method_names = ["get", "post", "delete"]
+
+    def get_object(self):
+        "Override get_object since our queryset is a dict and not a model"
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+
+        assert lookup_url_kwarg in self.kwargs, (
+            "Expected view %s to be called with a URL keyword argument "
+            'named "%s". Fix your URL conf, or set the `.lookup_field` '
+            "attribute on the view correctly."
+            % (self.__class__.__name__, lookup_url_kwarg)
+        )
+
+        obj = next(
+            (
+                item
+                for item in queryset
+                if item[self.lookup_field] == self.kwargs[lookup_url_kwarg]
+            ),
+            None,
+        )
+
+        if obj is None:
+            raise exceptions.NotFound()
+
+        return obj
+
+    # def filter_queryset(self, queryset):
+    #     filterset = super().filter_queryset(queryset)
+
+    #     query_params = TradesViewSetFilterSerializer(data=self.request.query_params)
+    #     query_params.is_valid(raise_exception=True)
+
+    #     query = {
+    #         key: value
+    #         for key, value in query_params.validated_data.items()
+    #         if key in self.request.query_params.keys()
+    #     }
+
+    #     filterset = filter_list_of_dictionaries(query, queryset)
+
+    #     return filterset
+
+    def get_queryset(self):
+        query_params = ExchangeApiKeyViewSetQueryParamsSerializer(
+            context={"view": self, "request": self.request},
+            data=self.request.query_params,
+        )
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        node = self.get_node(trade_config_uuid=query.get("trade_config_uuid"))
+
+        api_response = self.tradecore_list_api(
+            url=node.url,
+            endpoint=self.tradecore_api_endpoint,
+            query_params=query,
+        )
+
+        if api_response.status_code == HTTP_200_OK:
+            return api_response.json()
+
+        self.handle_exception_from_api(api_response)
+
+    def perform_create(self, serializer):
+        trade_config_allocation = self.get_trade_config_allocation(
+            serializer.validated_data["trade_config_uuid"]
+        )
+        self.check_object_permissions(self.request, trade_config_allocation)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        node = self.get_node(trade_config_uuid=instance.get("trade_config_uuid"))
+
+        api_response = self.tradecore_destroy_api(
+            url=node.url,
+            endpoint=self.tradecore_api_endpoint,
+            path_param=instance.get(self.lookup_field),
+        )
+
+        if api_response.status_code == HTTP_204_NO_CONTENT:
+            return response.Response(status=HTTP_204_NO_CONTENT)
 
         self.handle_exception_from_api(api_response)

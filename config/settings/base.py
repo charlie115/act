@@ -317,7 +317,12 @@ SPECTACULAR_SETTINGS = {
             },
             {
                 "name": "TRADE CORE",
-                "tags": ["Node", "TradeConfig", "Trade"],
+                "tags": [
+                    "Node",
+                    "TradeConfig",
+                    "Trade",
+                    "ExchangeAPIKey",
+                ],
             },
             {
                 "name": "MESSAGE CORE",

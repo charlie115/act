@@ -5,6 +5,7 @@ from tradecore.views import (
     NodeViewSet,
     TradeConfigViewSet,
     TradesViewSet,
+    ExchangeApiKeyViewSet,
 )
 
 
@@ -27,5 +28,6 @@ router = DocumentedRouter()
 router.register(r"nodes", NodeViewSet)
 router.register(r"trade-config", TradeConfigViewSet, basename="trade-config")
 router.register(r"trades", TradesViewSet, basename="trades")
+router.register(r"exchange-api-key", ExchangeApiKeyViewSet, basename="exchange-api-key")
 
 urlpatterns = router.urls
