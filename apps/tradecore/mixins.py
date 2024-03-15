@@ -65,6 +65,8 @@ class TradeCoreMixin(object):
             )
         except TradeConfigAllocation.DoesNotExist:
             raise exception_to_raise
+        except Exception as err:
+            raise exceptions.ParseError({"detail": err.messages})
 
         return trade_config_allocation
 
