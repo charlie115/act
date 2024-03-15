@@ -26,7 +26,7 @@ class SocialAppUsersInline(TabularInline):
 class ProxySocialAccountAdmin(ModelAdmin):
     list_display = ("user", "uid", "provider")
     list_filter = ("provider",)
-    search_fields = ("user", "uid", "provider")
+    search_fields = ("user__email", "user__username", "uid", "provider")
 
     def has_add_permission(self, request, obj=None):
         return False

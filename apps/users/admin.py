@@ -24,6 +24,7 @@ from users.models import (
     UserFavoriteAssets,
     UserManagement,
     UserRole,
+    UserSocialApps,
     DepositBalance,
     DepositHistory,
 )
@@ -246,6 +247,25 @@ class UserBlocklistAdmin(ModelAdmin):
         return False
 
 
+class UserSocialAppsAdmin(ModelAdmin):
+    list_display = [
+        "id",
+        "user",
+        "socialapp",
+    ]
+    search_fields = [
+        "user__email",
+        "user__username",
+        "socialapp__name",
+        "socialapp__provider",
+        "socialapp__clientid",
+        "socialapp__secret",
+    ]
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
 class DepositBalanceAdmin(ModelAdmin):
     list_display = [
         "user",
@@ -294,10 +314,11 @@ class DepositHistoryAdmin(ModelAdmin):
         return False
 
 
-admin.site.register(UserFavoriteAssets, UserFavoriteAssetsAdmin)
-admin.site.register(UserRole, UserRoleAdmin)
 admin.site.register(UserBlocklist, UserBlocklistAdmin)
-admin.site.register(User, UserAdmin)
+admin.site.register(UserFavoriteAssets, UserFavoriteAssetsAdmin)
 admin.site.register(UserManagement, UserManagementAdmin)
+admin.site.register(UserRole, UserRoleAdmin)
+admin.site.register(UserSocialApps, UserSocialAppsAdmin)
+admin.site.register(User, UserAdmin)
 admin.site.register(DepositBalance, DepositBalanceAdmin)
 admin.site.register(DepositHistory, DepositHistoryAdmin)

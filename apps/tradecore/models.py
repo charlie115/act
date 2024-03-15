@@ -71,6 +71,9 @@ class TradeConfigAllocation(models.Model):
         verbose_name="Trade Config UUID",
     )
 
+    def __str__(self):
+        return f"({self.node}) Trade Config {self.trade_config_uuid}"
+
     class Meta:
         constraints = [
             models.UniqueConstraint(

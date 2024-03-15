@@ -1,18 +1,21 @@
 import re
 
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.widgets import SELECT_CLASSES
 
+from lib.status import HTTP_204_NO_CONTENT
 from tradecore.models import (
     EnabledMarketCodeCombination,
     Node,
     TradeConfigAllocation,
 )
+from tradecore.views import TradeConfigViewSet
 
 
 class UsersInline(TabularInline):
@@ -112,11 +115,12 @@ class NodeAdmin(ModelAdmin):
 
 class TradeConfigAllocationAdmin(ModelAdmin):
     list_display = [
-        "node_link",
+        "node",
         "target_market_code",
         "origin_market_code",
-        "user_link",
+        "user",
         "trade_config_uuid",
+        "delete_button",
     ]
     search_fields = [
         "node__name",
@@ -131,25 +135,63 @@ class TradeConfigAllocationAdmin(ModelAdmin):
         "trade_config_uuid",
     ]
 
-    def node_link(self, obj):
-        url = reverse("admin:tradecore_node_change", args=(obj.node.id,))
-        return mark_safe(f"<a href='{url}'>{obj.node}</a>")
+    def delete_button(self, obj):
+        delete_button_class = (
+            "block border border-red-500 font-medium px-3 py-2 rounded-md text-center text-sm "
+            "text-red-500 whitespace-nowrap dark:border-transparent dark:bg-red-500/20 dark:text-red-500"
+        )
+        return mark_safe(
+            f'<a class="{delete_button_class}" href="/admin/tradecore/tradeconfigallocation/{obj.id}/delete/">'
+            "Delete"
+            "</a>"
+        )
 
-    node_link.short_description = "Node"
+    delete_button.short_description = "Delete?"
 
-    def user_link(self, obj):
-        url = reverse("admin:users_user_change", args=(obj.user.id,))
-        return mark_safe(f"<a href='{url}'>{obj.user}</a>")
+    def get_actions(self, request):
+        """
+        We need to allow has_delete_permissions to be able to delete a TradeConfigAllocation, but at the same time,
+        remove bulk delete since we have to call trade_core api for each object we want to delete.
+        """
+        actions = super().get_actions(request)
+        if "delete_selected" in actions:
+            del actions["delete_selected"]
+        return actions
 
-    user_link.short_description = "User"
+    def delete_model(self, request, obj):
+        api_response = TradeConfigViewSet().tradecore_destroy_api(
+            url=obj.node.url,
+            endpoint=TradeConfigViewSet.tradecore_api_endpoint,
+            path_param=obj.trade_config_uuid,
+        )
+
+        if api_response.status_code == HTTP_204_NO_CONTENT:
+            return super().delete_model(request, obj)
+
+        try:
+            message = api_response.json()
+            message = message["detail"] if "detail" in message else message
+        except Exception:
+            message = api_response.content
+
+        self.message_user(request, message, messages.ERROR)
+
+    def response_delete(self, request, obj_display, obj_id):
+        try:
+            TradeConfigAllocation.objects.get(id=obj_id)
+            url = reverse(
+                "admin:%s_%s_changelist" % (self.opts.app_label, self.opts.model_name),
+                current_app=self.admin_site.name,
+            )
+            return HttpResponseRedirect(url)
+
+        except TradeConfigAllocation.DoesNotExist:
+            return super().response_delete(request, obj_display, obj_id)
 
     def has_add_permission(self, request, obj=None):
         return False
 
     def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
         return False
 
 
