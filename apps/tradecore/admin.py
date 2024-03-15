@@ -8,6 +8,7 @@ from django.utils.safestring import mark_safe
 
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.widgets import SELECT_CLASSES
+from urllib.parse import urljoin
 
 from lib.status import HTTP_204_NO_CONTENT
 from tradecore.models import (
@@ -140,11 +141,14 @@ class TradeConfigAllocationAdmin(ModelAdmin):
             "block border border-red-500 font-medium px-3 py-2 rounded-md text-center text-sm "
             "text-red-500 whitespace-nowrap dark:border-transparent dark:bg-red-500/20 dark:text-red-500"
         )
-        return mark_safe(
-            f'<a class="{delete_button_class}" href="/admin/tradecore/tradeconfigallocation/{obj.id}/delete/">'
-            "Delete"
-            "</a>"
+        url = urljoin(
+            reverse(
+                "admin:%s_%s_changelist" % (self.opts.app_label, self.opts.model_name),
+                current_app=self.admin_site.name,
+            ),
+            f"{obj.id}/delete/",
         )
+        return mark_safe(f'<a class="{delete_button_class}" href="{url}">Delete</a>')
 
     delete_button.short_description = "Delete?"
 
