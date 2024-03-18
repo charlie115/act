@@ -235,7 +235,7 @@ function MarketCodeMenu({ onChange }) {
             spacing={{ xs: 0.5, sm: 1 }}
             sx={{ alignItems: 'center' }}
           >
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+            <Box>
               <Box
                 component="img"
                 src={targetMarketCode.icon}
@@ -243,12 +243,13 @@ function MarketCodeMenu({ onChange }) {
                 sx={{
                   height: { xs: 16, md: 18 },
                   width: { xs: 16, md: 18 },
+                  verticalAlign: 'middle',
                 }}
-              />
-              <Box>{targetMarketCode?.label}</Box>
-            </Stack>
+              />{' '}
+              {targetMarketCode?.label}
+            </Box>
             <SyncAltIcon color="secondary" fontSize="small" />
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+            <Box>
               {originMarketCode?.icon ? (
                 <Box
                   component="img"
@@ -257,19 +258,21 @@ function MarketCodeMenu({ onChange }) {
                   sx={{
                     height: { xs: 16, md: 18 },
                     width: { xs: 16, md: 18 },
+                    verticalAlign: 'middle',
                   }}
                 />
               ) : (
-                <WarningAmberIcon color="secondary" />
-              )}
-              {originMarketCode?.label ? (
-                <Box>{originMarketCode.label}</Box>
-              ) : (
+                <WarningAmberIcon
+                  color="secondary"
+                  sx={{ verticalAlign: 'middle' }}
+                />
+              )}{' '}
+              {originMarketCode?.label || (
                 <Box component="small" sx={{ color: 'secondary.main' }}>
                   {t('Please select origin exchange')}
                 </Box>
               )}
-            </Stack>
+            </Box>
           </Stack>
         </Button>
         {bookmarkedCombinations.length > 0 && (
@@ -418,7 +421,6 @@ function MarketCodeMenu({ onChange }) {
                                 onClick={() => {
                                   setOriginMarketCode(origin);
                                   setOpen(false);
-
                                   dispatch(
                                     changeDefaultMarketCodes({
                                       targetMarketCode: targetMarketCode.value,
@@ -447,6 +449,7 @@ function MarketCodeMenu({ onChange }) {
                                 />
                                 <IconButton
                                   size="small"
+                                  edge="end"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     dispatch(
@@ -456,7 +459,6 @@ function MarketCodeMenu({ onChange }) {
                                       })
                                     );
                                   }}
-                                  edge="end"
                                 >
                                   <BookmarkIcon
                                     color={

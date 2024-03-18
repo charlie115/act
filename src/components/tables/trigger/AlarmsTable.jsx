@@ -7,14 +7,7 @@ import React, {
 } from 'react';
 
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
-import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
@@ -24,7 +17,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { DateTime } from 'luxon';
 
 import {
@@ -35,6 +28,7 @@ import {
 import isEmpty from 'lodash/isEmpty';
 import orderBy from 'lodash/orderBy';
 
+import DeleteAlert from 'components/DeleteAlert';
 import ReactTableUI from 'components/ReactTableUI';
 import UpdateAlarmForm from 'components/UpdateAlarmForm';
 
@@ -240,58 +234,25 @@ export default function AlarmsTable({
           },
         })}
       />
-      <Dialog
+      <DeleteAlert
+        loading={isDeleteLoading}
         open={deleteAlert}
+        title={t(
+          'Are you sure you want to permanently delete the selected alarm(s)?'
+        )}
+        onCancel={() => setDeleteAlert(false)}
         onClose={() => setDeleteAlert(isDeleteLoading)}
-        aria-labelledby="delete-alert-title"
-        aria-describedby="delete-alert-description"
-      >
-        {isDeleteLoading && <LinearProgress />}
-        <DialogTitle id="delete-alert-title">
-          {t(
-            'Are you sure you want to permanently delete the selected alarm(s)?'
-          )}
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="delete-alert-description">
-            <Trans>
-              This action is{' '}
-              <strong style={{ textTransform: 'underline' }}>
-                irreversible
-              </strong>
-              !
-            </Trans>{' '}
-            {t('Do you wish to continue?')}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            autoFocus
-            color="secondary"
-            disabled={isDeleteLoading}
-            onClick={() => setDeleteAlert(false)}
-          >
-            {t('Cancel')}
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            disabled={isDeleteLoading}
-            onClick={() =>
-              deleteMultipleTrades(
-                Object.keys(rowSelection).map((row) => ({
-                  uuid: row,
-                  params: {
-                    tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid,
-                  },
-                }))
-              )
-            }
-          >
-            {t('Delete')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onDelete={() =>
+          deleteMultipleTrades(
+            Object.keys(rowSelection).map((row) => ({
+              uuid: row,
+              params: {
+                tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid,
+              },
+            }))
+          )
+        }
+      />
     </Box>
   );
 }

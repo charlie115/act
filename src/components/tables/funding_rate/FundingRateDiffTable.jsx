@@ -45,8 +45,8 @@ import ReactTableUI, { TableCell, TableRow } from 'components/ReactTableUI';
 
 import { EXCHANGE_LIST } from 'constants/lists';
 
+import renderAssetIconCell from 'components/tables/common/renderAssetIconCell';
 import renderExpandCell from 'components/tables/common/renderExpandCell';
-import renderIconCell from 'components/tables/common/renderIconCell';
 import renderFundingRateCell from './renderFundingRateCell';
 import renderFundingRateDiffCell from './renderFundingRateDiffCell';
 import renderMarketCell from './renderMarketCell';
@@ -172,7 +172,7 @@ export default function FundingRateDiffTable() {
         enableSorting: false,
         maxSize: isMobile ? 15 : 80,
         header: <span />,
-        cell: renderIconCell,
+        cell: renderAssetIconCell,
         props: { rowSpan: 2 },
       },
       {

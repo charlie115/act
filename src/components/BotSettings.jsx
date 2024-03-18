@@ -11,9 +11,7 @@ import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import Typography from '@mui/material/Typography';
 
-import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
@@ -23,6 +21,8 @@ import TimesOneMobiledataIcon from '@mui/icons-material/TimesOneMobiledata';
 
 import { useTheme } from '@mui/material/styles';
 
+import { useTranslation } from 'react-i18next';
+
 import { Controller, useForm } from 'react-hook-form';
 
 import {
@@ -30,12 +30,9 @@ import {
   usePutTradeConfigMutation,
 } from 'redux/api/drf/tradecore';
 
-import { useTranslation } from 'react-i18next';
-
 export default function BotSettings({
   marketCodeSelectorRef,
-  selectedMarketCodeCombination,
-  onChangeTabHandler,
+  marketCodeCombination,
 }) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -46,8 +43,8 @@ export default function BotSettings({
   const [putTradeConfig] = usePutTradeConfigMutation();
 
   const { currentData } = useGetTradeConfigQuery(
-    { uuid: selectedMarketCodeCombination?.tradeConfigUuid },
-    { skip: !selectedMarketCodeCombination?.tradeConfigUuid }
+    { uuid: marketCodeCombination?.tradeConfigUuid },
+    { skip: !marketCodeCombination?.tradeConfigUuid }
   );
 
   const countForm = useForm({
@@ -102,7 +99,7 @@ export default function BotSettings({
       sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
     >
       <Box sx={{ mx: 'auto', my: 4 }}>
-        {selectedMarketCodeCombination?.value === 'ALL' ? (
+        {marketCodeCombination?.value === 'ALL' ? (
           <Button
             color="secondary"
             onClick={() => marketCodeSelectorRef.current.toggle()}
@@ -127,15 +124,11 @@ export default function BotSettings({
                     spacing={1}
                     onClick={() => marketCodeSelectorRef.current.toggle()}
                   >
-                    {selectedMarketCodeCombination?.target.icon}
-                    <Box>
-                      {selectedMarketCodeCombination?.target.getLabel()}
-                    </Box>
+                    {marketCodeCombination?.target.icon}
+                    <Box>{marketCodeCombination?.target.getLabel()}</Box>
                     <SyncAltIcon color="accent" fontSize="small" />
-                    {selectedMarketCodeCombination?.origin.icon}
-                    <Box>
-                      {selectedMarketCodeCombination?.origin.getLabel()}
-                    </Box>
+                    {marketCodeCombination?.origin.icon}
+                    <Box>{marketCodeCombination?.origin.getLabel()}</Box>
                     <Box
                       sx={{
                         alignSelf: 'center',
@@ -149,32 +142,13 @@ export default function BotSettings({
                         px: 1,
                       }}
                     >
-                      {selectedMarketCodeCombination?.name}
+                      {marketCodeCombination?.name}
                     </Box>
                   </Stack>
                 </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {!selectedMarketCodeCombination.tradeConfigUuid && (
-                <TableRow>
-                  <TableCell align="center">
-                    <Typography sx={{ mb: 2 }}>
-                      {t(
-                        'You do not have an existing allocation with this market code combination.'
-                      )}
-                    </Typography>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      endIcon={<AddIcon size="small" />}
-                      onClick={() => onChangeTabHandler(0)}
-                    >
-                      {t('Add')}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              )}
               {currentData && (
                 <>
                   <TableRow
@@ -208,7 +182,6 @@ export default function BotSettings({
                               >
                                 <Input
                                   autoFocus
-                                  // readOnly={isLoading}
                                   type="number"
                                   inputProps={{ step: 1 }}
                                   {...field}

@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 
 import BlockIcon from '@mui/icons-material/Block';
 
-export default function renderIconCell({ cell, row, isMobile }) {
+export default function renderAssetIconCell({ cell, row, isMobile }) {
   return (
     <Box sx={{ display: 'flex', textAlign: 'center' }}>
       {cell.getValue() ? (

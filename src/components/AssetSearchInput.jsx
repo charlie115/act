@@ -164,7 +164,7 @@ const AssetSearchInput = forwardRef(
                   setOpen(false);
                   inputRef.current?.blur();
                 }}
-                sx={{ alignSelf: 'flex-end' }}
+                sx={{ alignSelf: 'flex-end', p: 0 }}
               >
                 {selectIcon || <DoneIcon />}
               </IconButton>

@@ -10,15 +10,15 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
 import Grow from '@mui/material/Grow';
+import LinearProgress from '@mui/material/LinearProgress';
+import ListItem from '@mui/material/ListItem';
+import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction';
 import ListItemText from '@mui/material/ListItemText';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import MenuItem from '@mui/material/MenuItem';
 import MenuList from '@mui/material/MenuList';
 import Paper from '@mui/material/Paper';
 import Popper from '@mui/material/Popper';
 import Stack from '@mui/material/Stack';
 
-import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 
@@ -28,7 +28,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { usePrevious } from '@uidotdev/usehooks';
 
 const MarketCodeCombinationSelector = forwardRef(
-  ({ options = [], value, onSelectItem, buttonStyle }, ref) => {
+  ({ options = [], value, loading, onSelectItem, buttonStyle }, ref) => {
     const anchorRef = useRef();
 
     const theme = useTheme();
@@ -61,6 +61,7 @@ const MarketCodeCombinationSelector = forwardRef(
     };
 
     const handleSelect = (e, item) => {
+      if (item.disabled) return;
       if (onSelectItem) onSelectItem(item);
       handleClose(e);
     };
@@ -105,10 +106,13 @@ const MarketCodeCombinationSelector = forwardRef(
           <Box sx={{ mr: 'auto' }}>
             {value?.target && value?.origin ? (
               <Stack alignItems="center" direction="row" spacing={1}>
-                {value.target.icon} <Box>{value.target.getLabel()}</Box>
+                <Box>
+                  {value.target.icon} {value.target.getLabel()}
+                </Box>
                 <SyncAltIcon color="accent" fontSize="small" />
-                {value.origin.icon}
-                <Box>{value.origin.getLabel()}</Box>
+                <Box>
+                  {value.origin.icon} {value.origin.getLabel()}
+                </Box>
               </Stack>
             ) : (
               value?.getLabel()
@@ -135,58 +139,74 @@ const MarketCodeCombinationSelector = forwardRef(
               <Box component={Paper}>
                 <ClickAwayListener onClickAway={handleClose}>
                   <MenuList
-                    aria-labelledby="dropdown-button"
+                    aria-labelledby="menu-list-button"
                     autoFocusItem={open}
                     onKeyDown={handleListKeyDown}
                     sx={{ minWidth: 150 }}
                   >
+                    {loading && <LinearProgress />}
                     {options.map((item) => (
-                      <MenuItem
+                      <ListItem
                         dense
                         key={item.value}
-                        disabled={item.disabled}
                         selected={item.value === value.value}
                         onClick={(e) => handleSelect(e, item)}
-                        sx={{
-                          opacity:
-                            item.tradeConfigUuid || item.value === 'ALL'
-                              ? 1
-                              : 0.5,
-                        }}
+                        sx={
+                          !item.disabled
+                            ? {
+                                cursor: 'pointer',
+                                ':hover': { bgcolor: 'divider' },
+                              }
+                            : {}
+                        }
                       >
                         {item.target && item.origin ? (
                           <>
-                            {item.target.icon && (
-                              <ListItemIcon>{item.target.icon}</ListItemIcon>
-                            )}
-                            <ListItemText>
-                              {item.target.getLabel()}
+                            <ListItemText
+                              sx={{ opacity: item.disabled ? 0.5 : 1 }}
+                            >
+                              {item.target?.icon} {item.target.getLabel()}
                             </ListItemText>
                             <SyncAltIcon
                               color="accent"
                               fontSize="small"
-                              sx={{ mx: 2 }}
+                              sx={{ mx: 2, opacity: item.disabled ? 0.5 : 1 }}
                             />
-                            {item.origin.icon && (
-                              <ListItemIcon>{item.origin.icon}</ListItemIcon>
-                            )}
-                            <ListItemText>
-                              {item.origin.getLabel()}
+                            <ListItemText
+                              sx={{ opacity: item.disabled ? 0.5 : 1 }}
+                            >
+                              {item.origin?.icon} {item.origin.getLabel()}
                             </ListItemText>
-                            {!item.tradeConfigUuid && (
-                              <AddIcon color="success" sx={{ fontSize: 16 }} />
+                            {item.secondaryIcon && (
+                              <ListItemSecondaryAction>
+                                {item.secondaryIcon}
+                              </ListItemSecondaryAction>
                             )}
+                            {/* {item.add && (
+                              <ListItemSecondaryAction>
+                                <IconButton
+                                  color="success"
+                                  edge="end"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onAddItem(item);
+                                  }}
+                                  sx={{ p: 0 }}
+                                >
+                                  <AddIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              </ListItemSecondaryAction>
+                            )} */}
                           </>
                         ) : (
                           <>
-                            {item.icon && (
-                              <ListItemIcon>{item.icon}</ListItemIcon>
-                            )}
-                            <ListItemText>{item.getLabel()}</ListItemText>
+                            <ListItemText>
+                              {item.icon} {item.getLabel()}
+                            </ListItemText>
                             {item.secondaryIcon && item.secondaryIcon}
                           </>
                         )}
-                      </MenuItem>
+                      </ListItem>
                     ))}
                   </MenuList>
                 </ClickAwayListener>

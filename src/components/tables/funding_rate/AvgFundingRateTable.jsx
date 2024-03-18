@@ -39,8 +39,8 @@ import ReactTableUI from 'components/ReactTableUI';
 
 import { EXCHANGE_LIST } from 'constants/lists';
 
+import renderAssetIconCell from 'components/tables/common/renderAssetIconCell';
 import renderExpandCell from 'components/tables/common/renderExpandCell';
-import renderIconCell from 'components/tables/common/renderIconCell';
 import renderFundingRateCell from './renderFundingRateCell';
 import renderMarketCell from './renderMarketCell';
 
@@ -131,7 +131,7 @@ export default function AvgFundingRateTable() {
         enableSorting: false,
         size: isMobile ? 20 : 40,
         header: <span />,
-        cell: renderIconCell,
+        cell: renderAssetIconCell,
       },
       {
         accessorKey: 'symbol',

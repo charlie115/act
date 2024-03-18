@@ -53,9 +53,6 @@ const api = drfApi.injectEndpoints({
     getMarketCodes: builder.query({
       keepUnusedDataFor: 5,
       query: () => '/infocore/market-codes/',
-      // transformResponse: () => ({
-      //   'BITHUMB_SPOT/KRW': ['BINANCE_SPOT/USDT', 'OKX_USD_M/USDT'],
-      // }),
     }),
     getWalletStatus: builder.query({
       keepUnusedDataFor: 0,

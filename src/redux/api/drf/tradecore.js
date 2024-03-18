@@ -4,20 +4,13 @@ import baseQueryWithReAuth from 'utils/baseQueryWithReAuth';
 
 const api = drfApi.injectEndpoints({
   endpoints: (builder) => ({
-    getNodes: builder.query({
-      keepUnusedDataFor: 1,
-      query: (params) => ({
-        url: '/tradecore/nodes/',
+    deleteExchangeApiKey: builder.mutation({
+      query: ({ id, ...params }) => ({
+        url: `/tradecore/exchange-api-key/${id}/`,
+        method: 'DELETE',
         params,
       }),
-    }),
-    getTradeConfig: builder.query({
-      keepUnusedDataFor: 1,
-      providesTags: ['TradeConfig'],
-      query: ({ uuid, ...params }) => ({
-        url: `/tradecore/trade-config/${uuid}/`,
-        params,
-      }),
+      invalidatesTags: ['ExchangeApiKey'],
     }),
     deleteMultipleTrades: builder.mutation({
       queryFn: async (items, queryApi, extraOptions) => {
@@ -76,6 +69,29 @@ const api = drfApi.injectEndpoints({
         }
       },
     }),
+    getExchangeApiKey: builder.query({
+      keepUnusedDataFor: 1,
+      providesTags: ['ExchangeApiKey'],
+      query: (params) => ({
+        url: '/tradecore/exchange-api-key/',
+        params,
+      }),
+    }),
+    getNodes: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/tradecore/nodes/',
+        params,
+      }),
+    }),
+    getTradeConfig: builder.query({
+      keepUnusedDataFor: 1,
+      providesTags: ['TradeConfig'],
+      query: ({ uuid, ...params }) => ({
+        url: `/tradecore/trade-config/${uuid}/`,
+        params,
+      }),
+    }),
     getTradesByTradeConfig: builder.query({
       keepUnusedDataFor: 1,
       providesTags: ['TradesByTradeConfig'],
@@ -83,6 +99,14 @@ const api = drfApi.injectEndpoints({
         url: '/tradecore/trades/',
         params,
       }),
+    }),
+    postExchangeApiKey: builder.mutation({
+      query: (body) => ({
+        url: '/tradecore/exchange-api-key/',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['ExchangeApiKey'],
     }),
     postTrade: builder.mutation({
       query: (body) => ({
@@ -123,11 +147,14 @@ const api = drfApi.injectEndpoints({
 
 export default api;
 export const {
+  useDeleteExchangeApiKeyMutation,
   useDeleteMultipleTradesMutation,
   useGetAllTradesQuery,
+  useGetExchangeApiKeyQuery,
   useGetNodesQuery,
   useGetTradeConfigQuery,
   useGetTradesByTradeConfigQuery,
+  usePostExchangeApiKeyMutation,
   usePostTradeMutation,
   usePostTradeConfigMutation,
   usePutTradeMutation,

@@ -79,9 +79,9 @@ const CreateAlarmForm = forwardRef(
 
     const {
       control,
-      handleSubmit,
       formState,
       getValues,
+      handleSubmit,
       reset,
       setValue,
       trigger,

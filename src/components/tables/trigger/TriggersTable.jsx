@@ -7,14 +7,7 @@ import React, {
 } from 'react';
 
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
-import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
@@ -26,7 +19,7 @@ import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { DateTime } from 'luxon';
 
 import { useGetAssetsQuery } from 'redux/api/drf/infocore';
@@ -43,6 +36,7 @@ import isKoreanMarket from 'utils/isKoreanMarket';
 
 import AssetSearchInput from 'components/AssetSearchInput';
 import CreateAlarmForm from 'components/CreateAlarmForm';
+import DeleteAlert from 'components/DeleteAlert';
 import DropdownMenu from 'components/DropdownMenu';
 import PremiumDataChartViewer from 'components/PremiumDataChartViewer';
 import ReactTableUI from 'components/ReactTableUI';
@@ -50,8 +44,8 @@ import UpdateAlarmForm from 'components/UpdateAlarmForm';
 
 import { TRIGGER_LIST } from 'constants/lists';
 
+import renderAssetIconCell from 'components/tables/common/renderAssetIconCell';
 import renderExpandCell from 'components/tables/common/renderExpandCell';
-import renderIconCell from 'components/tables/common/renderIconCell';
 import renderMarketCodesCell from './renderMarketCodesCell';
 import renderSelectCell from './renderSelectCell';
 import renderStatusCell from './renderStatusCell';
@@ -60,7 +54,8 @@ import renderValueCell from './renderValueCell';
 import renderSelectHeader from './renderSelectHeader';
 
 export default function TriggersTable({
-  selectedMarketCodeCombination,
+  marketCodeCombination,
+  queryKey,
   tradeConfigAllocations,
   tradeConfigUuids,
 }) {
@@ -103,16 +98,13 @@ export default function TriggersTable({
   const { data: assetsData } = useGetAssetsQuery();
 
   const marketCodes = useMemo(() => {
-    if (
-      !selectedMarketCodeCombination?.value ||
-      selectedMarketCodeCombination.value === 'ALL'
-    )
+    if (!marketCodeCombination?.value || marketCodeCombination.value === 'ALL')
       return null;
     return {
-      targetMarketCode: selectedMarketCodeCombination?.target.value,
-      originMarketCode: selectedMarketCodeCombination?.origin.value,
+      targetMarketCode: marketCodeCombination?.target.value,
+      originMarketCode: marketCodeCombination?.origin.value,
     };
-  }, [selectedMarketCodeCombination?.value]);
+  }, [marketCodeCombination?.value]);
 
   const tradeConfigAllocation = useMemo(
     () =>
@@ -158,7 +150,7 @@ export default function TriggersTable({
         enableSorting: false,
         maxSize: 10,
         header: <span />,
-        cell: renderIconCell,
+        cell: renderAssetIconCell,
       },
       {
         accessorKey: 'baseAsset',
@@ -218,8 +210,8 @@ export default function TriggersTable({
           name: selectedAsset,
           icon: assetsData?.[selectedAsset]?.icon,
           marketCodes: {
-            targetMarketCode: selectedMarketCodeCombination?.target.value,
-            originMarketCode: selectedMarketCodeCombination?.origin.value,
+            targetMarketCode: marketCodeCombination?.target.value,
+            originMarketCode: marketCodeCombination?.origin.value,
           },
           status: null,
           add: true,
@@ -230,11 +222,10 @@ export default function TriggersTable({
       ?.filter((item) => {
         if (!item) return false;
 
-        let flag = selectedMarketCodeCombination?.value === 'ALL';
-        if (selectedMarketCodeCombination?.value !== 'ALL')
+        let flag = marketCodeCombination?.value === 'ALL';
+        if (marketCodeCombination?.value !== 'ALL')
           flag =
-            selectedMarketCodeCombination?.tradeConfigUuid ===
-            item.trade_config_uuid;
+            marketCodeCombination?.tradeConfigUuid === item.trade_config_uuid;
         if (selectedTriggerType?.value !== 'ALL')
           flag =
             flag && selectedTriggerType?.value === 'alarms'
@@ -269,7 +260,7 @@ export default function TriggersTable({
     data,
     assetsData,
     selectedAsset,
-    selectedMarketCodeCombination,
+    marketCodeCombination,
     selectedTriggerType,
     tradeConfigAllocations,
     isDeleteLoading,
@@ -278,19 +269,19 @@ export default function TriggersTable({
   const assetSearchProps = useMemo(
     () => ({
       apiOptions: { skip: !marketCodes },
-      apiParams: { ...marketCodes, interval: '1T' },
+      apiParams: { ...marketCodes, queryKey, interval: '1T' },
     }),
-    [marketCodes]
+    [marketCodes, queryKey]
   );
 
   useEffect(() => {
     if (
-      selectedMarketCodeCombination &&
-      selectedMarketCodeCombination.value !== 'ALL' &&
-      !selectedMarketCodeCombination.tradeConfigUuid
+      marketCodeCombination &&
+      marketCodeCombination.value !== 'ALL' &&
+      !marketCodeCombination.tradeConfigUuid
     )
       assetSearchRef?.current?.open();
-  }, [selectedMarketCodeCombination]);
+  }, [marketCodeCombination]);
 
   useEffect(() => {
     if (selectedAsset)
@@ -365,9 +356,9 @@ export default function TriggersTable({
         />
         <Box
           className={
-            selectedMarketCodeCombination &&
-            selectedMarketCodeCombination.value !== 'ALL' &&
-            !selectedMarketCodeCombination.tradeConfigUuid
+            marketCodeCombination &&
+            marketCodeCombination.value !== 'ALL' &&
+            !marketCodeCombination.tradeConfigUuid
               ? 'animate__animated animate__pulse animate__repeat-2'
               : undefined
           }
@@ -451,59 +442,26 @@ export default function TriggersTable({
           },
         })}
       />
-      <Dialog
+      <DeleteAlert
+        loading={isDeleteLoading}
         open={deleteAlert}
+        title={t(
+          'Are you sure you want to permanently delete the selected trigger(s)?'
+        )}
+        onCancel={() => setDeleteAlert(false)}
         onClose={() => setDeleteAlert(isDeleteLoading)}
-        aria-labelledby="delete-alert-title"
-        aria-describedby="delete-alert-description"
-      >
-        {isDeleteLoading && <LinearProgress />}
-        <DialogTitle id="delete-alert-title">
-          {t(
-            'Are you sure you want to permanently delete the selected trigger(s)?'
-          )}
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="delete-alert-description">
-            <Trans>
-              This action is{' '}
-              <strong style={{ textTransform: 'underline' }}>
-                irreversible
-              </strong>
-              !
-            </Trans>{' '}
-            {t('Do you wish to continue?')}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            autoFocus
-            color="secondary"
-            disabled={isDeleteLoading}
-            onClick={() => setDeleteAlert(false)}
-          >
-            {t('Cancel')}
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            disabled={isDeleteLoading}
-            onClick={() =>
-              deleteMultipleTrades(
-                Object.keys(rowSelection).map((row) => {
-                  const details = tableData.find((o) => o.uuid === row);
-                  return {
-                    uuid: row,
-                    params: { tradeConfigUuid: details.trade_config_uuid },
-                  };
-                })
-              )
-            }
-          >
-            {t('Delete')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onDelete={() =>
+          deleteMultipleTrades(
+            Object.keys(rowSelection).map((row) => {
+              const details = tableData.find((o) => o.uuid === row);
+              return {
+                uuid: row,
+                params: { tradeConfigUuid: details.trade_config_uuid },
+              };
+            })
+          )
+        }
+      />
     </Box>
   );
 }
