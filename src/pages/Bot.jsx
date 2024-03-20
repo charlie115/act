@@ -176,6 +176,7 @@ export default function Bot() {
                 (currentTab === 2 && !item.tradeSupport),
               target: {
                 ...target,
+                isSpot: targetMarket.includes('SPOT'),
                 icon: (
                   <Box
                     component="img"
@@ -191,6 +192,7 @@ export default function Bot() {
               },
               origin: {
                 ...origin,
+                isSpot: originMarket.includes('SPOT'),
                 icon: (
                   <Box
                     component="img"

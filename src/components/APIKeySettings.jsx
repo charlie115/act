@@ -26,7 +26,7 @@ import {
 
 import { useTranslation } from 'react-i18next';
 
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 
 import { DateTime } from 'luxon';
 
@@ -54,12 +54,12 @@ export default function APIKeySettings({ marketCodeCombination }) {
   const [deleteExchangeApiKey, deleteResults] =
     useDeleteExchangeApiKeyMutation();
 
-  const { control, formState, handleSubmit, reset } = useForm({
+  const { formState, handleSubmit, register, reset, unregister } = useForm({
     defaultValues: { accessKey: '', secretKey: '', passphrase: '' },
     mode: 'all',
   });
 
-  const { isValid } = formState;
+  const { errors, isValid } = formState;
 
   const onSubmit = (data) => {
     createExchangeApiKey({
@@ -137,6 +137,7 @@ export default function APIKeySettings({ marketCodeCombination }) {
       setShowPassphrase(false);
       setShowSecretKey(false);
     }
+    if (marketCodeForm?.exchange !== 'OKX') unregister('passphrase');
   }, [marketCodeForm]);
 
   useEffect(() => {
@@ -230,95 +231,70 @@ export default function APIKeySettings({ marketCodeCombination }) {
             )}
             .
           </DialogContentText>
-          <Controller
-            name="accessKey"
-            control={control}
-            rules={{ required: true }}
-            render={({ field, fieldState }) => (
-              <TextField
-                autoFocus
-                fullWidth
-                required
-                margin="dense"
-                variant="standard"
-                label={t('Access Key')}
-                error={!!fieldState.error}
-                {...field}
-              />
-            )}
+          <TextField
+            autoFocus
+            fullWidth
+            required
+            margin="dense"
+            variant="standard"
+            label={t('Access Key')}
+            error={!!errors?.accessKey}
+            {...register('accessKey', { required: true })}
           />
-          <Controller
-            name="secretKey"
-            control={control}
-            rules={{ required: true }}
-            render={({ field, fieldState }) => (
-              <TextField
-                fullWidth
-                required
-                margin="dense"
-                variant="standard"
-                label={t('Secret Key')}
-                error={!!fieldState.error}
-                type={showSecretKey ? 'text' : 'password'}
-                InputProps={{
-                  inputProps: { autoComplete: 'off' },
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle secret key visibility"
-                        color="secondary"
-                        onClick={() => setShowSecretKey((state) => !state)}
-                        sx={{ p: 0 }}
-                      >
-                        {showSecretKey ? (
-                          <VisibilityOffIcon />
-                        ) : (
-                          <VisibilityIcon />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                {...field}
-              />
-            )}
+          <TextField
+            fullWidth
+            required
+            margin="dense"
+            variant="standard"
+            label={t('Secret Key')}
+            error={!!errors?.secretKey}
+            type={showSecretKey ? 'text' : 'password'}
+            InputProps={{
+              inputProps: { autoComplete: 'off' },
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle secret key visibility"
+                    color="secondary"
+                    onClick={() => setShowSecretKey((state) => !state)}
+                    sx={{ p: 0 }}
+                  >
+                    {showSecretKey ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+            {...register('secretKey', { required: true })}
           />
           {marketCodeForm?.exchange === 'OKX' && (
-            <Controller
-              name="passphrase"
-              control={control}
-              rules={{ required: true }}
-              render={({ field, fieldState }) => (
-                <TextField
-                  fullWidth
-                  required
-                  margin="dense"
-                  variant="standard"
-                  label={t('Passphrase')}
-                  error={!!fieldState.error}
-                  type={showPassphrase ? 'text' : 'password'}
-                  InputProps={{
-                    inputProps: { autoComplete: 'off' },
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label="toggle passphrase visibility"
-                          color="secondary"
-                          onClick={() => setShowPassphrase((state) => !state)}
-                          sx={{ p: 0 }}
-                        >
-                          {showPassphrase ? (
-                            <VisibilityOffIcon />
-                          ) : (
-                            <VisibilityIcon />
-                          )}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                  {...field}
-                />
-              )}
+            <TextField
+              fullWidth
+              required
+              margin="dense"
+              variant="standard"
+              label={t('Passphrase')}
+              error={!!errors?.passphrase}
+              type={showPassphrase ? 'text' : 'password'}
+              InputProps={{
+                inputProps: { autoComplete: 'off' },
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle passphrase visibility"
+                      color="secondary"
+                      onClick={() => setShowPassphrase((state) => !state)}
+                      sx={{ p: 0 }}
+                    >
+                      {showPassphrase ? (
+                        <VisibilityOffIcon />
+                      ) : (
+                        <VisibilityIcon />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              {...register('passphrase', { required: true })}
             />
           )}
         </DialogContent>

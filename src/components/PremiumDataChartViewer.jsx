@@ -1,10 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-  useMemo,
-  useRef,
-  useCallback,
-} from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -107,7 +101,7 @@ function PremiumDataChartViewer({
     [marketCodes]
   );
 
-  const { data, isFetching } = useGetRealTimeKlineQuery(
+  const { data } = useGetRealTimeKlineQuery(
     {
       ...marketCodes,
       interval: klineInterval,
@@ -140,145 +134,6 @@ function PremiumDataChartViewer({
     if (defaultDisabledChartDataType)
       setDisabledChartDataType(defaultDisabledChartDataType);
   }, [defaultDisabledChartDataType]);
-
-  const renderMarketCodes = useCallback(() => {
-    let leftMarket;
-    let rightMarket;
-
-    if (chartDataType !== 'FRD') {
-      leftMarket = targetMarketCode;
-      rightMarket = originMarketCode;
-    } else {
-      leftMarket =
-        subtrahend === 'origin' ? targetMarketCode : originMarketCode;
-      rightMarket =
-        subtrahend === 'origin' ? originMarketCode : targetMarketCode;
-    }
-
-    return (
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="center"
-        spacing={1}
-        mt={2}
-      >
-        <Box
-          component="img"
-          src={leftMarket.icon}
-          alt={leftMarket.getLabel()}
-          sx={{ height: { xs: 16, md: 18 }, width: { xs: 16, md: 18 } }}
-        />
-        <Box>{leftMarket.getLabel()}</Box>
-        {chartDataType === 'FRD' ? <RemoveIcon /> : <ArrowRightAltIcon />}
-        <Box
-          component="img"
-          src={rightMarket.icon}
-          alt={rightMarket.getLabel()}
-          sx={{ height: { xs: 16, md: 18 }, width: { xs: 16, md: 18 } }}
-        />
-        <Box>{rightMarket.getLabel()}</Box>
-        <Tooltip title={t('Swap')}>
-          <IconButton
-            onClick={() =>
-              setSubtrahend((state) =>
-                state === 'origin' ? 'target' : 'origin'
-              )
-            }
-          >
-            <SwapHorizIcon color="info" />
-          </IconButton>
-        </Tooltip>
-      </Stack>
-    );
-  }, [targetMarketCode, originMarketCode, chartDataType, subtrahend]);
-
-  const renderChart = useCallback(() => {
-    switch (chartDataType) {
-      case 'FR':
-        return (
-          <Grid container>
-            {!targetMarketCode.value.includes('SPOT') && (
-              <Grid
-                item
-                xs={12}
-                md={originMarketCode.value.includes('SPOT') ? 12 : 6}
-              >
-                <Typography align="center">
-                  {targetMarketCode.getLabel()}
-                </Typography>
-                <LightWeightFundingRateChart
-                  baseAsset={baseAsset}
-                  marketCode={targetMarketCode.value}
-                />
-              </Grid>
-            )}
-            {!originMarketCode.value.includes('SPOT') && (
-              <Grid
-                item
-                xs={12}
-                md={targetMarketCode.value.includes('SPOT') ? 12 : 6}
-              >
-                <Typography align="center">
-                  {originMarketCode.getLabel()}
-                </Typography>
-                <LightWeightFundingRateChart
-                  baseAsset={baseAsset}
-                  marketCode={originMarketCode.value}
-                />
-              </Grid>
-            )}
-          </Grid>
-        );
-      case 'FRD':
-        return (
-          <>
-            {renderMarketCodes()}
-            <LightWeightFundingRateDiffChart
-              baseAsset={baseAsset}
-              marketCodes={{
-                targetMarketCode: targetMarketCode.value,
-                originMarketCode: originMarketCode.value,
-              }}
-              subtrahend={subtrahend}
-            />
-          </>
-        );
-      case 'SL':
-      case 'LS':
-      case 'tp':
-        return (
-          <>
-            {showMarketCodes && renderMarketCodes()}
-            <LightWeightPremiumKlineChart
-              ref={premiumKlineChartRef}
-              baseAsset={baseAsset}
-              alarmConfig={alarmConfig}
-              dataType={chartDataType}
-              interval={klineInterval}
-              marketCodes={marketCodes}
-              queryKey={queryKey}
-              isKimpExchange={isKimpExchange}
-              isTetherPriceView={isTetherPriceView}
-            />
-          </>
-        );
-      default:
-        return <LinearProgress />;
-    }
-  }, [
-    alarmConfig,
-    chartDataType,
-    klineInterval,
-    targetMarketCode,
-    originMarketCode,
-    marketCodes,
-    baseAsset,
-    subtrahend,
-    isFetching,
-    isKimpExchange,
-    isTetherPriceView,
-  ]);
 
   const isFavorite = !isUndefined(favoriteAssetId);
 
@@ -399,10 +254,189 @@ function PremiumDataChartViewer({
             )}
           </Grid>
         </Grid>
-        {renderChart()}
+        <ChartRenderer
+          alarmConfig={alarmConfig}
+          chartDataType={chartDataType}
+          klineInterval={klineInterval}
+          targetMarketCode={targetMarketCode}
+          originMarketCode={originMarketCode}
+          marketCodes={marketCodes}
+          baseAsset={baseAsset}
+          subtrahend={subtrahend}
+          isKimpExchange={isKimpExchange}
+          isTetherPriceView={isTetherPriceView}
+          queryKey={queryKey}
+          showMarketCodes={showMarketCodes}
+          premiumKlineChartRef={premiumKlineChartRef}
+          onSwapMarketCodes={() =>
+            setSubtrahend((state) => (state === 'origin' ? 'target' : 'origin'))
+          }
+        />
       </Box>
     </Card>
   );
+}
+
+function MarketCodesRenderer({
+  leftMarket,
+  rightMarket,
+  chartDataType,
+  onSwapMarketCodes,
+}) {
+  const { t } = useTranslation();
+  return (
+    <Stack
+      direction="row"
+      alignItems="center"
+      justifyContent="center"
+      spacing={1}
+      mt={2}
+    >
+      <Box
+        component="img"
+        src={leftMarket.icon}
+        alt={leftMarket.getLabel()}
+        sx={{ height: { xs: 16, md: 18 }, width: { xs: 16, md: 18 } }}
+      />
+      <Box>{leftMarket.getLabel()}</Box>
+      {chartDataType === 'FRD' ? <RemoveIcon /> : <ArrowRightAltIcon />}
+      <Box
+        component="img"
+        src={rightMarket.icon}
+        alt={rightMarket.getLabel()}
+        sx={{ height: { xs: 16, md: 18 }, width: { xs: 16, md: 18 } }}
+      />
+      <Box>{rightMarket.getLabel()}</Box>
+      <Tooltip title={t('Swap')}>
+        <IconButton onClick={onSwapMarketCodes}>
+          <SwapHorizIcon color="info" />
+        </IconButton>
+      </Tooltip>
+    </Stack>
+  );
+}
+
+function ChartRenderer({
+  alarmConfig,
+  chartDataType,
+  klineInterval,
+  targetMarketCode,
+  originMarketCode,
+  marketCodes,
+  baseAsset,
+  subtrahend,
+  isKimpExchange,
+  isTetherPriceView,
+  showMarketCodes,
+  queryKey,
+  premiumKlineChartRef,
+  onSwapMarketCodes,
+}) {
+  switch (chartDataType) {
+    case 'FR':
+      return (
+        <Grid container>
+          {!targetMarketCode.value.includes('SPOT') && (
+            <Grid
+              item
+              xs={12}
+              md={originMarketCode.value.includes('SPOT') ? 12 : 6}
+            >
+              <Typography align="center">
+                {targetMarketCode.getLabel()}
+              </Typography>
+              <LightWeightFundingRateChart
+                baseAsset={baseAsset}
+                marketCode={targetMarketCode.value}
+              />
+            </Grid>
+          )}
+          {!originMarketCode.value.includes('SPOT') && (
+            <Grid
+              item
+              xs={12}
+              md={targetMarketCode.value.includes('SPOT') ? 12 : 6}
+            >
+              <Typography align="center">
+                {originMarketCode.getLabel()}
+              </Typography>
+              <LightWeightFundingRateChart
+                baseAsset={baseAsset}
+                marketCode={originMarketCode.value}
+              />
+            </Grid>
+          )}
+        </Grid>
+      );
+    case 'FRD':
+      return (
+        <>
+          <MarketCodesRenderer
+            {...(chartDataType !== 'FRD'
+              ? { leftMarket: targetMarketCode, rightMarket: originMarketCode }
+              : {
+                  leftMarket:
+                    subtrahend === 'origin'
+                      ? targetMarketCode
+                      : originMarketCode,
+                  rightMarket:
+                    subtrahend === 'origin'
+                      ? originMarketCode
+                      : targetMarketCode,
+                })}
+            onSwapMarketCodes={onSwapMarketCodes}
+          />
+          <LightWeightFundingRateDiffChart
+            baseAsset={baseAsset}
+            marketCodes={{
+              targetMarketCode: targetMarketCode.value,
+              originMarketCode: originMarketCode.value,
+            }}
+            subtrahend={subtrahend}
+          />
+        </>
+      );
+    case 'SL':
+    case 'LS':
+    case 'tp':
+      return (
+        <>
+          {showMarketCodes && (
+            <MarketCodesRenderer
+              {...(chartDataType !== 'FRD'
+                ? {
+                    leftMarket: targetMarketCode,
+                    rightMarket: originMarketCode,
+                  }
+                : {
+                    leftMarket:
+                      subtrahend === 'origin'
+                        ? targetMarketCode
+                        : originMarketCode,
+                    rightMarket:
+                      subtrahend === 'origin'
+                        ? originMarketCode
+                        : targetMarketCode,
+                  })}
+              onSwapMarketCodes={onSwapMarketCodes}
+            />
+          )}
+          <LightWeightPremiumKlineChart
+            ref={premiumKlineChartRef}
+            baseAsset={baseAsset}
+            alarmConfig={alarmConfig}
+            dataType={chartDataType}
+            interval={klineInterval}
+            marketCodes={marketCodes}
+            queryKey={queryKey}
+            isKimpExchange={isKimpExchange}
+            isTetherPriceView={isTetherPriceView}
+          />
+        </>
+      );
+    default:
+      return <LinearProgress />;
+  }
 }
 
 export default PremiumDataChartViewer;

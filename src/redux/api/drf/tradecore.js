@@ -154,6 +154,7 @@ export const {
   useGetNodesQuery,
   useGetTradeConfigQuery,
   useGetTradesByTradeConfigQuery,
+  useLazyGetTradeConfigQuery,
   usePostExchangeApiKeyMutation,
   usePostTradeMutation,
   usePostTradeConfigMutation,
