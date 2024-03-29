@@ -40,3 +40,11 @@ class ReferralCodeSerializer(ReferralCodeMixin, serializers.ModelSerializer):
             "contact",
             "referral_group",
         )  # explicitly stated instead of __all__ for ordering
+
+
+class ReferralCommissionQueryParamsSerializer(serializers.Serializer):
+    user = serializers.UUIDField()
+    trade_uuid = serializers.UUIDField()
+    initial_profit = serializers.DecimalField(max_digits=10, decimal_places=1)
+    target_market_code = serializers.CharField()
+    origin_market_code = serializers.CharField()

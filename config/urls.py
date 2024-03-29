@@ -38,7 +38,7 @@ urlpatterns = [
     path(mkpath("admin/"), admin.site.urls),
     path(mkpath("auth/"), include("authentication.urls")),
     path(mkpath("chat/"), include("chat.urls")),
-    path(mkpath("referral/"), include("referral.urls")),
+    path(mkpath("referral/"), include("referral.urls.urls")),
     path(mkpath("users/"), include("users.urls")),
     path(mkpath("infocore/"), include("infocore.urls.urls")),
     path(mkpath("messagecore/"), include("messagecore.urls")),

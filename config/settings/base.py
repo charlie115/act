@@ -305,6 +305,10 @@ SPECTACULAR_SETTINGS = {
                 "tags": ["PastChatMessages", "RandomUsername"],
             },
             {
+                "name": "REFERRAL",
+                "tags": ["Referral", "ReferralCode", "ReferralCommission"],
+            },
+            {
                 "name": "USER",
                 "tags": [
                     "User",
@@ -323,10 +327,6 @@ SPECTACULAR_SETTINGS = {
                     "Trade",
                     "ExchangeAPIKey",
                 ],
-            },
-            {
-                "name": "MESSAGE CORE",
-                "tags": ["Message"],
             },
             {
                 "name": "INFO CORE",

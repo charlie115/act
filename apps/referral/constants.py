@@ -1,0 +1,6 @@
+from decimal import Decimal
+
+SERVICE_FEE_RATE = Decimal(0.5)
+
+PROFIT_TYPE_TRADE = "TRADE"
+PROFIT_TYPE_COMMISSION = "COMMISSION"

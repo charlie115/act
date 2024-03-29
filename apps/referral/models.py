@@ -45,7 +45,7 @@ class ReferralCode(models.Model):
     )
     max_depth = models.IntegerField(
         default=1,
-        validators=[MinValueValidator(0), MaxValueValidator(10)],
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
     )
     contact = models.TextField(
         null=True,
@@ -58,7 +58,11 @@ class ReferralCode(models.Model):
 
 
 class Referral(models.Model):
-    referred_user = models.ForeignKey(User, on_delete=models.CASCADE)
+    referred_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="used_referrals",
+    )
     referral_code = models.ForeignKey(ReferralCode, on_delete=models.CASCADE)
     registered_datetime = models.DateTimeField(default=now)
 
