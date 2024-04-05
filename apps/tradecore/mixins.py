@@ -124,7 +124,7 @@ class TradeCoreMixin(object):
             detail = api_response.content
 
         if api_response.status_code == HTTP_400_BAD_REQUEST:
-            raise exceptions.ParseError
+            raise exceptions.ParseError(detail)
         if api_response.status_code == HTTP_401_UNAUTHORIZED:
             raise exceptions.AuthenticationFailed
         if api_response.status_code == HTTP_403_FORBIDDEN:
