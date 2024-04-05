@@ -3,7 +3,7 @@ from django.db.models.functions import Concat
 from django_filters import CharFilter, FilterSet
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import exceptions, mixins, response, viewsets
+from rest_framework import exceptions, mixins, response, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 
@@ -22,6 +22,9 @@ from tradecore.serializers import (
     TradesViewSetSerializer,
     ExchangeApiKeyViewSetQueryParamsSerializer,
     ExchangeApiKeyViewSetSerializer,
+    CapitalQueryParamsSerializer,
+    SpotPositionQueryParamsSerializer,
+    FuturePositionQueryParamsSerializer,
 )
 
 
@@ -469,5 +472,160 @@ class ExchangeApiKeyViewSet(
 
         if api_response.status_code == HTTP_204_NO_CONTENT:
             return response.Response(status=HTTP_204_NO_CONTENT)
+
+        self.handle_exception_from_api(api_response)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Retrieve user capital",
+        description="Retrieves the details of user's `capital`.",
+        tags=["Capital"],
+    ),
+)
+class CapitalView(TradeCoreMixin, views.APIView):
+    http_method_names = ["get"]
+    permission_classes = []
+    tradecore_api_endpoint = "capital/"
+
+    def get(self, request):
+        query_params = CapitalQueryParamsSerializer(
+            context={"view": self, "request": request},
+            data=request.query_params,
+        )
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        data = self.get_data(
+            trade_config_uuid=query.get("trade_config_uuid", ""),
+            market_code=query.get("market_code", ""),
+        )
+
+        return response.Response(data)
+
+    def get_data(self, trade_config_uuid, market_code):
+        trade_config_allocation = self.get_trade_config_allocation(
+            trade_config_uuid=trade_config_uuid
+        )
+        node = trade_config_allocation.node
+
+        query_params = {
+            "market_code": market_code,
+        }
+
+        api_response = self.tradecore_retrieve_api(
+            url=node.url,
+            endpoint=self.tradecore_api_endpoint,
+            path_param=trade_config_allocation.user.uuid,
+            query_params=query_params,
+        )
+        if api_response.status_code == HTTP_200_OK:
+            obj = api_response.json()
+            self.check_object_permissions(self.request, obj)
+            return obj
+
+        self.handle_exception_from_api(api_response)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Retrieve user spot position",
+        description="Retrieves the details of user's `spot position`.",
+        tags=["SpotPosition"],
+    ),
+)
+class SpotPositionView(TradeCoreMixin, views.APIView):
+    http_method_names = ["get"]
+    permission_classes = []
+    tradecore_api_endpoint = "spot-position/"
+
+    def get(self, request):
+        query_params = SpotPositionQueryParamsSerializer(
+            context={"view": self, "request": request},
+            data=request.query_params,
+        )
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        data = self.get_data(
+            trade_config_uuid=query.get("trade_config_uuid", ""),
+            market_code=query.get("market_code", ""),
+            user=query.get("user", request.user.uuid),
+        )
+
+        return response.Response(data)
+
+    def get_data(self, trade_config_uuid, market_code, user):
+        trade_config_allocation = self.get_trade_config_allocation(
+            trade_config_uuid=trade_config_uuid
+        )
+        node = trade_config_allocation.node
+
+        query_params = {
+            "market_code": market_code,
+        }
+
+        api_response = self.tradecore_retrieve_api(
+            url=node.url,
+            endpoint=self.tradecore_api_endpoint,
+            path_param=trade_config_allocation.user.uuid,
+            query_params=query_params,
+        )
+        if api_response.status_code == HTTP_200_OK:
+            obj = api_response.json()
+            self.check_object_permissions(self.request, obj)
+            return obj
+
+        self.handle_exception_from_api(api_response)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Retrieve user futures position",
+        description="Retrieves the details of user's `futures position`.",
+        tags=["FuturesPosition"],
+    ),
+)
+class FuturesPositionView(TradeCoreMixin, views.APIView):
+    http_method_names = ["get"]
+    permission_classes = []
+    tradecore_api_endpoint = "futures-position/"
+
+    def get(self, request):
+        query_params = FuturePositionQueryParamsSerializer(
+            context={"view": self, "request": request},
+            data=request.query_params,
+        )
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        data = self.get_data(
+            trade_config_uuid=query.get("trade_config_uuid", ""),
+            market_code=query.get("market_code", ""),
+            user=query.get("user", request.user.uuid),
+        )
+
+        return response.Response(data)
+
+    def get_data(self, trade_config_uuid, market_code, user):
+        trade_config_allocation = self.get_trade_config_allocation(
+            trade_config_uuid=trade_config_uuid
+        )
+        node = trade_config_allocation.node
+
+        query_params = {
+            "market_code": market_code,
+        }
+
+        api_response = self.tradecore_retrieve_api(
+            url=node.url,
+            endpoint=self.tradecore_api_endpoint,
+            path_param=trade_config_allocation.user.uuid,
+            query_params=query_params,
+        )
+        if api_response.status_code == HTTP_200_OK:
+            obj = api_response.json()
+            self.check_object_permissions(self.request, obj)
+            return obj
 
         self.handle_exception_from_api(api_response)

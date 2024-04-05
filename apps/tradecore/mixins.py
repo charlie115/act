@@ -90,9 +90,9 @@ class TradeCoreMixin(object):
         api_response = requests.get(url=api_url, params=query_params)
         return api_response
 
-    def tradecore_retrieve_api(self, url, endpoint, path_param):
+    def tradecore_retrieve_api(self, url, endpoint, path_param, query_params=None):
         api_url = self.build_api_url(url, endpoint, path_param)
-        api_response = requests.get(url=api_url)
+        api_response = requests.get(url=api_url, params=query_params)
         return api_response
 
     def tradecore_create_api(self, url, endpoint, data):

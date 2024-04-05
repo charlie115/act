@@ -341,3 +341,51 @@ class ExchangeApiKeyViewSetSerializer(TradeCoreMixin, serializers.Serializer):
             return api_response.json()
 
         self.handle_exception_from_api(api_response)
+
+
+class CapitalQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    market_code = serializers.CharField()
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)
+
+
+class SpotPositionQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    market_code = serializers.CharField()
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)
+
+
+class FuturePositionQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    market_code = serializers.CharField()
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)

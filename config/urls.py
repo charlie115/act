@@ -43,7 +43,7 @@ urlpatterns = [
     path(mkpath("infocore/"), include("infocore.urls.urls")),
     path(mkpath("messagecore/"), include("messagecore.urls")),
     path(mkpath("newscore/"), include("newscore.urls")),
-    path(mkpath("tradecore/"), include("tradecore.urls")),
+    path(mkpath("tradecore/"), include("tradecore.urls.urls")),
     # redis queue
     path(mkpath("django-rq/"), include("django_rq.urls")),
     # docs

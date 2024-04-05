@@ -326,6 +326,9 @@ SPECTACULAR_SETTINGS = {
                     "TradeConfig",
                     "Trade",
                     "ExchangeAPIKey",
+                    "Capital",
+                    "SpotPosition",
+                    "FuturesPosition",
                 ],
             },
             {
