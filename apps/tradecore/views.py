@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.db.models import CharField, Value
 from django.db.models.functions import Concat
 from django_filters import CharFilter, FilterSet
@@ -496,21 +497,23 @@ class CapitalView(TradeCoreMixin, views.APIView):
         query_params.is_valid(raise_exception=True)
         query = query_params.validated_data
 
-        data = self.get_data(
-            trade_config_uuid=query.get("trade_config_uuid", ""),
-            market_code=query.get("market_code", ""),
-        )
+        self.trade_config_uuid = query.get("trade_config_uuid", "")
+        self.market_code = query.get("market_code", "")
+
+        data = self.get_cached_capital_data()
+        if data is None:
+            data = self.get_data()
 
         return response.Response(data)
 
-    def get_data(self, trade_config_uuid, market_code):
+    def get_data(self):
         trade_config_allocation = self.get_trade_config_allocation(
-            trade_config_uuid=trade_config_uuid
+            trade_config_uuid=self.trade_config_uuid
         )
         node = trade_config_allocation.node
 
         query_params = {
-            "market_code": market_code,
+            "market_code": self.market_code,
         }
 
         api_response = self.tradecore_retrieve_api(
@@ -519,12 +522,24 @@ class CapitalView(TradeCoreMixin, views.APIView):
             path_param=trade_config_allocation.user.uuid,
             query_params=query_params,
         )
+
         if api_response.status_code == HTTP_200_OK:
             obj = api_response.json()
             self.check_object_permissions(self.request, obj)
+            self.set_cached_capital_data(obj)
             return obj
 
         self.handle_exception_from_api(api_response)
+
+    def get_cached_capital_data(self):
+        return cache.get(self.get_redis_cache_key())
+
+    def set_cached_capital_data(self, data):
+        if data:
+            cache.set(self.get_redis_cache_key(), data, timeout=10)
+
+    def get_redis_cache_key(self):
+        return f"acw:tradecore:capital:{self.trade_config_uuid}"
 
 
 @extend_schema_view(
@@ -547,22 +562,24 @@ class SpotPositionView(TradeCoreMixin, views.APIView):
         query_params.is_valid(raise_exception=True)
         query = query_params.validated_data
 
-        data = self.get_data(
-            trade_config_uuid=query.get("trade_config_uuid", ""),
-            market_code=query.get("market_code", ""),
-            user=query.get("user", request.user.uuid),
-        )
+        self.trade_config_uuid = query.get("trade_config_uuid", "")
+        self.market_code = query.get("market_code", "")
+        self.user = query.get("user", request.user.uuid)
+
+        data = self.get_cached_position_data()
+        if data is None:
+            data = self.get_data()
 
         return response.Response(data)
 
-    def get_data(self, trade_config_uuid, market_code, user):
+    def get_data(self):
         trade_config_allocation = self.get_trade_config_allocation(
-            trade_config_uuid=trade_config_uuid
+            trade_config_uuid=self.trade_config_uuid
         )
         node = trade_config_allocation.node
 
         query_params = {
-            "market_code": market_code,
+            "market_code": self.market_code,
         }
 
         api_response = self.tradecore_retrieve_api(
@@ -574,9 +591,20 @@ class SpotPositionView(TradeCoreMixin, views.APIView):
         if api_response.status_code == HTTP_200_OK:
             obj = api_response.json()
             self.check_object_permissions(self.request, obj)
+            self.set_cached_position_data(obj)
             return obj
 
         self.handle_exception_from_api(api_response)
+
+    def get_cached_position_data(self):
+        return cache.get(self.get_redis_cache_key())
+
+    def set_cached_position_data(self, data):
+        if data:
+            cache.set(self.get_redis_cache_key(), data, timeout=10)
+
+    def get_redis_cache_key(self):
+        return f"acw:tradecore:spot-position:{self.trade_config_uuid}"
 
 
 @extend_schema_view(
@@ -599,22 +627,24 @@ class FuturesPositionView(TradeCoreMixin, views.APIView):
         query_params.is_valid(raise_exception=True)
         query = query_params.validated_data
 
-        data = self.get_data(
-            trade_config_uuid=query.get("trade_config_uuid", ""),
-            market_code=query.get("market_code", ""),
-            user=query.get("user", request.user.uuid),
-        )
+        self.trade_config_uuid = query.get("trade_config_uuid", "")
+        self.market_code = query.get("market_code", "")
+        self.user = query.get("user", request.user.uuid)
+
+        data = self.get_cached_position_data()
+        if data is None:
+            data = self.get_data()
 
         return response.Response(data)
 
-    def get_data(self, trade_config_uuid, market_code, user):
+    def get_data(self):
         trade_config_allocation = self.get_trade_config_allocation(
-            trade_config_uuid=trade_config_uuid
+            trade_config_uuid=self.trade_config_uuid
         )
         node = trade_config_allocation.node
 
         query_params = {
-            "market_code": market_code,
+            "market_code": self.market_code,
         }
 
         api_response = self.tradecore_retrieve_api(
@@ -626,6 +656,17 @@ class FuturesPositionView(TradeCoreMixin, views.APIView):
         if api_response.status_code == HTTP_200_OK:
             obj = api_response.json()
             self.check_object_permissions(self.request, obj)
+            self.set_cached_position_data(obj)
             return obj
 
         self.handle_exception_from_api(api_response)
+
+    def get_cached_position_data(self):
+        return cache.get(self.get_redis_cache_key())
+
+    def set_cached_position_data(self, data):
+        if data:
+            cache.set(self.get_redis_cache_key(), data, timeout=10)
+
+    def get_redis_cache_key(self):
+        return f"acw:tradecore:futures-position:{self.trade_config_uuid}"
