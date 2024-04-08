@@ -219,6 +219,12 @@ export const MARKET_CODE_LIST = [
   },
 ];
 
+export const PERIOD_LIST = [
+  { value: 'day', getLabel: () => i18n.t('Daily') },
+  { value: 'week', getLabel: () => i18n.t('Weekly') },
+  { value: 'month', getLabel: () => i18n.t('Monthly') },
+];
+
 export const TRADING_VIEW_TICKER_SYMBOLS = [
   {
     description: '달러환율',

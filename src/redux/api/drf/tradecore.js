@@ -77,10 +77,24 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    getFuturesPosition: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/tradecore/futures-position/',
+        params,
+      }),
+    }),
     getNodes: builder.query({
       keepUnusedDataFor: 1,
       query: (params) => ({
         url: '/tradecore/nodes/',
+        params,
+      }),
+    }),
+    getSpotPosition: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/tradecore/spot-position/',
         params,
       }),
     }),
@@ -151,7 +165,9 @@ export const {
   useDeleteMultipleTradesMutation,
   useGetAllTradesQuery,
   useGetExchangeApiKeyQuery,
+  useGetFuturesPositionQuery,
   useGetNodesQuery,
+  useGetSpotPositionQuery,
   useGetTradeConfigQuery,
   useGetTradesByTradeConfigQuery,
   useLazyGetTradeConfigQuery,

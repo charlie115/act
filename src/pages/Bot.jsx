@@ -40,42 +40,69 @@ import TabPanel from 'components/TabPanel';
 import APIKeySettings from 'components/APIKeySettings';
 import BotSettings from 'components/BotSettings';
 import MarketCodeCombinationSelector from 'components/MarketCodeCombinationSelector';
+import PnLHistory from 'components/PnLHistory';
+import PositionTable from 'components/tables/position/PositionTable';
 import TriggersTable from 'components/tables/trigger/TriggersTable';
 
 import { MARKET_CODE_LIST } from 'constants/lists';
 
+const TAB = {
+  triggers: 0,
+  position: 1,
+  pnlHistory: 2,
+  botSettings: 3,
+  apiKeySettings: 4,
+  userGuide: 5,
+  supportCenter: 6,
+};
+
 const TABS = [
   {
-    id: 0,
+    id: TAB.triggers,
     name: 'triggers',
     getLabel: () => i18n.t('Triggers'),
     component: TriggersTable,
   },
   {
-    id: 1,
+    id: TAB.position,
+    name: 'position',
+    getLabel: () => i18n.t('Position'),
+    component: PositionTable,
+  },
+  {
+    id: TAB.pnlHistory,
+    name: 'pnlHistory',
+    getLabel: () => i18n.t('PnL History'),
+    component: PnLHistory,
+  },
+  {
+    id: TAB.botSettings,
     name: 'botSettings',
     getLabel: () => i18n.t('BOT Settings'),
     component: BotSettings,
   },
   {
-    id: 2,
+    id: TAB.apiKeySettings,
     name: 'apiKeySettings',
     getLabel: () => i18n.t('API Key Settings'),
     component: APIKeySettings,
   },
   {
-    id: 3,
+    id: TAB.userGuide,
     name: 'userGuide',
     getLabel: () => i18n.t('User Guide'),
     component: Box,
   },
   {
-    id: 4,
+    id: TAB.supportCenter,
     name: 'supportCenter',
     getLabel: () => i18n.t('Support Center'),
     component: Box,
   },
 ];
+
+const MARKET_CODES_REQUIRED = [TAB.position];
+const TRADE_SUPPORT_REQUIRED = [TAB.pnlHistory, TAB.apiKeySettings];
 
 export default function Bot() {
   const marketCodeSelectorRef = useRef();
@@ -173,7 +200,10 @@ export default function Bot() {
               ...item,
               disabled:
                 !tradeConfigAllocation?.trade_config_uuid ||
-                (currentTab === 2 && !item.tradeSupport),
+                (MARKET_CODES_REQUIRED.includes(currentTab) &&
+                  !selectedMarketCodeCombination) ||
+                (TRADE_SUPPORT_REQUIRED.includes(currentTab) &&
+                  !item.tradeSupport),
               target: {
                 ...target,
                 isSpot: targetMarket.includes('SPOT'),
@@ -271,7 +301,7 @@ export default function Bot() {
     return <Navigate replace to="/login" state={{ from: location }} />;
 
   return (
-    <Box sx={{ flex: 1 }}>
+    <Box sx={{ flex: 1, overflowX: 'hidden' }}>
       <Box sx={isMobile ? { maxWidth: window.innerWidth * 0.95 } : {}}>
         <Grid container sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Grid item md xs={12}>
@@ -290,8 +320,11 @@ export default function Bot() {
                   label={getLabel()}
                   value={id}
                   disabled={
-                    id > 2 ||
-                    (id === 2 && !selectedMarketCodeCombination?.tradeSupport)
+                    id > TAB.apiKeySettings ||
+                    (MARKET_CODES_REQUIRED.includes(id) &&
+                      selectedMarketCodeCombination?.value === 'ALL') ||
+                    (TRADE_SUPPORT_REQUIRED.includes(id) &&
+                      !selectedMarketCodeCombination?.tradeSupport)
                   }
                   {...a11yProps({ id, name })}
                 />
@@ -315,7 +348,11 @@ export default function Bot() {
               value={selectedMarketCodeCombination}
               loading={tradeConfigResults.isLoading}
               onSelectItem={(newValue) => {
-                if (currentTab === 2 && newValue.value === 'ALL')
+                if (
+                  (MARKET_CODES_REQUIRED.includes(currentTab) ||
+                    TRADE_SUPPORT_REQUIRED.includes(currentTab)) &&
+                  newValue.value === 'ALL'
+                )
                   setCurrentTab(0);
                 setSelectedMarketCodeCombination(newValue);
               }}

@@ -4,18 +4,25 @@ import Box from '@mui/material/Box';
 
 import BlockIcon from '@mui/icons-material/Block';
 
-export default function renderAssetIconCell({ cell, row, isMobile }) {
+export default function renderAssetIconCell({ cell, row }) {
   return (
-    <Box sx={{ display: 'flex', textAlign: 'center' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        textAlign: 'center',
+      }}
+    >
       {cell.getValue() ? (
-        <img
+        <Box
+          component="img"
           loading="lazy"
-          width={isMobile ? '12' : '20'}
           src={cell.getValue()}
           alt={row.original.name}
+          sx={{ width: { xs: 14, md: 20 } }}
         />
       ) : (
-        <BlockIcon color="secondary" sx={{ fontSize: 12 }} />
+        <BlockIcon color="secondary" sx={{ fontSize: { xs: 14, md: 20 } }} />
       )}
     </Box>
   );

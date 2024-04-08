@@ -52,9 +52,7 @@ const ReactTableUI = forwardRef(
     const table = useReactTable({
       data,
       columns,
-
       ...options,
-
       getCoreRowModel: getCoreRowModel(),
       getExpandedRowModel: getExpandedRowModel(),
       getFilteredRowModel: getFilteredRowModel(),
@@ -104,6 +102,7 @@ const ReactTableUI = forwardRef(
                       cursor: header.column.getCanSort()
                         ? 'pointer'
                         : undefined,
+                      ...(header.isPlaceholder ? { opacity: 0 } : {}),
                     }}
                   >
                     {header.isPlaceholder ? null : (
@@ -167,23 +166,24 @@ const ReactTableUI = forwardRef(
                 )
               : [...Array(pageSize || 10).keys()].map((item) => (
                   <TableRow key={item}>
-                    {table.getVisibleFlatColumns().map((column) => (
-                      <TableCell
-                        key={`${item}-${column.id}`}
-                        align="center"
-                        height={40}
-                        {...(getCellProps ? getCellProps() : {})}
-                      >
-                        <Skeleton
-                          animation="wave"
-                          variant="text"
-                          sx={{ mx: { xs: 0, md: 1 } }}
-                          height={isMobile ? 10 : 20}
-                          width={column.getSize() * 0.9}
-                          // width={(column.getSize() - index) / 2}
-                        />
-                      </TableCell>
-                    ))}
+                    {table
+                      .getVisibleFlatColumns()
+                      .filter((column) => column.columns.length === 0)
+                      .map((column) => (
+                        <TableCell
+                          key={`${item}-${column.id}`}
+                          align="center"
+                          {...(getCellProps ? getCellProps() : {})}
+                          height={40}
+                        >
+                          <Skeleton
+                            animation="wave"
+                            variant="text"
+                            sx={{ width: column.getSize() < 2 ? 0 : '90%' }}
+                            height={isMobile ? 10 : 15}
+                          />
+                        </TableCell>
+                      ))}
                   </TableRow>
                 ))}
           </tbody>
@@ -272,12 +272,18 @@ const MemoizedRow = React.memo(
 export const Table = styled('table')(() => ({
   borderCollapse: 'collapse',
   fontSize: '0.88em',
+  paddingLeft: '4px',
+  paddingRight: '4px',
   tableLayout: 'fixed',
   width: '100%',
 }));
-export const TableCell = styled('td')(() => ({
+export const TableCell = styled('td')(({ theme }) => ({
   // height: 50,
+  overflowWrap: 'break-word',
   textAlign: 'left',
+  paddingLeft: '4px',
+  paddingRight: '4px',
+  [theme.breakpoints.down('md')]: { fontSize: '0.75em' },
 }));
 export const TableHead = styled('th')(({ theme }) => ({
   backgroundColor: alpha(theme.palette.background.paper, 0.5),

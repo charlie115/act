@@ -372,7 +372,7 @@ export default function BotSettings({ marketCodeCombination }) {
                         />
                       </Stack>
                       <Slider
-                        marks
+                        // marks
                         min={-20}
                         max={30}
                         step={0.1}

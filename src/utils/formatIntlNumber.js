@@ -10,7 +10,7 @@ export default (number, decimal = 0, min = 0) => {
 
   if (pos < 1) {
     const leadingZeros = -Math.floor(Math.log10(pos) + 1);
-    if (leadingZeros >= 4) maximumFractionDigits = 9;
+    if (leadingZeros >= 4) maximumFractionDigits = decimal > 9 ? decimal : 9;
     else maximumFractionDigits = isUndefined(decimal) ? 3 : decimal;
   }
 

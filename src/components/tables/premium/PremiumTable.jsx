@@ -37,10 +37,11 @@ import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
 
 import { useTranslation } from 'react-i18next';
 
-import { usePrevious, useVisibilityChange } from '@uidotdev/usehooks';
+import { usePrevious } from '@uidotdev/usehooks';
 
 import intersection from 'lodash/intersection';
 import isEqual from 'lodash/isEqual';
+import isFunction from 'lodash/isFunction';
 import isUndefined from 'lodash/isUndefined';
 import orderBy from 'lodash/orderBy';
 import union from 'lodash/union';
@@ -80,7 +81,6 @@ function PremiumTable({
 
   const timeoutRef = useRef();
 
-  const isFocused = useVisibilityChange();
   const [ready, setReady] = useState(false);
 
   const [assets, setAssets] = useState([]);
@@ -407,27 +407,6 @@ function PremiumTable({
     setMarketCodesParam(marketCodes);
   }, [marketCodes]);
 
-  useEffect(() => {
-    // if (!isFocused) setLastActive(DateTime.now().toMillis());
-    // else if (lastActive) {
-    //   const diff = DateTime.now()
-    //     .diff(DateTime.fromMillis(lastActive), ['minutes'])
-    //     .toObject();
-    //   if (diff.minutes > 60) {
-    //     window.location.reload();
-    //   } else if (diff.minutes > 10) {
-    //     setAssets([]);
-    //     setReady(false);
-    //     setQueryKey(DateTime.now().toMillis());
-    //   }
-    // }
-  }, [isFocused]);
-
-  useEffect(() => {
-    // setAssets([]);
-    // setReady(false);
-  }, [queryKey]);
-
   const prevIsAssetsDataSuccess = usePrevious(isAssetsDataSuccess);
   useEffect(() => {
     if (!prevIsAssetsDataSuccess && isAssetsDataSuccess)
@@ -504,7 +483,8 @@ function PremiumTable({
 
   const getRowId = useCallback((row) => row.name, []);
   const onExpandedChange = useCallback(
-    (newExpanded) => setExpanded(newExpanded()),
+    (newExpanded) =>
+      setExpanded(isFunction(newExpanded) ? newExpanded() : newExpanded),
     []
   );
 

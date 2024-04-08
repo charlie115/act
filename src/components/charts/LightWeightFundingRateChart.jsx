@@ -57,7 +57,7 @@ export default function LightWeightFundingRateChart({
   const chartData = useMemo(
     () =>
       data.map((item) => ({
-        time: DateTime.fromISO(item.funding_time).toMillis(),
+        time: DateTime.fromISO(item.funding_time).toMillis() / 1000,
         value: item.funding_rate * 100,
       })) ?? [],
     [data]
@@ -107,16 +107,32 @@ export default function LightWeightFundingRateChart({
           }}
           tooltipOptions={{
             enabled: true,
-            getInnerHTML: (price, date) => `
+            getInnerHTML: (seriesData, date) => {
+              const currentData = seriesData.get(lineSeriesRef.current);
+              if (!currentData) return null;
+              const price =
+                currentData.value !== undefined
+                  ? currentData.value
+                  : currentData.close;
+              return `
               <div style="color: ${theme.palette.primary.main}">${
-              symbol || baseAsset
-            }</div>
+                symbol || baseAsset
+              }</div>
               <div style="font-size: 18px; margin: 4px 0px; color: ${
                 theme.palette.text.main
               }">${formatIntlNumber(price, 3, 1)}<small>%</small></div>
               <div style="font-size: 10px; color: ${
                 theme.palette.text.main
-              }">${DateTime.fromMillis(date).toFormat('DD HH:mm:ss')}</div>`,
+              }">${DateTime.fromMillis(date).toFormat('DD HH:mm:ss')}</div>`;
+            },
+            getCoordinate: (seriesData) => {
+              const seriesValue = seriesData.get(lineSeriesRef.current);
+              return seriesValue?.value || seriesValue?.close
+                ? lineSeriesRef.current.priceToCoordinate(
+                    seriesValue?.value || seriesValue?.close
+                  )
+                : null;
+            },
           }}
           interval={{ quantity: 3600, unit: 'seconds' }}
           isLoading={isFetching}

@@ -140,7 +140,7 @@ export default function TriggersTable({
         accessorKey: 'select',
         enableGlobalFilter: false,
         enableSorting: false,
-        size: isMobile ? 20 : 50,
+        size: isMobile ? 20 : 30,
         header: renderSelectHeader,
         cell: renderSelectCell,
       },
@@ -148,44 +148,45 @@ export default function TriggersTable({
         accessorKey: 'icon',
         enableGlobalFilter: false,
         enableSorting: false,
-        maxSize: 10,
+        size: 5,
         header: <span />,
         cell: renderAssetIconCell,
       },
       {
         accessorKey: 'baseAsset',
-        size: 80,
+        size: isMobile ? 30 : 50,
         header: t('Base Asset'),
       },
       {
         accessorKey: 'marketCodes',
         enableGlobalFilter: false,
         enableSorting: false,
-        size: isMobile ? 80 : 140,
+        size: isMobile ? 85 : 180,
         header: <SyncAltIcon />,
         cell: renderMarketCodesCell,
       },
       {
         accessorKey: 'entry',
-        size: isMobile ? 80 : 140,
+        size: isMobile ? 40 : 120,
         header: t('Entry'),
         cell: renderValueCell,
       },
       {
         accessorKey: 'exit',
-        size: isMobile ? 80 : 140,
+        size: isMobile ? 40 : 120,
         header: t('Exit'),
         cell: renderValueCell,
       },
       {
         accessorKey: 'status',
-        size: isMobile ? 80 : 140,
+        size: isMobile ? 45 : 140,
         header: t('Status'),
         cell: renderStatusCell,
       },
       {
         accessorKey: 'created',
         header: t('Created'),
+        size: isMobile ? 50 : 140,
       },
       {
         accessorKey: 'edit',
@@ -420,10 +421,9 @@ export default function TriggersTable({
         getHeaderProps={() => ({
           sx: {
             bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
-            px: { xs: 0, md: 2 },
           },
         })}
-        getCellProps={() => ({ sx: { height: 30, px: { xs: 0, md: 2 } } })}
+        getCellProps={() => ({ sx: { height: 30 } })}
         getRowProps={(row) => ({
           onClick: () => row.toggleExpanded(!row.getIsExpanded()),
           sx: {
@@ -438,7 +438,6 @@ export default function TriggersTable({
             border: 1,
             borderColor: 'divider',
             fontSize: isMobile ? '0.8em' : '1.15em',
-            width: isMobile ? 'auto' : undefined,
           },
         })}
       />

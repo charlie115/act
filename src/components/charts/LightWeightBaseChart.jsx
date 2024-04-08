@@ -55,7 +55,7 @@ const LightWeightBaseChart = forwardRef(
 
     const [wrapperRef, { width }] = useMeasure();
 
-    const { t } = useTranslation();
+    const { i18n, t } = useTranslation();
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -95,25 +95,40 @@ const LightWeightBaseChart = forwardRef(
       ) {
         // tooltipRef.current.style.display = 'none';
       } else {
-        const dateStr = param.time;
+        // if (handleCrosshairMove) {
+        //   handleCrosshairMove(param, tooltipRef.current);
+        //   return;
+        // }
+        const dateStr = param.time * 1000;
         tooltipRef.current.style.display = 'block';
-        const currentData = param.seriesData.get(baseSeriesRef.current);
-        const price =
-          currentData.value !== undefined
-            ? currentData.value
-            : currentData.close;
+        // const currentData = param.seriesData.get(baseSeriesRef.current);
+        // if (!currentData) {
+        //   tooltipRef.current.style.display = 'none';
+        //   return;
+        // }
+        // const price =
+        //   currentData.value !== undefined
+        //     ? currentData.value
+        //     : currentData.close;
         tooltipRef.current.innerHTML = tooltipOptions.getInnerHTML
-          ? tooltipOptions.getInnerHTML(price, dateStr)
+          ? tooltipOptions.getInnerHTML(param.seriesData, dateStr)
           : '';
 
-        const toolTipWidth = 80;
-        const toolTipHeight = 80;
+        const { dimensions } = tooltipOptions;
+        const toolTipWidth = dimensions?.width || 120;
+        const toolTipHeight = dimensions?.height || 120;
         const toolTipMargin = 15;
 
-        const coordinate = baseSeriesRef.current.priceToCoordinate(price);
-        let shiftedCoordinate = param.point.x - 50;
-        if (coordinate === null) return;
+        const coordinate = tooltipOptions.getCoordinate
+          ? tooltipOptions.getCoordinate(param.seriesData)
+          : null;
 
+        if (tooltipRef.current.innerHTML === null || coordinate === null) {
+          tooltipRef.current.style.display = 'none';
+          return;
+        }
+
+        let shiftedCoordinate = param.point.x - 50;
         shiftedCoordinate = Math.max(
           0,
           Math.min(
@@ -133,6 +148,8 @@ const LightWeightBaseChart = forwardRef(
                   coordinate + toolTipMargin
                 )
               );
+        tooltipRef.current.style.height = `${toolTipHeight}px`;
+        tooltipRef.current.style.width = `${toolTipWidth}px`;
         tooltipRef.current.style.left = `${shiftedCoordinate}px`;
         tooltipRef.current.style.top = `${coordinateY}px`;
       }
@@ -152,7 +169,7 @@ const LightWeightBaseChart = forwardRef(
         },
         localization: {
           timeFormatter: (time) =>
-            DateTime.fromMillis(time).toFormat('DD HH:mm:ss'),
+            DateTime.fromMillis(time * 1000).toFormat('DD HH:mm:ss'),
         },
         crosshair: { mode: CrosshairMode.Normal },
         width: containerRef.current?.clientWidth,
@@ -169,9 +186,6 @@ const LightWeightBaseChart = forwardRef(
         borderColor: alpha(theme.palette.secondary.main, 0.2),
         fixRightEdge: true,
         rightOffset: 2,
-        tickMarkFormatter: (time) =>
-          DateTime.fromMillis(time).toFormat('HH:mm'),
-        ...timeScaleOptions,
       });
       ref.current
         .timeScale()
@@ -191,6 +205,28 @@ const LightWeightBaseChart = forwardRef(
         ref.current.unsubscribeCrosshairMove(onCrosshairMove);
       };
     }, [...dependencies]);
+
+    useEffect(() => {
+      ref.current.timeScale().applyOptions({
+        tickMarkFormatter: (timestamp, tickMarkType) => {
+          const time = timestamp * 1000;
+          switch (tickMarkType) {
+            case 0:
+              return DateTime.fromMillis(time).toFormat('yyyy');
+            case 1:
+              return DateTime.fromMillis(time).toFormat('LLL');
+            case 2:
+              return DateTime.fromMillis(time).toFormat('LL.dd (ccc)');
+            default:
+              return DateTime.fromMillis(time).toFormat('HH:mm');
+          }
+        },
+        secondsVisible: false,
+        timeVisible: true,
+        uniformDistribution: true,
+        ...timeScaleOptions,
+      });
+    }, [i18n.language, timeScaleOptions, ...dependencies]);
 
     useEffect(() => {
       ref.current.applyOptions(chartOptions);
@@ -250,7 +286,8 @@ const LightWeightBaseChart = forwardRef(
           const startTime = endTime.minus({
             [unit]: quantity * Math.abs(Math.floor(barsInfo.barsBefore)),
           });
-          onBarsInfoChanged({ start: startTime, end: endTime });
+          if (onBarsInfoChanged)
+            onBarsInfoChanged({ start: startTime, end: endTime });
         }
       }
     }, [barsInfo, interval]);
@@ -314,8 +351,6 @@ const LightWeightBaseChart = forwardRef(
             sx={{
               display: 'none',
               position: 'absolute',
-              width: 120,
-              height: 120,
               zIndex: 1000,
               border: 0.5,
               borderColor: 'secondary.main',

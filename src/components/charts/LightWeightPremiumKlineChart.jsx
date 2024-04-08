@@ -28,31 +28,12 @@ import { useGetHistoricalKlineQuery } from 'redux/api/drf/infocore';
 import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
+import getWhiteSpaceChartData from 'utils/getWhiteSpaceChartData';
 
 import { DATE_FORMAT_API_QUERY, USER_ROLE } from 'constants';
 import { INTERVAL_LIST } from 'constants/lists';
 
 import LightWeightBaseChart from './LightWeightBaseChart';
-
-const getWhiteSpaceChartData = ({ from, to, interval }) => {
-  const whiteSpaceData = [];
-  const diff = to.diff(from, [interval.unit]).toObject();
-  if (diff[interval.unit] > interval.quantity) {
-    Array.from(
-      {
-        length: diff[interval.unit] / interval.quantity - interval.quantity,
-      },
-      (_1, i) => i + 1
-    ).forEach((num) => {
-      const time = from.plus({
-        [interval.unit]: num * interval.quantity,
-      });
-      whiteSpaceData.push({ time: time.toMillis() });
-    });
-  }
-
-  return whiteSpaceData;
-};
 
 const LightWeightPremiumKlineChart = forwardRef(
   (
@@ -171,7 +152,7 @@ const LightWeightPremiumKlineChart = forwardRef(
       const value = data?.[baseAsset];
       if (!value || !dataType) return null;
 
-      const time = value.datetime_now;
+      const time = value.datetime_now / 1000;
 
       const open = value[`${dataType}_open`] || 0;
       const high = value[`${dataType}_high`] || 0;
@@ -213,35 +194,41 @@ const LightWeightPremiumKlineChart = forwardRef(
         const close = item[`${dataType}_close`] || 0;
         if (showTether)
           candlestick.push({
-            time: time.toMillis(),
+            time: time.toMillis() / 1000,
             open: item.dollar * (1 + open * 0.01),
             high: item.dollar * (1 + high * 0.01),
             low: item.dollar * (1 + low * 0.01),
             close: item.dollar * (1 + close * 0.01),
           });
         else
-          candlestick.push({ time: time.toMillis(), open, high, low, close });
-        if (item.tp !== null)
-          line.push({ time: time.toMillis(), value: item.tp });
-
-        if (currentData[index + 1]) {
-          const timeNext = DateTime.fromISO(
-            currentData[index + 1].datetime_now
-          );
-          const whiteSpaceData = getWhiteSpaceChartData({
-            from: time,
-            to: timeNext,
-            interval: intervalValue,
+          candlestick.push({
+            time: time.toMillis() / 1000,
+            open,
+            high,
+            low,
+            close,
           });
-          candlestick.push(...whiteSpaceData);
-          line.push(
-            ...whiteSpaceData.map((d) => ({
-              ...d,
-              color: 'transparent',
-              value: item.tp || undefined,
-            }))
-          );
-        }
+        if (item.tp !== null)
+          line.push({ time: time.toMillis() / 1000, value: item.tp });
+
+        const timeNext = currentData[index + 1]
+          ? DateTime.fromISO(currentData[index + 1].datetime_now)
+          : DateTime.now().minus({
+              [intervalValue.unit]: intervalValue.quantity * 3,
+            });
+        const whiteSpaceData = getWhiteSpaceChartData({
+          from: time,
+          to: timeNext,
+          interval: intervalValue,
+        });
+        candlestick.push(...whiteSpaceData);
+        line.push(
+          ...whiteSpaceData.map((d) => ({
+            ...d,
+            color: 'transparent',
+            value: item.tp || undefined,
+          }))
+        );
       });
       return { candlestick, line };
     }, [currentData, intervalValue, dataType, showTether]);
@@ -390,6 +377,16 @@ const LightWeightPremiumKlineChart = forwardRef(
           handleScale: isAuthorized,
           handleScroll: isAuthorized,
         }}
+        // timeScaleOptions={{
+        //   tickMarkFormatter: (time, tickMarkType) => {
+        //     switch (tickMarkType) {
+        //       case 1:
+        //         return DateTime.fromMillis(time).toFormat('LLL dd (HH:mm)');
+        //       default:
+        //         return DateTime.fromMillis(time).toFormat('HH:mm');
+        //     }
+        //   },
+        // }}
         dependencies={[marketCodes, interval, dataType]}
         interval={intervalValue}
         isLoading={
