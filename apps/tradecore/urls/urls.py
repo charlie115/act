@@ -36,23 +36,54 @@ app_name = "tradecore"
 
 urlpatterns = [
     path("", TradeCoreAPIListView.as_view(), name="tradecore-root"),
-    path("nodes/", include("tradecore.urls.nodes"), name="nodes"),
+    path(
+        "nodes/",
+        include("tradecore.urls.nodes"),
+        name="nodes",
+    ),
     path(
         "trade-config/",
         include("tradecore.urls.trade_config"),
         name="trade-config",
     ),
-    path("trades/", include("tradecore.urls.trades"), name="trades"),
+    path(
+        "trades/",
+        include("tradecore.urls.trades"),
+        name="trades",
+    ),
     path(
         "exchange-api-key/",
         include("tradecore.urls.exchange_api_key"),
         name="funding-rate",
     ),
-    path("capital/", CapitalView.as_view(), name="capital-view"),
-    path("spot-position/", SpotPositionView.as_view(), name="spot-position-view"),
+    path(
+        "capital/",
+        CapitalView.as_view(),
+        name="capital-view",
+    ),
+    path(
+        "spot-position/",
+        SpotPositionView.as_view(),
+        name="spot-position-view",
+    ),
     path(
         "futures-position/",
         FuturesPositionView.as_view(),
         name="futures-position-view",
+    ),
+    path(
+        "order-history/",
+        include("tradecore.urls.order_history"),
+        name="order-history",
+    ),
+    path(
+        "trade-history/",
+        include("tradecore.urls.trade_history"),
+        name="trade-history",
+    ),
+    path(
+        "pnl-history/",
+        include("tradecore.urls.pnl_history"),
+        name="pnl-history",
     ),
 ]

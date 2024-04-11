@@ -26,6 +26,12 @@ from tradecore.serializers import (
     CapitalQueryParamsSerializer,
     SpotPositionQueryParamsSerializer,
     FuturePositionQueryParamsSerializer,
+    OrderHistoryQueryParamsSerializer,
+    OrderHistoryViewSetSerializer,
+    TradeHistoryQueryParamsSerializer,
+    TradeHistoryViewSetSerializer,
+    PNLHistoryQueryParamsSerializer,
+    PNLHistoryViewSetSerializer,
 )
 
 
@@ -670,3 +676,222 @@ class FuturesPositionView(TradeCoreMixin, views.APIView):
 
     def get_redis_cache_key(self):
         return f"acw:tradecore:futures-position:{self.trade_config_uuid}"
+
+
+@extend_schema(tags=["OrderHistory"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List order history",
+        description="Returns a list of all  `order history`.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve a order history",
+        description="Retrieves the details of an existing `order history`.",
+    ),
+)
+class OrderHistoryViewSet(
+    TradeCoreMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = OrderHistoryViewSetSerializer
+    permission_classes = [IsAdmin | IsInternal | IsManager | IsUser]
+    lookup_field = "order_id"
+    tradecore_api_endpoint = "order-history/"
+    http_method_names = ["get"]
+
+    def get_object(self):
+        "Override get_object since our queryset is a dict and not a model"
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+
+        assert lookup_url_kwarg in self.kwargs, (
+            "Expected view %s to be called with a URL keyword argument "
+            'named "%s". Fix your URL conf, or set the `.lookup_field` '
+            "attribute on the view correctly."
+            % (self.__class__.__name__, lookup_url_kwarg)
+        )
+
+        obj = next(
+            (
+                item
+                for item in queryset
+                if item[self.lookup_field] == self.kwargs[lookup_url_kwarg]
+            ),
+            None,
+        )
+
+        if obj is None:
+            raise exceptions.NotFound()
+
+        return obj
+
+    def get_queryset(self):
+        query_params = OrderHistoryQueryParamsSerializer(
+            context={"view": self, "request": self.request},
+            data=self.request.query_params,
+        )
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        node = self.get_node(trade_config_uuid=query.get("trade_config_uuid"))
+
+        api_response = self.tradecore_list_api(
+            url=node.url,
+            endpoint=self.tradecore_api_endpoint,
+            query_params=query,
+        )
+
+        if api_response.status_code == HTTP_200_OK:
+            return api_response.json()
+
+        self.handle_exception_from_api(api_response)
+
+
+@extend_schema(tags=["TradeHistory"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List trade history",
+        description="Returns a list of all  `trade history`.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve a trade history",
+        description="Retrieves the details of an existing `trade history`.",
+    ),
+)
+class TradeHistoryViewSet(
+    TradeCoreMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = TradeHistoryViewSetSerializer
+    permission_classes = [IsAdmin | IsInternal | IsManager | IsUser]
+    lookup_field = "uuid"
+    tradecore_api_endpoint = "trade-history/"
+    http_method_names = ["get"]
+
+    def get_object(self):
+        "Override get_object since our queryset is a dict and not a model"
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+
+        assert lookup_url_kwarg in self.kwargs, (
+            "Expected view %s to be called with a URL keyword argument "
+            'named "%s". Fix your URL conf, or set the `.lookup_field` '
+            "attribute on the view correctly."
+            % (self.__class__.__name__, lookup_url_kwarg)
+        )
+
+        obj = next(
+            (
+                item
+                for item in queryset
+                if item[self.lookup_field] == self.kwargs[lookup_url_kwarg]
+            ),
+            None,
+        )
+
+        if obj is None:
+            raise exceptions.NotFound()
+
+        return obj
+
+    def get_queryset(self):
+        query_params = TradeHistoryQueryParamsSerializer(
+            context={"view": self, "request": self.request},
+            data=self.request.query_params,
+        )
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        node = self.get_node(trade_config_uuid=query.get("trade_config_uuid"))
+
+        api_response = self.tradecore_list_api(
+            url=node.url,
+            endpoint=self.tradecore_api_endpoint,
+            query_params=query,
+        )
+
+        if api_response.status_code == HTTP_200_OK:
+            return api_response.json()
+
+        self.handle_exception_from_api(api_response)
+
+
+@extend_schema(tags=["PNLHistory"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List PNL history",
+        description="Returns a list of all  `PNL history`.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve a PNL history",
+        description="Retrieves the details of an existing `PNL history`.",
+    ),
+)
+class PNLHistoryViewSet(
+    TradeCoreMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = PNLHistoryViewSetSerializer
+    permission_classes = [IsAdmin | IsInternal | IsManager | IsUser]
+    lookup_field = "uuid"
+    tradecore_api_endpoint = "pnl-history/"
+    http_method_names = ["get"]
+
+    def get_object(self):
+        "Override get_object since our queryset is a dict and not a model"
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+
+        assert lookup_url_kwarg in self.kwargs, (
+            "Expected view %s to be called with a URL keyword argument "
+            'named "%s". Fix your URL conf, or set the `.lookup_field` '
+            "attribute on the view correctly."
+            % (self.__class__.__name__, lookup_url_kwarg)
+        )
+
+        obj = next(
+            (
+                item
+                for item in queryset
+                if item[self.lookup_field] == self.kwargs[lookup_url_kwarg]
+            ),
+            None,
+        )
+
+        if obj is None:
+            raise exceptions.NotFound()
+
+        return obj
+
+    def get_queryset(self):
+        query_params = PNLHistoryQueryParamsSerializer(
+            context={"view": self, "request": self.request},
+            data=self.request.query_params,
+        )
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        node = self.get_node(trade_config_uuid=query.get("trade_config_uuid"))
+
+        api_response = self.tradecore_list_api(
+            url=node.url,
+            endpoint=self.tradecore_api_endpoint,
+            query_params=query,
+        )
+
+        if api_response.status_code == HTTP_200_OK:
+            return api_response.json()
+
+        self.handle_exception_from_api(api_response)

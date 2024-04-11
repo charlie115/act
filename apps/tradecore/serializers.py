@@ -389,3 +389,104 @@ class FuturePositionQueryParamsSerializer(TradeCoreMixin, serializers.Serializer
         )
 
         return super().validate(attrs)
+
+
+class OrderHistoryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    trade_uuid = serializers.UUIDField()
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)
+
+
+class OrderHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    trade_uuid = serializers.UUIDField()
+    order_id = serializers.UUIDField(read_only=True)
+    order_type = serializers.CharField()
+    market_code = serializers.CharField()
+    symbol = serializers.CharField()
+    quote_asset = serializers.CharField()
+    side = serializers.CharField()
+    price = serializers.FloatField()
+    qty = serializers.IntegerField()
+    fee = serializers.FloatField()
+    remark = serializers.CharField(required=False)
+
+
+class TradeHistoryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    trade_uuid = serializers.UUIDField()
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)
+
+
+class TradeHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    trade_uuid = serializers.UUIDField()
+    uuid = serializers.UUIDField(read_only=True)
+    trade_side = serializers.CharField()
+    base_asset = serializers.CharField()
+    target_order_id = serializers.CharField()  # uuid or string?
+    origin_order_id = serializers.CharField()  # string?
+    target_premium_value = serializers.IntegerField()  # integer?
+    executed_premium_value = serializers.FloatField()
+    slippage_p = serializers.FloatField()
+    dollar = serializers.FloatField()
+    remark = serializers.CharField(required=False)
+
+
+class PNLHistoryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    trade_uuid = serializers.UUIDField()
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)
+
+
+class PNLHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    trade_uuid = serializers.UUIDField()
+    uuid = serializers.UUIDField(read_only=True)
+    market_code_combination = serializers.CharField()
+    enter_trade_history_uuid = serializers.UUIDField()
+    exit_trade_history_uuid = serializers.UUIDField()
+    realized_premium_gap_p = serializers.FloatField()
+    target_currency = serializers.CharField()
+    target_pnl = serializers.FloatField()
+    target_total_fee = serializers.FloatField()
+    target_pnl_after_fee = serializers.FloatField()
+    origin_currency = serializers.CharField()
+    origin_pnl = serializers.FloatField()
+    origin_total_fee = serializers.FloatField()
+    origin_pnl_after_fee = serializers.FloatField()
+    total_currency = serializers.CharField()
+    total_pnl = serializers.FloatField()
+    total_pnl_after_fee = serializers.FloatField()
+    total_pnl_after_fee_kimp = serializers.FloatField()
+    remark = serializers.CharField(required=False)
