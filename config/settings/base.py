@@ -329,6 +329,9 @@ SPECTACULAR_SETTINGS = {
                     "Capital",
                     "SpotPosition",
                     "FuturesPosition",
+                    "OrderHistory",
+                    "TradeHistory",
+                    "PNLHistory",
                 ],
             },
             {
