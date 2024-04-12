@@ -439,6 +439,15 @@ class TradeHistoryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
         return super().validate(attrs)
 
 
+class TradeHistoryViewSetFilterSerializer(serializers.Serializer):
+    """
+    This is just a hacky way to filter a non-model view
+    Only used in overriden filter_queryset function of the corresponding view
+    """
+
+    base_asset = serializers.CharField(required=False)
+
+
 class TradeHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField()
     trade_uuid = serializers.UUIDField()
@@ -469,6 +478,16 @@ class PNLHistoryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
         )
 
         return super().validate(attrs)
+
+
+class PNLHistoryViewSetFilterSerializer(serializers.Serializer):
+    """
+    This is just a hacky way to filter a non-model view
+    Only used in overriden filter_queryset function of the corresponding view
+    """
+
+    enter_trade_history_uuid = serializers.UUIDField(required=False)
+    exit_trade_history_uuid = serializers.UUIDField(required=False)
 
 
 class PNLHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):

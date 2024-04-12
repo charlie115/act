@@ -29,8 +29,10 @@ from tradecore.serializers import (
     OrderHistoryQueryParamsSerializer,
     OrderHistoryViewSetSerializer,
     TradeHistoryQueryParamsSerializer,
+    TradeHistoryViewSetFilterSerializer,
     TradeHistoryViewSetSerializer,
     PNLHistoryQueryParamsSerializer,
+    PNLHistoryViewSetFilterSerializer,
     PNLHistoryViewSetSerializer,
 )
 
@@ -802,6 +804,24 @@ class TradeHistoryViewSet(
 
         return obj
 
+    def filter_queryset(self, queryset):
+        filterset = super().filter_queryset(queryset)
+
+        query_params = TradeHistoryViewSetFilterSerializer(
+            data=self.request.query_params
+        )
+        query_params.is_valid(raise_exception=True)
+
+        query = {
+            key: value
+            for key, value in query_params.validated_data.items()
+            if key in self.request.query_params.keys()
+        }
+
+        filterset = filter_list_of_dictionaries(query, queryset)
+
+        return filterset
+
     def get_queryset(self):
         query_params = TradeHistoryQueryParamsSerializer(
             context={"view": self, "request": self.request},
@@ -874,6 +894,22 @@ class PNLHistoryViewSet(
             raise exceptions.NotFound()
 
         return obj
+
+    def filter_queryset(self, queryset):
+        filterset = super().filter_queryset(queryset)
+
+        query_params = PNLHistoryViewSetFilterSerializer(data=self.request.query_params)
+        query_params.is_valid(raise_exception=True)
+
+        query = {
+            key: value
+            for key, value in query_params.validated_data.items()
+            if key in self.request.query_params.keys()
+        }
+
+        filterset = filter_list_of_dictionaries(query, queryset)
+
+        return filterset
 
     def get_queryset(self):
         query_params = PNLHistoryQueryParamsSerializer(
