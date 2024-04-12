@@ -393,7 +393,7 @@ class FuturePositionQueryParamsSerializer(TradeCoreMixin, serializers.Serializer
 
 class OrderHistoryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField()
-    trade_uuid = serializers.UUIDField()
+    trade_uuid = serializers.UUIDField(required=False)
 
     def validate(self, attrs):
         trade_config_allocation = self.get_trade_config_allocation(
@@ -411,6 +411,7 @@ class OrderHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField()
     trade_uuid = serializers.UUIDField()
     order_id = serializers.UUIDField(read_only=True)
+    registered_datetime = serializers.DateTimeField(read_only=True)
     order_type = serializers.CharField()
     market_code = serializers.CharField()
     symbol = serializers.CharField()
@@ -424,7 +425,7 @@ class OrderHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):
 
 class TradeHistoryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField()
-    trade_uuid = serializers.UUIDField()
+    trade_uuid = serializers.UUIDField(required=False)
 
     def validate(self, attrs):
         trade_config_allocation = self.get_trade_config_allocation(
@@ -442,6 +443,7 @@ class TradeHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField()
     trade_uuid = serializers.UUIDField()
     uuid = serializers.UUIDField(read_only=True)
+    registered_datetime = serializers.DateTimeField(read_only=True)
     trade_side = serializers.CharField()
     base_asset = serializers.CharField()
     target_order_id = serializers.CharField()  # uuid or string?
@@ -455,7 +457,7 @@ class TradeHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):
 
 class PNLHistoryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField()
-    trade_uuid = serializers.UUIDField()
+    trade_uuid = serializers.UUIDField(required=False)
 
     def validate(self, attrs):
         trade_config_allocation = self.get_trade_config_allocation(
@@ -473,6 +475,7 @@ class PNLHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField()
     trade_uuid = serializers.UUIDField()
     uuid = serializers.UUIDField(read_only=True)
+    registered_datetime = serializers.DateTimeField(read_only=True)
     market_code_combination = serializers.CharField()
     enter_trade_history_uuid = serializers.UUIDField()
     exit_trade_history_uuid = serializers.UUIDField()
