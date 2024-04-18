@@ -52,6 +52,11 @@ urlpatterns = [
         name="trades",
     ),
     path(
+        "trade-log/",
+        include("tradecore.urls.trade_log"),
+        name="trade-log",
+    ),
+    path(
         "exchange-api-key/",
         include("tradecore.urls.exchange_api_key"),
         name="funding-rate",

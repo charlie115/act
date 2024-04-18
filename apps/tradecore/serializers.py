@@ -294,6 +294,36 @@ class TradesViewSetSerializer(TradeCoreMixin, serializers.Serializer):
         self.handle_exception_from_api(api_response)
 
 
+class TradeLogQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)
+
+
+class TradeLogViewSetSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    trade_uuid = serializers.UUIDField(read_only=True)
+    registered_datetime = serializers.DateTimeField(read_only=True)
+    last_updated_datetime = serializers.DateTimeField(read_only=True)
+    base_asset = serializers.CharField()
+    usdt_conversion = serializers.BooleanField()
+    low = serializers.FloatField()
+    high = serializers.FloatField()
+    trade_capital = serializers.FloatField(required=False)
+    deleted = serializers.BooleanField()
+    status = serializers.CharField(required=False)
+    remark = serializers.CharField(required=False)
+
+
 class ExchangeApiKeyViewSetQueryParamsSerializer(
     TradeCoreMixin, serializers.Serializer
 ):
