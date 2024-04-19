@@ -2,6 +2,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.filters import OrderingFilter
 
+from lib.authentication import NodeIPAuthentication
 from lib.views import BaseViewSet
 from users.filters import UserFavoriteAssetsFilter, UserProfileFilter
 from users.models import (
@@ -212,6 +213,21 @@ class DepositBalanceViewSet(BaseViewSet):
     ordering = ["id"]
     http_method_names = ["get"]
 
+    def get_authenticators(self):
+        authentication_classes = self.authentication_classes + [NodeIPAuthentication]
+        return [auth() for auth in authentication_classes]
+
+    def get_permissions(self):
+        permission_classes = self.permission_classes
+
+        if (
+            hasattr(self.request, "_authenticator")
+            and type(self.request._authenticator) is NodeIPAuthentication
+        ):
+            permission_classes = []
+
+        return [permission() for permission in permission_classes]
+
 
 @extend_schema(tags=["DepositHistory"])
 @extend_schema_view(
@@ -266,3 +282,18 @@ class DepositHistoryViewSet(BaseViewSet):
     ]
     ordering = ["id"]
     http_method_names = ["get", "post", "put", "patch", "delete"]
+
+    def get_authenticators(self):
+        authentication_classes = self.authentication_classes + [NodeIPAuthentication]
+        return [auth() for auth in authentication_classes]
+
+    def get_permissions(self):
+        permission_classes = self.permission_classes
+
+        if (
+            hasattr(self.request, "_authenticator")
+            and type(self.request._authenticator) is NodeIPAuthentication
+        ):
+            permission_classes = []
+
+        return [permission() for permission in permission_classes]
