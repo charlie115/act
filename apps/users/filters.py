@@ -1,7 +1,7 @@
 from django_filters import filterset
 
 from lib.filters import CharArrayFilter, UserUuidFilter
-from users.models import UserFavoriteAssets, UserProfile, DepositHistory
+from users.models import UserFavoriteAssets, UserProfile, DepositBalance, DepositHistory
 
 
 class UserFavoriteAssetsFilter(UserUuidFilter):
@@ -18,7 +18,17 @@ class UserProfileFilter(UserUuidFilter):
         fields = ("user", "level", "points")
 
 
-class DepositHistoryFilter(filterset.FilterSet):
+class DepositBalanceFilter(UserUuidFilter):
+    class Meta:
+        model = DepositBalance
+        fields = [
+            "user",
+            "balance",
+            "last_update",
+        ]
+
+
+class DepositHistoryFilter(UserUuidFilter):
     type = filterset.CharFilter(field_name="type")
 
     class Meta:

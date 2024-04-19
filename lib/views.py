@@ -26,47 +26,48 @@ class BaseViewSet(viewsets.ModelViewSet):
         query_field = ""
         query = {}
 
-        if queryset.model is User:
-            query_field = "id__in"
-            query = {query_field: [self.request.user.id]}
+        if self.request.user:
+            if queryset.model is User:
+                query_field = "id__in"
+                query = {query_field: [self.request.user.id]}
 
-        elif hasattr(queryset.model, "user"):
-            query_field = "user_id__in"
-            query = {query_field: [self.request.user.id]}
+            elif hasattr(queryset.model, "user"):
+                query_field = "user_id__in"
+                query = {query_field: [self.request.user.id]}
 
-        """
-        Furthermore, depending on the caller's role, include in the queryset the objects they are allowed to manage
-            Admin, Internal = all users
-            Manager = managed users
-            Others = self only
-        """
+            """
+            Furthermore, depending on the caller's role, include in the queryset the objects they are allowed to manage
+                Admin, Internal = all users
+                Manager = managed users
+                Others = self only
+            """
 
-        if self.request.user and isinstance(self.request.user, User):
-            # If ADMIN, return all objects
-            if self.request.user.role.name == UserRole.ADMIN:
-                return queryset
+            if isinstance(self.request.user, User):
+                # If ADMIN, return all objects
+                if self.request.user.role.name == UserRole.ADMIN:
+                    return queryset
 
-            # If INTERNAL, return all objects if has_api_permission
-            if (
-                self.request.user.role.name == UserRole.INTERNAL_USER
-                and ACWBasePermission().has_api_permission(self.request)
-            ):
-                return queryset
+                # If INTERNAL, return all objects if has_api_permission
+                if (
+                    self.request.user.role.name == UserRole.INTERNAL_USER
+                    and ACWBasePermission().has_api_permission(self.request)
+                ):
+                    return queryset
 
-            # If MANAGER, return own (already filtered at the start) + managed users objects if has_api_permission
-            if (
-                self.request.user.role.name == UserRole.MANAGER
-                and ACWBasePermission().has_api_permission(self.request)
-            ):
-                managed_user_ids = self.request.user.managed_users.values_list(
-                    "managed_user__id",
-                    flat=True,
-                )
+                # If MANAGER, return own (already filtered at the start) + managed users objects if has_api_permission
+                if (
+                    self.request.user.role.name == UserRole.MANAGER
+                    and ACWBasePermission().has_api_permission(self.request)
+                ):
+                    managed_user_ids = self.request.user.managed_users.values_list(
+                        "managed_user__id",
+                        flat=True,
+                    )
 
-                try:
-                    query[query_field] += managed_user_ids
-                except KeyError:
-                    pass
+                    try:
+                        query[query_field] += managed_user_ids
+                    except KeyError:
+                        pass
 
         return queryset.filter(**query)
 

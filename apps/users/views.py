@@ -4,7 +4,12 @@ from rest_framework.filters import OrderingFilter
 
 from lib.authentication import NodeIPAuthentication
 from lib.views import BaseViewSet
-from users.filters import UserFavoriteAssetsFilter, UserProfileFilter
+from users.filters import (
+    UserFavoriteAssetsFilter,
+    UserProfileFilter,
+    DepositBalanceFilter,
+    DepositHistoryFilter,
+)
 from users.models import (
     User,
     UserBlocklist,
@@ -198,12 +203,8 @@ class DepositBalanceViewSet(BaseViewSet):
     queryset = DepositBalance.objects.all()
     lookup_field = "id"
     serializer_class = DepositBalanceSerializer
+    filterset_class = DepositBalanceFilter
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = (
-        "user",
-        "balance",
-        "last_update",
-    )
     ordering_fields = [
         "id",
         "user",
@@ -263,16 +264,8 @@ class DepositHistoryViewSet(BaseViewSet):
     queryset = DepositHistory.objects.all()
     lookup_field = "id"
     serializer_class = DepositHistorySerializer
+    filterset_class = DepositHistoryFilter
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = (
-        "user",
-        "balance",
-        "change",
-        "txid",
-        "type",
-        "pending",
-        "registered_datetime",
-    )
     ordering_fields = [
         "id",
         "user",
