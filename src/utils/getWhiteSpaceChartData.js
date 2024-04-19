@@ -3,10 +3,12 @@ export default ({ from, to, interval }) => {
 
   const whiteSpaceData = [];
   const diff = to.diff(from, [interval.unit]).toObject();
-  if (diff[interval.unit] > interval.quantity) {
+  if (Math.floor(diff[interval.unit]) > interval.quantity) {
     Array.from(
       {
-        length: diff[interval.unit] / interval.quantity - interval.quantity,
+        length:
+          Math.floor(diff[interval.unit]) / interval.quantity -
+          interval.quantity,
       },
       (_1, i) => i + 1
     ).forEach((num) => {

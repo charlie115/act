@@ -36,6 +36,7 @@ const ReactTableUI = forwardRef(
       getCellProps,
       getRowProps,
       getTableProps,
+      noDisplayMessage,
       showProgressBar,
       isLoading,
       renderRow,
@@ -231,7 +232,7 @@ const ReactTableUI = forwardRef(
                   py: 5,
                 }}
               >
-                {t('No data to display')}
+                {noDisplayMessage || t('No data to display')}
               </Typography>
             )}
           </Box>
@@ -244,11 +245,11 @@ const ReactTableUI = forwardRef(
 const MemoizedRow = React.memo(
   ({ row, table, renderSubComponent, getCellProps, getRowProps }) => (
     <>
-      <TableRow {...(getRowProps ? getRowProps(row) : {})}>
+      <TableRow {...(getRowProps ? getRowProps(row, { table }) : {})}>
         {row.getVisibleCells().map((cell) => (
           <TableCell
             key={cell.id}
-            {...(getCellProps ? getCellProps(cell) : {})}
+            {...(getCellProps ? getCellProps(cell, { table }) : {})}
             {...cell.column.columnDef.props}
             {...cell.column.columnDef.slotProps?.cell}
           >
@@ -260,7 +261,7 @@ const MemoizedRow = React.memo(
       </TableRow>
       {row.getIsExpanded() && renderSubComponent && (
         <TableRow key={`${row.id}-expand-panel`}>
-          <TableCell colSpan={row.getVisibleCells().length}>
+          <TableCell colSpan={row.getVisibleCells().length} sx={{ p: 0 }}>
             {renderSubComponent({ row, meta: table.options.meta })}
           </TableCell>
         </TableRow>

@@ -173,6 +173,18 @@ export default function APIKeySettings({ marketCodeCombination }) {
           <ReactTableUI
             columns={columns}
             data={tableData.target}
+            options={{
+              meta: {
+                action: {
+                  icon: DeleteIcon,
+                  iconProps: { color: 'secondary' },
+                  onClick: onDelete,
+                },
+              },
+            }}
+            getCellProps={() => ({
+              sx: { py: 1, textAlign: 'center', wordWrap: 'break-word' },
+            })}
             getHeaderProps={() => ({ sx: { textAlign: 'center' } })}
             getTableProps={() => ({ sx: { mt: 2 } })}
           />

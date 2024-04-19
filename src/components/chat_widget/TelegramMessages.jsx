@@ -69,7 +69,10 @@ export default function TelegramMessages({ display, isOpen, onNewMessages }) {
   const [patchMessage] = usePatchMessageMutation();
   const { data, isLoading } = useGetMessagesQuery(
     {},
-    { skip: !loggedin || !telegramBot, pollingInterval: 3000 }
+    {
+      skip: !loggedin || !telegramBot,
+      pollingInterval: process.env.NODE_ENV === 'development' ? 10000 : 3000,
+    }
   );
   const {
     data: pastData,

@@ -7,6 +7,8 @@ import React, {
 } from 'react';
 
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -15,6 +17,8 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
@@ -26,6 +30,7 @@ import { useGetAssetsQuery } from 'redux/api/drf/infocore';
 import {
   useDeleteMultipleTradesMutation,
   useGetAllTradesQuery,
+  useGetTradeHistoryQuery,
 } from 'redux/api/drf/tradecore';
 
 import { useSelector } from 'react-redux';
@@ -43,6 +48,8 @@ import ReactTableUI from 'components/ReactTableUI';
 import UpdateAlarmForm from 'components/UpdateAlarmForm';
 
 import { TRIGGER_LIST } from 'constants/lists';
+
+import TradeHistoryTable from 'components/tables/trade_history/TradeHistoryTable';
 
 import renderAssetIconCell from 'components/tables/common/renderAssetIconCell';
 import renderExpandCell from 'components/tables/common/renderExpandCell';
@@ -85,6 +92,9 @@ export default function TriggersTable({
   const [triggerTypeList, setTriggerTypeList] = useState([]);
   const [selectedTriggerType, setSelectedTriggerType] = useState();
 
+  const [selectedTrade, setSelectedTrade] = useState();
+  const [displayTradeHistory, setDisplayTradeHistory] = useState(false);
+
   const { data, isFetching, isLoading } = useGetAllTradesQuery(
     { tradeConfigUuids },
     { pollingInterval: 1000 * 60 }
@@ -94,6 +104,14 @@ export default function TriggersTable({
     deleteMultipleTrades,
     { isLoading: isDeleteLoading, isSuccess: isDeleteSuccess },
   ] = useDeleteMultipleTradesMutation();
+
+  const { data: tradeHistoryData } = useGetTradeHistoryQuery(
+    {
+      tradeConfigUuid: selectedTrade?.trade_config_uuid,
+      tradeUuid: selectedTrade?.uuid,
+    },
+    { skip: !selectedTrade }
+  );
 
   const { data: assetsData } = useGetAssetsQuery();
 
@@ -293,12 +311,62 @@ export default function TriggersTable({
 
   const getRowId = useCallback((row) => row.uuid, []);
   const onExpandedChange = useCallback((newExpanded) => {
-    setExpanded(isFunction(newExpanded) ? newExpanded() : newExpanded);
+    const newExpandedObj = isFunction(newExpanded)
+      ? newExpanded()
+      : newExpanded;
+    setExpanded(newExpandedObj);
+
+    const rowId = Object.keys(newExpandedObj || {})?.[0];
+    setSelectedTrade(
+      rowId && !rowId.startsWith('add-')
+        ? tableRef.current.getRow(rowId)?.original
+        : undefined
+    );
+    setDisplayTradeHistory(false);
   }, []);
 
   const renderSubComponent = useCallback(
     ({ row: { original, toggleExpanded }, meta }) => (
-      <Box sx={{ bgcolor: 'background.default' }}>
+      <Box sx={{ bgcolor: 'background.default', pt: 1 }}>
+        <Box sx={{ m: 3 }}>
+          <Button
+            color="info"
+            // color={meta.displayTradeHistory ? 'primary' : 'secondary'}
+            disabled={
+              !meta.tradeHistoryData || meta.tradeHistoryData.length === 0
+            }
+            size="small"
+            endIcon={
+              meta.displayTradeHistory ? (
+                <VisibilityOffIcon size="small" />
+              ) : (
+                <VisibilityIcon size="small" />
+              )
+            }
+            onClick={() => setDisplayTradeHistory((state) => !state)}
+          >
+            {meta.displayTradeHistory
+              ? t('Hide Trade History')
+              : t('Show Trade History')}
+          </Button>
+        </Box>
+        {meta.displayTradeHistory && (
+          <Box sx={{ px: 2 }}>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 700, textAlign: 'center' }}
+            >
+              {t('Trade History')}
+            </Typography>
+            <TradeHistoryTable
+              withPnlHistory
+              marketCodes={original.marketCodes}
+              tradeConfigUuid={original.trade_config_uuid}
+              tradeUuid={original.uuid}
+            />
+          </Box>
+        )}
+        <Divider />
         <Box sx={{ p: { xs: 0.5, md: 2 } }}>
           <PremiumDataChartViewer
             {...meta}
@@ -413,7 +481,9 @@ export default function TriggersTable({
             theme,
             isMobile,
             alarmConfig,
+            displayTradeHistory,
             tradeConfigAllocation,
+            tradeHistoryData,
             expandIcon: EditIcon,
           },
         }}

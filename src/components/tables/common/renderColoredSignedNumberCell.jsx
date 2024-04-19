@@ -12,7 +12,7 @@ export default function renderColoredSignedNumberCell({ cell }) {
         fontSize: '1em',
       }}
     >
-      {formatIntlNumber(cell.getValue())}
+      {formatIntlNumber(cell.getValue(), 5, 1)}
     </Typography>
   );
 }

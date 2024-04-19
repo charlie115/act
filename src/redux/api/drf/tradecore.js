@@ -91,10 +91,31 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    getOrderHistoryByUuid: builder.query({
+      keepUnusedDataFor: 1,
+      query: ({ uuid, ...params }) => ({
+        url: `/tradecore/order-history/${uuid}/`,
+        params,
+      }),
+    }),
+    getPnlHistory: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/tradecore/pnl-history/',
+        params,
+      }),
+    }),
     getSpotPosition: builder.query({
       keepUnusedDataFor: 1,
       query: (params) => ({
         url: '/tradecore/spot-position/',
+        params,
+      }),
+    }),
+    getTradeByUuid: builder.query({
+      keepUnusedDataFor: 1,
+      query: ({ uuid, ...params }) => ({
+        url: `/tradecore/trades/${uuid}/`,
         params,
       }),
     }),
@@ -103,6 +124,20 @@ const api = drfApi.injectEndpoints({
       providesTags: ['TradeConfig'],
       query: ({ uuid, ...params }) => ({
         url: `/tradecore/trade-config/${uuid}/`,
+        params,
+      }),
+    }),
+    getTradeHistory: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/tradecore/trade-history/',
+        params,
+      }),
+    }),
+    getTradeHistoryByUuid: builder.query({
+      keepUnusedDataFor: 1,
+      query: ({ uuid, ...params }) => ({
+        url: `/tradecore/trade-history/${uuid}/`,
         params,
       }),
     }),
@@ -167,10 +202,16 @@ export const {
   useGetExchangeApiKeyQuery,
   useGetFuturesPositionQuery,
   useGetNodesQuery,
+  useGetOrderHistoryByUuidQuery,
+  useGetPnlHistoryQuery,
   useGetSpotPositionQuery,
+  useGetTradeByUuidQuery,
   useGetTradeConfigQuery,
+  useGetTradeHistoryQuery,
+  useGetTradeHistoryByUuidQuery,
   useGetTradesByTradeConfigQuery,
   useLazyGetTradeConfigQuery,
+  useLazyGetPnlHistoryQuery,
   usePostExchangeApiKeyMutation,
   usePostTradeMutation,
   usePostTradeConfigMutation,

@@ -56,6 +56,7 @@ const api = websocketApi.injectEndpoints({
             /* empty */
           }
         });
+
         try {
           await cacheDataLoaded;
           socket.addEventListener('message', onMessage);

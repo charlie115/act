@@ -18,7 +18,7 @@ export default function renderAssetIconCell({ cell, row }) {
           component="img"
           loading="lazy"
           src={cell.getValue()}
-          alt={row.original.name}
+          alt=""
           sx={{ width: { xs: 14, md: 20 } }}
         />
       ) : (

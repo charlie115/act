@@ -2,34 +2,33 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
+import LinearProgress from '@mui/material/LinearProgress';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import Typography from '@mui/material/Typography';
 
-import useMediaQuery from '@mui/material/useMediaQuery';
 import { alpha, useTheme } from '@mui/material/styles';
 
 import { LineType } from 'lightweight-charts';
 
 import { useTranslation } from 'react-i18next';
 
+import { useGetPnlHistoryQuery } from 'redux/api/drf/tradecore';
+
 import { DateTime } from 'luxon';
 
 import groupBy from 'lodash/groupBy';
-import orderBy from 'lodash/orderBy';
+import isNumber from 'lodash/isNumber';
 import sortBy from 'lodash/sortBy';
-import truncate from 'lodash/truncate';
 
 import LightWeightBaseChart from 'components/charts/LightWeightBaseChart';
-
-import ReactTableUI from 'components/ReactTableUI';
-import renderDate from 'components/tables/common/renderDate';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
 import getWhiteSpaceChartData from 'utils/getWhiteSpaceChartData';
 
-import { PERIOD_LIST } from 'constants/lists';
+import PnLHistoryTable from 'components/tables/pnl/PnLHistoryTable';
 
-import PNL from 'assets/pnl-dummy.json';
+import { PERIOD_LIST } from 'constants/lists';
 
 export default function PnLHistory({ marketCodeCombination }) {
   const chartRef = useRef();
@@ -38,9 +37,8 @@ export default function PnLHistory({ marketCodeCombination }) {
   const quantitySeriesRef = useRef();
 
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const { i18n, t } = useTranslation();
+  const { t } = useTranslation();
 
   const [dataType, setDataType] = useState('profit');
   const handleDataTypeChange = (event, newDataType) => setDataType(newDataType);
@@ -48,13 +46,9 @@ export default function PnLHistory({ marketCodeCombination }) {
   const [period, setPeriod] = useState('day');
   const handlePeriodChange = (event, newPeriod) => setPeriod(newPeriod);
 
-  const marketCodes = useMemo(
-    () => ({
-      targetMarketCode: marketCodeCombination.target?.value,
-      originMarketCode: marketCodeCombination.origin?.value,
-    }),
-    [marketCodeCombination]
-  );
+  const { tradeConfigUuid } = marketCodeCombination;
+
+  const { data, isFetching } = useGetPnlHistoryQuery({ tradeConfigUuid });
 
   const format = useMemo(() => {
     switch (period) {
@@ -68,11 +62,11 @@ export default function PnLHistory({ marketCodeCombination }) {
   }, [period]);
 
   const pnlDataByPeriod = useMemo(() => {
-    const groupedData = groupBy(PNL, (o) =>
-      DateTime.fromISO(o.datetime).startOf(period).toMillis()
+    const groupedData = groupBy(data, (o) =>
+      DateTime.fromISO(o.registered_datetime).startOf(period).toMillis()
     );
     return groupedData;
-  }, [format, period]);
+  }, [data, format, period]);
 
   const chartData = useMemo(() => {
     const accumulated = [];
@@ -86,7 +80,7 @@ export default function PnLHistory({ marketCodeCombination }) {
 
       const time = DateTime.fromMillis(Number(key));
       const accumulatedValue = items.reduce(
-        (acc, curr) => acc + curr.total_pnl_after_fee_kimp,
+        (acc, curr) => acc + curr.total_pnl_after_fee,
         0
       );
 
@@ -116,81 +110,6 @@ export default function PnLHistory({ marketCodeCombination }) {
       quantity: sortBy(quantity, 'time'),
     };
   }, [pnlDataByPeriod, period, theme]);
-
-  const tableData = useMemo(
-    () =>
-      orderBy(PNL, (o) => DateTime.fromISO(o.datetime).toMillis(), 'desc').map(
-        (item) => ({
-          ...item,
-          ...(isMobile
-            ? {
-                uuid: truncate(item.uuid, { length: 10 }),
-                trade_uuid: truncate(item.uuid, { length: 10 }),
-                enter_trade_history_uuid: truncate(item.uuid, { length: 10 }),
-                exit_trade_history_uuid: truncate(item.uuid, { length: 10 }),
-              }
-            : {}),
-        })
-      ),
-    [isMobile]
-  );
-
-  const columns = useMemo(
-    () => [
-      {
-        accessorKey: 'datetime',
-        size: isMobile ? 30 : 120,
-        header: t('Date'),
-        cell: renderDate,
-      },
-      {
-        accessorKey: 'uuid',
-        size: isMobile ? 40 : 150,
-        header: t('UUID'),
-      },
-      {
-        accessorKey: 'trade_uuid',
-        size: isMobile ? 40 : 150,
-        header: t('Trade UUID'),
-      },
-      {
-        accessorKey: 'enter_trade_history_uuid',
-        size: isMobile ? 40 : 150,
-        header: t('Enter Trade History UUID'),
-      },
-      {
-        accessorKey: 'exit_trade_history_uuid',
-        size: isMobile ? 40 : 150,
-        header: t('Exit Trade History UUID'),
-      },
-      {
-        accessorKey: 'realized_premium_gap_p',
-        size: isMobile ? 30 : 80,
-        header: t('Realized Premium Gap (%)'),
-      },
-      {
-        accessorKey: 'total_currency',
-        size: isMobile ? 30 : 80,
-        header: t('Total Currency'),
-      },
-      {
-        accessorKey: 'total_pnl',
-        size: isMobile ? 30 : 80,
-        header: t('Total PnL'),
-      },
-      {
-        accessorKey: 'total_pnl_after_fee',
-        size: isMobile ? 30 : 80,
-        header: t('Total PnL After Fee'),
-      },
-      {
-        accessorKey: 'total_pnl_after_fee_kimp',
-        size: isMobile ? 30 : 80,
-        header: t('Total PnL After Fee KIMP'),
-      },
-    ],
-    [i18n.language, isMobile]
-  );
 
   useEffect(() => {
     if (dataType === 'quantity') {
@@ -247,6 +166,7 @@ export default function PnLHistory({ marketCodeCombination }) {
             </ToggleButton>
           </ToggleButtonGroup>
         </Box>
+        {isFetching && <LinearProgress />}
         <LightWeightBaseChart
           ref={chartRef}
           baseSeriesRef={normalSeriesRef}
@@ -293,18 +213,18 @@ export default function PnLHistory({ marketCodeCombination }) {
                   <small>${t('Accumulated')}</small>
                   <div style="font-size: 16px; margin: 0; margin-bottom: 2px; color: ${
                     theme.palette.accent.main
-                  }">${formatIntlNumber(accumulatedProfit, 3, 1)}</div>
+                  }">${formatIntlNumber(accumulatedProfit, 5, 1)}</div>
                   <small>${t('Profit')}</small>
                   <div style="font-size: 16px; margin: 0; color: ${
                     theme.palette.primary.main
-                  }">${formatIntlNumber(normalProfit, 3, 1)}</div>`;
+                  }">${formatIntlNumber(normalProfit, 5, 1)}</div>`;
             },
             getCoordinate: (seriesData) => {
               if (dataType !== 'profit') return null;
               const seriesValue = seriesData.get(accumulatedSeriesRef.current);
-              return seriesValue?.value || seriesValue?.close
+              return isNumber(seriesValue?.value)
                 ? accumulatedSeriesRef.current.priceToCoordinate(
-                    seriesValue?.value || seriesValue?.close
+                    seriesValue?.value
                   )
                 : null;
             },
@@ -323,7 +243,7 @@ export default function PnLHistory({ marketCodeCombination }) {
                   pointMarkersRadius: 2,
                   topColor: alpha(theme.palette.accent.main, 0.4),
                   bottomColor: alpha(theme.palette.accent.main, 0.1),
-                  scaleMargins: { top: 0.8, bottom: 0 },
+                  // scaleMargins: { top: 0.8, bottom: 0 },
                 }
               );
               normalSeriesRef.current = baseChartRef.current.addLineSeries({
@@ -333,7 +253,7 @@ export default function PnLHistory({ marketCodeCombination }) {
                 lineWidth: 1,
                 pointMarkersVisible: true,
                 pointMarkersRadius: 2,
-                scaleMargins: { top: 1, bottom: 0 },
+                // scaleMargins: { top: 1, bottom: 0 },
               });
             } else
               quantitySeriesRef.current =
@@ -354,32 +274,15 @@ export default function PnLHistory({ marketCodeCombination }) {
           bgcolor: alpha(theme.palette.background.default, 0.85),
           mt: 2,
           p: { xs: 0.5, md: 2 },
+          textAlign: 'center',
         }}
       >
-        <ReactTableUI
-          enableTablePaginationUI
-          // ref={tableRef}
-          columns={columns}
-          data={tableData}
-          // options={{
-          //   state: { expanded, pagination },
-          //   onExpandedChange: (newExpanded) => setExpanded(newExpanded()),
-          //   onPaginationChange: setPagination,
-          //   meta: { theme, isMobile, expandIcon: InsightsIcon },
-          // }}
-          // renderSubComponent={renderSubComponent}
-          getCellProps={() => ({ onClick: () => {}, sx: { height: 40 } })}
-          getRowProps={(row) => ({
-            onClick: () => row.toggleExpanded(!row.getIsExpanded()),
-            sx: {
-              cursor: 'pointer',
-              ...(row.getIsExpanded()
-                ? { bgcolor: theme.palette.background.paper }
-                : {}),
-            },
-          })}
-          //   showProgressBar={isLoading}
-          //   isLoading={isLoading}
+        <Typography gutterBottom variant="h6" sx={{ fontWeight: 700 }}>
+          {t('PnL History')}
+        </Typography>
+        <PnLHistoryTable
+          marketCodeCombination={marketCodeCombination}
+          tradeConfigUuid={tradeConfigUuid}
         />
       </Box>
     </Box>

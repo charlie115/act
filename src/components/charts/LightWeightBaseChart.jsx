@@ -280,7 +280,7 @@ const LightWeightBaseChart = forwardRef(
           : 0;
         if (!prevBarsInfo || Math.abs(diff) > 10) {
           const { quantity, unit } = interval;
-          const endTime = DateTime.fromMillis(barsInfo.from).minus({
+          const endTime = DateTime.fromMillis(barsInfo.from * 1000).minus({
             [unit]: 1,
           });
           const startTime = endTime.minus({

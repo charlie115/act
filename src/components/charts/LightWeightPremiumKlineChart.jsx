@@ -210,7 +210,6 @@ const LightWeightPremiumKlineChart = forwardRef(
           });
         if (item.tp !== null)
           line.push({ time: time.toMillis() / 1000, value: item.tp });
-
         const timeNext = currentData[index + 1]
           ? DateTime.fromISO(currentData[index + 1].datetime_now)
           : DateTime.now().minus({
