@@ -332,6 +332,7 @@ SPECTACULAR_SETTINGS = {
                     "OrderHistory",
                     "TradeHistory",
                     "PNLHistory",
+                    "Pboundary",
                 ],
             },
             {

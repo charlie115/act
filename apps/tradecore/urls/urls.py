@@ -4,7 +4,12 @@ from rest_framework import response
 
 
 from lib.views import BaseAPIListView
-from tradecore.views import CapitalView, SpotPositionView, FuturesPositionView
+from tradecore.views import (
+    CapitalView,
+    SpotPositionView,
+    FuturesPositionView,
+    PboundaryView,
+)
 
 
 class TradeCoreAPIListView(BaseAPIListView):
@@ -90,5 +95,10 @@ urlpatterns = [
         "pnl-history/",
         include("tradecore.urls.pnl_history"),
         name="pnl-history",
+    ),
+    path(
+        "pboundary/",
+        PboundaryView.as_view(),
+        name="pboundary-view",
     ),
 ]

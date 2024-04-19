@@ -3,7 +3,7 @@ from rest_framework import exceptions, serializers
 
 from lib.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_409_CONFLICT
 from tradecore.mixins import TradeCoreMixin
-from tradecore.models import Node, TradeConfigAllocation
+from tradecore.models import Node, TradeConfigAllocation, EnabledMarketCodeCombination
 from users.models import User
 
 
@@ -542,3 +542,35 @@ class PNLHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     total_pnl_after_fee = serializers.FloatField()
     total_pnl_after_fee_kimp = serializers.FloatField()
     remark = serializers.CharField(required=False)
+
+
+class PboundaryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    market_code_combination = serializers.CharField()
+    base_asset = serializers.CharField()
+    usdt_conversion = serializers.BooleanField(required=True)
+    percent_gap = serializers.FloatField()
+    interval = serializers.CharField(default="1T")
+    kline_num = serializers.IntegerField(default=200)
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)
+
+    def validate_market_code_combination(self, market_code_combination):
+        market_code_combinations = [
+            f"{enabled_market_code_combination.target}:{enabled_market_code_combination.origin}"
+            for enabled_market_code_combination in EnabledMarketCodeCombination.objects.all()
+        ]
+
+        if market_code_combination not in market_code_combinations:
+            raise exceptions.ValidationError
+
+        return market_code_combination
