@@ -574,3 +574,80 @@ class PboundaryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
             raise exceptions.ValidationError
 
         return market_code_combination
+
+
+class RepeatTradesViewSetQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)
+
+
+class RepeatTradesViewSetSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField(write_only=True)
+    trade_uuid = serializers.UUIDField()
+    uuid = serializers.UUIDField(read_only=True)
+    registered_datetime = serializers.DateTimeField(read_only=True)
+    last_updated_datetime = serializers.DateTimeField(read_only=True)
+    kline_interval = serializers.ChoiceField(
+        default="1T", choices=["1T", "5T", "15T", "30T", "1H", "4H"], required=False
+    )
+    kline_num = serializers.IntegerField(required=False)
+    pauto_num = serializers.FloatField(required=False)
+    auto_repeat_switch = serializers.IntegerField()
+    auto_repeat_num = serializers.IntegerField()
+    status = serializers.CharField(required=False)
+    remark = serializers.CharField(required=False)
+
+    def create(self, validated_data):
+        node = self.get_node(validated_data.pop("trade_config_uuid"))
+
+        api_response = self.tradecore_create_api(
+            url=node.url,
+            endpoint=self.context["view"].tradecore_api_endpoint,
+            data=validated_data,
+        )
+
+        if api_response.status_code == HTTP_201_CREATED:
+            return api_response.json()
+
+        self.handle_exception_from_api(api_response)
+
+    def update(self, instance, validated_data):
+        fixed_value_keys = [
+            "trade_config_uuid",
+            "trade_uuid",
+        ]
+
+        new_instance = instance.copy()
+        for key, value in validated_data.items():
+            if (
+                key not in fixed_value_keys
+                # Only update instance values if they are explicity provided in query
+                and key in self.initial_data.keys()
+                and value != instance.get(key, None)
+            ):
+                new_instance[key] = value
+
+        node = self.get_node(validated_data.get("trade_config_uuid"))
+
+        api_response = self.tradecore_update_api(
+            url=node.url,
+            endpoint=self.context["view"].tradecore_api_endpoint,
+            path_param=instance.get("uuid"),
+            data=new_instance,
+        )
+
+        if api_response.status_code == HTTP_200_OK:
+            return api_response.json()
+
+        self.handle_exception_from_api(api_response)

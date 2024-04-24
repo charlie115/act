@@ -57,6 +57,11 @@ urlpatterns = [
         name="trades",
     ),
     path(
+        "repeat-trades/",
+        include("tradecore.urls.repeat_trades"),
+        name="repeat-trades",
+    ),
+    path(
         "trade-log/",
         include("tradecore.urls.trade_log"),
         name="trade-log",
