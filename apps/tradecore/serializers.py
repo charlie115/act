@@ -592,6 +592,21 @@ class RepeatTradesViewSetQueryParamsSerializer(TradeCoreMixin, serializers.Seria
         return super().validate(attrs)
 
 
+class RepeatTradesViewSetFilterSerializer(serializers.Serializer):
+    """
+    This is just a hacky way to filter a non-model view
+    Only used in overriden filter_queryset function of the corresponding view
+    """
+
+    trade_uuid = serializers.UUIDField(required=False)
+    kline_interval = serializers.CharField(required=False)
+    kline_num = serializers.IntegerField(required=False)
+    pauto_num = serializers.FloatField(required=False)
+    auto_repeat_switch = serializers.IntegerField(required=False)
+    auto_repeat_num = serializers.IntegerField(required=False)
+    status = serializers.CharField(required=False)
+
+
 class RepeatTradesViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField(write_only=True)
     trade_uuid = serializers.UUIDField()

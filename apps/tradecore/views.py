@@ -24,6 +24,7 @@ from tradecore.serializers import (
     TradeLogQueryParamsSerializer,
     TradeLogViewSetSerializer,
     RepeatTradesViewSetQueryParamsSerializer,
+    RepeatTradesViewSetFilterSerializer,
     RepeatTradesViewSetSerializer,
     ExchangeApiKeyViewSetQueryParamsSerializer,
     ExchangeApiKeyViewSetSerializer,
@@ -503,6 +504,24 @@ class RepeatTradesViewSet(
             raise exceptions.NotFound()
 
         return obj
+
+    def filter_queryset(self, queryset):
+        filterset = super().filter_queryset(queryset)
+
+        query_params = RepeatTradesViewSetFilterSerializer(
+            data=self.request.query_params
+        )
+        query_params.is_valid(raise_exception=True)
+
+        query = {
+            key: value
+            for key, value in query_params.validated_data.items()
+            if key in self.request.query_params.keys()
+        }
+
+        filterset = filter_list_of_dictionaries(query, queryset)
+
+        return filterset
 
     def get_queryset(self):
         query_params = RepeatTradesViewSetQueryParamsSerializer(
