@@ -8,7 +8,8 @@ from rest_framework.pagination import PageNumberPagination
 from lib.views import BaseViewSet
 from referral.constants import (
     SERVICE_FEE_RATE,
-    PROFIT_TYPE_TRADE,
+    PROFIT_TYPE_FEE,
+    PROFIT_TYPE_NET_PROFIT_FROM_TRADE,
     PROFIT_TYPE_COMMISSION,
 )
 from referral.models import Referral, ReferralCode
@@ -138,7 +139,7 @@ class ReferralCommissionView(views.APIView):
 
         data = {
             "trade_uuid": query.get("trade_uuid"),
-            "profit": self.get_profit_data(
+            "changes": self.get_changes_data(
                 user=query.get("user"),
                 initial_profit=query.get("initial_profit"),
             ),
@@ -146,22 +147,28 @@ class ReferralCommissionView(views.APIView):
 
         return response.Response(data)
 
-    def get_profit_data(self, user, initial_profit):
+    def get_changes_data(self, user, initial_profit):
         try:
             user = User.objects.get(uuid=user)
         except User.DoesNotExist:
             raise exceptions.ValidationError({"user": ["User not found."]})
 
         # User
-        user_profit = initial_profit * SERVICE_FEE_RATE
-        company_profit = initial_profit - user_profit
+        user_fee = initial_profit * SERVICE_FEE_RATE
+        user_change = initial_profit - user_fee
 
-        user_profit_data = {
-            "user": user.uuid,
-            "profit": user_profit,
-            "type": PROFIT_TYPE_TRADE,
-        }
-        data = [user_profit_data]
+        data = [
+            {
+                "user": user.uuid,
+                "change": user_change,
+                "type": PROFIT_TYPE_NET_PROFIT_FROM_TRADE,
+            },
+            {
+                "user": user.uuid,
+                "change": user_fee * -1,
+                "type": PROFIT_TYPE_FEE,
+            },
+        ]
 
         try:
             used_referral = user.used_referrals.get(
@@ -174,7 +181,7 @@ class ReferralCommissionView(views.APIView):
                 referred_user=user,
                 referral_code=used_referral_code,
                 profit=(
-                    company_profit * used_referral_code.referral_group.commission_rate
+                    user_fee * used_referral_code.referral_group.commission_rate
                 ),  # User's direct referrer
             )
             data.extend(referrer_profit_data)
@@ -189,7 +196,7 @@ class ReferralCommissionView(views.APIView):
 
         user_profit_data = {
             "user": referral_code.user.uuid,
-            "profit": profit,
+            "change": profit,
             "type": PROFIT_TYPE_COMMISSION,
             "commission_from": referred_user.uuid,
         }
@@ -211,7 +218,7 @@ class ReferralCommissionView(views.APIView):
                 upper_referrer_profit = (
                     profit * referral_code.referral_group.upper_share_rate
                 )
-                user_profit_data["profit"] = profit - upper_referrer_profit
+                user_profit_data["change"] = profit - upper_referrer_profit
 
             data.append(user_profit_data)
 
