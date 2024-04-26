@@ -212,7 +212,7 @@ class ReferralCommissionView(views.APIView):
             # Users who are not direct referrer can't get any profit
             # And we pass the potention profit instead to the upper referrer in case max_depth > 1
             if depth > 1 and referral_code.max_depth == 1:
-                user_profit_data["profit"] = 0
+                user_profit_data["change"] = 0
                 upper_referrer_profit = profit
             else:
                 upper_referrer_profit = (
