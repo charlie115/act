@@ -51,7 +51,7 @@ class DepositHistoryForm(forms.ModelForm):
 class DepositHistoryInline(NonrelatedTabularInline):
     model = DepositHistory
     form = DepositHistoryForm
-    fields = ["registered_datetime", "balance", "change", "type", "pending"]
+    fields = ["registered_datetime", "change", "balance", "type", "pending"]
     show_change_link = True
     extra = 0
 

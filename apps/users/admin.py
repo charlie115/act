@@ -290,8 +290,8 @@ class DepositBalanceAdmin(ModelAdmin):
 class DepositHistoryAdmin(ModelAdmin):
     list_display = [
         "user",
-        "balance",
         "change",
+        "balance",
         "type",
         "pending",
         "registered_datetime",
@@ -301,7 +301,8 @@ class DepositHistoryAdmin(ModelAdmin):
         "pending",
     )
     search_fields = [
-        "user",
+        "user__email",
+        "user__username",
     ]
 
     def has_add_permission(self, request, obj=None):

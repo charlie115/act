@@ -146,6 +146,7 @@ class DepositBalanceSerializer(serializers.ModelSerializer):
 
 class DepositHistorySerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
     user = serializers.SlugRelatedField(queryset=User.objects.all(), slug_field="uuid")
+    balance = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = DepositHistory

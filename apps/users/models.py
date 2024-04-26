@@ -243,8 +243,8 @@ class DepositHistory(models.Model):
         on_delete=models.CASCADE,
         related_name="deposit_history",
     )
+    change = models.DecimalField(max_digits=10, decimal_places=2)
     balance = models.DecimalField(max_digits=10, decimal_places=2)
-    change = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     txid = models.TextField(blank=True, null=True)
     type = models.CharField(choices=DepositTypes)
     pending = models.BooleanField(default=False)
@@ -252,13 +252,16 @@ class DepositHistory(models.Model):
     description = models.TextField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
+        try:
+            deposit_balance = self.user.deposit_balance
+        except User.deposit_balance.RelatedObjectDoesNotExist:
+            deposit_balance = DepositBalance(user=self.user)
+
+        self.balance = deposit_balance.balance + self.change
         super(DepositHistory, self).save(*args, **kwargs)
 
-        if hasattr(self.user, "deposit_balance"):
-            self.user.deposit_balance.balance = self.balance
-            self.user.deposit_balance.save()
-        else:
-            DepositBalance.objects.create(user=self.user, balance=self.balance)
+        deposit_balance.balance = self.balance
+        deposit_balance.save()
 
     class Meta:
         verbose_name = "Deposit History"
