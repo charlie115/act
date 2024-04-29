@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 
 import { usePutTradeMutation } from 'redux/api/drf/tradecore';
 
-export default function UpdateAlarmForm({
+export default function UpdateTriggerForm({
   baseAsset,
   defaultEntry,
   defaultExit,
@@ -29,7 +29,7 @@ export default function UpdateAlarmForm({
   tradeConfigUuid,
   usdtConversion,
   uuid,
-  onAlarmConfigChange,
+  onTriggerConfigChange,
   toggleExpanded,
 }) {
   const { t } = useTranslation();
@@ -64,7 +64,7 @@ export default function UpdateAlarmForm({
 
   useEffect(() => {
     if (entry && exit) trigger(['entry', 'exit']);
-    onAlarmConfigChange({
+    onTriggerConfigChange({
       entry: entry ? parseFloat(entry) : null,
       exit: exit ? parseFloat(exit) : null,
       isTether,
@@ -72,17 +72,17 @@ export default function UpdateAlarmForm({
   }, [entry, exit]);
 
   useEffect(() => {
-    onAlarmConfigChange({
+    onTriggerConfigChange({
       entry: defaultEntry || null,
       exit: defaultExit || null,
       isTether,
     });
-    return () => onAlarmConfigChange({});
+    return () => onTriggerConfigChange({});
   }, []);
 
   return (
     <Box
-      id="update-alarm-form"
+      id="update-trigger-form"
       component="form"
       autoComplete="off"
       onSubmit={handleSubmit(onSubmit)}

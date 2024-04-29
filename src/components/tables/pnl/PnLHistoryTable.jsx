@@ -66,30 +66,30 @@ export default function PnLHistoryTable({
     () => [
       {
         accessorKey: 'datetime',
-        size: isMobile ? 30 : 120,
+        size: isMobile ? 30 : 100,
         header: t('Date'),
         cell: renderDateCell,
       },
       {
         accessorKey: 'uuid',
-        size: isMobile ? 40 : 150,
+        size: isMobile ? 40 : 120,
         header: t('ID'),
       },
       {
         accessorKey: 'trade_uuid',
-        size: isMobile ? 40 : 150,
+        size: isMobile ? 40 : 120,
         header: t('Trade ID'),
         cell: renderUuidCell,
       },
       {
         accessorKey: 'enter_trade_history_uuid',
-        size: isMobile ? 40 : 150,
+        size: isMobile ? 40 : 120,
         header: t('Enter Trade History ID'),
         cell: renderUuidCell,
       },
       {
         accessorKey: 'exit_trade_history_uuid',
-        size: isMobile ? 40 : 150,
+        size: isMobile ? 40 : 120,
         header: t('Exit Trade History ID'),
         cell: renderUuidCell,
       },

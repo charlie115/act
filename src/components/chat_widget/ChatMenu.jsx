@@ -83,7 +83,7 @@ export default function ChatMenu() {
               fontSize="small"
             />
           </ListItemIcon>
-          <ListItemText id="switch-label-notification">
+          <ListItemText id="chat-message-notification-switch">
             {enableNotification
               ? t('Disable Notification')
               : t('Enable Notification')}
@@ -96,7 +96,7 @@ export default function ChatMenu() {
               handleClose();
             }}
             inputProps={{
-              'aria-labelledby': 'switch-label-notification',
+              'aria-labelledby': 'chat-message-notification-switch',
             }}
           />
         </MenuItem>

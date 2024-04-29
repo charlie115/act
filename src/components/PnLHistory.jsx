@@ -41,10 +41,14 @@ export default function PnLHistory({ marketCodeCombination }) {
   const { t } = useTranslation();
 
   const [dataType, setDataType] = useState('profit');
-  const handleDataTypeChange = (event, newDataType) => setDataType(newDataType);
+  const handleDataTypeChange = (event, newDataType) => {
+    if (newDataType !== null) setDataType(newDataType);
+  };
 
   const [period, setPeriod] = useState('day');
-  const handlePeriodChange = (event, newPeriod) => setPeriod(newPeriod);
+  const handlePeriodChange = (event, newPeriod) => {
+    if (newPeriod !== null) setPeriod(newPeriod);
+  };
 
   const { tradeConfigUuid } = marketCodeCombination;
 

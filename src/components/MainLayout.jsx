@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 
@@ -8,25 +8,11 @@ import { Helmet } from 'react-helmet';
 
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
-import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
 
-import List from '@mui/material/List';
-import Typography from '@mui/material/Typography';
-import Divider from '@mui/material/Divider';
-import MenuIcon from '@mui/icons-material/Menu';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import ListItem from '@mui/material/ListItem';
-import ListItemButton from '@mui/material/ListItemButton';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
-import InboxIcon from '@mui/icons-material/MoveToInbox';
-import MailIcon from '@mui/icons-material/Mail';
-
-import { alpha, styled, useTheme } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
@@ -42,7 +28,6 @@ import useElementScroll from 'hooks/useElementScroll';
 import { routes } from 'configs/navigation';
 
 import ChatWidget, { DrawerHeader } from 'components/chat_widget';
-// import ChatWidget from 'components/chat_widget/ChatWidget';
 import Header from 'components/Header';
 
 import { GlobalSnackbarProvider } from 'hooks/useGlobalSnackbar';
@@ -50,8 +35,6 @@ import { GlobalSnackbarProvider } from 'hooks/useGlobalSnackbar';
 import { RIGHT_SIDEBAR_WIDTH } from 'constants';
 
 export default function MainLayout() {
-  const theme = useTheme();
-
   const location = useLocation();
   const { i18n } = useTranslation();
 

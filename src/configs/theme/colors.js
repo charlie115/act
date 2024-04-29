@@ -1,4 +1,11 @@
+import { cyan, lightGreen, purple, teal } from '@mui/material/colors';
+
 const colors = {
+  cyan,
+  lightGreen,
+  purple,
+  teal,
+
   background: {
     default: '#f7fbfc',
     paper: '#fff',
@@ -22,11 +29,11 @@ const colors = {
 
   info: { main: '#00bbff' },
 
-  success: { main: '#25C196', light: '#74f7b8' },
+  success: { main: '#25C196', light: '#7afa90', dark: '#00543d' },
 
   warning: { light: '#ffc65f', main: '#faa12d' },
 
-  error: { main: '#ff0d45', light: '#fa3c68' },
+  error: { main: '#ff0d45', light: '#ed5588' },
 
   light: { main: '#f0f2f5' },
 

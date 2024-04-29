@@ -8,6 +8,10 @@ import React, {
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
@@ -29,8 +33,10 @@ import { DateTime } from 'luxon';
 import { useGetAssetsQuery } from 'redux/api/drf/infocore';
 import {
   useDeleteMultipleTradesMutation,
+  useGetAllRepeatTradesQuery,
   useGetAllTradesQuery,
   useGetTradeHistoryQuery,
+  usePutRepeatTradeMutation,
 } from 'redux/api/drf/tradecore';
 
 import { useSelector } from 'react-redux';
@@ -40,12 +46,13 @@ import isFunction from 'lodash/isFunction';
 import isKoreanMarket from 'utils/isKoreanMarket';
 
 import AssetSearchInput from 'components/AssetSearchInput';
-import CreateAlarmForm from 'components/CreateAlarmForm';
+import AutoRepeatForm from 'components/AutoRepeatForm';
+import CreateTriggerForm from 'components/CreateTriggerForm';
 import DeleteAlert from 'components/DeleteAlert';
 import DropdownMenu from 'components/DropdownMenu';
 import PremiumDataChartViewer from 'components/PremiumDataChartViewer';
 import ReactTableUI from 'components/ReactTableUI';
-import UpdateAlarmForm from 'components/UpdateAlarmForm';
+import UpdateTriggerForm from 'components/UpdateTriggerForm';
 
 import { TRIGGER_LIST } from 'constants/lists';
 
@@ -53,6 +60,8 @@ import TradeHistoryTable from 'components/tables/trade_history/TradeHistoryTable
 
 import renderAssetIconCell from 'components/tables/common/renderAssetIconCell';
 import renderExpandCell from 'components/tables/common/renderExpandCell';
+
+import renderAutoRepeatCell from './renderAutoRepeatCell';
 import renderMarketCodesCell from './renderMarketCodesCell';
 import renderSelectCell from './renderSelectCell';
 import renderStatusCell from './renderStatusCell';
@@ -66,8 +75,10 @@ export default function TriggersTable({
   tradeConfigAllocations,
   tradeConfigUuids,
 }) {
-  const tableRef = useRef();
   const assetSearchRef = useRef();
+  const premiumDataViewerRef = useRef();
+  const tableRef = useRef();
+
   const { i18n, t } = useTranslation();
 
   const theme = useTheme();
@@ -77,17 +88,16 @@ export default function TriggersTable({
 
   const [expanded, setExpanded] = useState({});
   const [globalFilter, setGlobalFilter] = useState('');
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 100,
-  });
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 100 });
   const [rowSelection, setRowSelection] = useState({});
+
+  const [autoRepeatTrade, setAutoRepeatTrade] = useState();
 
   const [selectedAsset, setSelectedAsset] = useState('');
 
   const [deleteAlert, setDeleteAlert] = useState(false);
 
-  const [alarmConfig, setAlarmConfig] = useState();
+  const [triggerConfig, setTriggerConfig] = useState();
 
   const [triggerTypeList, setTriggerTypeList] = useState([]);
   const [selectedTriggerType, setSelectedTriggerType] = useState();
@@ -95,10 +105,18 @@ export default function TriggersTable({
   const [selectedTrade, setSelectedTrade] = useState();
   const [displayTradeHistory, setDisplayTradeHistory] = useState(false);
 
+  const [klineInterval, setKlineInterval] = useState('1T');
+
   const { data, isFetching, isLoading } = useGetAllTradesQuery(
     { tradeConfigUuids },
-    { pollingInterval: 1000 * 60 }
+    { pollingInterval: 1000 * 60, skip: !!autoRepeatTrade }
   );
+
+  const { data: repeatTrades } = useGetAllRepeatTradesQuery({
+    tradeConfigUuids,
+  });
+
+  const [putRepeatTrade] = usePutRepeatTradeMutation();
 
   const [
     deleteMultipleTrades,
@@ -179,39 +197,46 @@ export default function TriggersTable({
         accessorKey: 'marketCodes',
         enableGlobalFilter: false,
         enableSorting: false,
-        size: isMobile ? 85 : 180,
+        size: isMobile ? 80 : 150,
         header: <SyncAltIcon />,
         cell: renderMarketCodesCell,
       },
       {
         accessorKey: 'entry',
-        size: isMobile ? 40 : 120,
+        size: isMobile ? 40 : 110,
         header: t('Entry'),
         cell: renderValueCell,
       },
       {
         accessorKey: 'exit',
-        size: isMobile ? 40 : 120,
+        size: isMobile ? 40 : 110,
         header: t('Exit'),
         cell: renderValueCell,
       },
       {
         accessorKey: 'status',
-        size: isMobile ? 45 : 140,
+        size: isMobile ? 30 : 80,
         header: t('Status'),
         cell: renderStatusCell,
       },
       {
         accessorKey: 'created',
+        size: isMobile ? 40 : 110,
         header: t('Created'),
-        size: isMobile ? 50 : 140,
+      },
+      {
+        accessorKey: 'autoRepeatSwitch',
+        size: isMobile ? 40 : 80,
+        header: t('Auto Repeat'),
+        cell: renderAutoRepeatCell,
+        props: { sx: { textAlign: 'center' } },
       },
       {
         accessorKey: 'edit',
         enableGlobalFilter: false,
         enableSorting: false,
-        size: 11,
-        maxSize: 11,
+        size: 20,
+        maxSize: 20,
         cell: renderExpandCell,
         header: <span />,
       },
@@ -256,15 +281,20 @@ export default function TriggersTable({
         const tradeConfig = tradeConfigAllocations.find(
           (o) => o.uuid === trade.trade_config_uuid
         );
+        const autoRepeat = repeatTrades?.find(
+          (item) => item.trade_uuid === trade.uuid
+        );
         return {
           ...trade,
           baseAsset: trade.base_asset,
           name: trade.base_asset,
           entry: trade.low,
           exit: trade.high,
-          created: DateTime.fromISO(trade.registered_datetime).toLocaleString(
-            DateTime.DATETIME_MED
-          ),
+          created: DateTime.fromISO(trade.registered_datetime, {
+            zone: 'UTC',
+          })
+            .toLocal()
+            .toLocaleString(DateTime.DATETIME_MED),
           isTether: trade.usdt_conversion,
           isDeleteLoading,
           status: trade.trigger_switch,
@@ -273,10 +303,13 @@ export default function TriggersTable({
             originMarketCode: tradeConfig.origin.value,
           },
           icon: assetsData?.[trade.base_asset]?.icon,
+          autoRepeatSwitch: !!autoRepeat?.auto_repeat_switch,
+          autoRepeat,
         };
       });
   }, [
     data,
+    repeatTrades,
     assetsData,
     selectedAsset,
     marketCodeCombination,
@@ -307,7 +340,38 @@ export default function TriggersTable({
       tableRef.current.getRow(`add-${selectedAsset}`)?.toggleExpanded(true);
   }, [tableData, selectedAsset]);
 
-  const onAlarmConfigChange = useCallback((value) => setAlarmConfig(value), []);
+  const onTriggerConfigChange = useCallback(
+    (value) => setTriggerConfig(value),
+    []
+  );
+
+  const onAutoRepeatClick = useCallback(async (value, row) => {
+    if (value) setAutoRepeatTrade(row);
+    else {
+      setAutoRepeatTrade();
+      putRepeatTrade({
+        auto_repeat_switch: 0,
+        auto_repeat_num: row.autoRepeat.auto_repeat_num,
+        // kline_num: row.autoRepeat.kline_num,
+        // pauto_num: row.autoRepeat.pauto_num,
+        trade_config_uuid: row.trade_config_uuid,
+        trade_uuid: row.autoRepeat.trade_uuid,
+        uuid: row.autoRepeat.uuid,
+      });
+      // putAutoRepeat false
+    }
+  }, []);
+
+  // const onAutoRepeatChange = useCallback(async (value, row) => {
+  //   const result = await getRepeatTrades({
+  //     tradeUuid: row.uuid,
+  //     tradeConfigUuid: row.trade_config_uuid,
+  //   });
+  //   if (!result) {
+  //     // postRepeatTrade
+  //   }
+  //   console.log('tradeUuid, value: ', result);
+  // }, []);
 
   const getRowId = useCallback((row) => row.uuid, []);
   const onExpandedChange = useCallback((newExpanded) => {
@@ -331,7 +395,6 @@ export default function TriggersTable({
         <Box sx={{ m: 3 }}>
           <Button
             color="info"
-            // color={meta.displayTradeHistory ? 'primary' : 'secondary'}
             disabled={
               !meta.tradeHistoryData || meta.tradeHistoryData.length === 0
             }
@@ -370,8 +433,10 @@ export default function TriggersTable({
         <Box sx={{ p: { xs: 0.5, md: 2 } }}>
           <PremiumDataChartViewer
             {...meta}
+            ref={premiumDataViewerRef}
             baseAssetData={{ name: original.baseAsset }}
             marketCodes={original.marketCodes}
+            onIntervalChange={(newInterval) => setKlineInterval(newInterval)}
             isKimpExchange={
               isKoreanMarket(original.marketCodes.targetMarketCode) &&
               !isKoreanMarket(original.marketCodes.originMarketCode)
@@ -380,16 +445,18 @@ export default function TriggersTable({
         </Box>
         {original.add ? (
           <Box sx={{ p: 2 }}>
-            <CreateAlarmForm
+            <CreateTriggerForm
+              premiumDataViewerRef={premiumDataViewerRef}
+              interval={klineInterval}
               baseAsset={original.baseAsset}
               marketCodes={original.marketCodes}
               tradeConfigAllocation={meta.tradeConfigAllocation}
-              onAlarmConfigChange={onAlarmConfigChange}
+              onTriggerConfigChange={onTriggerConfigChange}
               onCreateSuccess={() => setSelectedAsset('')}
             />
           </Box>
         ) : (
-          <UpdateAlarmForm
+          <UpdateTriggerForm
             baseAsset={original.baseAsset}
             defaultEntry={original.entry}
             defaultExit={original.exit}
@@ -397,7 +464,7 @@ export default function TriggersTable({
             tradeConfigUuid={original.trade_config_uuid}
             usdtConversion={original.usdt_conversion}
             uuid={original.uuid}
-            onAlarmConfigChange={onAlarmConfigChange}
+            onTriggerConfigChange={onTriggerConfigChange}
             toggleExpanded={toggleExpanded}
           />
         )}
@@ -480,10 +547,11 @@ export default function TriggersTable({
           meta: {
             theme,
             isMobile,
-            alarmConfig,
+            triggerConfig,
             displayTradeHistory,
             tradeConfigAllocation,
             tradeHistoryData,
+            onAutoRepeatClick,
             expandIcon: EditIcon,
           },
         }}
@@ -531,6 +599,28 @@ export default function TriggersTable({
           )
         }
       />
+      <Dialog
+        fullWidth
+        maxWidth="sm"
+        open={!!autoRepeatTrade}
+        onClose={() => setAutoRepeatTrade()}
+      >
+        <DialogTitle>{t('Auto Repeat Configuration')}</DialogTitle>
+        <DialogContent>
+          <AutoRepeatForm
+            {...autoRepeatTrade}
+            tradeConfigUuid={autoRepeatTrade?.trade_config_uuid}
+            tradeUuid={autoRepeatTrade?.uuid}
+            onSuccess={() => setAutoRepeatTrade()}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAutoRepeatTrade()}>{t('Cancel')}</Button>
+          <Button form="auto-repeat-form" type="submit">
+            {t('Turn on repeat transactions')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

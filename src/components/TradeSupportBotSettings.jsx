@@ -33,7 +33,7 @@ import {
 
 import castString from 'utils/castString';
 
-export default function BotSettings({ marketCodeCombination }) {
+export default function TradeSupportBotSettings({ marketCodeCombination }) {
   const { t } = useTranslation();
 
   const [putTradeConfig, { isLoading: isPutTradeConfigLoading }] =
@@ -166,15 +166,10 @@ export default function BotSettings({ marketCodeCombination }) {
               {t('Leverage')} <small>[1 ~ 20]</small>
             </FormLabel>
             <Input
-              inputProps={{
-                min: 1,
-                max: 20,
-                step: 1,
-                type: 'number',
-              }}
+              inputProps={{ min: 1, max: 20, step: 1, type: 'number' }}
               {...field}
               onChange={(e) => {
-                const value = parseInt(e.target.value, 10);
+                const value = Number(e.target.value);
                 field.onChange(value);
               }}
               sx={{ width: '5em' }}

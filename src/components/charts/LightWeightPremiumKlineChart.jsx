@@ -39,7 +39,7 @@ const LightWeightPremiumKlineChart = forwardRef(
   (
     {
       baseAsset,
-      alarmConfig,
+      triggerConfig,
       dataType,
       interval,
       marketCodes,
@@ -63,11 +63,11 @@ const LightWeightPremiumKlineChart = forwardRef(
     const candlestickSeriesRef = useRef();
     const lineSeriesRef = useRef();
 
-    const alarmEntryPriceLineRef = useRef();
-    const alarmExitPriceLineRef = useRef();
+    const triggerEntryPriceLineRef = useRef();
+    const triggerExitPriceLineRef = useRef();
 
-    const alarmEntrySeriesRef = useRef();
-    const alarmExitSeriesRef = useRef();
+    const triggerEntrySeriesRef = useRef();
+    const triggerExitSeriesRef = useRef();
 
     const refetchTimeoutRef = useRef();
 
@@ -94,16 +94,19 @@ const LightWeightPremiumKlineChart = forwardRef(
       ref,
       () => ({
         reinitialize,
+        getChart: () => chartRef.current,
+        getCandlestickSeries: () => candlestickSeriesRef.current,
+        getLineSeries: () => lineSeriesRef.current,
       }),
       []
     );
 
     const showTether = useMemo(
       () =>
-        alarmConfig?.isTether || alarmConfig?.entry || alarmConfig?.exit
-          ? alarmConfig.isTether
+        triggerConfig?.isTether || triggerConfig?.entry || triggerConfig?.exit
+          ? triggerConfig.isTether
           : isKimpExchange && isTetherPriceView,
-      [alarmConfig, isKimpExchange, isTetherPriceView]
+      [triggerConfig, isKimpExchange, isTetherPriceView]
     );
 
     const { data } = useGetRealTimeKlineQuery(
@@ -233,43 +236,43 @@ const LightWeightPremiumKlineChart = forwardRef(
     }, [currentData, intervalValue, dataType, showTether]);
 
     useEffect(() => {
-      if (alarmEntryPriceLineRef.current)
+      if (triggerEntryPriceLineRef.current)
         candlestickSeriesRef.current?.removePriceLine(
-          alarmEntryPriceLineRef.current
+          triggerEntryPriceLineRef.current
         );
-      if (alarmExitPriceLineRef.current)
+      if (triggerExitPriceLineRef.current)
         candlestickSeriesRef.current?.removePriceLine(
-          alarmExitPriceLineRef.current
+          triggerExitPriceLineRef.current
         );
-      if (isNumber(alarmConfig?.entry)) {
-        alarmEntrySeriesRef.current?.setData([
-          { time: DateTime.now().toMillis(), value: alarmConfig.entry },
+      if (isNumber(triggerConfig?.entry)) {
+        triggerEntrySeriesRef.current?.setData([
+          { time: DateTime.now().toMillis(), value: triggerConfig.entry },
         ]);
-        alarmEntryPriceLineRef.current =
+        triggerEntryPriceLineRef.current =
           candlestickSeriesRef.current?.createPriceLine({
-            price: alarmConfig.entry,
+            price: triggerConfig.entry,
             color: theme.palette.accent.main,
             lineWidth: 2,
             lineStyle: 0,
             axisLabelVisible: true,
             title: t('ENTRY'),
           });
-      } else alarmEntrySeriesRef.current?.setData([]);
-      if (isNumber(alarmConfig?.exit)) {
-        alarmExitSeriesRef.current?.setData([
-          { time: DateTime.now().toMillis(), value: alarmConfig.exit },
+      } else triggerEntrySeriesRef.current?.setData([]);
+      if (isNumber(triggerConfig?.exit)) {
+        triggerExitSeriesRef.current?.setData([
+          { time: DateTime.now().toMillis(), value: triggerConfig.exit },
         ]);
-        alarmExitPriceLineRef.current =
+        triggerExitPriceLineRef.current =
           candlestickSeriesRef.current?.createPriceLine({
-            price: alarmConfig.exit,
+            price: triggerConfig.exit,
             color: theme.palette.warning.main,
             lineWidth: 2,
             lineStyle: 0,
             axisLabelVisible: true,
             title: t('EXIT'),
           });
-      } else alarmExitSeriesRef.current?.setData([]);
-    }, [alarmConfig, interval, dataType, i18n.language]);
+      } else triggerExitSeriesRef.current?.setData([]);
+    }, [triggerConfig, interval, dataType, i18n.language]);
 
     useEffect(
       () => () => {
@@ -376,16 +379,6 @@ const LightWeightPremiumKlineChart = forwardRef(
           handleScale: isAuthorized,
           handleScroll: isAuthorized,
         }}
-        // timeScaleOptions={{
-        //   tickMarkFormatter: (time, tickMarkType) => {
-        //     switch (tickMarkType) {
-        //       case 1:
-        //         return DateTime.fromMillis(time).toFormat('LLL dd (HH:mm)');
-        //       default:
-        //         return DateTime.fromMillis(time).toFormat('HH:mm');
-        //     }
-        //   },
-        // }}
         dependencies={[marketCodes, interval, dataType]}
         interval={intervalValue}
         isLoading={
@@ -431,11 +424,11 @@ const LightWeightPremiumKlineChart = forwardRef(
             },
             title: t('Price'),
           });
-          alarmEntrySeriesRef.current = baseChartRef.current.addLineSeries({
+          triggerEntrySeriesRef.current = baseChartRef.current.addLineSeries({
             color: 'transparent',
             lineWidth: 1,
           });
-          alarmExitSeriesRef.current = baseChartRef.current.addLineSeries({
+          triggerExitSeriesRef.current = baseChartRef.current.addLineSeries({
             color: 'transparent',
             lineWidth: 1,
           });

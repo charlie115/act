@@ -23,7 +23,7 @@ import sortBy from 'lodash/sortBy';
 import useScript from 'hooks/useScript';
 import a11yProps from 'utils/a11yProps';
 
-import CreateAlarmForm from 'components/CreateAlarmForm';
+import CreateTriggerForm from 'components/CreateTriggerForm';
 import TabPanel from 'components/TabPanel';
 
 import AlarmsTable from 'components/tables/trigger/AlarmsTable';
@@ -39,11 +39,13 @@ const TABS = sortBy(TRIGGER_LIST, 'tabId').map((trigger) => ({
 
 function AssetTradeConfigTriggers({
   baseAsset,
+  interval,
   marketCodes,
   isTetherPriceView,
-  onAlarmConfigChange,
+  onTriggerConfigChange,
+  premiumDataViewerRef,
 }) {
-  const createAlarmFormRef = useRef();
+  const createTriggerFormRef = useRef();
 
   const { t } = useTranslation();
 
@@ -140,19 +142,21 @@ function AssetTradeConfigTriggers({
                 >
                   {currentTab === CONFIGURATION_TAB.alarm && (
                     <>
-                      <CreateAlarmForm
-                        ref={createAlarmFormRef}
+                      <CreateTriggerForm
+                        ref={createTriggerFormRef}
+                        premiumDataViewerRef={premiumDataViewerRef}
                         baseAsset={baseAsset}
+                        interval={interval}
                         marketCodes={marketCodes}
                         isTetherPriceView={isTetherPriceView}
                         tradeConfigAllocation={tradeConfigAllocation}
-                        onAlarmConfigChange={onAlarmConfigChange}
+                        onTriggerConfigChange={onTriggerConfigChange}
                       />
                       <AlarmsTable
-                        createAlarmFormRef={createAlarmFormRef}
+                        createTriggerFormRef={createTriggerFormRef}
                         baseAsset={baseAsset}
                         tradeConfigAllocation={tradeConfigAllocation}
-                        onAlarmConfigChange={onAlarmConfigChange}
+                        onTriggerConfigChange={onTriggerConfigChange}
                       />
                     </>
                   )}

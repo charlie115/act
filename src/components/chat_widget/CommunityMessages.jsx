@@ -154,8 +154,10 @@ export default function CommunityMessages({
 
   useEffect(() => {
     if (display) {
-      if (height - y > 1000 && isAutoScroll) setIsAutoScroll(false);
-      else if (height - y <= 1000 && !isAutoScroll) setIsAutoScroll(true);
+      if (height - y > window.innerHeight && isAutoScroll)
+        setIsAutoScroll(false);
+      else if (height - y <= window.innerHeight && !isAutoScroll)
+        setIsAutoScroll(true);
     }
   }, [display, y, height]);
 
@@ -212,7 +214,7 @@ export default function CommunityMessages({
         ))}
       </MessagesContainer>
       <Box sx={{ position: 'relative' }}>
-        {display && height - y > 1000 && (
+        {display && height - y > window.innerHeight && (
           <ScrollToBottomIcon
             onClick={() => {
               setSeenMessages((state) => [...state, ...newMessages]);

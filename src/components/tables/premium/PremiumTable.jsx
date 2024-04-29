@@ -79,6 +79,7 @@ function PremiumTable({
 
   const theme = useTheme();
 
+  const premiumDataViewerRef = useRef();
   const timeoutRef = useRef();
 
   const [ready, setReady] = useState(false);
@@ -87,7 +88,9 @@ function PremiumTable({
   const [assetsParam, setAssetsParam] = useState();
   const [marketCodesParam, setMarketCodesParam] = useState();
 
-  const [alarmConfig, setAlarmConfig] = useState();
+  const [klineInterval, setKlineInterval] = useState('1T');
+
+  const [triggerConfig, setTriggerConfig] = useState();
 
   const localFavoriteAssets = useSelector(
     (state) =>
@@ -187,7 +190,10 @@ function PremiumTable({
     [loggedin, marketCodes]
   );
 
-  const onAlarmConfigChange = useCallback((value) => setAlarmConfig(value), []);
+  const onTriggerConfigChange = useCallback(
+    (value) => setTriggerConfig(value),
+    []
+  );
 
   const columns = useMemo(
     () => [
@@ -451,13 +457,17 @@ function PremiumTable({
           showExchangeWallets
           showFundingRate
           showFundingRateDiff
+          ref={premiumDataViewerRef}
           baseAssetData={row.original}
+          onIntervalChange={(newInterval) => setKlineInterval(newInterval)}
           {...meta}
         />
         {loggedin && (
           <AssetTradeConfigTriggers
+            premiumDataViewerRef={premiumDataViewerRef}
             baseAsset={row.original.name}
-            onAlarmConfigChange={onAlarmConfigChange}
+            onTriggerConfigChange={onTriggerConfigChange}
+            interval={meta.klineInterval}
             {...meta}
           />
         )}
@@ -506,7 +516,8 @@ function PremiumTable({
           onExpandedChange,
           onPaginationChange: setPagination,
           meta: {
-            alarmConfig,
+            triggerConfig,
+            klineInterval,
             marketCodes,
             queryKey,
             isMobile,

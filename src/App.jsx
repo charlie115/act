@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 
 import { RouterProvider } from 'react-router-dom';
 
-import { alpha, ThemeProvider } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import GlobalStyles from '@mui/material/GlobalStyles';
 

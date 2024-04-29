@@ -38,6 +38,41 @@ const api = drfApi.injectEndpoints({
       },
       invalidatesTags: ['AllTrades', 'TradesByTradeConfig'],
     }),
+    getAllRepeatTrades: builder.query({
+      keepUnusedDataFor: 1,
+      providesTags: ['AllRepeatTrades', 'RepeatTradesByTradeConfig'],
+      queryFn: async ({ tradeConfigUuids, params }, queryApi, extraOptions) => {
+        try {
+          const promises = tradeConfigUuids.map((tradeConfigUuid) =>
+            baseQueryWithReAuth(
+              {
+                url: '/tradecore/repeat-trades/',
+                params: { tradeConfigUuid, ...params },
+              },
+              queryApi,
+              extraOptions
+            )
+          );
+          const results = await Promise.allSettled(promises);
+          const okResults = results.filter(
+            (result) => result.value.meta.response.ok
+          );
+          const data = okResults.reduce(
+            (acc, result) =>
+              acc.concat(result.value.data || result.value.error),
+            []
+          );
+          const meta = okResults.reduce(
+            (acc, result) => acc.concat(result.value.meta),
+            []
+          );
+          return { data, meta };
+        } catch (error) {
+          // Catch any errors and return them as an object with an `error` field
+          return { error };
+        }
+      },
+    }),
     getAllTrades: builder.query({
       keepUnusedDataFor: 1,
       providesTags: ['AllTrades'],
@@ -54,11 +89,15 @@ const api = drfApi.injectEndpoints({
             )
           );
           const results = await Promise.allSettled(promises);
-          const data = results.reduce(
+          const okResults = results.filter(
+            (result) => result.value.meta.response.ok
+          );
+
+          const data = okResults.reduce(
             (acc, result) => acc.concat(result.value.data),
             []
           );
-          const meta = results.reduce(
+          const meta = okResults.reduce(
             (acc, result) => acc.concat(result.value.meta),
             []
           );
@@ -98,10 +137,25 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    getPBoundary: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/tradecore/pboundary/',
+        params,
+      }),
+    }),
     getPnlHistory: builder.query({
       keepUnusedDataFor: 1,
       query: (params) => ({
         url: '/tradecore/pnl-history/',
+        params,
+      }),
+    }),
+    getRepeatTradesByTradeConfig: builder.query({
+      keepUnusedDataFor: 1,
+      providesTags: ['RepeatTradesByTradeConfig'],
+      query: (params) => ({
+        url: '/tradecore/repeat-trades/',
         params,
       }),
     }),
@@ -157,6 +211,14 @@ const api = drfApi.injectEndpoints({
       }),
       invalidatesTags: ['ExchangeApiKey'],
     }),
+    postRepeatTrade: builder.mutation({
+      query: (body) => ({
+        url: '/tradecore/repeat-trades/',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['AllRepeatTrades', 'RepeatTradesByTradeConfig'],
+    }),
     postTrade: builder.mutation({
       query: (body) => ({
         url: '/tradecore/trades/',
@@ -173,6 +235,15 @@ const api = drfApi.injectEndpoints({
       }),
       invalidatesTags: ['User'],
     }),
+    putRepeatTrade: builder.mutation({
+      query: ({ uuid, ...body }) => ({
+        url: `/tradecore/repeat-trades/${uuid}/`,
+        method: 'PUT',
+        params: { tradeConfigUuid: body.trade_config_uuid },
+        body,
+      }),
+      invalidatesTags: ['AllRepeatTrades', 'RepeatTradesByTradeConfig'],
+    }),
     putTrade: builder.mutation({
       query: ({ uuid, ...body }) => ({
         url: `/tradecore/trades/${uuid}/`,
@@ -186,7 +257,6 @@ const api = drfApi.injectEndpoints({
       query: ({ uuid, ...body }) => ({
         url: `/tradecore/trade-config/${uuid}/`,
         method: 'PUT',
-        // params: { tradeConfigUuid: body.trade_config_uuid },
         body,
       }),
       invalidatesTags: ['TradeConfig'],
@@ -198,23 +268,29 @@ export default api;
 export const {
   useDeleteExchangeApiKeyMutation,
   useDeleteMultipleTradesMutation,
+  useGetAllRepeatTradesQuery,
   useGetAllTradesQuery,
   useGetExchangeApiKeyQuery,
   useGetFuturesPositionQuery,
   useGetNodesQuery,
   useGetOrderHistoryByUuidQuery,
   useGetPnlHistoryQuery,
+  useGetRepeatTradesByTradeConfigQuery,
   useGetSpotPositionQuery,
   useGetTradeByUuidQuery,
   useGetTradeConfigQuery,
   useGetTradeHistoryQuery,
   useGetTradeHistoryByUuidQuery,
   useGetTradesByTradeConfigQuery,
-  useLazyGetTradeConfigQuery,
   useLazyGetPnlHistoryQuery,
+  useLazyGetPBoundaryQuery,
+  useLazyGetRepeatTradesByTradeConfigQuery,
+  useLazyGetTradeConfigQuery,
   usePostExchangeApiKeyMutation,
+  usePostRepeatTradeMutation,
   usePostTradeMutation,
   usePostTradeConfigMutation,
+  usePutRepeatTradeMutation,
   usePutTradeMutation,
   usePutTradeConfigMutation,
 } = api;

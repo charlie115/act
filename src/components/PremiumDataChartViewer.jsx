@@ -1,4 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -34,248 +41,268 @@ import LightWeightPremiumKlineChart from 'components/charts/LightWeightPremiumKl
 import LightWeightFundingRateChart from 'components/charts/LightWeightFundingRateChart';
 import LightWeightFundingRateDiffChart from 'components/charts/LightWeightFundingRateDiffChart';
 
-function PremiumDataChartViewer({
-  alarmConfig,
-  baseAssetData,
-  marketCodes,
-  defaultChartDataType,
-  defaultDisabledChartDataType,
-  isKimpExchange,
-  isTetherPriceView,
-  onAddFavoriteAsset,
-  onRemoveFavoriteAsset,
-  queryKey,
-  showExchangeWallets,
-  showFundingRate,
-  showFundingRateDiff,
-  showMarketCodes,
-}) {
-  const {
-    name: baseAsset,
-    favoriteAssetId,
-    walletNetworks,
-    walletStatus,
-  } = baseAssetData;
-
-  const { loggedin, user } = useSelector((state) => state.auth);
-  const isAuthorized = loggedin && user.role !== USER_ROLE.visitor;
-
-  const theme = useTheme();
-
-  const { t } = useTranslation();
-
-  const wrapperRef = useRef();
-
-  const premiumKlineChartRef = useRef();
-
-  const [title, setTitle] = useState();
-
-  const [klineInterval, setKlineInterval] = useState('1T');
-
-  const [chartDataType, setChartDataType] = useState(defaultChartDataType);
-  const [disabledChartDataType, setDisabledChartDataType] = useState();
-
-  const [subtrahend, setSubtrahend] = useState('origin');
-
-  const { targetMarketCode, originMarketCode } = useMemo(
-    () => ({
-      targetMarketCode: MARKET_CODE_LIST.find(
-        (o) => o.value === marketCodes?.targetMarketCode
-      ) ?? {
-        ...MARKET_CODE_LIST.find(
-          (o) => o.exchange === marketCodes?.targetMarketCode?.split('_')[0]
-        ),
-        getLabel: () => marketCodes?.targetMarketCode,
-        value: marketCodes?.targetMarketCode,
-      },
-      originMarketCode: MARKET_CODE_LIST.find(
-        (o) => o.value === marketCodes?.originMarketCode
-      ) ?? {
-        ...MARKET_CODE_LIST.find(
-          (o) => o.exchange === marketCodes?.originMarketCode?.split('_')[0]
-        ),
-        getLabel: () => marketCodes?.originMarketCode,
-        value: marketCodes?.originMarketCode,
-      },
-    }),
-    [marketCodes]
-  );
-
-  const { data } = useGetRealTimeKlineQuery(
+const PremiumDataChartViewer = forwardRef(
+  (
     {
-      ...marketCodes,
-      interval: klineInterval,
+      baseAssetData,
+      marketCodes,
+      defaultChartDataType,
+      defaultDisabledChartDataType,
+      isKimpExchange,
+      isTetherPriceView,
+      onIntervalChange,
+      onAddFavoriteAsset,
+      onRemoveFavoriteAsset,
       queryKey,
+      showExchangeWallets,
+      showFundingRate,
+      showFundingRateDiff,
+      showMarketCodes,
+      triggerConfig,
     },
-    { skip: !marketCodes }
-  );
+    ref
+  ) => {
+    const {
+      name: baseAsset,
+      favoriteAssetId,
+      walletNetworks,
+      walletStatus,
+    } = baseAssetData;
 
-  useEffect(() => {
-    const value = marketCodes?.targetMarketCode;
-    setTitle(`${baseAsset} / ${value?.split('/').pop()}`);
-    if (marketCodes) setKlineInterval('1T');
-  }, [marketCodes]);
+    const { loggedin, user } = useSelector((state) => state.auth);
+    const isAuthorized = loggedin && user.role !== USER_ROLE.visitor;
 
-  useEffect(() => {
-    if (data && !chartDataType && !defaultDisabledChartDataType) {
-      if (data?.[baseAsset]?.tp === null) {
-        setChartDataType('LS');
-        setDisabledChartDataType({ tp: true });
-      } else setChartDataType('tp');
-    }
-  }, [data?.[baseAsset]?.tp, chartDataType, defaultDisabledChartDataType]);
+    const theme = useTheme();
 
-  useEffect(() => {
-    if (chartDataType === 'FRD') setSubtrahend('origin');
-    else setSubtrahend();
-  }, [chartDataType]);
+    const { t } = useTranslation();
 
-  useEffect(() => {
-    if (defaultDisabledChartDataType)
-      setDisabledChartDataType(defaultDisabledChartDataType);
-  }, [defaultDisabledChartDataType]);
+    const wrapperRef = useRef();
 
-  const isFavorite = !isUndefined(favoriteAssetId);
+    const premiumKlineChartRef = useRef();
 
-  return (
-    <Card
-      ref={wrapperRef}
-      onClick={(e) => e.stopPropagation()}
-      sx={{ borderRadius: 0 }}
-    >
-      <Box sx={{ bgcolor: 'background.paper' }}>
-        {showExchangeWallets && (
-          <Box>
-            {(targetMarketCode?.value.includes('SPOT') ||
-              originMarketCode?.value.includes('SPOT')) && (
-              <Box sx={{ p: 2 }}>
-                <ExchangeWalletNetworks
-                  direction={
-                    targetMarketCode.value.includes('SPOT') &&
+    useImperativeHandle(
+      ref,
+      () => ({
+        getKlineChartRef: () => premiumKlineChartRef,
+      }),
+      []
+    );
+
+    const [title, setTitle] = useState();
+
+    const [klineInterval, setKlineInterval] = useState('1T');
+
+    const [chartDataType, setChartDataType] = useState(defaultChartDataType);
+    const [disabledChartDataType, setDisabledChartDataType] = useState();
+
+    const [subtrahend, setSubtrahend] = useState('origin');
+
+    const { targetMarketCode, originMarketCode } = useMemo(
+      () => ({
+        targetMarketCode: MARKET_CODE_LIST.find(
+          (o) => o.value === marketCodes?.targetMarketCode
+        ) ?? {
+          ...MARKET_CODE_LIST.find(
+            (o) => o.exchange === marketCodes?.targetMarketCode?.split('_')[0]
+          ),
+          getLabel: () => marketCodes?.targetMarketCode,
+          value: marketCodes?.targetMarketCode,
+        },
+        originMarketCode: MARKET_CODE_LIST.find(
+          (o) => o.value === marketCodes?.originMarketCode
+        ) ?? {
+          ...MARKET_CODE_LIST.find(
+            (o) => o.exchange === marketCodes?.originMarketCode?.split('_')[0]
+          ),
+          getLabel: () => marketCodes?.originMarketCode,
+          value: marketCodes?.originMarketCode,
+        },
+      }),
+      [marketCodes]
+    );
+
+    const { data } = useGetRealTimeKlineQuery(
+      {
+        ...marketCodes,
+        interval: klineInterval,
+        queryKey,
+      },
+      { skip: !marketCodes }
+    );
+
+    useEffect(() => {
+      const value = marketCodes?.targetMarketCode;
+      setTitle(`${baseAsset} / ${value?.split('/').pop()}`);
+      if (marketCodes) setKlineInterval('1T');
+    }, [marketCodes]);
+
+    useEffect(() => {
+      if (data && !chartDataType && !defaultDisabledChartDataType) {
+        if (data?.[baseAsset]?.tp === null) {
+          setChartDataType('LS');
+          setDisabledChartDataType({ tp: true });
+        } else setChartDataType('tp');
+      }
+    }, [data?.[baseAsset]?.tp, chartDataType, defaultDisabledChartDataType]);
+
+    useEffect(() => {
+      if (chartDataType === 'FRD') setSubtrahend('origin');
+      else setSubtrahend();
+    }, [chartDataType]);
+
+    useEffect(() => {
+      if (onIntervalChange) onIntervalChange(klineInterval);
+    }, [klineInterval]);
+
+    useEffect(() => {
+      if (defaultDisabledChartDataType)
+        setDisabledChartDataType(defaultDisabledChartDataType);
+    }, [defaultDisabledChartDataType]);
+
+    const isFavorite = !isUndefined(favoriteAssetId);
+
+    return (
+      <Card
+        ref={wrapperRef}
+        onClick={(e) => e.stopPropagation()}
+        sx={{ borderRadius: 0 }}
+      >
+        <Box sx={{ bgcolor: 'background.paper' }}>
+          {showExchangeWallets && (
+            <Box>
+              {(targetMarketCode?.value.includes('SPOT') ||
+                originMarketCode?.value.includes('SPOT')) && (
+                <Box sx={{ p: 2 }}>
+                  <ExchangeWalletNetworks
+                    direction={
+                      targetMarketCode.value.includes('SPOT') &&
+                      originMarketCode.value.includes('SPOT') &&
+                      targetMarketCode.exchange !== originMarketCode.exchange
+                        ? 'right'
+                        : 'all'
+                    }
+                    targetMarketCode={targetMarketCode}
+                    originMarketCode={originMarketCode}
+                    walletNetworks={walletNetworks}
+                    walletStatus={walletStatus}
+                  />
+                  {targetMarketCode.value.includes('SPOT') &&
                     originMarketCode.value.includes('SPOT') &&
-                    targetMarketCode.exchange !== originMarketCode.exchange
-                      ? 'right'
-                      : 'all'
+                    targetMarketCode.exchange !== originMarketCode.exchange && (
+                      <ExchangeWalletNetworks
+                        direction="left"
+                        targetMarketCode={targetMarketCode}
+                        originMarketCode={originMarketCode}
+                        walletNetworks={walletNetworks}
+                        walletStatus={walletStatus}
+                      />
+                    )}
+                </Box>
+              )}
+            </Box>
+          )}
+          <Grid container sx={{ p: 1 }}>
+            <Grid
+              item
+              xs={6}
+              sm={3}
+              sx={{ display: 'flex', alignItems: 'center' }}
+            >
+              {onAddFavoriteAsset && onRemoveFavoriteAsset && (
+                <Tooltip
+                  title={
+                    isFavorite
+                      ? t('Remove from favorites')
+                      : t('Add to favorites')
                   }
-                  targetMarketCode={targetMarketCode}
-                  originMarketCode={originMarketCode}
-                  walletNetworks={walletNetworks}
-                  walletStatus={walletStatus}
-                />
-                {targetMarketCode.value.includes('SPOT') &&
-                  originMarketCode.value.includes('SPOT') &&
-                  targetMarketCode.exchange !== originMarketCode.exchange && (
-                    <ExchangeWalletNetworks
-                      direction="left"
-                      targetMarketCode={targetMarketCode}
-                      originMarketCode={originMarketCode}
-                      walletNetworks={walletNetworks}
-                      walletStatus={walletStatus}
-                    />
-                  )}
-              </Box>
-            )}
-          </Box>
-        )}
-        <Grid container sx={{ p: 1 }}>
-          <Grid
-            item
-            xs={6}
-            sm={3}
-            sx={{ display: 'flex', alignItems: 'center' }}
-          >
-            {onAddFavoriteAsset && onRemoveFavoriteAsset && (
-              <Tooltip
-                title={
-                  isFavorite
-                    ? t('Remove from favorites')
-                    : t('Add to favorites')
-                }
-              >
-                <StarIcon
-                  color={isFavorite ? 'accent' : 'secondary'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (isFavorite) onRemoveFavoriteAsset(favoriteAssetId);
-                    else onAddFavoriteAsset(baseAsset);
-                  }}
-                  sx={{
-                    ':hover': {
-                      color: theme.palette.accent.main,
-                      opacity: 0.5,
-                    },
+                >
+                  <StarIcon
+                    color={isFavorite ? 'accent' : 'secondary'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isFavorite) onRemoveFavoriteAsset(favoriteAssetId);
+                      else onAddFavoriteAsset(baseAsset);
+                    }}
+                    sx={{
+                      ':hover': {
+                        color: theme.palette.accent.main,
+                        opacity: 0.5,
+                      },
+                    }}
+                  />
+                </Tooltip>
+              )}
+              <Typography sx={{ fontWeight: 700, ml: 2 }}>{title}</Typography>
+            </Grid>
+            <Grid
+              item
+              xs={3}
+              sm={6}
+              sx={{ display: 'flex', justifyContent: 'center' }}
+            >
+              {chartDataType !== 'FR' && chartDataType !== 'FRD' && (
+                <IntervalSelector
+                  defaultValue={klineInterval}
+                  disabled={!isAuthorized}
+                  onChange={(value) => {
+                    premiumKlineChartRef?.current?.reinitialize();
+                    setKlineInterval(value);
                   }}
                 />
-              </Tooltip>
-            )}
-            <Typography sx={{ fontWeight: 700, ml: 2 }}>{title}</Typography>
+              )}
+            </Grid>
+            <Grid
+              item
+              xs={3}
+              sm={3}
+              sx={{ display: 'flex', justifyContent: 'end' }}
+            >
+              {chartDataType && (
+                <ChartDataTypeSelector
+                  defaultValue={chartDataType}
+                  disabled={disabledChartDataType}
+                  isKimpExchange={isKimpExchange}
+                  isTetherPriceView={isTetherPriceView}
+                  showFundingRate={
+                    showFundingRate &&
+                    (!targetMarketCode.value.includes('SPOT') ||
+                      !originMarketCode.value.includes('SPOT'))
+                  }
+                  showFundingRateDiff={
+                    showFundingRateDiff &&
+                    !targetMarketCode.value.includes('SPOT') &&
+                    !originMarketCode.value.includes('SPOT')
+                  }
+                  onChange={(value) => setChartDataType(value)}
+                />
+              )}
+            </Grid>
           </Grid>
-          <Grid
-            item
-            xs={3}
-            sm={6}
-            sx={{ display: 'flex', justifyContent: 'center' }}
-          >
-            {chartDataType !== 'FR' && chartDataType !== 'FRD' && (
-              <IntervalSelector
-                defaultValue={klineInterval}
-                disabled={!isAuthorized}
-                onChange={(value) => {
-                  premiumKlineChartRef?.current?.reinitialize();
-                  setKlineInterval(value);
-                }}
-              />
-            )}
-          </Grid>
-          <Grid
-            item
-            xs={3}
-            sm={3}
-            sx={{ display: 'flex', justifyContent: 'end' }}
-          >
-            {chartDataType && (
-              <ChartDataTypeSelector
-                defaultValue={chartDataType}
-                disabled={disabledChartDataType}
-                isKimpExchange={isKimpExchange}
-                isTetherPriceView={isTetherPriceView}
-                showFundingRate={
-                  showFundingRate &&
-                  (!targetMarketCode.value.includes('SPOT') ||
-                    !originMarketCode.value.includes('SPOT'))
-                }
-                showFundingRateDiff={
-                  showFundingRateDiff &&
-                  !targetMarketCode.value.includes('SPOT') &&
-                  !originMarketCode.value.includes('SPOT')
-                }
-                onChange={(value) => setChartDataType(value)}
-              />
-            )}
-          </Grid>
-        </Grid>
-        <ChartRenderer
-          alarmConfig={alarmConfig}
-          chartDataType={chartDataType}
-          klineInterval={klineInterval}
-          targetMarketCode={targetMarketCode}
-          originMarketCode={originMarketCode}
-          marketCodes={marketCodes}
-          baseAsset={baseAsset}
-          subtrahend={subtrahend}
-          isKimpExchange={isKimpExchange}
-          isTetherPriceView={isTetherPriceView}
-          queryKey={queryKey}
-          showMarketCodes={showMarketCodes}
-          premiumKlineChartRef={premiumKlineChartRef}
-          onSwapMarketCodes={() =>
-            setSubtrahend((state) => (state === 'origin' ? 'target' : 'origin'))
-          }
-        />
-      </Box>
-    </Card>
-  );
-}
+          <ChartRenderer
+            triggerConfig={triggerConfig}
+            chartDataType={chartDataType}
+            klineInterval={klineInterval}
+            targetMarketCode={targetMarketCode}
+            originMarketCode={originMarketCode}
+            marketCodes={marketCodes}
+            baseAsset={baseAsset}
+            subtrahend={subtrahend}
+            isKimpExchange={isKimpExchange}
+            isTetherPriceView={isTetherPriceView}
+            queryKey={queryKey}
+            showMarketCodes={showMarketCodes}
+            premiumKlineChartRef={premiumKlineChartRef}
+            onSwapMarketCodes={() =>
+              setSubtrahend((state) =>
+                state === 'origin' ? 'target' : 'origin'
+              )
+            }
+          />
+        </Box>
+      </Card>
+    );
+  }
+);
 
 function MarketCodesRenderer({
   leftMarket,
@@ -317,7 +344,7 @@ function MarketCodesRenderer({
 }
 
 function ChartRenderer({
-  alarmConfig,
+  triggerConfig,
   chartDataType,
   klineInterval,
   targetMarketCode,
@@ -424,7 +451,7 @@ function ChartRenderer({
           <LightWeightPremiumKlineChart
             ref={premiumKlineChartRef}
             baseAsset={baseAsset}
-            alarmConfig={alarmConfig}
+            triggerConfig={triggerConfig}
             dataType={chartDataType}
             interval={klineInterval}
             marketCodes={marketCodes}

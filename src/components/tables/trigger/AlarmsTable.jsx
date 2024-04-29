@@ -30,7 +30,7 @@ import orderBy from 'lodash/orderBy';
 
 import DeleteAlert from 'components/DeleteAlert';
 import ReactTableUI from 'components/ReactTableUI';
-import UpdateAlarmForm from 'components/UpdateAlarmForm';
+import UpdateTriggerForm from 'components/UpdateTriggerForm';
 
 import renderExpandCell from 'components/tables/common/renderExpandCell';
 import renderSelectCell from './renderSelectCell';
@@ -42,8 +42,8 @@ import renderSelectHeader from './renderSelectHeader';
 export default function AlarmsTable({
   baseAsset,
   tradeConfigAllocation,
-  onAlarmConfigChange,
-  createAlarmFormRef,
+  onTriggerConfigChange,
+  createTriggerFormRef,
 }) {
   const tableRef = useRef();
   const { i18n, t } = useTranslation();
@@ -82,8 +82,8 @@ export default function AlarmsTable({
   }, [isDeleteSuccess]);
 
   useEffect(() => {
-    if (!isEmpty(expanded)) createAlarmFormRef.current.setDisabled(true);
-    else createAlarmFormRef.current.setDisabled(false);
+    if (!isEmpty(expanded)) createTriggerFormRef.current.setDisabled(true);
+    else createTriggerFormRef.current.setDisabled(false);
   }, [expanded]);
 
   const columns = useMemo(
@@ -137,9 +137,11 @@ export default function AlarmsTable({
         baseAsset: trade.base_asset,
         entry: trade.low,
         exit: trade.high,
-        created: DateTime.fromISO(trade.registered_datetime).toLocaleString(
-          DateTime.DATETIME_MED
-        ),
+        created: DateTime.fromISO(trade.registered_datetime, {
+          zone: 'UTC',
+        })
+          .toLocal()
+          .toLocaleString(DateTime.DATETIME_MED),
         status: trade.trigger_switch,
         isTether: trade.usdt_conversion,
         isDeleteLoading,
@@ -156,7 +158,7 @@ export default function AlarmsTable({
   const renderSubComponent = useCallback(
     ({ row: { original, toggleExpanded }, meta }) => (
       <Box sx={{ bgcolor: 'background.default' }}>
-        <UpdateAlarmForm
+        <UpdateTriggerForm
           baseAsset={original.baseAsset}
           defaultEntry={original.entry}
           defaultExit={original.exit}
@@ -164,7 +166,7 @@ export default function AlarmsTable({
           tradeConfigUuid={original.trade_config_uuid}
           usdtConversion={original.usdt_conversion}
           uuid={original.uuid}
-          onAlarmConfigChange={meta.onAlarmConfigChange}
+          onTriggerConfigChange={meta.onTriggerConfigChange}
           toggleExpanded={toggleExpanded}
         />
       </Box>
@@ -206,7 +208,12 @@ export default function AlarmsTable({
           onExpandedChange,
           onPaginationChange: setPagination,
           onRowSelectionChange: setRowSelection,
-          meta: { theme, isMobile, onAlarmConfigChange, expandIcon: EditIcon },
+          meta: {
+            theme,
+            isMobile,
+            onTriggerConfigChange,
+            expandIcon: EditIcon,
+          },
         }}
         renderSubComponent={renderSubComponent}
         getHeaderProps={() => ({

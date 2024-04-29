@@ -75,7 +75,7 @@ function ChartDataTypeSelector({
         value={selectedIdx}
         onChange={(e, newIdx) => {
           e.stopPropagation();
-          setSelectedIdx(newIdx);
+          if (newIdx !== null) setSelectedIdx(newIdx);
         }}
         color="secondary"
         size="small"
