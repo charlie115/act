@@ -72,9 +72,10 @@ const CreateTriggerForm = forwardRef(
     },
     ref
   ) => {
+    const predictionSeriesRef = useRef();
     const regressionLineSeriesRef = useRef();
 
-    const { t } = useTranslation();
+    const { i18n, t } = useTranslation();
 
     const theme = useTheme();
 
@@ -103,7 +104,7 @@ const CreateTriggerForm = forwardRef(
     );
 
     const autoSetupForm = useForm({
-      defaultValues: { klineNum: 50, interval: '1T', percentGap: '' },
+      defaultValues: { klineNum: 200, interval, percentGap: 1 },
       mode: 'all',
     });
     const { isValid: isSetupValid, submitCount: setupSubmitCount } =
@@ -122,7 +123,6 @@ const CreateTriggerForm = forwardRef(
         entry: '',
         exit: '',
         gap: '',
-        trainingKline: 50,
         isTether: isTetherPriceView || false,
       },
       mode: 'all',
@@ -144,7 +144,14 @@ const CreateTriggerForm = forwardRef(
     const [postTrade, tradeResults] = usePostTradeMutation();
     const [postTradeConfig, tradeConfigResults] = usePostTradeConfigMutation();
 
-    const [getPBoundary, pBoundary] = useLazyGetPBoundaryQuery();
+    const [
+      getPBoundary,
+      {
+        isFetching: isPBoundaryFetching,
+        isSuccess: isPBoundarySuccess,
+        data: pBoundary,
+      },
+    ] = useLazyGetPBoundaryQuery();
 
     const isLoading = tradeResults.isLoading || tradeConfigResults.isLoading;
 
@@ -275,52 +282,81 @@ const CreateTriggerForm = forwardRef(
     }, [dollar, isDollarSuccess, setup]);
 
     useEffect(() => {
-      const klineChartRef = premiumDataViewerRef?.current?.getKlineChartRef();
-      if (pBoundary.data?.regression_line?.x?.length > 0) {
-        if (!regressionLineSeriesRef.current)
-          regressionLineSeriesRef.current = klineChartRef?.current
-            ?.getChart()
-            ?.addLineSeries({
-              priceScaleId: 'right',
-              color: theme.palette.success.light,
-              crosshairMarkerVisible: false,
-              lastValueVisible: false,
-              lineStyle: LineStyle.Dashed,
-              lineType: LineType.Curved,
-              lineWidth: 3,
-              // pointMarkersRadius: 3,
-              // pointMarkersVisible: true,
-              priceLineVisible: false,
-            });
-        regressionLineSeriesRef.current?.setData(
-          pBoundary.data.regression_line.x.map((date, idx) => ({
-            time:
-              DateTime.fromISO(date, {
-                zone: 'UTC',
-              }).toMillis() / 1000,
-            value: pBoundary.data.regression_line.y?.[idx],
-          }))
-        );
+      if (isPBoundarySuccess) {
+        const klineChartRef = premiumDataViewerRef?.current?.getKlineChartRef();
+        if (pBoundary?.regression_line?.x?.length > 0) {
+          if (!regressionLineSeriesRef.current)
+            regressionLineSeriesRef.current = klineChartRef?.current
+              ?.getChart()
+              ?.addLineSeries({
+                priceScaleId: 'right',
+                color: theme.palette.info.main,
+                axisLabelVisible: true,
+                crosshairMarkerVisible: false,
+                lastValueVisible: false,
+                lineStyle: LineStyle.Dotted,
+                lineType: LineType.Curved,
+                lineWidth: 3,
+                priceLineVisible: false,
+                title: t('Regression'),
+              });
+          regressionLineSeriesRef.current?.setData(
+            pBoundary.regression_line.x.map((date, idx) => ({
+              time:
+                DateTime.fromISO(date, {
+                  zone: 'UTC',
+                }).toMillis() / 1000,
+              value: pBoundary.regression_line.y?.[idx],
+            }))
+          );
+        }
+        if (pBoundary?.predicted_points?.y?.length > 0) {
+          const [entryDate] = pBoundary.predicted_points.x;
+          const [predictedEntry, predictedExit] = pBoundary.predicted_points.y;
+          setValue('entry', predictedEntry);
+          setValue('exit', predictedExit);
+          if (!predictionSeriesRef.current)
+            predictionSeriesRef.current = klineChartRef?.current
+              ?.getChart()
+              ?.addCandlestickSeries({
+                priceScaleId: 'right',
+                borderVisible: false,
+                downColor: 'transparent',
+                upColor: 'transparent',
+                wickDownColor: 'transparent',
+                wickUpColor: 'transparent',
+                crosshairMarkerVisible: false,
+                lastValueVisible: false,
+                priceLineVisible: false,
+              });
+          else predictionSeriesRef.current.setMarkers([]);
+          predictionSeriesRef.current.setData([
+            {
+              time:
+                DateTime.fromISO(entryDate, {
+                  zone: 'UTC',
+                }).toMillis() / 1000,
+              open: predictedEntry,
+              close: predictedExit,
+              low: predictedEntry,
+              high: predictedExit,
+            },
+          ]);
+          predictionSeriesRef.current.setMarkers(
+            pBoundary.predicted_points.x.map((date, idx) => ({
+              time:
+                DateTime.fromISO(date, {
+                  zone: 'UTC',
+                }).toMillis() / 1000,
+              position: idx === 0 ? 'belowBar' : 'aboveBar',
+              color: theme.palette.error.light,
+              shape: idx === 0 ? 'arrowUp' : 'arrowDown',
+              text: `${pBoundary.predicted_points.y?.[idx]}`,
+            }))
+          );
+        }
       }
-      if (pBoundary.data?.predicted_points?.y?.length > 0) {
-        const [predictedEntry, predictedExit] =
-          pBoundary.data.predicted_points.y;
-        setValue('entry', predictedEntry);
-        setValue('exit', predictedExit);
-        klineChartRef?.current?.getCandlestickSeries()?.setMarkers(
-          pBoundary.data.predicted_points.x.map((date, idx) => ({
-            time:
-              DateTime.fromISO(date, {
-                zone: 'UTC',
-              }).toMillis() / 1000,
-            position: idx === 0 ? 'belowBar' : 'aboveBar',
-            color: theme.palette.error.light,
-            shape: idx === 0 ? 'arrowUp' : 'arrowDown',
-            text: `${pBoundary.data.predicted_points.y?.[idx]}`,
-          }))
-        );
-      }
-    }, [pBoundary]);
+    }, [pBoundary, isPBoundarySuccess, i18n.language]);
 
     const prevIsTether = usePrevious(isTether);
     useEffect(() => {
@@ -344,20 +380,26 @@ const CreateTriggerForm = forwardRef(
 
     useEffect(() => {
       autoSetupForm.reset();
+      predictionSeriesRef.current?.setData([]);
       regressionLineSeriesRef.current?.setData([]);
-      premiumDataViewerRef?.current
-        ?.getKlineChartRef()
-        ?.current?.getCandlestickSeries()
-        ?.setMarkers([]);
-      if (setup === 'auto') {
-        reset();
-      }
+      if (setup === 'auto') reset();
     }, [setup]);
+
+    useEffect(() => {
+      reset();
+      autoSetupForm.reset(
+        { klineNum: 200, interval, percentGap: 1 }
+        // { keepDirtyValues: true }
+      );
+      predictionSeriesRef.current = null;
+      regressionLineSeriesRef.current = null;
+    }, [interval]);
 
     useEffect(() => {
       if (disabled) {
         reset();
         autoSetupForm.reset();
+        predictionSeriesRef.current?.setData([]);
         regressionLineSeriesRef.current?.setData([]);
       }
     }, [disabled]);
@@ -485,7 +527,7 @@ const CreateTriggerForm = forwardRef(
                           endAdornment={
                             <InputAdornment position="end">%</InputAdornment>
                           }
-                          inputProps={{ min: 0, step: 'any', type: 'number' }}
+                          inputProps={{ min: 0, step: 0.05, type: 'number' }}
                           {...field}
                         />
                         <FormHelperText>
@@ -507,7 +549,7 @@ const CreateTriggerForm = forwardRef(
                       !isSetupValid ||
                       isLoading ||
                       disabled ||
-                      pBoundary.isFetching
+                      isPBoundaryFetching
                     }
                     form="auto-setup-form"
                     type="submit"

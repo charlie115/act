@@ -274,6 +274,7 @@ export const {
   useGetFuturesPositionQuery,
   useGetNodesQuery,
   useGetOrderHistoryByUuidQuery,
+  useGetPBoundaryQuery,
   useGetPnlHistoryQuery,
   useGetRepeatTradesByTradeConfigQuery,
   useGetSpotPositionQuery,

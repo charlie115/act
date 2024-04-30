@@ -95,21 +95,8 @@ const LightWeightBaseChart = forwardRef(
       ) {
         // tooltipRef.current.style.display = 'none';
       } else {
-        // if (handleCrosshairMove) {
-        //   handleCrosshairMove(param, tooltipRef.current);
-        //   return;
-        // }
         const dateStr = param.time * 1000;
         tooltipRef.current.style.display = 'block';
-        // const currentData = param.seriesData.get(baseSeriesRef.current);
-        // if (!currentData) {
-        //   tooltipRef.current.style.display = 'none';
-        //   return;
-        // }
-        // const price =
-        //   currentData.value !== undefined
-        //     ? currentData.value
-        //     : currentData.close;
         tooltipRef.current.innerHTML = tooltipOptions.getInnerHTML
           ? tooltipOptions.getInnerHTML(param.seriesData, dateStr)
           : '';
@@ -184,8 +171,8 @@ const LightWeightBaseChart = forwardRef(
       ref.current.timeScale().applyOptions({
         barSpacing: 10,
         borderColor: alpha(theme.palette.secondary.main, 0.2),
-        fixRightEdge: true,
-        rightOffset: 2,
+        // fixRightEdge: true,
+        rightOffset: 4,
       });
       ref.current
         .timeScale()
@@ -328,9 +315,10 @@ const LightWeightBaseChart = forwardRef(
                 setBarsInfo(null);
                 setTimeout(
                   () =>
-                    ref.current
-                      .timeScale()
-                      .applyOptions({ rightOffset: 2, fixRightEdge: true }),
+                    ref.current.timeScale().applyOptions({
+                      rightOffset: 4,
+                      // fixRightEdge: true
+                    }),
                   0
                 );
               }}

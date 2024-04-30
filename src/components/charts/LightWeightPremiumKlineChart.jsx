@@ -244,29 +244,41 @@ const LightWeightPremiumKlineChart = forwardRef(
         candlestickSeriesRef.current?.removePriceLine(
           triggerExitPriceLineRef.current
         );
+      if (triggerConfig?.entry || triggerConfig?.exit) {
+        candlestickSeriesRef.current.applyOptions({ priceLineVisible: false });
+        lineSeriesRef.current.applyOptions({ priceLineVisible: false });
+      } else {
+        candlestickSeriesRef.current.applyOptions({ priceLineVisible: true });
+        lineSeriesRef.current.applyOptions({ priceLineVisible: true });
+      }
       if (isNumber(triggerConfig?.entry)) {
         triggerEntrySeriesRef.current?.setData([
-          { time: DateTime.now().toMillis(), value: triggerConfig.entry },
+          {
+            time: DateTime.now().toMillis() / 1000,
+            value: triggerConfig.entry,
+          },
         ]);
         triggerEntryPriceLineRef.current =
           candlestickSeriesRef.current?.createPriceLine({
             price: triggerConfig.entry,
             color: theme.palette.accent.main,
-            lineWidth: 2,
+            lineWidth: 1,
             lineStyle: 0,
             axisLabelVisible: true,
             title: t('ENTRY'),
           });
-      } else triggerEntrySeriesRef.current?.setData([]);
+      } else {
+        triggerEntrySeriesRef.current?.setData([]);
+      }
       if (isNumber(triggerConfig?.exit)) {
         triggerExitSeriesRef.current?.setData([
-          { time: DateTime.now().toMillis(), value: triggerConfig.exit },
+          { time: DateTime.now().toMillis() / 1000, value: triggerConfig.exit },
         ]);
         triggerExitPriceLineRef.current =
           candlestickSeriesRef.current?.createPriceLine({
             price: triggerConfig.exit,
             color: theme.palette.warning.main,
-            lineWidth: 2,
+            lineWidth: 1,
             lineStyle: 0,
             axisLabelVisible: true,
             title: t('EXIT'),
@@ -403,6 +415,7 @@ const LightWeightPremiumKlineChart = forwardRef(
               upColor: theme.palette.success.main,
               wickDownColor: theme.palette.error.main,
               wickUpColor: theme.palette.success.main,
+              priceLineVisible: false,
               priceFormat: {
                 type: 'custom',
                 formatter: (price) =>
@@ -422,6 +435,7 @@ const LightWeightPremiumKlineChart = forwardRef(
               precision: 2,
               minMove: 0.01,
             },
+            priceLineVisible: false,
             title: t('Price'),
           });
           triggerEntrySeriesRef.current = baseChartRef.current.addLineSeries({

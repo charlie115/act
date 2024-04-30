@@ -48,8 +48,8 @@ export default function AutoRepeatForm({
 
       return {
         isFixed: `${data?.pauto_num === null}`,
-        kline_num: data?.kline_num || 50,
-        pauto_num: data?.pauto_num || '',
+        kline_num: data?.kline_num || 200,
+        pauto_num: data?.pauto_num || 1,
         uuid: data?.uuid,
         auto_repeat_num: data?.auto_repeat_num,
         trade_uuid: tradeUuid,
@@ -210,7 +210,7 @@ export default function AutoRepeatForm({
                   endAdornment={
                     <InputAdornment position="end">%</InputAdornment>
                   }
-                  inputProps={{ min: 0, step: 'any', type: 'number' }}
+                  inputProps={{ min: 0, step: 0.05, type: 'number' }}
                   {...field}
                 />
                 <FormHelperText>{fieldState.error?.message}</FormHelperText>

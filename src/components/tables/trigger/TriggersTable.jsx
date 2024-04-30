@@ -447,7 +447,7 @@ export default function TriggersTable({
           <Box sx={{ p: 2 }}>
             <CreateTriggerForm
               premiumDataViewerRef={premiumDataViewerRef}
-              interval={klineInterval}
+              interval={meta.klineInterval}
               baseAsset={original.baseAsset}
               marketCodes={original.marketCodes}
               tradeConfigAllocation={meta.tradeConfigAllocation}
@@ -547,6 +547,7 @@ export default function TriggersTable({
           meta: {
             theme,
             isMobile,
+            klineInterval,
             triggerConfig,
             displayTradeHistory,
             tradeConfigAllocation,
