@@ -46,7 +46,7 @@ import isUndefined from 'lodash/isUndefined';
 import orderBy from 'lodash/orderBy';
 import union from 'lodash/union';
 
-import AssetTradeConfigTriggers from 'components/AssetTradeConfigTriggers';
+import AssetTradeConfig from 'components/AssetTradeConfig';
 import PremiumDataChartViewer from 'components/PremiumDataChartViewer';
 import ReactTableUI from 'components/ReactTableUI';
 
@@ -463,7 +463,8 @@ function PremiumTable({
           {...meta}
         />
         {loggedin && (
-          <AssetTradeConfigTriggers
+          <AssetTradeConfig
+            showTable
             premiumDataViewerRef={premiumDataViewerRef}
             baseAsset={row.original.name}
             onTriggerConfigChange={onTriggerConfigChange}

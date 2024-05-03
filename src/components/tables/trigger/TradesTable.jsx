@@ -39,9 +39,10 @@ import renderValueCell from './renderValueCell';
 
 import renderSelectHeader from './renderSelectHeader';
 
-export default function AlarmsTable({
+export default function TradesTable({
   baseAsset,
   tradeConfigAllocation,
+  tradeType,
   onTriggerConfigChange,
   createTriggerFormRef,
 }) {
@@ -132,7 +133,15 @@ export default function AlarmsTable({
 
   const data = useMemo(
     () =>
-      orderBy(trades || [], 'registered_datetime', 'desc').map((trade) => ({
+      orderBy(
+        trades?.filter((i) => {
+          if (tradeType === 'alarm') return i.trade_capital === null;
+          if (tradeType === 'autoTrade') return i.trade_capital !== null;
+          return true;
+        }) || [],
+        'registered_datetime',
+        'desc'
+      ).map((trade) => ({
         ...trade,
         baseAsset: trade.base_asset,
         entry: trade.low,
@@ -146,7 +155,7 @@ export default function AlarmsTable({
         isTether: trade.usdt_conversion,
         isDeleteLoading,
       })),
-    [trades, isDeleteLoading]
+    [trades, tradeType, isDeleteLoading]
   );
 
   const getRowId = useCallback((row) => row.uuid, []);

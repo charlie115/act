@@ -15,8 +15,6 @@ import {
 
 import { useTranslation } from 'react-i18next';
 
-import isNaN from 'lodash/isNaN';
-
 import ReactTableUI from 'components/ReactTableUI';
 
 import renderAssetIconCell from 'components/tables/common/renderAssetIconCell';

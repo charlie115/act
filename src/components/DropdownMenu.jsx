@@ -135,7 +135,7 @@ export default function DropdownMenu({
                   onKeyDown={handleListKeyDown}
                   sx={{ minWidth: 150 }}
                 >
-                  {options.map((item, idx) => (
+                  {options.map((item) => (
                     <MenuItem
                       key={item.value}
                       disabled={item.disabled}

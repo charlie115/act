@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 
 import BlockIcon from '@mui/icons-material/Block';
 
-export default function renderAssetIconCell({ cell, row }) {
+export default function renderAssetIconCell({ cell }) {
   return (
     <Box
       sx={{

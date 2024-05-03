@@ -66,6 +66,7 @@ const CreateTriggerForm = forwardRef(
       interval,
       isTetherPriceView,
       tradeConfigAllocation,
+      tradeType,
       onTriggerConfigChange,
       onCreateSuccess,
       premiumDataViewerRef,
@@ -396,6 +397,10 @@ const CreateTriggerForm = forwardRef(
     }, [interval]);
 
     useEffect(() => {
+      if (tradeType === 'alarm') setAutoRepeat(0);
+    }, [tradeType]);
+
+    useEffect(() => {
       if (disabled) {
         reset();
         autoSetupForm.reset();
@@ -606,7 +611,7 @@ const CreateTriggerForm = forwardRef(
                 />
               </Grid>
             )}
-            {setup === 'auto' && (
+            {setup === 'auto' && tradeType === 'autoTrade' && (
               <Grid
                 item
                 md

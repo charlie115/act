@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 
-import Badge from '@mui/material/Badge';
-
 import ForumIcon from '@mui/icons-material/Forum';
 import TelegramIcon from '@mui/icons-material/Telegram';
 
@@ -28,7 +26,6 @@ const CHANNELS = [
 export default function ChatChannelSelector({ badges, onChange }) {
   const {
     i18n: { language },
-    t,
   } = useTranslation();
 
   const [options, setOptions] = useState([]);

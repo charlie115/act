@@ -46,8 +46,8 @@ import isFunction from 'lodash/isFunction';
 import isKoreanMarket from 'utils/isKoreanMarket';
 
 import AssetSearchInput from 'components/AssetSearchInput';
+import AssetTradeConfig from 'components/AssetTradeConfig';
 import AutoRepeatForm from 'components/AutoRepeatForm';
-import CreateTriggerForm from 'components/CreateTriggerForm';
 import DeleteAlert from 'components/DeleteAlert';
 import DropdownMenu from 'components/DropdownMenu';
 import PremiumDataChartViewer from 'components/PremiumDataChartViewer';
@@ -445,7 +445,7 @@ export default function TriggersTable({
         </Box>
         {original.add ? (
           <Box sx={{ p: 2 }}>
-            <CreateTriggerForm
+            {/* <CreateTriggerForm
               premiumDataViewerRef={premiumDataViewerRef}
               interval={meta.klineInterval}
               baseAsset={original.baseAsset}
@@ -453,6 +453,15 @@ export default function TriggersTable({
               tradeConfigAllocation={meta.tradeConfigAllocation}
               onTriggerConfigChange={onTriggerConfigChange}
               onCreateSuccess={() => setSelectedAsset('')}
+            /> */}
+            <AssetTradeConfig
+              premiumDataViewerRef={premiumDataViewerRef}
+              baseAsset={original.baseAsset}
+              marketCodes={original.marketCodes}
+              onTriggerConfigChange={onTriggerConfigChange}
+              onCreateSuccess={() => setSelectedAsset('')}
+              interval={meta.klineInterval}
+              {...meta}
             />
           </Box>
         ) : (
