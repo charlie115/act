@@ -9,6 +9,7 @@ from tradecore.views import (
     SpotPositionView,
     FuturesPositionView,
     PboundaryView,
+    DepositAddressView,
 )
 
 
@@ -105,5 +106,15 @@ urlpatterns = [
         "pboundary/",
         PboundaryView.as_view(),
         name="pboundary-view",
+    ),
+    path(
+        "deposit-address/",
+        DepositAddressView.as_view(),
+        name="deposit-address-view",
+    ),
+    path(
+        "deposit-amount/",
+        include("tradecore.urls.deposit_amount"),
+        name="deposit-amount",
     ),
 ]

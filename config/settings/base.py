@@ -333,6 +333,8 @@ SPECTACULAR_SETTINGS = {
                     "TradeHistory",
                     "PNLHistory",
                     "Pboundary",
+                    "DepositAddress",
+                    "DepositAmount",
                 ],
             },
             {

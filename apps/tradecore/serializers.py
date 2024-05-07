@@ -4,7 +4,7 @@ from rest_framework import exceptions, serializers
 from lib.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_409_CONFLICT
 from tradecore.mixins import TradeCoreMixin
 from tradecore.models import Node, TradeConfigAllocation, EnabledMarketCodeCombination
-from users.models import User
+from users.models import DepositHistory, User
 
 
 class NodeSerializer(serializers.ModelSerializer):
@@ -324,6 +324,98 @@ class TradeLogViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     remark = serializers.CharField(required=False)
 
 
+class RepeatTradesViewSetQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)
+
+
+class RepeatTradesViewSetFilterSerializer(serializers.Serializer):
+    """
+    This is just a hacky way to filter a non-model view
+    Only used in overriden filter_queryset function of the corresponding view
+    """
+
+    trade_uuid = serializers.UUIDField(required=False)
+    kline_interval = serializers.CharField(required=False)
+    kline_num = serializers.IntegerField(required=False)
+    pauto_num = serializers.FloatField(required=False)
+    auto_repeat_switch = serializers.IntegerField(required=False)
+    auto_repeat_num = serializers.IntegerField(required=False)
+    status = serializers.CharField(required=False)
+
+
+class RepeatTradesViewSetSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField(write_only=True)
+    trade_uuid = serializers.UUIDField()
+    uuid = serializers.UUIDField(read_only=True)
+    registered_datetime = serializers.DateTimeField(read_only=True)
+    last_updated_datetime = serializers.DateTimeField(read_only=True)
+    kline_interval = serializers.ChoiceField(
+        default="1T", choices=["1T", "5T", "15T", "30T", "1H", "4H"], required=False
+    )
+    kline_num = serializers.IntegerField(required=False)
+    pauto_num = serializers.FloatField(required=False)
+    auto_repeat_switch = serializers.IntegerField()
+    auto_repeat_num = serializers.IntegerField()
+    status = serializers.CharField(required=False)
+    remark = serializers.CharField(required=False)
+
+    def create(self, validated_data):
+        node = self.get_node(validated_data.pop("trade_config_uuid"))
+
+        api_response = self.tradecore_create_api(
+            url=node.url,
+            endpoint=self.context["view"].tradecore_api_endpoint,
+            data=validated_data,
+        )
+
+        if api_response.status_code == HTTP_201_CREATED:
+            return api_response.json()
+
+        self.handle_exception_from_api(api_response)
+
+    def update(self, instance, validated_data):
+        fixed_value_keys = [
+            "trade_config_uuid",
+            "trade_uuid",
+        ]
+
+        new_instance = instance.copy()
+        for key, value in validated_data.items():
+            if (
+                key not in fixed_value_keys
+                # Only update instance values if they are explicity provided in query
+                and key in self.initial_data.keys()
+                and value != instance.get(key, None)
+            ):
+                new_instance[key] = value
+
+        node = self.get_node(validated_data.get("trade_config_uuid"))
+
+        api_response = self.tradecore_update_api(
+            url=node.url,
+            endpoint=self.context["view"].tradecore_api_endpoint,
+            path_param=instance.get("uuid"),
+            data=new_instance,
+        )
+
+        if api_response.status_code == HTTP_200_OK:
+            return api_response.json()
+
+        self.handle_exception_from_api(api_response)
+
+
 class ExchangeApiKeyViewSetQueryParamsSerializer(
     TradeCoreMixin, serializers.Serializer
 ):
@@ -576,14 +668,13 @@ class PboundaryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
         return market_code_combination
 
 
-class RepeatTradesViewSetQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+class DepositAddressQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField()
 
     def validate(self, attrs):
         trade_config_allocation = self.get_trade_config_allocation(
             attrs["trade_config_uuid"]
         )
-
         self.context["view"].check_object_permissions(
             request=self.context["request"],
             obj=trade_config_allocation,
@@ -592,77 +683,59 @@ class RepeatTradesViewSetQueryParamsSerializer(TradeCoreMixin, serializers.Seria
         return super().validate(attrs)
 
 
-class RepeatTradesViewSetFilterSerializer(serializers.Serializer):
-    """
-    This is just a hacky way to filter a non-model view
-    Only used in overriden filter_queryset function of the corresponding view
-    """
-
-    trade_uuid = serializers.UUIDField(required=False)
-    kline_interval = serializers.CharField(required=False)
-    kline_num = serializers.IntegerField(required=False)
-    pauto_num = serializers.FloatField(required=False)
-    auto_repeat_switch = serializers.IntegerField(required=False)
-    auto_repeat_num = serializers.IntegerField(required=False)
-    status = serializers.CharField(required=False)
-
-
-class RepeatTradesViewSetSerializer(TradeCoreMixin, serializers.Serializer):
+class DepositAmountViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField(write_only=True)
-    trade_uuid = serializers.UUIDField()
-    uuid = serializers.UUIDField(read_only=True)
-    registered_datetime = serializers.DateTimeField(read_only=True)
-    last_updated_datetime = serializers.DateTimeField(read_only=True)
-    kline_interval = serializers.ChoiceField(
-        default="1T", choices=["1T", "5T", "15T", "30T", "1H", "4H"], required=False
-    )
-    kline_num = serializers.IntegerField(required=False)
-    pauto_num = serializers.FloatField(required=False)
-    auto_repeat_switch = serializers.IntegerField()
-    auto_repeat_num = serializers.IntegerField()
-    status = serializers.CharField(required=False)
-    remark = serializers.CharField(required=False)
+    txid = serializers.CharField(write_only=True)
+    status = serializers.CharField(read_only=True)
+    amount = serializers.FloatField(read_only=True)
 
-    def create(self, validated_data):
-        node = self.get_node(validated_data.pop("trade_config_uuid"))
-
-        api_response = self.tradecore_create_api(
-            url=node.url,
-            endpoint=self.context["view"].tradecore_api_endpoint,
-            data=validated_data,
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
         )
 
-        if api_response.status_code == HTTP_201_CREATED:
-            return api_response.json()
+        return super().validate(attrs)
 
-        self.handle_exception_from_api(api_response)
+    def create(self, validated_data):
+        trade_config_allocation = self.get_trade_config_allocation(
+            trade_config_uuid=validated_data.pop("trade_config_uuid")
+        )
+        node = trade_config_allocation.node
 
-    def update(self, instance, validated_data):
-        fixed_value_keys = [
-            "trade_config_uuid",
-            "trade_uuid",
-        ]
+        history_deposit = trade_config_allocation.user.deposit_history.filter(
+            txid=validated_data.get("txid")
+        )
+        if len(history_deposit) > 0:
+            raise exceptions.ValidationError(
+                {"txid": ["This TXID has already been deposited."]}
+            )
 
-        new_instance = instance.copy()
-        for key, value in validated_data.items():
-            if (
-                key not in fixed_value_keys
-                # Only update instance values if they are explicity provided in query
-                and key in self.initial_data.keys()
-                and value != instance.get(key, None)
-            ):
-                new_instance[key] = value
-
-        node = self.get_node(validated_data.get("trade_config_uuid"))
-
-        api_response = self.tradecore_update_api(
+        api_response = self.tradecore_list_api(
             url=node.url,
             endpoint=self.context["view"].tradecore_api_endpoint,
-            path_param=instance.get("uuid"),
-            data=new_instance,
+            query_params=validated_data,
         )
 
         if api_response.status_code == HTTP_200_OK:
-            return api_response.json()
+            deposit_amount = api_response.json()
+            deposited = deposit_amount.pop("deposited")
+
+            if deposited:
+                deposit_history = DepositHistory.objects.create(
+                    user=trade_config_allocation.user,
+                    change=deposit_amount.get("amount"),
+                    txid=validated_data.get("txid"),
+                    type=DepositHistory.DEPOSIT,
+                )
+                return {
+                    "status": f"Deposit details for {validated_data.get('txid')} has been successfully received.",
+                    "amount": deposit_history.change,
+                }
+            else:
+                raise exceptions.ValidationError(deposit_amount)
 
         self.handle_exception_from_api(api_response)

@@ -54,17 +54,18 @@ class TradeCoreMixin(object):
 
         return queryset.filter(**query)
 
-    def get_trade_config_allocation(
-        self,
-        trade_config_uuid,
-        exception_to_raise=exceptions.NotFound(),
-    ):
+    def get_trade_config_allocation(self, trade_config_uuid, detail=False):
         try:
             trade_config_allocation = TradeConfigAllocation.objects.get(
                 trade_config_uuid=trade_config_uuid
             )
         except TradeConfigAllocation.DoesNotExist:
-            raise exception_to_raise
+            if detail:
+                raise exceptions.NotFound()
+            else:
+                raise exceptions.ValidationError(
+                    {"trade_config_uuid": "Trade config not found."}
+                )
         except Exception as err:
             raise exceptions.ParseError({"detail": err.messages})
 
@@ -72,10 +73,7 @@ class TradeCoreMixin(object):
 
     def get_node(self, trade_config_uuid):
         trade_config_allocation = self.get_trade_config_allocation(
-            trade_config_uuid=trade_config_uuid,
-            exception_to_raise=exceptions.ValidationError(
-                {"trade_config_uuid": "Trade config not found."}
-            ),
+            trade_config_uuid=trade_config_uuid
         )
         return trade_config_allocation.node
 
