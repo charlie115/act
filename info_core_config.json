@@ -198,14 +198,14 @@
         "dev_mongodb_remote":
         {
             "host": "14.52.68.128",
-            "port": 27018,
+            "port": 27017,
             "user": "test",
             "passwd": "CommunityMongodb123!"
         },
         "dev_redis_remote":
         {
             "host": "14.52.68.128",
-            "port": 26379,
+            "port": 6379,
             "passwd": "CommunityRedis123!"
         },
         "postgres_docker":
