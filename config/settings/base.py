@@ -15,11 +15,13 @@ import os
 
 from datetime import timedelta
 from django.utils.translation import gettext_lazy as _
-from django.urls import reverse_lazy
 from environ import Env
 from os.path import join
 from pathlib import Path
 from urllib.parse import urljoin
+
+from .spectacular import *  # noqa
+from .unfold import *  # noqa
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -302,84 +304,6 @@ SOCIALACCOUNT_PROVIDERS = {
     },
 }
 
-# spectacular settings
-SPECTACULAR_SETTINGS = {
-    "TITLE": "Arbitrage Community APIs",
-    "DESCRIPTION": "List of all available APIs in Arbitrage Community",
-    "VERSION": "1.0.0",
-    # 'AUTHENTICATION_WHITELIST': [
-    #     'rest_framework_simplejwt.authentication.JWTAuthentication',
-    #     'rest_framework.authentication.SessionAuthentication'
-    # ],
-    "SERVE_PERMISSIONS": ["lib.permissions.IsInternalOrAdmin"],
-    "SERVE_INCLUDE_SCHEMA": False,
-    "SORT_OPERATION_PARAMETERS": False,
-    "EXTENSIONS_ROOT": {
-        "x-tagGroups": [
-            {
-                "name": "AUTHENTICATION AND AUTHORIZATION",
-                "tags": ["Auth"],
-            },
-            {
-                "name": "CHAT",
-                "tags": ["PastChatMessages", "RandomUsername"],
-            },
-            {
-                "name": "REFERRAL",
-                "tags": ["Referral", "ReferralCode", "ReferralCommission"],
-            },
-            {
-                "name": "USER",
-                "tags": [
-                    "User",
-                    "UserProfile",
-                    "UserBlocklist",
-                    "UserFavoriteAssets",
-                    "DepositBalance",
-                    "DepositHistory",
-                ],
-            },
-            {
-                "name": "TRADE CORE",
-                "tags": [
-                    "Node",
-                    "TradeConfig",
-                    "Trade",
-                    "ExchangeAPIKey",
-                    "Capital",
-                    "SpotPosition",
-                    "FuturesPosition",
-                    "OrderHistory",
-                    "TradeHistory",
-                    "PNLHistory",
-                    "Pboundary",
-                    "DepositAddress",
-                    "DepositAmount",
-                ],
-            },
-            {
-                "name": "INFO CORE",
-                "tags": [
-                    "Asset",
-                    "Dollar",
-                    "FundingRate",
-                    "Kline",
-                    "MarketCodes",
-                    "WalletStatus",
-                ],
-            },
-            {
-                "name": "MESSAGE CORE",
-                "tags": ["Message"],
-            },
-            {
-                "name": "NEWS CORE",
-                "tags": ["Announcements", "News", "SNS Posts"],
-            },
-        ],
-    },
-}
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
@@ -432,128 +356,6 @@ LANGUAGES = [
 LOCALE_PATHS = [
     join(Path(BASE_DIR).parent.absolute(), "locale"),
 ]
-
-
-UNFOLD = {
-    "SITE_TITLE": "Django Admin",
-    "SITE_HEADER": "Django Admin",
-    "SITE_URL": "/",
-    "SITE_SYMBOL": "settings",  # symbol from icon set
-    "SHOW_HISTORY": False,  # show/hide "History" button, default: True
-    "SHOW_VIEW_ON_SITE": True,  # show/hide "View on site" button, default: True
-    "ENVIRONMENT": "lib.utils.unfold_environment_callback",
-    "SIDEBAR": {
-        "show_search": True,  # Search in applications and models names
-        "show_all_applications": True,  # Dropdown with all applications and models
-        "navigation": [
-            {
-                "title": _("ACW"),
-                "separator": True,  # Top border
-                "items": [
-                    # {
-                    #     "title": _("Dashboard"),
-                    #     "icon": "dashboard",  # Supported icon set: https://fonts.google.com/icons
-                    #     "link": reverse_lazy("admin:index"),
-                    #     "badge": "sample_app.badge_callback",
-                    #     "permission": lambda request: request.user.is_superuser,
-                    # },
-                    {
-                        "title": _("Users"),
-                        "icon": "people",
-                        "link": reverse_lazy("admin:users_user_changelist"),
-                    },
-                    {
-                        "title": _("User Management"),
-                        "icon": "supervisor_account",
-                        "link": reverse_lazy("admin:users_usermanagement_changelist"),
-                    },
-                    {
-                        "title": _("User Blocklist"),
-                        "icon": "person_off",
-                        "link": reverse_lazy("admin:users_userblocklist_changelist"),
-                    },
-                    {
-                        "title": _("Deposit Balance"),
-                        "icon": "account_balance_wallet",
-                        "link": reverse_lazy("admin:users_depositbalance_changelist"),
-                    },
-                    {
-                        "title": _("Referral Group"),
-                        "icon": "diversity_3",
-                        "link": reverse_lazy("admin:referral_referralgroup_changelist"),
-                    },
-                    {
-                        "title": _("Referral Code"),
-                        "icon": "confirmation_number",
-                        "link": reverse_lazy("admin:referral_referralcode_changelist"),
-                    },
-                    {
-                        "title": _("Referrals"),
-                        "icon": "partner_exchange",
-                        "link": reverse_lazy("admin:referral_referral_changelist"),
-                    },
-                ],
-            },
-            {
-                "title": _("CORE"),
-                "separator": True,
-                "items": [
-                    {
-                        "title": _("Enabled Market Code Combinations"),
-                        "icon": "sync_alt",
-                        "link": reverse_lazy(
-                            "admin:tradecore_enabledmarketcodecombination_changelist"
-                        ),
-                    },
-                    {
-                        "title": _("Nodes"),
-                        "icon": "dns",
-                        "link": reverse_lazy("admin:tradecore_node_changelist"),
-                    },
-                    {
-                        "title": _("Trade Config Allocations"),
-                        "icon": "add_chart",
-                        "link": reverse_lazy(
-                            "admin:tradecore_tradeconfigallocation_changelist"
-                        ),
-                    },
-                    {
-                        "title": _("Messages"),
-                        "icon": "outgoing_mail",
-                        "link": reverse_lazy("admin:messagecore_message_changelist"),
-                    },
-                ],
-            },
-            {
-                "title": _(""),
-                "separator": True,
-                "items": [
-                    {
-                        "title": _("Groups"),
-                        "icon": "groups_2",
-                        "link": reverse_lazy(
-                            "admin:authentication_proxygroup_changelist"
-                        ),
-                    },
-                    {
-                        "title": _("Roles"),
-                        "icon": "admin_panel_settings",
-                        "link": reverse_lazy("admin:users_userrole_changelist"),
-                    },
-                ],
-            },
-        ],
-    },
-    "EXTENSIONS": {
-        "modeltranslation": {
-            "flags": {
-                "en": "🇬🇧",
-                "kr": "🇰🇷",
-                "ch": "🇨🇳",
-            },
-        },
-    },
-}
 
 
 # CoinMarketCap
