@@ -15,6 +15,7 @@ from users.inlines import (
     ProfileInline,
     ManagersInline,
     ManagedInline,
+    UserFeeLevelInline,
     DepositHistoryInline,
 )
 from users.mixins import UserFavoriteAssetsValidatorMixin
@@ -96,6 +97,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     ]
     inlines = [
         ProfileInline,
+        UserFeeLevelInline,
         ManagersInline,
         ManagedInline,
     ]

@@ -74,6 +74,8 @@ THIRD_PARTY_APPS = (
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "allauth.socialaccount.providers.telegram",
+    "django_celery_beat",
+    "django_celery_results",
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_simplejwt",
@@ -90,6 +92,7 @@ LOCAL_APPS = (
     "api",
     "authentication",
     "chat",
+    "fee",
     "socialaccounts",
     "referral",
     "users",
@@ -120,6 +123,9 @@ MIDDLEWARE = (
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 )
 
+#############
+# DATABASES #
+#############
 DATABASES = {
     "default": dj_database_url.config(
         default=env("COMMUNITY_DB_URL"), conn_max_age=600
@@ -134,6 +140,7 @@ DATABASES = {
 
 DATABASE_ROUTERS = ["config.dbrouter.DBRouter"]
 
+# MONGODB
 MONGODB = {
     "HOST": env("MONGODB_HOST", default="mongodb"),
     "PORT": env.int("MONGODB_PORT", default=27017),
@@ -143,6 +150,7 @@ MONGODB = {
 
 MONGO_CHAT_DB = "ACW_USER_CHAT"
 
+# CACHE
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -153,6 +161,7 @@ CACHES = {
     }
 }
 
+# REDIS QUEUE
 RQ_QUEUES = {
     "default": {
         "USE_REDIS_CACHE": "default",
@@ -161,6 +170,7 @@ RQ_QUEUES = {
 
 RQ_SHOW_ADMIN_LINK = True
 
+# DJANGO CHANNELS
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -179,6 +189,16 @@ CHANNEL_LAYERS = {
 }
 
 REDIS_CHAT_BLOCKLIST_KEY = "acw:user:blocklist"
+
+# CELERY
+
+CELERY_BROKER_URL = env("REDIS_DB_URL", default="redis://localhost:6379")
+
+CELERY_RESULT_BACKEND = "django-db"
+
+CELERY_CACHE_BACKEND = "default"
+
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

@@ -3,6 +3,7 @@ from unfold.admin import TabularInline, StackedInline
 from unfold.admin import UnfoldBooleanWidget
 
 from lib.inlines import NonrelatedTabularInline
+from fee.models import UserFeeLevel
 from users.models import UserManagement, UserProfile, DepositHistory
 
 
@@ -37,6 +38,22 @@ class ManagedInline(TabularInline):
     classes = ("collapse",)
 
     def has_change_permission(self, request, obj=None):
+        return False
+
+
+class UserFeeLevelInline(TabularInline):
+    model = UserFeeLevel
+    verbose_name = "Fee Level"
+    classes = ("collapse",)
+    readonly_fields = ["fee_level", "total_paid_fee", "last_updated_datetime"]
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False
 
 
