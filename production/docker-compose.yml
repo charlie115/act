@@ -97,6 +97,22 @@ services:
       - prod-community-network
     restart: always
   
+  celery-worker:
+    image: community-celery-worker
+    command: celery -A config worker -l INFO
+    container_name: prod-community-celery-worker
+    networks:
+      - prod-community-network
+    restart: always
+  
+  celery-beat:
+    image: community-celery-beat
+    command: celery -A config beat -l INFO
+    container_name: prod-community-celery-beat
+    networks:
+      - prod-community-network
+    restart: always
+  
   news-core:
     image: news-core
     container_name: prod-news-core

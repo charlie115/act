@@ -85,6 +85,7 @@ services:
         condition: service_healthy
     container_name: test-community-drf
     volumes:
+      - $HOME/test-community-drf/static:/opt/community_drf/static
       - $HOME/test-community-drf/media:/opt/community_drf/media
     expose:
       - "8000"
@@ -92,12 +93,28 @@ services:
       - test-community-network
     restart: always
   
-  # news-core:
-  #   image: news-core:test
-  #   container_name: test-news-core
-  #   networks:
-  #     - test-community-network
-  #   restart: always
+  celery-worker:
+    image: community-celery-worker:test
+    command: celery -A config worker -l DEBUG
+    container_name: test-community-celery-worker
+    networks:
+      - test-community-network
+    restart: always
+  
+  celery-beat:
+    image: community-celery-beat:test
+    command: celery -A config beat -l DEBUG
+    container_name: test-community-celery-beat
+    networks:
+      - test-community-network
+    restart: always
+  
+  news-core:
+    image: news-core:test
+    container_name: test-news-core
+    networks:
+      - test-community-network
+    restart: always
   
   info-core:
     image: info-core
