@@ -17,7 +17,7 @@ class UserFeeLevel(models.Model):
         related_name="fee_level",
     )
     fee_level = models.IntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(5)]
+        validators=[MinValueValidator(1), MaxValueValidator(5)], default=1
     )
     total_paid_fee = models.DecimalField(max_digits=14, decimal_places=2)
     last_updated_datetime = models.DateTimeField(default=now)

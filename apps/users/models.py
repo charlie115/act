@@ -11,8 +11,9 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
 from api.models import Permission
-from users.managers import UserManager
+from fee.models import UserFeeLevel
 from socialaccounts.models import ProxySocialApp
+from users.managers import UserManager
 
 
 class UserRole(models.Model):
@@ -80,12 +81,20 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ["password"]
 
     def save(self, *args, **kwargs):
+        pk = self.pk
+
         if self.username == "":
             email_username = list(self.email.split("@")[0])
             temp_username = "".join(random.sample(email_username, len(email_username)))
             self.username = f"@{temp_username}{datetime.now().microsecond}"
 
         super(User, self).save(*args, **kwargs)
+
+        if pk is None:
+            UserFeeLevel.objects.create(
+                user=self,
+                total_paid_fee=0,
+            )
 
     def __str__(self):
         return self.email
