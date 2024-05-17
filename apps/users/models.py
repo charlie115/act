@@ -91,10 +91,8 @@ class User(AbstractUser):
         super(User, self).save(*args, **kwargs)
 
         if pk is None:
-            UserFeeLevel.objects.create(
-                user=self,
-                total_paid_fee=0,
-            )
+            DepositBalance.objects.create(user=self)
+            UserFeeLevel.objects.create(user=self, total_paid_fee=0)
 
     def __str__(self):
         return self.email
