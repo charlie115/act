@@ -48,3 +48,4 @@ class ReferralCommissionQueryParamsSerializer(serializers.Serializer):
     initial_profit = serializers.DecimalField(max_digits=10, decimal_places=1)
     target_market_code = serializers.CharField()
     origin_market_code = serializers.CharField()
+    apply_to_deposit = serializers.BooleanField(default=False)

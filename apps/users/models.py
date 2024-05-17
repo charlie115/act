@@ -230,19 +230,19 @@ class DepositBalance(models.Model):
 
 
 class DepositHistory(models.Model):
-    WITHDRAW = "withdraw"
-    DEPOSIT = "deposit"
-    COMMISSION = "commission"
-    FEE = "fee"
-    TRANSFER = "transfer"
-    COUPON = "coupon"
+    WITHDRAW = "WITHDRAW"
+    DEPOSIT = "DEPOSIT"
+    COMMISSION = "COMMISSION"
+    FEE = "FEE"
+    TRANSFER = "TRANSFER"
+    COUPON = "COUPON"
     DepositTypes = (
-        (WITHDRAW, "Withdraw"),
-        (DEPOSIT, "Deposit"),
-        (COMMISSION, "Commission"),
-        (FEE, "Fee"),
-        (TRANSFER, "Transfer"),
-        (COUPON, "Coupon"),
+        (WITHDRAW, WITHDRAW),
+        (DEPOSIT, DEPOSIT),
+        (COMMISSION, COMMISSION),
+        (FEE, FEE),
+        (TRANSFER, TRANSFER),
+        (COUPON, COUPON),
     )
 
     user = models.ForeignKey(

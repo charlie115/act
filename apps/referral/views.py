@@ -4,10 +4,9 @@ from rest_framework import exceptions, response, views
 from rest_framework.filters import OrderingFilter
 from rest_framework.pagination import PageNumberPagination
 
-
+from fee.models import FeeRate
 from lib.views import BaseViewSet
 from referral.constants import (
-    SERVICE_FEE_RATE,
     PROFIT_TYPE_FEE,
     PROFIT_TYPE_NET_PROFIT_FROM_TRADE,
     PROFIT_TYPE_COMMISSION,
@@ -18,7 +17,7 @@ from referral.serializers import (
     ReferralCodeSerializer,
     ReferralCommissionQueryParamsSerializer,
 )
-from users.models import User
+from users.models import User, DepositHistory
 
 
 @extend_schema(tags=["Referral"])
@@ -137,12 +136,34 @@ class ReferralCommissionView(views.APIView):
         self.target_market_code = query.get("target_market_code")
         self.origin_market_code = query.get("origin_market_code")
 
+        changes_data = self.get_changes_data(
+            user=query.get("user"),
+            initial_profit=query.get("initial_profit"),
+        )
+
+        if query.get("apply_to_deposit"):
+            for change_data in changes_data:
+                if change_data.get("type") != PROFIT_TYPE_NET_PROFIT_FROM_TRADE:
+                    description = (
+                        f"Referral commission from {change_data.get('commission_from')}"
+                        if change_data.get("commission_from")
+                        else None
+                    )
+
+                    try:
+                        user = User.objects.get(uuid=change_data.get("user"))
+                        DepositHistory.objects.create(
+                            user=user,
+                            change=change_data.get("change"),
+                            type=change_data.get("type"),
+                            description=description,
+                        )
+                    except User.DoesNotExist as err:
+                        print(err)
+
         data = {
             "trade_uuid": query.get("trade_uuid"),
-            "changes": self.get_changes_data(
-                user=query.get("user"),
-                initial_profit=query.get("initial_profit"),
-            ),
+            "changes": changes_data,
         }
 
         return response.Response(data)
@@ -153,8 +174,10 @@ class ReferralCommissionView(views.APIView):
         except User.DoesNotExist:
             raise exceptions.ValidationError({"user": ["User not found."]})
 
+        fee_rate = FeeRate.objects.get(level=user.fee_level.fee_level)
+
         # User
-        user_fee = initial_profit * SERVICE_FEE_RATE
+        user_fee = initial_profit * fee_rate.rate
         user_change = initial_profit - user_fee
 
         data = [
@@ -170,6 +193,7 @@ class ReferralCommissionView(views.APIView):
             },
         ]
 
+        # Referrers
         try:
             used_referral = user.used_referrals.get(
                 referral_code__target_market_code=self.target_market_code,
