@@ -160,26 +160,6 @@ class InitCore:
         time.sleep(10)
 
         if master_flag:
-            ## Start updating fundingrate
-            self.binance_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("BINANCE", self.binance_adaptor), daemon=True)
-            self.binance_update_fundingrate_thread.start()
-            self.okx_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("OKX", self.okx_adaptor, 180), daemon=True)
-            self.okx_update_fundingrate_thread.start()
-            self.bybit_update_fundingrate_thread = Thread(target=self.update_fundingrate, args=("BYBIT", self.bybit_adaptor), daemon=True)
-            self.bybit_update_fundingrate_thread.start()
-
-            ## Start updating wallet status
-            self.upbit_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("UPBIT", self.upbit_adaptor), daemon=True)
-            self.upbit_update_wallet_status_thread.start()
-            self.binance_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BINANCE", self.binance_adaptor), daemon=True)
-            self.binance_update_wallet_status_thread.start()
-            self.okx_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("OKX", self.okx_adaptor), daemon=True)
-            self.okx_update_wallet_status_thread.start()
-            self.bithumb_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BITHUMB", self.bithumb_adaptor), daemon=True)
-            self.bithumb_update_wallet_status_thread.start()
-            self.bybit_update_wallet_status_thread = Thread(target=self.update_wallet_status, args=("BYBIT", self.bybit_adaptor), daemon=True)
-            self.bybit_update_wallet_status_thread.start()
-
             self.wallet_funding_update_proc = Process(target=self._start_wallet_funding_update, daemon=True)
             self.wallet_funding_update_proc.start()
 
@@ -689,11 +669,12 @@ class InitCore:
                             write_time += time.time() - write_time_start
                 # mongo_db_conn.close()
                 self.logger.info(f"update_fundingrate|{exchange_name} update_fundingrate took {time.time()-start} secs, read_time: {read_time}, write_time: {write_time}, calculate_time: {calculate_time}, api_time: {api_time}")
+                time.sleep(loop_time_secs)
             except Exception as e:
                 content = f"update_fundingrate|Exception occured from updating {exchange_name}'s fundingrate! Error: {e}, {traceback.format_exc()}"
                 self.logger.error(content)
                 self.register_monitor_msg.register(self.admin_id, self.node, 'error', "Error occured in update_fundingrate.", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-            time.sleep(loop_time_secs)
+                time.sleep(loop_time_secs)
 
     def update_wallet_status(self, exchange_name, exchange_adaptor, loop_time_secs=60):
         exchange_name = exchange_name.upper()
@@ -751,21 +732,26 @@ class InitCore:
                         row = row_tup[1]
                         # if the asset with the network_type already exist in the db, update it otherwise insert it.
                         write_time_start = time.time()
-                        if len(df[(df['asset']==row['asset'])&(df['network_type']==row['network_type'])]) == 1:
+                        if len(df[(df['asset']==row['asset'])&(df['network_type']==row['network_type'])]) == 0:
+                            collection.insert_one(row.to_dict())
+                        elif len(df[(df['asset']==row['asset'])&(df['network_type']==row['network_type'])]) == 1:
                             collection.update_one({'asset':row['asset'], 'network_type':row['network_type']}, {'$set':{k: row[k] for k in row.keys() if k not in ['asset','network_type']}})
                         else:
+                            # Delete and insert one
+                            collection.delete_many({'asset':row['asset'], 'network_type':row['network_type']})
                             collection.insert_one(row.to_dict())
                         write_time += time.time() - write_time_start
                 # mongo_db_conn.close()
                 error_count = 0
                 self.logger.info(f"update_wallet_status|{exchange_name} update_wallet_status took {time.time()-start} secs, read_time: {read_time}, write_time: {write_time}, calculate_time: {calculate_time}, api_time: {api_time}")
+                time.sleep(loop_time_secs)
             except Exception as e:
                 error_count += 1
                 if error_count >= 10:
                     content = f"update_wallet_status|Exception occured in {exchange_name}'s update_wallet_status! Error: {e}, {traceback.format_exc()}"
                     self.logger.error(content)
                     self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"Error occured in {exchange_name} update_wallet_status.", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
-            time.sleep(loop_time_secs)
+                time.sleep(loop_time_secs)
 
     def get_server_check_status(self):
         # Check whether the market is in maintenance or not
