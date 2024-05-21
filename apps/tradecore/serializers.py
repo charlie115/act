@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db.models import Count
 from rest_framework import exceptions, serializers
 
@@ -687,7 +688,7 @@ class DepositAmountViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField(write_only=True)
     txid = serializers.CharField(write_only=True)
     status = serializers.CharField(read_only=True)
-    amount = serializers.FloatField(read_only=True)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     def validate(self, attrs):
         trade_config_allocation = self.get_trade_config_allocation(
@@ -727,7 +728,7 @@ class DepositAmountViewSetSerializer(TradeCoreMixin, serializers.Serializer):
             if deposited:
                 deposit_history = DepositHistory.objects.create(
                     user=trade_config_allocation.user,
-                    change=deposit_amount.get("amount"),
+                    change=Decimal(deposit_amount.get("amount")),
                     txid=validated_data.get("txid"),
                     type=DepositHistory.DEPOSIT,
                 )
