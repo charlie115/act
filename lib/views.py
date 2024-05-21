@@ -84,6 +84,20 @@ class BaseViewSet(viewsets.ModelViewSet):
         return final_response
 
 
+class UserOwnedViewSet(BaseViewSet):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        if self.request.user:
+            if queryset.model is User:
+                queryset = queryset.filter(id=self.request.user.id)
+
+            elif hasattr(queryset.model, "user"):
+                queryset = queryset.filter(user_id=self.request.user.id)
+
+        return queryset
+
+
 class BaseAPIListView(routers.APIRootView):
     """
     View returning a list of available APIs per app

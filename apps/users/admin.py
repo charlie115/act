@@ -84,7 +84,6 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
         "username",
         "first_name",
         "last_name",
-        "profile__referral",
     ]
     readonly_fields = [
         "uuid",

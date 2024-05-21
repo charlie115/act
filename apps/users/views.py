@@ -3,7 +3,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.filters import OrderingFilter
 
 from lib.authentication import NodeIPAuthentication
-from lib.views import BaseViewSet
+from lib.views import BaseViewSet, UserOwnedViewSet
 from users.filters import (
     UserFavoriteAssetsFilter,
     UserProfileFilter,
@@ -103,7 +103,7 @@ class UserViewSet(BaseViewSet):
         description="Deletes an existing user `favorite symbol`.",
     ),
 )
-class UserFavoriteAssetsViewSet(BaseViewSet):
+class UserFavoriteAssetsViewSet(UserOwnedViewSet):
     queryset = UserFavoriteAssets.objects.all()
     serializer_class = UserFavoriteAssetsSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
@@ -141,7 +141,7 @@ class UserFavoriteAssetsViewSet(BaseViewSet):
     ),
     destroy=extend_schema(exclude=True),
 )
-class UserProfileViewSet(BaseViewSet):
+class UserProfileViewSet(UserOwnedViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
@@ -199,7 +199,7 @@ class UserBlocklistViewSet(BaseViewSet):
         description="Retrieves the details of an existing `deposit balance`.",
     ),
 )
-class DepositBalanceViewSet(BaseViewSet):
+class DepositBalanceViewSet(UserOwnedViewSet):
     queryset = DepositBalance.objects.all()
     lookup_field = "id"
     serializer_class = DepositBalanceSerializer
@@ -260,7 +260,7 @@ class DepositBalanceViewSet(BaseViewSet):
         description="Deletes an existing `deposit history`.",
     ),
 )
-class DepositHistoryViewSet(BaseViewSet):
+class DepositHistoryViewSet(UserOwnedViewSet):
     queryset = DepositHistory.objects.all()
     lookup_field = "id"
     serializer_class = DepositHistorySerializer
