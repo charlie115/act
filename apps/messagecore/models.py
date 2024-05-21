@@ -4,17 +4,19 @@ from django.utils.timezone import now
 
 
 class Message(models.Model):
-    INFO = "info"
-    WARNING = "warning"
-    ERROR = "error"
-    MONITOR = "monitor"
-    TRADE = "trade"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    MONITOR = "MONITOR"
+    TRADE = "TRADE"
+    COMMAND = "COMMAND"
     MessageTypes = (
-        (INFO, "Info"),
-        (WARNING, "Warning"),
-        (ERROR, "Error"),
-        (MONITOR, "Monitor"),
-        (TRADE, "Trade"),
+        (INFO, "INFO"),
+        (WARNING, "WARNING"),
+        (ERROR, "ERROR"),
+        (MONITOR, "MONITOR"),
+        (TRADE, "TRADE"),
+        (COMMAND, "COMMAND"),
     )
 
     datetime = models.DateTimeField(default=now)
