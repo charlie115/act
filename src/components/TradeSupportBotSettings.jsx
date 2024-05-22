@@ -38,7 +38,6 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
 
   const [putTradeConfig, { isLoading: isPutTradeConfigLoading }] =
     usePutTradeConfigMutation();
-
   const [getTradeConfig] = useLazyGetTradeConfigQuery();
 
   const { control, formState, handleSubmit } = useForm({
@@ -50,7 +49,7 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
       const defaultValues = {
         ...data,
         repeat_limit_p: data?.repeat_limit_p || 0,
-        safe_reverse: !!data?.safe_reverse,
+        safe_reverse: `${!!data?.safe_reverse}`,
         send_term: data?.send_term || 0,
         send_times: data?.send_times || 0,
       };
@@ -59,19 +58,21 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
         defaultValues.target_market_cross = `${!!data?.target_market_cross}`;
         defaultValues.target_market_margin_call = `${data?.target_market_margin_call}`;
         defaultValues.target_market_leverage =
-          data?.target_market_leverage || 0;
+          data?.target_market_leverage || 1;
       }
 
       if (!marketCodeCombination?.origin.isSpot) {
         defaultValues.origin_market_cross = `${!!data?.origin_market_cross}`;
         defaultValues.origin_market_margin_call = `${data?.origin_market_margin_call}`;
         defaultValues.origin_market_leverage =
-          data?.origin_market_leverage || 0;
+          data?.origin_market_leverage || 1;
       }
       return defaultValues;
     },
     mode: 'all',
   });
+
+  const { dirtyFields, isDirty, isValid } = formState;
 
   const onSubmit = (data) => {
     const formData = {
@@ -80,7 +81,7 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
       target_market_code: data.target_market_code,
       origin_market_code: data.origin_market_code,
     };
-    Object.entries(formState.dirtyFields).forEach(([key, value]) => {
+    Object.entries(dirtyFields).forEach(([key, value]) => {
       if (value) formData[key] = castString(data[key]);
     });
     putTradeConfig(formData);
@@ -439,7 +440,7 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
           <Button
             type="submit"
             variant="contained"
-            disabled={!formState.isValid || isPutTradeConfigLoading}
+            disabled={!isDirty || !isValid || isPutTradeConfigLoading}
             endIcon={
               isPutTradeConfigLoading ? (
                 <CircularProgress color="inherit" size={15} />

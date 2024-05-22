@@ -33,10 +33,10 @@ import { DateTime } from 'luxon';
 import { useGetAssetsQuery } from 'redux/api/drf/infocore';
 import {
   useDeleteMultipleTradesMutation,
+  useDeleteRepeatTradeMutation,
   useGetAllRepeatTradesQuery,
   useGetAllTradesQuery,
   useGetTradeHistoryQuery,
-  usePutRepeatTradeMutation,
 } from 'redux/api/drf/tradecore';
 
 import { useSelector } from 'react-redux';
@@ -65,6 +65,7 @@ import renderAutoRepeatCell from './renderAutoRepeatCell';
 import renderMarketCodesCell from './renderMarketCodesCell';
 import renderSelectCell from './renderSelectCell';
 import renderStatusCell from './renderStatusCell';
+import renderTransactionAmountCell from './renderTransactionAmountCell';
 import renderValueCell from './renderValueCell';
 
 import renderSelectHeader from './renderSelectHeader';
@@ -116,7 +117,7 @@ export default function TriggersTable({
     tradeConfigUuids,
   });
 
-  const [putRepeatTrade] = usePutRepeatTradeMutation();
+  const [deleteRepeatTrade] = useDeleteRepeatTradeMutation();
 
   const [
     deleteMultipleTrades,
@@ -197,25 +198,31 @@ export default function TriggersTable({
         accessorKey: 'marketCodes',
         enableGlobalFilter: false,
         enableSorting: false,
-        size: isMobile ? 80 : 150,
+        size: isMobile ? 45 : 150,
         header: <SyncAltIcon />,
         cell: renderMarketCodesCell,
       },
       {
         accessorKey: 'entry',
-        size: isMobile ? 40 : 110,
+        size: isMobile ? 25 : 80,
         header: t('Entry'),
         cell: renderValueCell,
       },
       {
         accessorKey: 'exit',
-        size: isMobile ? 40 : 110,
+        size: isMobile ? 25 : 80,
         header: t('Exit'),
         cell: renderValueCell,
       },
       {
+        accessorKey: 'transactionAmount',
+        size: isMobile ? 25 : 80,
+        header: t('Transaction Amount'),
+        cell: renderTransactionAmountCell,
+      },
+      {
         accessorKey: 'status',
-        size: isMobile ? 30 : 80,
+        size: isMobile ? 30 : 65,
         header: t('Status'),
         cell: renderStatusCell,
       },
@@ -223,10 +230,17 @@ export default function TriggersTable({
         accessorKey: 'created',
         size: isMobile ? 40 : 110,
         header: t('Created'),
+        props: { sx: { fontSize: 11 } },
+      },
+      {
+        accessorKey: 'autoRepeatStatus',
+        size: isMobile ? 30 : 75,
+        header: t('Repeat Transaction Status'),
+        props: { sx: { fontSize: 12 } },
       },
       {
         accessorKey: 'autoRepeatSwitch',
-        size: isMobile ? 40 : 80,
+        size: isMobile ? 35 : 80,
         header: t('Auto Repeat'),
         cell: renderAutoRepeatCell,
         props: { sx: { textAlign: 'center' } },
@@ -290,6 +304,7 @@ export default function TriggersTable({
           name: trade.base_asset,
           entry: trade.low,
           exit: trade.high,
+          transactionAmount: trade.trade_capital,
           created: DateTime.fromISO(trade.registered_datetime, {
             zone: 'UTC',
           })
@@ -304,6 +319,7 @@ export default function TriggersTable({
           },
           icon: assetsData?.[trade.base_asset]?.icon,
           autoRepeatSwitch: !!autoRepeat?.auto_repeat_switch,
+          autoRepeatStatus: autoRepeat?.status || t('Operable'),
           autoRepeat,
         };
       });
@@ -349,29 +365,12 @@ export default function TriggersTable({
     if (value) setAutoRepeatTrade(row);
     else {
       setAutoRepeatTrade();
-      putRepeatTrade({
-        auto_repeat_switch: 0,
-        auto_repeat_num: row.autoRepeat.auto_repeat_num,
-        // kline_num: row.autoRepeat.kline_num,
-        // pauto_num: row.autoRepeat.pauto_num,
+      deleteRepeatTrade({
+        id: row.autoRepeat.uuid,
         trade_config_uuid: row.trade_config_uuid,
-        trade_uuid: row.autoRepeat.trade_uuid,
-        uuid: row.autoRepeat.uuid,
       });
-      // putAutoRepeat false
     }
   }, []);
-
-  // const onAutoRepeatChange = useCallback(async (value, row) => {
-  //   const result = await getRepeatTrades({
-  //     tradeUuid: row.uuid,
-  //     tradeConfigUuid: row.trade_config_uuid,
-  //   });
-  //   if (!result) {
-  //     // postRepeatTrade
-  //   }
-  //   console.log('tradeUuid, value: ', result);
-  // }, []);
 
   const getRowId = useCallback((row) => row.uuid, []);
   const onExpandedChange = useCallback((newExpanded) => {

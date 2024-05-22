@@ -34,6 +34,13 @@ const api = drfApi.injectEndpoints({
           {}
         ),
     }),
+    getDepositBalance: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/users/deposit-balance/',
+        params,
+      }),
+    }),
   }),
 });
 
@@ -42,4 +49,6 @@ export const {
   useCreateFavoriteAssetMutation,
   useDeleteFavoriteAssetMutation,
   useGetFavoriteAssetsQuery,
+  useGetDepositBalanceQuery,
+  useLazyGetDepositBalanceQuery,
 } = api;

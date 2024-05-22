@@ -38,6 +38,14 @@ const api = drfApi.injectEndpoints({
       },
       invalidatesTags: ['AllTrades', 'TradesByTradeConfig'],
     }),
+    deleteRepeatTrade: builder.mutation({
+      query: ({ id, ...params }) => ({
+        url: `/tradecore/repeat-trades/${id}/`,
+        method: 'DELETE',
+        params,
+      }),
+      invalidatesTags: ['AllRepeatTrades', 'RepeatTradesByTradeConfig'],
+    }),
     getAllRepeatTrades: builder.query({
       keepUnusedDataFor: 1,
       providesTags: ['AllRepeatTrades', 'RepeatTradesByTradeConfig'],
@@ -107,6 +115,13 @@ const api = drfApi.injectEndpoints({
           return { error };
         }
       },
+    }),
+    getDepositAddress: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/tradecore/deposit-address/',
+        params,
+      }),
     }),
     getExchangeApiKey: builder.query({
       keepUnusedDataFor: 1,
@@ -203,6 +218,13 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    postDepositAmount: builder.mutation({
+      query: (body) => ({
+        url: '/tradecore/deposit-amount/',
+        method: 'POST',
+        body,
+      }),
+    }),
     postExchangeApiKey: builder.mutation({
       query: (body) => ({
         url: '/tradecore/exchange-api-key/',
@@ -268,8 +290,10 @@ export default api;
 export const {
   useDeleteExchangeApiKeyMutation,
   useDeleteMultipleTradesMutation,
+  useDeleteRepeatTradeMutation,
   useGetAllRepeatTradesQuery,
   useGetAllTradesQuery,
+  useGetDepositAddressQuery,
   useGetExchangeApiKeyQuery,
   useGetFuturesPositionQuery,
   useGetNodesQuery,
@@ -287,6 +311,7 @@ export const {
   useLazyGetPBoundaryQuery,
   useLazyGetRepeatTradesByTradeConfigQuery,
   useLazyGetTradeConfigQuery,
+  usePostDepositAmountMutation,
   usePostExchangeApiKeyMutation,
   usePostRepeatTradeMutation,
   usePostTradeMutation,

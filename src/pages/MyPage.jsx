@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 
+import { useNavigate } from 'react-router-dom';
+
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
@@ -10,6 +12,7 @@ import TableCell from '@mui/material/TableCell';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
 import DomainVerificationIcon from '@mui/icons-material/DomainVerification';
 import GoogleIcon from '@mui/icons-material/Google';
@@ -28,10 +31,14 @@ import { DateTime } from 'luxon';
 
 import useScript from 'hooks/useScript';
 
+import DepositBalance from 'components/DepositBalance';
+
 export default function MyPage() {
   const { t } = useTranslation();
 
   const theme = useTheme();
+
+  const navigate = useNavigate();
 
   const [loginTelegram] = useLoginTelegramMutation();
 
@@ -160,6 +167,23 @@ export default function MyPage() {
               </TableCell>
             </TableRow>
           )}
+          <TableRow
+            onClick={() =>
+              navigate('/bot', { state: { defaultTab: 'deposit' } })
+            }
+            sx={{
+              cursor: 'pointer',
+              '&:last-child td, &:last-child th': { border: 0 },
+            }}
+          >
+            <TableCell align="right" sx={{ p: 0 }}>
+              <AccountBalanceWalletIcon />
+            </TableCell>
+            <TableCell sx={{ fontSize: '1.15em' }}>{t('Deposit')}</TableCell>
+            <TableCell sx={{ fontSize: '1.15em' }}>
+              <DepositBalance />
+            </TableCell>
+          </TableRow>
         </TableBody>
       </Table>
     </Box>

@@ -193,9 +193,9 @@ export default function PositionTable({ marketCodeCombination }) {
       if (curr.asset) {
         if (!acc[curr.asset]) acc[curr.asset] = {};
         acc[curr.asset] = { ...acc[curr.asset], ...curr };
-      } else if (curr.symbol) {
-        if (!acc[curr.symbol]) acc[curr.symbol] = {};
-        acc[curr.symbol] = { ...acc[curr.symbol], ...curr };
+      } else if (curr.base_asset) {
+        if (!acc[curr.base_asset]) acc[curr.base_asset] = {};
+        acc[curr.base_asset] = { ...acc[curr.base_asset], ...curr };
       }
       return acc;
     }, {});

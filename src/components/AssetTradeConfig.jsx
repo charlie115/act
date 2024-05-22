@@ -24,7 +24,6 @@ import useScript from 'hooks/useScript';
 import a11yProps from 'utils/a11yProps';
 
 import CreateTriggerForm from 'components/CreateTriggerForm';
-import TabPanel from 'components/TabPanel';
 
 import TradesTable from 'components/tables/trigger/TradesTable';
 
@@ -156,7 +155,6 @@ function AssetTradeConfig({
                 />
                 {showTable && (
                   <TradesTable
-                    // tradeType="alarm"
                     tradeType={
                       currentTab === CONFIGURATION_TAB.alarm
                         ? 'alarm'
@@ -168,71 +166,6 @@ function AssetTradeConfig({
                     onTriggerConfigChange={onTriggerConfigChange}
                   />
                 )}
-                {/* <TabPanel
-                  id="asset-trading-config"
-                  index={CONFIGURATION_TAB.alarm}
-                  dir={theme.direction}
-                  value={currentTab}
-                  style={{ flex: 1 }}
-                >
-                  {currentTab === CONFIGURATION_TAB.alarm && (
-                    <>
-                      <CreateTriggerForm
-                        ref={createTriggerFormRef}
-                        premiumDataViewerRef={premiumDataViewerRef}
-                        baseAsset={baseAsset}
-                        interval={interval}
-                        marketCodes={marketCodes}
-                        tradeType="alarm"
-                        isTetherPriceView={isTetherPriceView}
-                        tradeConfigAllocation={tradeConfigAllocation}
-                        onCreateSuccess={onCreateSuccess}
-                        onTriggerConfigChange={onTriggerConfigChange}
-                      />
-                      {showTable && (
-                        <TradesTable
-                          tradeType="alarm"
-                          createTriggerFormRef={createTriggerFormRef}
-                          baseAsset={baseAsset}
-                          tradeConfigAllocation={tradeConfigAllocation}
-                          onTriggerConfigChange={onTriggerConfigChange}
-                        />
-                      )}
-                    </>
-                  )}
-                </TabPanel>
-                <TabPanel
-                  id="asset-trading-config"
-                  index={CONFIGURATION_TAB.autoTrade}
-                  dir={theme.direction}
-                  value={currentTab}
-                  style={{ flex: 1 }}
-                >
-                  {currentTab === CONFIGURATION_TAB.autoTrade && (
-                    <>
-                      <CreateTriggerForm
-                        ref={createTriggerFormRef}
-                        premiumDataViewerRef={premiumDataViewerRef}
-                        baseAsset={baseAsset}
-                        interval={interval}
-                        marketCodes={marketCodes}
-                        tradeType="autoTrade"
-                        isTetherPriceView={isTetherPriceView}
-                        tradeConfigAllocation={tradeConfigAllocation}
-                        onTriggerConfigChange={onTriggerConfigChange}
-                      />
-                      {showTable && (
-                        <TradesTable
-                          tradeType="autoTrade"
-                          createTriggerFormRef={createTriggerFormRef}
-                          baseAsset={baseAsset}
-                          tradeConfigAllocation={tradeConfigAllocation}
-                          onTriggerConfigChange={onTriggerConfigChange}
-                        />
-                      )}
-                    </>
-                  )}
-                </TabPanel> */}
               </Box>
             ) : (
               <Stack

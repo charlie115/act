@@ -2,10 +2,8 @@ import React, { useEffect, useState } from 'react';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Container from '@mui/material/Container';
 import IconButton from '@mui/material/IconButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
@@ -18,8 +16,11 @@ import MenuIcon from '@mui/icons-material/Menu';
 
 import { styled } from '@mui/material/styles';
 
+import { useSelector } from 'react-redux';
+
 import BrandLogo from 'components/BrandLogo';
 import HeaderUserMenu from 'components/HeaderUserMenu';
+import DepositBalance from 'components/DepositBalance';
 import LanguageSelector from 'components/LanguageSelector';
 import ThemeSelector from 'components/ThemeSelector';
 
@@ -38,6 +39,8 @@ const MenuButton = styled(Button, {
 export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
+
+  const { loggedin } = useSelector((state) => state.auth);
 
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [pages, setPages] = useState({});
@@ -118,6 +121,7 @@ export default function Header() {
         spacing={{ xs: 1, sm: 2 }}
         sx={{ alignItems: 'center' }}
       >
+        {loggedin && <DepositBalance />}
         <LanguageSelector />
         <ThemeSelector />
         <HeaderUserMenu />

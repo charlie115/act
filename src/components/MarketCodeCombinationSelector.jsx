@@ -9,6 +9,12 @@ import React, {
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+
 import Grow from '@mui/material/Grow';
 import LinearProgress from '@mui/material/LinearProgress';
 import ListItem from '@mui/material/ListItem';
@@ -25,29 +31,45 @@ import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
+import { useTranslation } from 'react-i18next';
+
 import { usePrevious } from '@uidotdev/usehooks';
 
 const MarketCodeCombinationSelector = forwardRef(
-  ({ options = [], value, loading, onSelectItem, buttonStyle }, ref) => {
+  (
+    {
+      options = [],
+      value,
+      loading,
+      marketCodesRequired,
+      onSelectItem,
+      buttonStyle,
+    },
+    ref
+  ) => {
     const anchorRef = useRef();
 
     const theme = useTheme();
+
+    const { t } = useTranslation();
 
     const [open, setOpen] = useState(false);
 
     const prevOpen = usePrevious(open);
 
     const handleToggle = () => setOpen((state) => !state);
-
-    const handleClose = (e) => {
-      if (anchorRef.current && anchorRef.current.contains(e.target)) return;
-
+    const handleOpen = () => setOpen(true);
+    const handleClose = () => {
+      if (options.length === 0) return;
+      // if (anchorRef.current && anchorRef.current.contains(e.target)) return;
+      if (marketCodesRequired && value.value === 'ALL') return;
       setOpen(false);
     };
 
     useImperativeHandle(
       ref,
       () => ({
+        open: handleOpen,
         toggle: handleToggle,
       }),
       []
@@ -63,7 +85,8 @@ const MarketCodeCombinationSelector = forwardRef(
     const handleSelect = (e, item) => {
       if (item.disabled) return;
       if (onSelectItem) onSelectItem(item);
-      handleClose(e);
+      if (marketCodesRequired && item.value === 'ALL') setOpen(true);
+      else setOpen(false);
     };
 
     useEffect(() => {
@@ -119,70 +142,57 @@ const MarketCodeCombinationSelector = forwardRef(
             )}
           </Box>
         </Button>
-        <Popper
-          transition
-          anchorEl={anchorRef.current}
-          open={open}
-          role={undefined}
-          placement="bottom-start"
-          popperOptions={{ strategy: 'fixed' }}
-          sx={{ zIndex: 100 }}
-        >
-          {({ TransitionProps, placement }) => (
-            <Grow
-              {...TransitionProps}
-              sx={{
-                transformOrigin:
-                  placement === 'bottom-start' ? 'left top' : 'left bottom',
-              }}
-            >
-              <Box component={Paper}>
-                <ClickAwayListener onClickAway={handleClose}>
-                  <MenuList
-                    aria-labelledby="menu-list-button"
-                    autoFocusItem={open}
-                    onKeyDown={handleListKeyDown}
-                    sx={{ minWidth: 150 }}
-                  >
-                    {loading && <LinearProgress />}
-                    {options.map((item) => (
-                      <ListItem
-                        dense
-                        key={item.value}
-                        selected={item.value === value.value}
-                        onClick={(e) => handleSelect(e, item)}
-                        sx={
-                          !item.disabled
-                            ? {
-                                cursor: 'pointer',
-                                ':hover': { bgcolor: 'divider' },
-                              }
-                            : {}
-                        }
-                      >
-                        {item.target && item.origin ? (
-                          <>
-                            <ListItemText
-                              sx={{ opacity: item.disabled ? 0.5 : 1 }}
-                            >
-                              {item.target?.icon} {item.target.getLabel()}
-                            </ListItemText>
-                            <SyncAltIcon
-                              color="accent"
-                              fontSize="small"
-                              sx={{ mx: 2, opacity: item.disabled ? 0.5 : 1 }}
-                            />
-                            <ListItemText
-                              sx={{ opacity: item.disabled ? 0.5 : 1 }}
-                            >
-                              {item.origin?.icon} {item.origin.getLabel()}
-                            </ListItemText>
-                            {item.secondaryIcon && (
-                              <ListItemSecondaryAction>
-                                {item.secondaryIcon}
-                              </ListItemSecondaryAction>
-                            )}
-                            {/* {item.add && (
+        <Dialog maxWidth="sm" open={open} onClose={handleClose}>
+          <DialogTitle sx={{ fontWeight: 700 }}>
+            {t('Select a market code combination')}
+          </DialogTitle>
+          <DialogContent sx={{ p: 0 }}>
+            {loading && <LinearProgress />}
+            {options.map((item) => (
+              <ListItem
+                dense
+                key={item.value}
+                selected={item.value === value.value}
+                onClick={(e) => handleSelect(e, item)}
+                sx={{
+                  p: 1,
+                  ...(!item.disabled
+                    ? {
+                        cursor: 'pointer',
+                        ':hover': { bgcolor: 'divider' },
+                      }
+                    : {}),
+                }}
+              >
+                {item.target && item.origin ? (
+                  <>
+                    <ListItemText
+                      sx={{ flex: 'unset', opacity: item.disabled ? 0.5 : 1 }}
+                    >
+                      {item.target?.icon}
+                      <Box component="span" sx={{ ml: 1 }}>
+                        {item.target.getLabel()}
+                      </Box>
+                    </ListItemText>
+                    <SyncAltIcon
+                      color="accent"
+                      fontSize="small"
+                      sx={{ mx: 1, opacity: item.disabled ? 0.5 : 1 }}
+                    />
+                    <ListItemText
+                      sx={{ flex: 'unset', opacity: item.disabled ? 0.5 : 1 }}
+                    >
+                      {item.origin?.icon}
+                      <Box component="span" sx={{ ml: 1 }}>
+                        {item.origin.getLabel()}
+                      </Box>
+                    </ListItemText>
+                    {item.secondaryIcon && (
+                      <ListItemSecondaryAction>
+                        {item.secondaryIcon}
+                      </ListItemSecondaryAction>
+                    )}
+                    {/* {item.add && (
                               <ListItemSecondaryAction>
                                 <IconButton
                                   color="success"
@@ -197,23 +207,28 @@ const MarketCodeCombinationSelector = forwardRef(
                                 </IconButton>
                               </ListItemSecondaryAction>
                             )} */}
-                          </>
-                        ) : (
-                          <>
-                            <ListItemText>
-                              {item.icon} {item.getLabel()}
-                            </ListItemText>
-                            {item.secondaryIcon && item.secondaryIcon}
-                          </>
-                        )}
-                      </ListItem>
-                    ))}
-                  </MenuList>
-                </ClickAwayListener>
-              </Box>
-            </Grow>
-          )}
-        </Popper>
+                  </>
+                ) : (
+                  <>
+                    <ListItemText>
+                      {item.icon}
+                      <Box component="span" sx={{ ml: 1 }}>
+                        {item.getLabel()}
+                      </Box>
+                    </ListItemText>
+                    {item.secondaryIcon && item.secondaryIcon}
+                  </>
+                )}
+              </ListItem>
+            ))}
+          </DialogContent>
+          {/* <DialogActions>
+            <Button onClick={handleClose}>{t('Cancel')}</Button>
+            <Button form="deposit-form" type="submit">
+              {t('Deposit')}
+            </Button>
+          </DialogActions> */}
+        </Dialog>
       </Box>
     );
   }

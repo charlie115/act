@@ -12,21 +12,6 @@ export default function BotSettings({
   marketCodeSelectorRef,
   marketCodeCombination,
 }) {
-  const { t } = useTranslation();
-
-  if (!marketCodeCombination || marketCodeCombination.value === 'ALL')
-    return (
-      <Box display="flex" alignItems="center" justifyContent="center">
-        <Button
-          color="secondary"
-          onClick={() => marketCodeSelectorRef.current.toggle()}
-          sx={{ borderBottom: 1, borderRadius: 0, textAlign: 'center' }}
-        >
-          {t('Please select a specific market combination')}
-        </Button>
-      </Box>
-    );
-
   if (marketCodeCombination?.tradeSupport)
     return (
       <TradeSupportBotSettings

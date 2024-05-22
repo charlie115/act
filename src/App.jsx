@@ -21,18 +21,32 @@ import FullScreenLoading from 'components/FullScreenLoading';
 import router from 'configs/router';
 import theme, { darkTheme } from 'configs/theme';
 
+import useCookie from 'hooks/useCookie';
+
 function App() {
   const dispatch = useDispatch();
 
   const { i18n } = useTranslation();
 
   const appTheme = useSelector((state) => state.app.theme);
+  const { loggedin } = useSelector((state) => state.auth);
 
   const currentTheme = appTheme === 'light' ? theme : darkTheme;
+
+  const { clearCookie: clearDepositAddress } = useCookie('dpaddr');
+
+  const { clearCookie: clearCountdown } = useCookie('dpcntdwn');
 
   useEffect(() => {
     Settings.defaultZone = DateTime.local().zoneName;
     dispatch(setTimezone(Settings.defaultZone.zoneName));
+  }, []);
+
+  useEffect(() => {
+    if (!loggedin) {
+      clearDepositAddress();
+      clearCountdown();
+    }
   }, []);
 
   if (!i18n.isInitialized) return null;
