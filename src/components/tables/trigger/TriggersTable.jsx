@@ -165,7 +165,7 @@ export default function TriggersTable({
       label: trigger.getLabel(),
       value: trigger.value,
       icon: <trigger.icon />,
-      disabled: trigger.value === 'autoTrade',
+      // disabled: trigger.value === 'autoTrade',
     }));
     setTriggerTypeList(triggers);
     if (!selectedTriggerType) setSelectedTriggerType(triggers[0]);
@@ -444,15 +444,6 @@ export default function TriggersTable({
         </Box>
         {original.add ? (
           <Box sx={{ p: 2 }}>
-            {/* <CreateTriggerForm
-              premiumDataViewerRef={premiumDataViewerRef}
-              interval={meta.klineInterval}
-              baseAsset={original.baseAsset}
-              marketCodes={original.marketCodes}
-              tradeConfigAllocation={meta.tradeConfigAllocation}
-              onTriggerConfigChange={onTriggerConfigChange}
-              onCreateSuccess={() => setSelectedAsset('')}
-            /> */}
             <AssetTradeConfig
               premiumDataViewerRef={premiumDataViewerRef}
               baseAsset={original.baseAsset}
@@ -468,12 +459,14 @@ export default function TriggersTable({
             baseAsset={original.baseAsset}
             defaultEntry={original.entry}
             defaultExit={original.exit}
+            defaultTransactionAmount={original.trade_capital}
             isTether={original.isTether}
             tradeConfigUuid={original.trade_config_uuid}
             usdtConversion={original.usdt_conversion}
             uuid={original.uuid}
             onTriggerConfigChange={onTriggerConfigChange}
             toggleExpanded={toggleExpanded}
+            tradeType={original.trade_capital !== null ? 'autoTrade' : 'alarm'}
           />
         )}
       </Box>

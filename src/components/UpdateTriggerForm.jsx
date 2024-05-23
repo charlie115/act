@@ -10,8 +10,10 @@ import Input from '@mui/material/Input';
 import InputAdornment from '@mui/material/InputAdornment';
 import InputLabel from '@mui/material/InputLabel';
 import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
 
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import PaymentIcon from '@mui/icons-material/Payment';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
@@ -21,12 +23,16 @@ import { useTranslation } from 'react-i18next';
 
 import { usePutTradeMutation } from 'redux/api/drf/tradecore';
 
+import NumberFormatWrapper from 'components/NumberFormatWrapper';
+
 export default function UpdateTriggerForm({
   baseAsset,
   defaultEntry,
   defaultExit,
+  defaultTransactionAmount,
   isTether,
   tradeConfigUuid,
+  tradeType,
   usdtConversion,
   uuid,
   onTriggerConfigChange,
@@ -35,7 +41,12 @@ export default function UpdateTriggerForm({
   const { t } = useTranslation();
 
   const { control, handleSubmit, formState, getValues, trigger } = useForm({
-    defaultValues: { entry: defaultEntry, exit: defaultExit },
+    defaultValues: {
+      entry: defaultEntry,
+      exit: defaultExit,
+      transactionAmount:
+        tradeType === 'autoTrade' ? defaultTransactionAmount : undefined,
+    },
     mode: 'all',
   });
 
@@ -51,6 +62,10 @@ export default function UpdateTriggerForm({
       putTrade({
         low: parseFloat(data.entry),
         high: parseFloat(data.exit),
+        trade_capital:
+          tradeType === 'autoTrade'
+            ? parseInt(data.transactionAmount.replace(/,/g, ''), 10)
+            : undefined,
         base_asset: baseAsset,
         trade_config_uuid: tradeConfigUuid,
         usdt_conversion: usdtConversion,
@@ -192,6 +207,38 @@ export default function UpdateTriggerForm({
             )}
           />
         </Grid>
+        {tradeType === 'autoTrade' && (
+          <Grid item md xs={12} sx={{ pt: '12px !important' }}>
+            <Controller
+              name="transactionAmount"
+              control={control}
+              rules={{ required: true }}
+              render={({ field, fieldState }) => (
+                <NumberFormatWrapper
+                  fullWidth
+                  thousandSeparator
+                  allowNegative={false}
+                  decimalScale={0}
+                  customInput={TextField}
+                  error={fieldState.error}
+                  label={t('Transaction Amount')}
+                  variant="standard"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PaymentIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">{t('KRW')}</InputAdornment>
+                    ),
+                  }}
+                  {...field}
+                />
+              )}
+            />
+          </Grid>
+        )}
         <Grid item md xs={12}>
           <Stack direction="row" spacing={1}>
             <Button

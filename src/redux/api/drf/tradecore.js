@@ -62,15 +62,15 @@ const api = drfApi.injectEndpoints({
             )
           );
           const results = await Promise.allSettled(promises);
-          const okResults = results.filter(
+          const okResults = results?.filter(
             (result) => result.value.meta.response.ok
           );
-          const data = okResults.reduce(
+          const data = okResults?.reduce(
             (acc, result) =>
               acc.concat(result.value.data || result.value.error),
             []
           );
-          const meta = okResults.reduce(
+          const meta = okResults?.reduce(
             (acc, result) => acc.concat(result.value.meta),
             []
           );

@@ -35,6 +35,7 @@ import UpdateTriggerForm from 'components/UpdateTriggerForm';
 import renderExpandCell from 'components/tables/common/renderExpandCell';
 import renderSelectCell from './renderSelectCell';
 import renderStatusCell from './renderStatusCell';
+import renderTransactionAmountCell from './renderTransactionAmountCell';
 import renderValueCell from './renderValueCell';
 
 import renderSelectHeader from './renderSelectHeader';
@@ -98,16 +99,26 @@ export default function TradesTable({
       },
       {
         accessorKey: 'entry',
-        size: isMobile ? 80 : 140,
+        size: isMobile ? 80 : 120,
         header: t('Entry'),
         cell: renderValueCell,
       },
       {
         accessorKey: 'exit',
-        size: isMobile ? 80 : 140,
+        size: isMobile ? 80 : 120,
         header: t('Exit'),
         cell: renderValueCell,
       },
+      ...(tradeType === 'autoTrade'
+        ? [
+            {
+              accessorKey: 'transactionAmount',
+              size: isMobile ? 80 : 120,
+              header: t('Transaction Amount'),
+              cell: renderTransactionAmountCell,
+            },
+          ]
+        : []),
       {
         accessorKey: 'status',
         size: isMobile ? 80 : 140,
@@ -128,7 +139,7 @@ export default function TradesTable({
         header: <span />,
       },
     ],
-    [i18n.language, isMobile]
+    [i18n.language, isMobile, tradeType]
   );
 
   const data = useMemo(
@@ -171,12 +182,14 @@ export default function TradesTable({
           baseAsset={original.baseAsset}
           defaultEntry={original.entry}
           defaultExit={original.exit}
+          defaultTransactionAmount={original.trade_capital}
           isTether={original.isTether}
           tradeConfigUuid={original.trade_config_uuid}
           usdtConversion={original.usdt_conversion}
           uuid={original.uuid}
           onTriggerConfigChange={meta.onTriggerConfigChange}
           toggleExpanded={toggleExpanded}
+          tradeType={original.trade_capital !== null ? 'autoTrade' : 'alarm'}
         />
       </Box>
     ),

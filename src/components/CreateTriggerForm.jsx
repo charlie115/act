@@ -26,11 +26,13 @@ import Slider from '@mui/material/Slider';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
+import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import PaymentIcon from '@mui/icons-material/Payment';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
@@ -57,6 +59,8 @@ import { DateTime } from 'luxon';
 import { usePrevious } from '@uidotdev/usehooks';
 
 import isKoreanMarket from 'utils/isKoreanMarket';
+
+import NumberFormatWrapper from 'components/NumberFormatWrapper';
 
 const CreateTriggerForm = forwardRef(
   (
@@ -209,6 +213,11 @@ const CreateTriggerForm = forwardRef(
               usdt_conversion: data.isTether,
               low: parseFloat(data.entry),
               high: parseFloat(data.exit),
+              trade_capital:
+                tradeType === 'autoTrade'
+                  ? parseInt(data.transactionAmount.replace(/,/g, ''), 10)
+                  : undefined,
+              trade_switch: tradeType === 'autoTrade' ? 0 : undefined,
             }).unwrap();
           } catch (err) {
             setAlertMessage({
@@ -223,6 +232,11 @@ const CreateTriggerForm = forwardRef(
             usdt_conversion: data.isTether,
             low: parseFloat(data.entry),
             high: parseFloat(data.exit),
+            trade_capital:
+              tradeType === 'autoTrade'
+                ? parseInt(data.transactionAmount.replace(/,/g, ''), 10)
+                : undefined,
+            trade_switch: tradeType === 'autoTrade' ? 0 : undefined,
           }).unwrap();
       if (autoRepeat && trade)
         postRepeatTrade({
@@ -745,6 +759,40 @@ const CreateTriggerForm = forwardRef(
                 )}
               />
             </Grid>
+            {tradeType === 'autoTrade' && (
+              <Grid item md xs={12} sx={{ pt: '12px !important' }}>
+                <Controller
+                  name="transactionAmount"
+                  control={control}
+                  rules={{ required: true }}
+                  render={({ field, fieldState }) => (
+                    <NumberFormatWrapper
+                      fullWidth
+                      thousandSeparator
+                      allowNegative={false}
+                      decimalScale={0}
+                      customInput={TextField}
+                      error={fieldState.error}
+                      label={t('Transaction Amount')}
+                      variant="standard"
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <PaymentIcon fontSize="small" />
+                          </InputAdornment>
+                        ),
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            {t('KRW')}
+                          </InputAdornment>
+                        ),
+                      }}
+                      {...field}
+                    />
+                  )}
+                />
+              </Grid>
+            )}
             <Grid item md xs={12}>
               <Stack direction="row" spacing={1}>
                 <Button
