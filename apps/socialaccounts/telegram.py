@@ -1,35 +1,46 @@
 import subprocess
 
 
-def start_pm2_process(bot_username):
-    subprocess.Popen(
+def start_pm2_process(bot_username, process_name):
+    process = subprocess.Popen(
         [
             "pm2",
             "start",
-            f"python manage.py telebot {bot_username}",
+            f"python manage.py {process_name} {bot_username}",
             "--name",
-            bot_username,
+            f"{bot_username}.{process_name}",
             "--namespace",
-            "telebot",
+            bot_username,
         ]
     )
+    process.wait()
 
 
-def stop_pm2_process(bot_username):
-    subprocess.Popen(
+def stop_pm2_process(bot_username, process_name=None):
+    process_to_stop = bot_username
+    if process_name:
+        process_to_stop += f".{process_name}"
+
+    process = subprocess.Popen(
         [
             "pm2",
             "stop",
-            bot_username,
+            process_to_stop,
         ]
     )
+    process.wait()
 
 
-def delete_pm2_process(bot_username):
-    subprocess.Popen(
+def delete_pm2_process(bot_username, process_name=None):
+    process_to_delete = bot_username
+    if process_name:
+        process_to_delete += f".{process_name}"
+
+    process = subprocess.Popen(
         [
             "pm2",
             "delete",
-            bot_username,
+            process_to_delete,
         ]
     )
+    process.wait()

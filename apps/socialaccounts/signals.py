@@ -20,13 +20,15 @@ def update_bot_service(sender, instance, **kwargs):
             if original.client_id != instance.client_id:
                 stop_pm2_process(original.client_id)
                 delete_pm2_process(original.client_id)
-                start_pm2_process(instance.client_id)
+                start_pm2_process(instance.client_id, "telegram_send_message")
+                start_pm2_process(instance.client_id, "telegram_command")
 
 
 @receiver(post_save, sender=ProxySocialApp, dispatch_uid="signals.spawn_bot_service")
 def spawn_bot_service(sender, instance, created, **kwargs):
     if created and instance.provider == "telegram":
-        start_pm2_process(instance.client_id)
+        start_pm2_process(instance.client_id, "telegram_send_message")
+        start_pm2_process(instance.client_id, "telegram_command")
 
 
 @receiver(post_delete, sender=ProxySocialApp, dispatch_uid="signals.remove_bot_service")

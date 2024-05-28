@@ -18,10 +18,16 @@ class SocialaccountsConfig(AppConfig):
         if "runserver" in sys.argv or "daphne" in sys.argv[0]:
             bots = models.ProxySocialApp.objects.filter(provider="telegram")
             for bot in bots:
-                result = subprocess.run(
-                    ["pm2", "describe", bot.client_id],
-                    capture_output=True,
-                    text=True,
-                )
-                if f"{bot.client_id} doesn't exist" in result.stderr:
-                    telegram.start_pm2_process(bot.client_id)
+                processes = ["telegram_send_message", "telegram_command"]
+                for process in processes:
+                    result = subprocess.run(
+                        ["pm2", "describe", f"{bot.client_id}.{process}"],
+                        capture_output=True,
+                        text=True,
+                    )
+                    if f"{bot.client_id}.{process} doesn't exist" in result.stderr:
+                        telegram.start_pm2_process(bot.client_id, process)
+                    else:
+                        telegram.stop_pm2_process(bot.client_id, process)
+                        telegram.delete_pm2_process(bot.client_id, process)
+                        telegram.start_pm2_process(bot.client_id, process)

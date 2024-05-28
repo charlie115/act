@@ -45,6 +45,13 @@ UNFOLD = {
                         "icon": "confirmation_number",
                         "link": reverse_lazy("admin:referral_referral_changelist"),
                     },
+                    {
+                        "title": _("Social Apps"),
+                        "icon": "deployed_code_account",
+                        "link": reverse_lazy(
+                            "admin:socialaccounts_proxysocialapp_changelist"
+                        ),
+                    },
                 ],
             },
             {
@@ -82,7 +89,7 @@ UNFOLD = {
                         ),
                     },
                     {
-                        "title": _("Roles"),
+                        "title": _("Roles & API Permissions"),
                         "icon": "admin_panel_settings",
                         "link": reverse_lazy("admin:users_userrole_changelist"),
                     },
@@ -220,6 +227,42 @@ UNFOLD = {
                 {
                     "title": _("Assets"),
                     "link": reverse_lazy("admin:infocore_asset_changelist"),
+                },
+            ],
+        },
+        {
+            "models": [
+                "users.userrole",
+                "api.permission",
+            ],
+            "items": [
+                {
+                    "title": _("Roles"),
+                    "link": reverse_lazy("admin:users_userrole_changelist"),
+                },
+                {
+                    "title": _("API Permissions"),
+                    "link": reverse_lazy("admin:api_permission_changelist"),
+                },
+            ],
+        },
+        {
+            "models": [
+                "socialaccounts.proxysocialapp",
+                "socialaccounts.proxysocialaccount",
+            ],
+            "items": [
+                {
+                    "title": _("Social Apps"),
+                    "link": reverse_lazy(
+                        "admin:socialaccounts_proxysocialapp_changelist"
+                    ),
+                },
+                {
+                    "title": _("Social Accounts"),
+                    "link": reverse_lazy(
+                        "admin:socialaccounts_proxysocialaccount_changelist"
+                    ),
                 },
             ],
         },

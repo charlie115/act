@@ -42,7 +42,7 @@ from users.models import UserRole
     ),
 )
 class MessageViewSet(BaseViewSet):
-    queryset = Message.objects.exclude(type=Message.MONITOR)
+    queryset = Message.objects.all()
     serializer_class = MessageSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = (
@@ -73,15 +73,15 @@ class MessageViewSet(BaseViewSet):
             query = {query_field: [self.request.user.telegram_chat_id]}
 
             if self.request.user.role.name == UserRole.ADMIN:
-                return queryset
+                pass
 
-            if (
+            elif (
                 self.request.user.role.name == UserRole.INTERNAL_USER
                 and ACWBasePermission().has_api_permission(self.request)
             ):
-                return queryset
+                pass
 
-            if (
+            elif (
                 self.request.user.role.name == UserRole.MANAGER
                 and ACWBasePermission().has_api_permission(self.request)
             ):
@@ -97,7 +97,16 @@ class MessageViewSet(BaseViewSet):
                 except KeyError:
                     pass
 
-        return queryset.filter(**query)
+        queryset = queryset.filter(**query)
+
+        # NOTE: ACW-128 Only nodes' IPs are allowed to see monitor and command type messages.
+        if (
+            hasattr(self.request, "_authenticator")
+            and type(self.request._authenticator) is not NodeIPAuthentication
+        ):
+            queryset = queryset.exclude(type__in=[Message.MONITOR, Message.COMMAND])
+
+        return queryset
 
     def get_authenticators(self):
         authentication_classes = self.authentication_classes + [NodeIPAuthentication]

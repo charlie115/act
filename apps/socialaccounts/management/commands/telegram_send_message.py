@@ -15,7 +15,7 @@ TELEGRAM_BOT_SENDMESSAGE_URL = "https://api.telegram.org/bot{token}/sendMessage"
 
 
 class Command(BaseCommand):
-    help = "Run telegram bot service"
+    help = "Telegram bot sends message-core messages to users telegram chats"
 
     def add_arguments(self, parser):
         parser.add_argument(
