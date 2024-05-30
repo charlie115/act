@@ -32,43 +32,44 @@ class Command(BaseCommand):
             if not bool(bot.secret):
                 raise CommandError("Empty secret key!")
 
-            @telebot.message_handler(commands=["status", "stop", "restart"])
+            @telebot.message_handler(func=lambda message: True)
             def send_commands(message):
                 admin_user = self.get_admin_user(message.chat.id)
 
                 if admin_user:
-                    message_text = message.text.split(" ")
-                    content = message_text[0].lstrip("/")
-                    title = " ".join(message_text[1:])
+                    if message.text.startswith("/"):
+                        message_text = message.text.split(" ")
+                        content = message_text[0].lstrip("/")
+                        title = " ".join(message_text[1:])
 
-                    if bool(title):
-                        Message.objects.create(
-                            telegram_bot_username=bot.client_id,
-                            telegram_chat_id=0,
-                            title=title,
-                            content=content,
-                            origin=admin_user.email,
-                            type=Message.COMMAND,
-                        )
-                        telebot.send_message(
-                            message.chat.id,
-                            formatting.format_text(
-                                formatting.mcode(f"{content} {title}"),
-                                r"Request successful\!",
-                                separator=" ",
-                            ),
-                            parse_mode="MarkdownV2",
-                        )
-                    else:
-                        telebot.send_message(
-                            message.chat.id,
-                            formatting.format_text(
-                                formatting.mcode(f"{content} {title}"),
-                                "Request failed: missing args",
-                                separator=" ",
-                            ),
-                            parse_mode="MarkdownV2",
-                        )
+                        if bool(title):
+                            Message.objects.create(
+                                telegram_bot_username=bot.client_id,
+                                telegram_chat_id=0,
+                                title=title,
+                                content=content,
+                                origin=admin_user.email,
+                                type=Message.COMMAND,
+                            )
+                            telebot.send_message(
+                                message.chat.id,
+                                formatting.format_text(
+                                    formatting.mcode(f"{content} {title}"),
+                                    r"Request successful\!",
+                                    separator=" ",
+                                ),
+                                parse_mode="MarkdownV2",
+                            )
+                        else:
+                            telebot.send_message(
+                                message.chat.id,
+                                formatting.format_text(
+                                    formatting.mcode(f"{content} {title}"),
+                                    "Request failed: missing args",
+                                    separator=" ",
+                                ),
+                                parse_mode="MarkdownV2",
+                            )
                 else:
                     telebot.send_message(
                         message.chat.id,
