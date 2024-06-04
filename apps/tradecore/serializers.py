@@ -1,4 +1,5 @@
 from decimal import Decimal
+from django.core.validators import MinValueValidator
 from django.db.models import Count
 from rest_framework import exceptions, serializers
 
@@ -243,7 +244,10 @@ class TradesViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     last_updated_datetime = serializers.DateTimeField(read_only=True)
     trigger_switch = serializers.IntegerField(required=False)
     trade_switch = serializers.IntegerField(required=False)
-    trade_capital = serializers.FloatField(required=False)
+    trade_capital = serializers.FloatField(
+        required=False,
+        validators=[MinValueValidator(10000)],
+    )
     last_trade_history_uuid = serializers.UUIDField(required=False)
     status = serializers.CharField(required=False)
     remark = serializers.CharField(required=False)
