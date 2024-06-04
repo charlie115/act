@@ -1,6 +1,7 @@
 import asyncio
 import json
 import pickle
+import threading
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django_redis import get_redis_connection
@@ -16,12 +17,14 @@ class KlineConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self._redis_ps = None
         self._thread = None
-        self._redis_ps = REDIS_CLI.pubsub(ignore_subscribe_messages=True)
+        self._stop = False
 
     def __del__(self, *args, **kwargs):
         # Cleanup
-        self._redis_ps.close()
+        if self._redis_ps:
+            self._redis_ps.close()
 
     async def connect(self):
         # # Authentication
@@ -49,38 +52,44 @@ class KlineConsumer(AsyncWebsocketConsumer):
             channel_name = (
                 f"INFO_CORE|{target_market_code}:{origin_market_code}_{interval}_now"
             )
-            self._redis_ps.subscribe(**{channel_name: self._callback})
-            self._thread = self._redis_ps.run_in_thread(sleep_time=60, daemon=True)
 
-    async def publish(self, message):
-        if message and message.get("type", None) == "message":
-            data = {
-                "result": None,
-                "type": "publish",
-                "status": "OK",
-            }
+            self._redis_ps = REDIS_CLI.pubsub(ignore_subscribe_messages=True)
+            self._redis_ps.subscribe(channel_name)
 
-            try:
-                data["result"] = pickle.loads(message["data"]).to_json(orient="records")
-            except TypeError as err:
-                data["status"] = "UNAVAILABLE"
-                data["error"] = {"message": str(err)}
-            except Exception as err:
-                data["status"] = "ERROR"
-                data["error"] = {"message": str(err)}
+            self._thread = threading.Thread(target=asyncio.run, args=(self.publish(),))
+            self._thread.start()
 
-            await self.send(json.dumps(data))
+    async def publish(self):
+        while not self._stop:
+            message = self._redis_ps.get_message()
+            if message and message.get("type", None) == "message":
+                data = {
+                    "result": None,
+                    "type": "publish",
+                    "status": "OK",
+                }
 
-    def _callback(self, message):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+                try:
+                    data["result"] = pickle.loads(message["data"]).to_json(
+                        orient="records"
+                    )
+                except TypeError as err:
+                    data["status"] = "UNAVAILABLE"
+                    data["error"] = {"message": str(err)}
+                except Exception as err:
+                    data["status"] = "ERROR"
+                    data["error"] = {"message": str(err)}
 
-        loop.run_until_complete(self.publish(message))
-        loop.close()
+                await self.send(json.dumps(data))
+                await asyncio.sleep(0.05)
 
     async def disconnect(self, code):
-        self._redis_ps.unsubscribe()
-        self._thread.stop()
-        self._thread._running.set()
+        self._stop = True
+
+        if self._thread:
+            del self._thread
+
+        if self._redis_ps:
+            self._redis_ps.unsubscribe()
 
         super().disconnect(code)
