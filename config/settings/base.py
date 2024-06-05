@@ -357,6 +357,8 @@ LOCALE_PATHS = [
     join(Path(BASE_DIR).parent.absolute(), "locale"),
 ]
 
+# CORE
+CORE_IPS = env.list("CORE_IPS", default=[])
 
 # CoinMarketCap
 COINMARKETCAP_API_KEY = env("COINMARKETCAP_API_KEY")
