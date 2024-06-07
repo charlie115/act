@@ -17,14 +17,9 @@ class KlineConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._redis_ps = None
         self._thread = None
         self._stop = False
-
-    def __del__(self, *args, **kwargs):
-        # Cleanup
-        if self._redis_ps:
-            self._redis_ps.close()
+        self._channel_name = None
 
     async def connect(self):
         # # Authentication
@@ -49,33 +44,37 @@ class KlineConsumer(AsyncWebsocketConsumer):
                 )
             )
 
-            channel_name = (
+            self._channel_name = (
                 f"INFO_CORE|{target_market_code}:{origin_market_code}_{interval}_now"
             )
-
-            self._redis_ps = REDIS_CLI.pubsub(ignore_subscribe_messages=True)
-            self._redis_ps.subscribe(channel_name)
 
             self._thread = threading.Thread(target=asyncio.run, args=(self.publish(),))
             self._thread.start()
 
     async def publish(self):
         while not self._stop:
-            message = self._redis_ps.get_message()
-            if message and message.get("type", None) == "message":
-                data = {
-                    "result": None,
-                    "type": "publish",
-                    "status": "OK",
-                }
+            stream = REDIS_CLI.xread(
+                streams={self._channel_name: "$"},
+                count=1,
+                block=0,
+            )
+            if stream:
+                stream = stream[0]
 
                 try:
-                    data["result"] = pickle.loads(message["data"]).to_json(
+                    stream_key, stream_data = stream
+                    entry_id, entry_data = stream_data[0]
+                    kline_data = pickle.loads(entry_data[b"data"]).to_json(
                         orient="records"
                     )
-                except TypeError as err:
-                    data["status"] = "UNAVAILABLE"
-                    data["error"] = {"message": str(err)}
+
+                    data = {
+                        "result": None,
+                        "type": "publish",
+                        "status": "OK",
+                    }
+                    data["result"] = kline_data
+
                 except Exception as err:
                     data["status"] = "ERROR"
                     data["error"] = {"message": str(err)}
@@ -88,8 +87,5 @@ class KlineConsumer(AsyncWebsocketConsumer):
 
         if self._thread:
             del self._thread
-
-        if self._redis_ps:
-            self._redis_ps.unsubscribe()
 
         super().disconnect(code)
