@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 
 from django.conf import settings
 from django_filters import FilterSet
@@ -302,23 +303,25 @@ class FundingRateDataView(views.APIView):
             projection=projection,
         )
 
-        # Serialize
-        cursor_results = {base_asset: [] for base_asset in base_assets}
-        for item in cursor:
-            cursor_results[item["base_asset"]].append(
-                FundingRateDataSerializer(item, context={"tz": tz}).data
+        # Serialize & filter
+        df = pd.DataFrame(cursor)
+
+        results = {}
+        for base_asset in base_assets:
+            base_asset_data = df[df["base_asset"] == base_asset].sort_values(
+                by="datetime_now"
             )
 
-        if past:
-            results = cursor_results
-        else:
-            results = {base_asset: [] for base_asset in base_assets}
-            for key, value in cursor_results.items():
-                results[key] = sorted(
-                    value,
-                    key=lambda v: v["datetime_now"],
-                    reverse=True,
-                )[:1]
+            if not past:
+                base_asset_data = base_asset_data.tail(1)
+
+            base_asset_data = base_asset_data.to_dict(orient="records")
+
+            results[base_asset] = FundingRateDataSerializer(
+                base_asset_data,
+                many=True,
+                context={"tz": tz},
+            ).data
 
         return results
 
