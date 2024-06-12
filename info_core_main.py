@@ -10,6 +10,7 @@ from info_core import InitCore
 # from monitor_engine.kimp_core_monitor import InitKimpCoreMonitor
 from etc.register_monitor_msg import RegisterMonitorMsg
 # from kline_generator.kline_core import InitKlineCore
+from etc.command_handler import CommandHandler
 
 class Dummy:
     def __init__(self):
@@ -89,8 +90,8 @@ if __name__ == '__main__':
     # Initiate TelegramBot with Trigger engine
     if master_flag:
         admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_id_list, total_enabled_market_klines)
-        admin_telegram_bot.updater.idle()
-    else:
-        while True:
-            time.sleep(1)
+
+    # Start command handler loop
+    command_handler = CommandHandler(node, admin_id, core, logging_dir)
+    command_handler.fetch_command_loop()
 

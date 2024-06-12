@@ -40,8 +40,6 @@ class InitKlineCore:
         # self.enaled_market_combination_list = []
         self.register_enabled_market_klines()
         self._start_generating_kline()
-        # subscribe_kline_channel_proc = Process(target=self.subscribe_kline_channel, daemon=True)
-        # subscribe_kline_channel_proc.start()
 
     def _start_generating_kline(self):
         # Start generating kline
@@ -121,6 +119,8 @@ class InitKlineCore:
         columns_to_merge = ['base_asset', 'tp', 'scr', 'atp24h', 'converted_tp']
         appended_premium_df = pd.DataFrame()
         datetime_now = datetime.datetime.utcnow()
+        # Set stream maxlen
+        self.redis_client_db0.redis_conn.xtrim(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', maxlen=max_length)
         while True:
             time.sleep(loop_downtime_sec)
             try:
@@ -140,8 +140,10 @@ class InitKlineCore:
                     pickled_ohlc_df = pickle.dumps(ohlc_df)
                     # Save into redis db for current data
                     self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
-                    # Publish to redis pubsub
-                    self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
+                    # # Publish to redis pubsub
+                    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df) # Current
+                    # publish Stream
+                    self.redis_client_db0.redis_conn.xadd(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', {'data': pickled_ohlc_df}, maxlen=10, approximate=True)
                     # Append into redis db for historical data
                     old_ohlc_1T_kline = self.local_redis_client.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline')
                     if old_ohlc_1T_kline is None:
@@ -165,8 +167,10 @@ class InitKlineCore:
                     ohlc_df = ohlc_df.merge(premium_df[columns_to_merge], on=['base_asset'], how='inner')
                     pickled_ohlc_df = pickle.dumps(ohlc_df)
                     self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
-                    # Publish to redis pubsub
-                    self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
+                    # # Publish to redis pubsub
+                    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df) # Current
+                    # publish Stream
+                    self.redis_client_db0.redis_conn.xadd(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', {'data': pickled_ohlc_df}, maxlen=10, approximate=True)
             except Exception as e:
                 content = f"ohlc_1T_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_1T_loader: {traceback.format_exc()}\n appended_premium_df:{appended_premium_df}, premium_df:{premium_df}"
                 self.kline_logger.error(content)

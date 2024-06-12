@@ -14,7 +14,7 @@
                 
             ]
         },
-        "kline_generator1_dev":
+        "kline_core1_dev":
         {
             "MASTER": false,
             "prod": false,
@@ -37,7 +37,7 @@
             "enabled_market_klines": [
             ]
         },
-        "kline_generator1":
+        "kline_core1":
         {
             "MASTER": false,
             "prod": true,
@@ -60,7 +60,7 @@
                 "BINANCE_USD_M/USDT:BINANCE_COIN_M/USD"
             ]
         },
-        "kline_generator2":
+        "kline_core2":
         {
             "MASTER": false,
             "prod": true,
