@@ -72,7 +72,7 @@ class OkxWebsocket:
                 # print(f'okx_websocket on_error executed!')
                 # print(error)
                 self.websocket_logger.error(f'okx_websocket|okx_websocket on_error executed!\n Error: {error}, traceback: {traceback.format_exc()}')
-                pass
+                reconnect(ws)
 
             def on_close(ws, close_status_code, close_msg):
                 # print(f"\n\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
@@ -82,6 +82,10 @@ class OkxWebsocket:
                 # print(f'okx_websocket started')
                 self.websocket_logger.info(f'okx_websocket|okx_websocket started')
                 ws.send(json.dumps(data))
+                
+            def reconnect(ws):
+                time.sleep(1)
+                ws.run_forever(ping_interval=15)
 
             websocket.enableTrace(False)
             ws = websocket.WebSocketApp(self.url,

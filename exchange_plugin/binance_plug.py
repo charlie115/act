@@ -2,6 +2,7 @@ import sys
 import os
 import datetime
 import traceback
+import pickle
 import pandas as pd
 from queue import Queue
 import numpy as np
@@ -17,6 +18,7 @@ sys.path.append(upper_dir)
 from loggers.logger import KimpBotLogger
 from etc.acw_api import AcwApi
 from etc.db_handler.postgres_client import InitDBClient as InitPostgresDBClient
+from etc.redis_connector.redis_connector import InitRedis
 from api.utils import decrypt_data, MyException
 
 class InitBinanceAdaptor:
@@ -39,7 +41,6 @@ class InitBinanceAdaptor:
         df = pd.DataFrame(self.pub_client.get_ticker())
         df = df.applymap(lambda x: pd.to_numeric(x, errors='ignore'))
         if self.info_dict is None or self.info_dict.get('binance_spot_info_df') is None:
-            # TEST
             spot_exchange_info_df = self.spot_exchange_info()
             self.binance_plug_logger.info(f"self.info_dict is None or self.info_dict.get('binance_spot_info_df') is None, Fetched from API")
         else:
@@ -63,8 +64,9 @@ class InitBinanceAdaptor:
     
     def usd_m_exchange_info(self):
         df = pd.DataFrame(self.pub_client.futures_exchange_info()['symbols'])
+        df.loc[:, 'filters'] = df['filters'].apply(lambda x: x[2]['maxQty'])
         df = df.applymap(lambda x: pd.to_numeric(x, errors='ignore'))
-        df = df.rename(columns={"baseAsset":"base_asset", "quoteAsset":"quote_asset"})
+        df = df.rename(columns={"baseAsset":"base_asset", "quoteAsset":"quote_asset", "filters":"MarketMaxQty"})
         df['perpetual'] = df['contractType'].apply(lambda x: True if x=="PERPETUAL" else False)
         return df
     
@@ -72,13 +74,11 @@ class InitBinanceAdaptor:
         df = pd.DataFrame(self.pub_client.futures_ticker())
         df = df.applymap(lambda x: pd.to_numeric(x, errors='ignore'))
         if self.info_dict is None or self.info_dict.get('binance_usd_m_info_df') is None:
-            # TEST
             usd_m_exchange_info_df = self.usd_m_exchange_info()
             self.binance_plug_logger.info(f"self.info_dict is None or self.info_dict.get('binance_usd_m_info_df') is None, Fetched from API")
         else:
             usd_m_exchange_info_df = self.info_dict.get('binance_usd_m_info_df')
         if self.info_dict is None or self.info_dict.get('binance_spot_ticker_df') is None:
-            # TEST
             binance_spot_ticker_df = self.spot_all_tickers()
             self.binance_plug_logger.info(f"self.info_dict is None or self.info_dict.get('binance_spot_ticker_df') is None, Fetched from API")
         else:
@@ -150,14 +150,14 @@ class InitBinanceAdaptor:
         binance_network_list = [item for sublist in binance_network_list for item in sublist]
         binance_wallet_status_df = pd.DataFrame(binance_network_list)
         binance_wallet_status_df = binance_wallet_status_df.rename(columns={"network": "network_type", "coin": "asset", "withdrawEnable": "withdraw", "depositEnable": "deposit"})
-        return binance_wallet_status_df
-        
+        return binance_wallet_status_df   
 
 ################################################################################################################################################
 class UserBinanceAdaptor:
-    def __init__(self, admin_telegram_id, node=None, db_dict=None, trade_df_dict=None, market_code_combination=None, recvWindow=45000, logging_dir=None):
+    def __init__(self, admin_telegram_id, node=None, db_dict=None, trade_df_dict=None, market_code_combination=None, margin_liquidation_call_trade_queue=None, recvWindow=45000, logging_dir=None):
         self.admin_telegram_id = admin_telegram_id
         self.node = node
+        self.local_redis_client = InitRedis(host='localhost', port=6379, db=0, passwd=None)
         self.user_client_dict = {}
         self.user_stream_monitoring_list = []
         self.recvWindow = recvWindow
@@ -167,6 +167,7 @@ class UserBinanceAdaptor:
         self.order_info_retry_limit = 20
         self.acw_api = AcwApi()
         self.trade_df_dict = trade_df_dict
+        self.margin_liquidation_call_trade_queue = margin_liquidation_call_trade_queue
         if db_dict is not None:
             self.postgres_client = InitPostgresDBClient(**{**db_dict, 'database': 'trade_core'})
             self.user_api_key_df = self.load_user_api_keys()
@@ -189,13 +190,15 @@ class UserBinanceAdaptor:
             logger_name = self.market_code.replace('/', '__')
             self.logger = KimpBotLogger(f"user_binance_plug_{logger_name}", logging_dir).logger
             self.logger.info(f"user_binance_plug_{self.market_code} started.")
-            self.load_user_api_keys_thread = Thread(target=self.loop_load_user_api_keys, args=(60,), daemon=True)
+            self.load_user_api_keys_thread = Thread(target=self.loop_load_user_api_keys, args=(5,), daemon=True)
             self.load_user_api_keys_thread.start()
             # queue for handling order info
             self.order_info_dict_queue = Queue()
             # thread for handling order info
             self.handle_order_info_queue_thread = Thread(target=self.handle_order_info_queue_loop, daemon=True)
             self.handle_order_info_queue_thread.start()
+            # thread for monitoring margin call and liquidation call
+            self.start_user_socket_stream(market_type=self.market_type)
         else:
             self.market_code = None
             self.market = None
@@ -211,24 +214,25 @@ class UserBinanceAdaptor:
             self.logger.info(f"user_binance_plug started.")
         
     def load_user_api_keys(self, table_name='exchange_api_key'):
-        # Check first whether the table is empty or not
-        if self.postgres_client.is_table_empty(table_name):
+        conn = self.postgres_client.pool.getconn()
+        curr = conn.cursor(cursor_factory=extras.RealDictCursor)
+        sql = f"SELECT * FROM {table_name} WHERE exchange='BINANCE'"
+        curr.execute(sql)
+        user_api_key_df = pd.DataFrame(curr.fetchall())
+        self.postgres_client.pool.putconn(conn)
+        # Check whether returned dataframe is empty or not
+        if len(user_api_key_df) == 0:
+            # Get the names of the columns and create an empty dataframe
             column_names = self.postgres_client.get_column_names(table_name)
-            # create empty dataframe
-            user_api_key_df = pd.DataFrame(columns=column_names)
+            self.user_api_key_df = pd.DataFrame(columns=column_names)
+            return self.user_api_key_df
         else:
-            conn = self.postgres_client.pool.getconn()
-            curr = conn.cursor(cursor_factory=extras.RealDictCursor)
-            sql = f"SELECT * FROM {table_name} WHERE exchange='BINANCE'"
-            curr.execute(sql)
-            user_api_key_df = pd.DataFrame(curr.fetchall())
-            self.postgres_client.pool.putconn(conn)
             user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].applymap(lambda x: x.tobytes() if isinstance(x, memoryview) else x)
             user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].applymap(lambda x: decrypt_data(x).decode('utf-8') if x is not None else None)
             self.user_api_key_df = user_api_key_df
             return user_api_key_df
 
-    def loop_load_user_api_keys(self, loop_interval_secs=60):
+    def loop_load_user_api_keys(self, loop_interval_secs=5):
         self.logger.info(f"loop_load_user_api_keys started.")
         while True:
             try:
@@ -269,6 +273,41 @@ class UserBinanceAdaptor:
             self.user_client_dict.pop(access_key, None)
             return (False, str(e))
 
+    def get_deposit_address(self, access_key, secret_key, asset='USDT', network='TRX'):
+        client = self.load_user_client(access_key, secret_key)
+        deposit_address = client.get_deposit_address(coin=asset, network=network)
+        if deposit_address.get('tag') == '':
+            deposit_address['tag'] = None
+        output_dict = {
+            "asset": deposit_address['coin'],
+            "address": deposit_address['address'],
+            "tag": deposit_address['tag']
+        }
+        return output_dict
+
+    def get_deposit_amount(self, access_key, secret_key, txid, asset='USDT'):
+        client = self.load_user_client(access_key, secret_key)
+        deposit_df = pd.DataFrame(client.get_deposit_history(asset=asset))
+        deposit_df = deposit_df[deposit_df['coin']==asset]
+        deposit_df = deposit_df[deposit_df['txId']==txid]
+        if len(deposit_df) == 0:
+            output_dict = {
+                "status": f"{txid}에 대한 입금 내역이 존재하지 않습니다. 잠시 후 다시 조회해 주세요.",
+                "deposited": False,
+                "amount": 0
+            }
+            return output_dict
+        deposit_df.loc[:,'insertTime'] = deposit_df['insertTime'].apply(lambda x: datetime.datetime.fromtimestamp(x/1000))
+        deposit_df.loc[:, 'amount'] = deposit_df['amount'].astype(float)
+        fetched_status = deposit_df['status'].values[0]
+        fetched_amount = deposit_df['amount'].values[0]
+        output_dict = {
+            "status": f"{asset} {fetched_amount}개에 대한 입금이 확인되었습니다." if fetched_status == 1 else "거래소 입금반영중입니다. 잠시 후 다시 조회해 주세요.",
+            "deposited": True if fetched_status == 1 else False,
+            "amount": fetched_amount
+        }
+        return output_dict
+
     def get_spot_balance(self, access_key, secret_key):
         client = self.load_user_client(access_key, secret_key)
         spot_balance = pd.DataFrame(client.get_account()['balances'])
@@ -294,15 +333,30 @@ class UserBinanceAdaptor:
             raise Exception(f"market_type: {market_type} is not supported yet.")
         else:
             raise Exception(f"Invalid market_type: {market_type}")
+        
+    def get_market_maxqty(self, market_type, symbol):
+        if market_type == "SPOT":
+            # Not available yet. raise error
+            raise Exception(f"market_type: {market_type} is not supported yet.")
+        elif market_type == "USD_M":
+            info_df = pickle.loads(self.local_redis_client.get_data('TRADE_CORE|binance_usd_m_info_df'))
+            market_maxqty = info_df[info_df['symbol']==symbol]['MarketMaxQty'].values[0]
+            return market_maxqty
+        elif market_type == "COIN_M":
+            raise Exception(f"market_type: {market_type} is not supported yet.")
+        else:
+            raise Exception(f"Invalid market_type: {market_type}")
 
-    # Binancef order functions
-    def change_margin_type(self, access_key, secret_key, symbol, marginType='ISOLATED'):
+    def change_margin_type(self, access_key, secret_key, market_type, symbol, margin_type='ISOLATED'):
         client = self.load_user_client(access_key, secret_key)
         try:
-            res = client.futures_change_margin_type(
-                symbol=symbol,
-                marginType=marginType
-            )
+            if market_type == "USD_M":
+                res = client.futures_change_margin_type(
+                    symbol=symbol,
+                    marginType=margin_type
+                )
+            else:
+                raise Exception(f"market_type: {market_type} is not supported yet.")
         except Exception as e:
             error_code = e.code
             if error_code == -4046:
@@ -312,9 +366,12 @@ class UserBinanceAdaptor:
                 raise Exception(e)
         return res
 
-    def change_leverage(self, access_key, secret_key, symbol, leverage):
+    def change_leverage(self, access_key, secret_key, market_type, symbol, leverage):
         client = self.load_user_client(access_key, secret_key)
-        res = client.futures_change_leverage(symbol=symbol, leverage=leverage)
+        if market_type == "USD_M":
+            res = client.futures_change_leverage(symbol=symbol, leverage=leverage)
+        else:
+            raise Exception(f"market_type: {market_type} is not supported yet.")
         return res
 
     def fetch_order_info(self, access_key, secret_key, symbol, order_id, market_type, return_dict=None):
@@ -400,7 +457,7 @@ class UserBinanceAdaptor:
                 if market_type == "USD_M":
                     res = client.futures_create_order(
                         symbol=symbol,
-                        side='SELL',
+                        side='BUY',
                         type='MARKET',
                         quantity=qty,
                         recvWindow=self.recvWindow
@@ -433,7 +490,7 @@ class UserBinanceAdaptor:
                 if market_type == "USD_M":
                     res = client.futures_create_order(
                     symbol=symbol,
-                    side='BUY',
+                    side='SELL',
                     type='MARKET',
                     quantity=qty,
                     recvWindow=self.recvWindow
@@ -528,14 +585,13 @@ class UserBinanceAdaptor:
                 return_dict['state'] = 'ERROR'
 
     # Functions for monitoring binance margin call
-    def usd_m_margin_call_callback(self, res, trade_config_uuid, margin_call_mode, telegram_id, integrated_margin_call_callback):
+    def usd_m_margin_call_callback(self, res, trade_config_uuid, margin_call_mode, telegram_id):
         try:
             # margin_call_mode == None -> Do nothing,
             # margin_call_mode == 1 -> Only warning message, 
             # margin_call_mode == 2 -> message & auto exit
             if margin_call_mode == None:
                 return
-
             elif margin_call_mode == 1 or margin_call_mode == 2:
                 margin_type = res['p'][0]['mt'] # CROSSED or ISOLATED
                 base_asset = res['p'][0]['s'].replace('USDT', '')
@@ -544,92 +600,213 @@ class UserBinanceAdaptor:
                 position_amount = float(res['p'][0]['pa'])
                 unrealized_pnl = float(res['p'][0]['up'])
                 # Send margin call message
-                title = f"<b>마진콜 경고!</b> 바이낸스 {base_asset}USDT 의 <b>미실현손익이 위험수위</b>에 도달했습니다.\n"
-                body += f"바이낸스 포지션: {position_side}, 마진타입: {margin_type}\n"
+                title = f"마진콜 경고! 바이낸스 {base_asset}USDT 의 미실현손익이 위험수위에 도달했습니다.\n"
+                body = f"바이낸스 포지션: {position_side}, 마진타입: {margin_type}\n"
                 body += f"미실현손익: {unrealized_pnl}USDT, 포지션수량: {position_amount}\n"
                 body += f"{base_asset}USDT 현재 Mark가격: {mark_price}USDT"
                 msg_full = f"{title}\n{body}"
-                self.acw_api.create_message_thread(telegram_id, title, self.node, 'warning', msg_full, send_times=5, send_term=5)
+                self.acw_api.create_message_thread(telegram_id, title, self.node, 'WARNING', msg_full, send_times=5, send_term=5)
 
                 # If margin_call_mode == 2, execute auto exit
                 if margin_call_mode == 2:
-                    body = f"마진콜 모니터링 설정에 따라, 자동거래에 진입되어 있는 {self.my_exchange}와 {self.counterpart_exchange}의 포지션을 자동정리합니다."
-                    self.acw_api.create_message_thread(telegram_id, "마진콜 자동정리", self.node, 'info', body)
+                    body = f"마진콜 모니터링 설정에 따라, 자동거래에 진입되어 있는 {self.exchange}와 {self.counterpart_exchange}의 포지션을 자동정리합니다."
+                    self.acw_api.create_message_thread(telegram_id, "마진콜 자동정리", self.node, 'INFO', body)
 
                     trade_df = self.trade_df_dict.get(self.market_code_combination)
-                    waiting_df = trade_df[(trade_df['trade_config_uuid']==trade_config_uuid)&(trade_df['base_asset']==base_asset)&(self.addcoin_df['trade_switch']==-1)]
+                    waiting_df = trade_df[(trade_df['trade_config_uuid']==trade_config_uuid)&(trade_df['base_asset']==base_asset)&(trade_df['trade_switch']==-1)]
                     if len(waiting_df) == 0:
                         body = f"{base_asset}USDT는 차익거래에 진입되어있는 상태가 아닙니다.\n"
                         body += f"포지션 자동정리를 취소합니다."
-                        self.acw_api.create_message_thread(telegram_id, "마진콜 자동정리 취소", self.node, 'info', body)
-                        return
-                    integrated_margin_call_callback(trade_config_uuid, margin_call_mode, telegram_id, base_asset, waiting_df)
-                    
+                        self.acw_api.create_message_thread(telegram_id, "마진콜 자동정리 취소", self.node, 'INFO', body)
+                        return                    
 
-
-
-                # # There's waiting trade
-                # for row_tup in waiting_df.iterrows():
-                #     # load api keys
-                #     access_key, secret_key = self.get_api_key_tup(trade_config_uuid, futures=True)
-                #     row = row_tup[1]
-                #     redis_uuid = row['redis_uuid']
-                #     symbol = row['symbol'].replace('USDT', '')
-                #     # Order record validation
-                #     if row['enter_upbit_uuid'] == None or row['enter_binance_orderId'] == None:
-                #         body = f"거래ID:{redis_uuid_to_display_id(self.addcoin_df, redis_uuid)}({symbol})에 대한 진입기록이 조회되지 않습니다.\n"
-                #         body += f"포지션 자동정리를 취소합니다."
-                #         self.telegram_bot.send_thread(chat_id=user_id, text=body)
-                #         self.register_trading_msg(user_id, "usd_m_margin_call_callback", "user_msg", 'normal', "마진콜 자동정리 취소", body)
-                #         continue
-                #     # # UPDATE DataFrame memory
-                #     # user_alarm_df.loc[row['id'], 'auto_trade_switch'] = 1
-                #     corr_index = self.addcoin_df[self.addcoin_df['redis_uuid']==redis_uuid].index[0]
-                #     self.addcoin_df.loc[corr_index, 'auto_trade_switch'] = 1
-                #     # UPDATE database
-                #     db_client = InitDBClient(**self.local_db_dict)
-                #     db_client.curr.execute("""UPDATE addcoin SET last_updated_timestamp=%s, auto_trade_switch=%s WHERE redis_uuid=%s""", (datetime.datetime.now().timestamp()*10000000, 1, row['redis_uuid']))
-                #     db_client.conn.commit()
-
-                #     upbit_exit_qty = self.trade_history_df[self.trade_history_df['upbit_uuid']==row['enter_upbit_uuid']]['upbit_qty'].values[0]
-                #     binance_exit_qty = self.trade_history_df[self.trade_history_df['upbit_uuid']==row['enter_upbit_uuid']]['binance_qty'].values[0]
-                #     exit_id_list = []
-                #     self.exit_func(self.get_kimp_df_func(), self.get_dollar_dict()['price'], user_id, redis_uuid, symbol, (upbit_exit_qty,binance_exit_qty), \
-                #         user_upbit_access_key, user_upbit_secret_key, user_binance_access_key, user_binance_secret_key, exit_id_list)
-                #     try:
-                #         self.exec_pnl(self.get_kimp_df_func(), user_id, redis_uuid, exit_id_list[0], self.get_dollar_dict()['price'])
-                #     except Exception as e:
-                #         self.snatcher_logger.error(f"usd_m_margin_call_callback 에서 exit_func 이후 exec_pnl 실패|{traceback.format_exc()}")
-                #         body = traceback.format_exc(e)
-                #         register(self.monitor_bot_token, self.monitor_bot_url, self.admin_id, self.node, 'error', "usd_m_margin_call_callback 에서 exec_pnl 에러 발생", body)
-                #     try:
-                #         db_client.curr.execute("""UPDATE addcoin SET last_updated_timestamp=%s, exit_upbit_uuid=%s, exit_binance_orderId=%s WHERE redis_uuid=%s""", (datetime.datetime.now().timestamp()*10000000, exit_id_list[0], exit_id_list[1], row['redis_uuid']))
-                #         db_client.conn.commit()
-                #         db_client.conn.close()
-                #     except Exception as e:
-                #         db_client.conn.close()
-                #         self.snatcher_logger.error(f"usd_m_margin_call_callback 에서 exit_func 이후 uuid, orderId UPDATE 실패|{traceback.format_exc()}")
-                #         title = "usd_m_margin_call_callback 에서 exit_func 이후 uuid, orderId UPDATE 실패"
-                #         body = f"{title}\n"
-                #         body += f"user_id: {user_id}, redis_uuid: {row['redis_uuid']}, symbol: {symbol}\n"
-                #         body += f"Error: {e}"
-                #         self.telegram_bot.send_thread(chat_id=self.admin_id, text=body)
-                #         self.register_trading_msg(self.admin_id, "usd_m_margin_call_callback", "admin_msg", 'error', title, body)
+                    # 여기부터
+                    # There's waiting trade
+                    for row_tup in waiting_df.iterrows():
+                        # load api keys
+                        # access_key, secret_key = self.get_api_key_tup(trade_config_uuid, futures=True)
+                        row = row_tup[1]
+                        trade_uuid = row['uuid']
+                        base_asset = row['base_asset']
+                        last_trade_history_uuid = row['last_trade_history_uuid']
+                        
+                        # Order record validation
+                        if last_trade_history_uuid is None:
+                            body = f"거래 UUID:{trade_uuid}({base_asset})에 대한 거래 체결기록이 조회되지 않습니다.\n"
+                            body += f"포지션 자동정리를 취소합니다."
+                            self.acw_api.create_message_thread(telegram_id, "마진콜 자동정리 취소", self.node, 'INFO', body)
+                            continue
+                        # UPDATE database
+                        try:
+                            conn = self.postgres_client.pool.getconn()
+                            curr = conn.cursor(cursor_factory=extras.RealDictCursor)
+                            curr.execute("""UPDATE trade SET last_updated_datetime=%s, trade_switch=%s WHERE uuid=%s""", (datetime.datetime.utcnow(), 1, trade_uuid))
+                            conn.commit()
+                            self.postgres_client.pool.putconn(conn)
+                        except Exception as e:
+                            self.postgres_client.pool.putconn(conn)
+                            self.logger.error(f"usd_m_margin_call_callback|{traceback.format_exc()}")
+                            self.acw_api.create_message_thread(self.admin_telegram_id, "usd_m_margin_call_callback", self.node, 'ERROR', str(e))
+                            continue
+                        
+                        # Fetch trade history from database
+                        try:
+                            conn = self.postgres_client.pool.getconn()
+                            curr = conn.cursor(cursor_factory=extras.RealDictCursor)
+                            curr.execute("""SELECT * FROM trade_history WHERE uuid=%s""", (last_trade_history_uuid,))
+                            trade_history_df = pd.DataFrame(curr.fetchall())
+                            self.postgres_client.pool.putconn(conn)
+                        except Exception as e:
+                            self.postgres_client.pool.putconn(conn)
+                            self.logger.error(f"usd_m_margin_call_callback|{traceback.format_exc()}")
+                            self.acw_api.create_message_thread(self.admin_telegram_id, "usd_m_margin_call_callback", self.node, 'ERROR', str(e))
+                            continue
+                        
+                        trade_side = trade_history_df['trade_side'].values[0]
+                        if trade_side == "EXIT":
+                            body = f"거래 UUID:{trade_uuid}({base_asset})에 대한 EXIT 거래가 이미 실행되었으므로 포지션 정리를 취소합니다."
+                            self.acw_api.create_message_thread(telegram_id, "마진콜 자동정리 취소", self.node, 'INFO', body)
+                            continue
+                        trade_base_asset = trade_history_df['base_asset'].values[0]
+                        if trade_base_asset != base_asset:
+                            body = f"거래기록 UUID:{last_trade_history_uuid}의 거래자산({trade_base_asset})과 청산경고자산({base_asset})이 서로 일치하지 않습니다.\n"
+                            body += f"포지션 자동정리를 취소합니다."
+                            self.acw_api.create_message_thread(telegram_id, "마진콜 자동정리 취소", self.node, 'INFO', body)
+                            continue
+                        target_order_id = trade_history_df['target_order_id'].values[0]
+                        origin_order_id = trade_history_df['origin_order_id'].values[0]
+                        
+                        # Fetch order history from database
+                        try:
+                            conn = self.postgres_client.pool.getconn()
+                            curr = conn.cursor(cursor_factory=extras.RealDictCursor)
+                            curr.execute("""SELECT * FROM order_history WHERE order_id=%s""", (target_order_id,))
+                            target_order_history_df = pd.DataFrame(curr.fetchall())
+                            curr.execute("""SELECT * FROM order_history WHERE order_id=%s""", (origin_order_id,))
+                            origin_order_history_df = pd.DataFrame(curr.fetchall())
+                            self.postgres_client.pool.putconn(conn)
+                        except Exception as e:
+                            self.postgres_client.pool.putconn(conn)
+                            self.logger.error(f"usd_m_margin_call_callback|{traceback.format_exc()}")
+                            self.acw_api.create_message_thread(self.admin_telegram_id, "usd_m_margin_call_callback", self.node, 'ERROR', str(e))
+                            continue
+                        
+                        target_order_executed_qty = target_order_history_df['qty'].values[0]
+                        origin_order_executed_qty = origin_order_history_df['qty'].values[0]
+                        
+                        margin_liquidation_call_trade_dict = {
+                            "trade_type": "short_long_trade",
+                            "trade_df": row.to_frame().T,
+                            "order_type": "margin_call"
+                        }
+                        
+                        self.margin_liquidation_call_trade_queue.put(margin_liquidation_call_trade_dict)
             else:
                 return
         except Exception as e:
             self.logger.error(f"usd_m_margin_call_callback|{traceback.format_exc()}")
             title = "usd_m_margin_call_callback 에서 에러 발생!"
             body = f"{title}\n"
-            body += f"trade_config_uuid: {trade_config_uuid}, margin_call_mode: {margin_call_mode}({type(margin_call_mode)}), error: {e}"
+            body += f"trade_uuid: {trade_uuid}, trade_config_uuid: {trade_config_uuid}, margin_call_mode: {margin_call_mode}({type(margin_call_mode)}), error: {e}"
             full_content = f"{title}\n{body}"
             self.acw_api.create_message_thread(self.admin_telegram_id, title, self.node, 'monitor', full_content, send_times=1, send_term=1)
             return
         
-    def usd_m_liquidation_callback(res, trade_config_uuid, margin_call_mode, telegram_id, counterpart_liquidation_callback):
-        pass
+    def usd_m_liquidation_callback(self, res, trade_config_uuid, margin_call_mode, telegram_id):
+        try:
+            # margin_call_mode == None -> Do nothing,
+            # margin_call_mode == 1 -> Only warning message, 
+            # margin_call_mode == 2 -> message & auto exit
+            if margin_call_mode == None:
+                return
+            elif margin_call_mode == 1 or margin_call_mode == 2:
+                symbol = res['o']['s'] # EX: BTCUSDT
+                symbol = symbol.replace('USDT', '')
+                side = res['o']['S'] # BUY or SELL
+                qty = res['o']['q']
+                # Send Liquidation message
+                body = f"청산 알람! 바이낸스 {symbol}USDT {qty}개가 강제청산되었습니다.\n"
+                self.acw_api.create_message_thread(telegram_id, "청산 알람", self.node, 'WARNING', body, send_times=5, send_term=5)
+                # If margin_call_mode == 2, execute auto exit
+                if margin_call_mode == 2:
+                    body = f"마진콜 모니터링 설정에 따라, 자동거래에 진입되어 있는 {self.counterpart_exchange}의 포지션을 자동정리합니다."
+                    self.acw_api.create_message_thread(telegram_id, "청산 자동정리", self.node, 'INFO', body)
+                    trade_df = self.trade_df_dict.get(self.market_code_combination)
+                    waiting_df = trade_df[(trade_df['trade_config_uuid']==trade_config_uuid)&(trade_df['base_asset']==symbol)&(trade_df['trade_switch']==-1)]
+                    if len(waiting_df) == 0:
+                        body = f"{symbol}USDT는 차익거래에 진입되어있는 상태가 아닙니다.\n"
+                        body += f"포지션 자동정리를 취소합니다."
+                        self.acw_api.create_message_thread(telegram_id, "청산 자동정리 취소", self.node, 'INFO', body)
+                        return
+                    
+                    for row_tup in waiting_df.iterrows():
+                        row = row_tup[1]
+                        trade_uuid = row['uuid']
+                        base_asset = row['base_asset']
+                        last_trade_history_uuid = row['last_trade_history_uuid']
+                        # Order record validation
+                        if last_trade_history_uuid is None:
+                            body = f"거래 UUID:{trade_uuid}({base_asset})에 대한 거래 체결기록이 조회되지 않습니다.\n"
+                            body += f"포지션 자동정리를 취소합니다."
+                            self.acw_api.create_message_thread(telegram_id, "청산 자동정리 취소", self.node, 'INFO', body)
+                            continue
+                        # UPDATE database
+                        try:
+                            conn = self.postgres_client.pool.getconn()
+                            curr = conn.cursor(cursor_factory=extras.RealDictCursor)
+                            curr.execute("""UPDATE trade SET last_updated_datetime=%s, trade_switch=%s WHERE uuid=%s""", (datetime.datetime.utcnow(), 2, trade_uuid))
+                            conn.commit()
+                            self.postgres_client.pool.putconn(conn)
+                        except Exception as e:
+                            self.postgres_client.pool.putconn(conn)
+                            self.logger.error(f"usd_m_liquidation_callback|{traceback.format_exc()}")
+                            self.acw_api.create_message_thread(self.admin_telegram_id, "usd_m_liquidation_callback", self.node, 'ERROR', str(e))
+                            continue
+                        # Fetch trade history from database
+                        try:
+                            conn = self.postgres_client.pool.getconn()
+                            curr = conn.cursor(cursor_factory=extras.RealDictCursor)
+                            curr.execute("""SELECT * FROM trade_history WHERE uuid=%s""", (last_trade_history_uuid,))
+                            trade_history_df = pd.DataFrame(curr.fetchall())
+                            self.postgres_client.pool.putconn(conn)
+                        except Exception as e:
+                            self.postgres_client.pool.putconn(conn)
+                            self.logger.error(f"usd_m_liquidation_callback|{traceback.format_exc()}")
+                            self.acw_api.create_message_thread(self.admin_telegram_id, "usd_m_liquidation_callback", self.node, 'ERROR', str(e))
+                            continue
+                        trade_side = trade_history_df['trade_side'].values[0]
+                        if trade_side == "EXIT":
+                            body = f"거래 UUID:{trade_uuid}({base_asset})에 대한 EXIT 거래가 이미 실행되었으므로 포지션 정리를 취소합니다."
+                            self.acw_api.create_message_thread(telegram_id, "청산 자동정리 취소", self.node, 'INFO', body)
+                            continue
+                        trade_base_asset = trade_history_df['base_asset'].values[0]
+                        if trade_base_asset != base_asset:
+                            body = f"거래기록 UUID:{last_trade_history_uuid}의 거래자산({trade_base_asset})과 청산경고자산({base_asset})이 서로 일치하지 않습니다.\n"
+                            body += f"포지션 자동정리를 취소합니다."
+                            self.acw_api.create_message_thread(telegram_id, "청산 자동정리 취소", self.node, 'INFO', body)
+                            continue
+                        target_order_id = trade_history_df['target_order_id'].values[0]
+                        origin_order_id = trade_history_df['origin_order_id'].values[0]
+                        
+                        margin_liquidation_call_trade_dict = {
+                            "trade_type": "short_long_trade",
+                            "trade_df": row.to_frame().T,
+                            "order_type": "liquidation"
+                        }
+                        
+                        self.margin_liquidation_call_trade_queue.put(margin_liquidation_call_trade_dict)
+            else:
+                return
+        except Exception as e:
+            self.logger.error(f"usd_m_liquidation_callback|{traceback.format_exc()}")
+            title = "usd_m_liquidation_callback 에서 에러 발생!"
+            body = f"{title}\n"
+            body += f"trade_config_uuid: {trade_config_uuid}, margin_call_mode: {margin_call_mode}({type(margin_call_mode)}), error: {e}"
+            full_content = f"{title}\n{body}"
+            self.acw_api.create_message_thread(self.admin_telegram_id, title, self.node, 'monitor', full_content, send_times=1, send_term=1)
+            return
 
-    async def user_usd_m_socket(self, access_key, secret_key, trade_config_uuid, margin_call_mode, telegram_id, counterpart_margin_call_callback, counterpart_liquidation_callback):
+    async def user_usd_m_socket(self, access_key, secret_key, trade_config_uuid, margin_call_mode, telegram_id):
         client = await AsyncClient.create(access_key, secret_key)
         bm = BinanceSocketManager(client)
         # start any sockets here, i.e a trade socket
@@ -641,24 +818,24 @@ class UserBinanceAdaptor:
                     res = await tscm.recv()
                     self.logger.info(f"user_usd_m_socket stream|trade_config_uuid:{trade_config_uuid}\nres: {res}\n") # test
                     if res['e'] == "MARGIN_CALL":
-                        self.usd_m_margin_call_callback(res, trade_config_uuid, margin_call_mode, telegram_id, counterpart_margin_call_callback)
+                        self.usd_m_margin_call_callback(res, trade_config_uuid, margin_call_mode, telegram_id)
                     if res['e'] == "ACCOUNT_UPDATE":
                         # self.reflect_binance_account_update(user_id, res)
                         pass
                     if res['e'] == "ORDER_TRADE_UPDATE" and res['o']['o'] == 'LIQUIDATION':
-                        self.usd_m_liquidation_callback(res, trade_config_uuid, margin_call_mode, telegram_id, counterpart_liquidation_callback)
+                        self.usd_m_liquidation_callback(res, trade_config_uuid, margin_call_mode, telegram_id)
                 except Exception as e:
                     title = "user_usd_m_socket 에서 에러 발생!"
                     body = f"{title}]n"
                     body += f"error: {e}"
                     msg_full = f"{title}\n{body}"
-                    self.acw_api.create_message_thread(self.admin_telegram_id, title, self.node, 'error', msg_full, send_times=1, send_term=1)
+                    self.acw_api.create_message_thread(self.admin_telegram_id, title, self.node, 'ERROR', msg_full, send_times=1, send_term=1)
                 time.sleep(0.3)
 
-    def user_usd_m_socket_async(self, access_key, secret_key, trade_config_uuid, margin_call_mode, telegram_id, counterpart_margin_call_callback, counterpart_liquidation_callback):
-        asyncio.run(self.user_usd_m_socket(access_key, secret_key, trade_config_uuid, margin_call_mode, telegram_id, counterpart_margin_call_callback, counterpart_liquidation_callback))
+    def user_usd_m_socket_async(self, access_key, secret_key, trade_config_uuid, margin_call_mode, telegram_id):
+        asyncio.run(self.user_usd_m_socket(access_key, secret_key, trade_config_uuid, margin_call_mode, telegram_id))
 
-    def start_user_socket_stream(self, market_type, counterpart_margin_call_callback, counterpart_liquidation_callback, loop_secs=3, monitor_loop_secs=2.5):
+    def start_user_socket_stream(self, market_type, loop_secs=3, monitor_loop_secs=2.5):
         # A user should have at least one trade_df setting to start user socket stream.
         self.logger.info(f"start_socket_stream|start_socket_stream started.")
         def monitor_user_stream_loop():
@@ -670,7 +847,7 @@ class UserBinanceAdaptor:
                         time.sleep(loop_secs)
                         # Add monitoring thread if there isn't one
                         trade_df = self.trade_df_dict.get(self.market_code_combination)
-                        if len(trade_df) == 0:
+                        if trade_df is None or len(trade_df) == 0:
                             continue
                         unique_trade_df = trade_df.drop_duplicates(subset=['trade_config_uuid'])
                         # temporary df
@@ -689,13 +866,13 @@ class UserBinanceAdaptor:
                                 margin_call_mode = row['origin_market_margin_call']
                             if self.user_stream_monitoring_list == []:
                                 monitor_thread_tup = (row['trade_config_uuid'], Thread(target=self.user_usd_m_socket_async, args=(
-                                    row['access_key'], row['secret_key'], row['trade_config_uuid'], margin_call_mode, row['telegram_id'], counterpart_margin_call_callback, counterpart_liquidation_callback), daemon=True))
+                                    row['access_key'], row['secret_key'], row['trade_config_uuid'], margin_call_mode, row['telegram_id']), daemon=True))
                                 monitor_thread_tup[1].start()
                                 self.user_stream_monitoring_list.append(monitor_thread_tup)
                                 self.logger.info(f"trade_config_uuid: {row['trade_config_uuid']}'s user_stream monitor thread has been initiated.")
                             elif row['trade_config_uuid'] not in [x[0] for x in self.user_stream_monitoring_list]:
                                 monitor_thread_tup = (row['trade_config_uuid'], Thread(target=self.user_usd_m_socket_async, args=(
-                                    row['access_key'], row['secret_key'], row['trade_config_uuid'], margin_call_mode, row['telegram_id'], counterpart_margin_call_callback, counterpart_liquidation_callback), daemon=True))
+                                    row['access_key'], row['secret_key'], row['trade_config_uuid'], margin_call_mode, row['telegram_id']), daemon=True))
                                 monitor_thread_tup[1].start()
                                 self.user_stream_monitoring_list.append(monitor_thread_tup)
                                 self.logger.info(f"user_id: {row['trade_config_uuid']}'s user_stream monitor thread has been initiated.")

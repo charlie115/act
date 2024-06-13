@@ -6,19 +6,23 @@
         {
             "prod": false,
             "db_settings": "dev_postgres_docker",
+            "mongo_db_settings": "dev_mongodb_remote",
             "redis_settings": "dev_redis_remote",
             "telegram_bot_name": "test_bot",
             "reference_node": null,
-            "encryption_key": "1JhCAuLI_oEkqCih_2oRWWY4Q1LL8l-VoWgxJJxKt_I="
+            "encryption_key": "1JhCAuLI_oEkqCih_2oRWWY4Q1LL8l-VoWgxJJxKt_I=",
+            "user_uuid_for_wallet": "ab2a37d8-65cf-4d23-8168-19e2e26e61d4"
         },
         "trade_core1":
         {
             "prod": true,
             "db_settings": "postgres_docker",
             "redis_settings": "redis_remote",
+            "mongo_db_settings": "mongodb_remote",
             "telegram_bot_name": "trade_core1_monitor_bot",
             "reference_node": null,
-            "encryption_key": "1JhCAuLI_oEkqCih_2oRWWY4Q1LL8l-VoWgxJJxKt_I="
+            "encryption_key": "1JhCAuLI_oEkqCih_2oRWWY4Q1LL8l-VoWgxJJxKt_I=",
+            "user_uuid_for_wallet": ""
         }
     },
     "telegram_bot_setting": 
@@ -68,8 +72,8 @@
         },
         "dev_mongodb_remote":
         {
-            "host": "221.148.128.212",
-            "port": 27018,
+            "host": "14.52.68.128",
+            "port": 27017,
             "user": "test",
             "passwd": "CommunityMongodb123!"
         },

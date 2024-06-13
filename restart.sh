@@ -1,9 +1,9 @@
 #!/bin/bash
 USERDEPLOYER="root"
 #VARIABLES
-SERVICE_NAME="kimp_bot_main.py"
+SERVICE_NAME="trade_core_main.py"
 USERDEPLOYER="root"
-FOLDER=/home/coin_trading_bot
+FOLDER=/home/trade_core
 KEYWORD="python3.9"
 
 if [[ `/usr/bin/whoami` == $USERDEPLOYER ]]
@@ -46,4 +46,4 @@ else
   echo "User must be $USERDEPLOYER !"
 fi
 
-# pm2 restart kp_trade_v2 # Restart will be handled by PM2 automatically. 
+pm2 restart trade_core # Restart will be handled by PM2 automatically. 

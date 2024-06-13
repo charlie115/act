@@ -10,6 +10,7 @@ from trade_core import InitCore
 # from monitor_engine.kimp_core_monitor import InitKimpCoreMonitor
 from etc.register_monitor_msg import RegisterMonitorMsg
 # from kline_generator.kline_core import InitKlineCore
+from etc.command_handler import CommandHandler
 
 class Dummy:
     def __init__(self):
@@ -74,13 +75,18 @@ if __name__ == '__main__':
     else:
         telegram_bot_token = None
     db_dict = config['database_setting'][config['node_settings'][node]['db_settings']]
+    mongo_db_dict = config['database_setting'][config['node_settings'][node]['mongo_db_settings']]
     
     # Initiate Kimp core (Websocket engine)
-    core = InitCore(logging_dir, proc_n, node, admin_telegram_id, register_monitor_msg, exchange_api_key_dict, db_dict)
+    core = InitCore(logging_dir, proc_n, node, admin_telegram_id, register_monitor_msg, exchange_api_key_dict, db_dict, mongo_db_dict)
 
     time.sleep(5)
 
     # Initiate TelegramBot with Trigger engine
-    admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_telegram_id_list)
-    admin_telegram_bot.updater.idle()
+    # admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_telegram_id_list)
+    # admin_telegram_bot.updater.idle()
+    
+    # Start command handler loop
+    command_handler = CommandHandler(node, admin_telegram_id, core, logging_dir)
+    command_handler.fetch_command_loop()
 

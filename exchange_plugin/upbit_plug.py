@@ -96,13 +96,14 @@ class InitUpbitAdaptor:
 ################################################################################################################################################
             
 class UserUpbitAdaptor:
-    def __init__(self, admin_telegram_id, node=None, db_dict=None, trade_df_dict=None, market_code_combination=None, logging_dir=None):
+    def __init__(self, admin_telegram_id, node=None, db_dict=None, trade_df_dict=None, market_code_combination=None, margin_liquidation_call_trade_queue=None, logging_dir=None):
         self.user_client_dict = {}
         self.admin_telegram_id = admin_telegram_id
         self.node = node
         self.db_dict = db_dict
         self.trade_df_dict = trade_df_dict
         self.market_code_combination = market_code_combination
+        self.margin_liquidation_call_trade_queue = None
         self.trade_retry_term_sec = 0.2
         self.trade_retry_limit = 2
         self.order_info_retry_term_sec = 2
@@ -131,7 +132,7 @@ class UserUpbitAdaptor:
             logger_name = self.market_code.replace('/', '__')
             self.logger = KimpBotLogger(f"user_upbit_plug_{logger_name}", logging_dir).logger
             self.logger.info(f"user_upbit_plug_{self.market_code} started.")
-            self.load_user_api_keys_thread = Thread(target=self.loop_load_user_api_keys, args=(60,), daemon=True)
+            self.load_user_api_keys_thread = Thread(target=self.loop_load_user_api_keys, args=(5,), daemon=True)
             self.load_user_api_keys_thread.start()
             # queue for handling order info
             self.order_info_dict_queue = Queue()
@@ -161,31 +162,32 @@ class UserUpbitAdaptor:
             return user_client
         
     def load_user_api_keys(self, table_name='exchange_api_key'):
-        # Check first whether the table is empty or not
-        if self.postgres_client.is_table_empty(table_name):
+        conn = self.postgres_client.pool.getconn()
+        curr = conn.cursor(cursor_factory=extras.RealDictCursor)
+        sql = f"SELECT * FROM {table_name} WHERE exchange='UPBIT'"
+        curr.execute(sql)
+        user_api_key_df = pd.DataFrame(curr.fetchall())
+        self.postgres_client.pool.putconn(conn)
+        # Check whether returned dataframe is empty or not
+        if len(user_api_key_df) == 0:
+            # Get the names of the columns and create an empty dataframe
             column_names = self.postgres_client.get_column_names(table_name)
-            # create empty dataframe
-            user_api_key_df = pd.DataFrame(columns=column_names)
+            self.user_api_key_df = pd.DataFrame(columns=column_names)
+            return self.user_api_key_df
         else:
-            conn = self.postgres_client.pool.getconn()
-            curr = conn.cursor(cursor_factory=extras.RealDictCursor)
-            sql = f"SELECT * FROM {table_name} WHERE exchange='UPBIT'"
-            curr.execute(sql)
-            user_api_key_df = pd.DataFrame(curr.fetchall())
-            self.postgres_client.pool.putconn(conn)
             user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].applymap(lambda x: x.tobytes() if isinstance(x, memoryview) else x)
             user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].applymap(lambda x: decrypt_data(x).decode('utf-8') if x is not None else None)
             self.user_api_key_df = user_api_key_df
             return user_api_key_df
         
-    def loop_load_user_api_keys(self, loop_interval_secs=60):
+    def loop_load_user_api_keys(self, loop_interval_secs=5):
         self.logger.info(f"loop_load_user_api_keys started.")
         while True:
             try:
                 self.user_api_key_df = self.load_user_api_keys()
             except Exception as e:
                 self.logger.error(f"loop_load_user_api_keys|{traceback.format_exc()}")
-                self.acw_api.create_message_thread(self.admin_telegram_id, "loop_load_user_api_keys", self.node, "monitor", str(e))
+                self.acw_api.create_message_thread(self.admin_telegram_id, "loop_load_user_api_keys", self.node, 'MONITOR', str(e))
             time.sleep(loop_interval_secs)
 
     def get_api_key_tup(self, trade_config_uuid, futures, raise_error=True):
@@ -356,7 +358,7 @@ class UserUpbitAdaptor:
                 self.save_order_info_to_db(order_info_dict['trade_config_uuid'], order_info_dict['trade_uuid'], fetched_order_info_res, order_info_dict['market_type'])
             except Exception as e:
                 self.logger.error(f"handle_order_info_queue_loop|{traceback.format_exc()}")
-                self.acw_api.create_message_thread(self.admin_telegram_id, "handle_order_info_queue_loop", self.node, "monitor", str(e))
+                self.acw_api.create_message_thread(self.admin_telegram_id, "handle_order_info_queue_loop", self.node, 'MONITOR', str(e))
                 time.sleep(3)
             time.sleep(0.025)
         

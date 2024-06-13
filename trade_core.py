@@ -18,7 +18,7 @@ from etc.acw_api import AcwApi
 from trigger.trigger import InitTrigger
 import _pickle as pickle
 from threading import Thread
-from multiprocessing import Process
+from multiprocessing import Process, Manager
 import time
 import datetime
 import os
@@ -29,7 +29,7 @@ current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
 logging_dir = f"{current_folder_dir}/loggers/logs/"
 
 class InitCore:
-    def __init__(self, logging_dir, proc_n, node, admin_telegram_id, register_monitor_msg, exchange_api_key_dict, db_dict):
+    def __init__(self, logging_dir, proc_n, node, admin_telegram_id, register_monitor_msg, exchange_api_key_dict, db_dict, mongo_db_dict):
         # Inital value setting
         self.logger = KimpBotLogger("trade_core", logging_dir).logger
         self.price_websocket_logger = KimpBotLogger("price_websocket", logging_dir).logger
@@ -43,12 +43,12 @@ class InitCore:
         self.register_monitor_msg = register_monitor_msg
         self.exchange_api_key_dict = exchange_api_key_dict
         self.acw_api = AcwApi()
-        self.enabled_market_code_services = self.fetch_enabled_market_code_services()
-        self.logger.info(f"InitCore|enabled_market_code_services: {self.enabled_market_code_services}")
+        self.enabled_market_code_combinations = self.fetch_enabled_market_code_combinations()
+        self.logger.info(f"InitCore|enabled_market_code_combinations: {self.enabled_market_code_combinations}")
         self.enabled_websocket_list = self.generate_enabled_websocket_list()
         self.enabled_markets_dict = self.generate_enabled_market_code_dict()
         self.db_dict = db_dict
-        self.mongo_client = InitMongoDBClient(**db_dict)
+        self.mongo_client = InitMongoDBClient(**mongo_db_dict)
         self.postgres_client = InitPostgresDBClient(**{**db_dict, 'database': 'trade_core'})
         self.postgres_client.create_all_tables()
         # TESTTEST
@@ -160,9 +160,9 @@ class InitCore:
                 break
 
         # Loading convert rate
-        self.convert_rate_dict = {}
+        self.convert_rate_dict = Manager().dict()
         self.convert_rate_initialized = False
-        self.update_convert_rate_dict_thread = Thread(target=self.update_convert_rate_dict, daemon=True)
+        self.update_convert_rate_dict_thread = Thread(target=self.update_convert_rate_dict, args=(self.convert_rate_dict,), daemon=True)
         self.update_convert_rate_dict_thread.start()
         while self.convert_rate_initialized is False:
             time.sleep(0.2)
@@ -171,22 +171,22 @@ class InitCore:
         time.sleep(10)
 
         # Start trigger engine
-        self.trigger = InitTrigger(self.admin_telegram_id, node, self.server_check_status_list, self.get_premium_df, self.enabled_market_code_services, 
+        self.trigger = InitTrigger(self.admin_telegram_id, node, self.server_check_status_list, self.get_premium_df, self.enabled_market_code_combinations, 
                                    register_monitor_msg, self.remote_redis_client, self.db_dict, self.mongo_client, self.postgres_client, self.logging_dir)
 
-    def fetch_enabled_market_code_services(self):
+    def fetch_enabled_market_code_combinations(self):
         all_node_df = self.acw_api.get_node()
         node_df = all_node_df[all_node_df['name']==self.node]
         if len(node_df) != 1:
             self.register_monitor_msg.register(self.admin_telegram_id, self.node, 'error', f"Node not found or not unique, len(node_df)={len(node_df)}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
             raise Exception(f"Node not found or not unique, len(node_df)={len(node_df)}")
-        enabled_market_code_services = node_df['market_code_services'].values[0]
-        return enabled_market_code_services
+        enabled_market_code_combinations = node_df['market_code_combinations'].values[0] # The list of dicts
+        return enabled_market_code_combinations
 
     def generate_enabled_websocket_list(self):
         market_list = []
-        for each_market_combi in self.enabled_market_code_services:
-            market_code1, market_code2 = each_market_combi.split(':')
+        for each_market_combi in self.enabled_market_code_combinations:
+            market_code1, market_code2 = each_market_combi['market_code_combination'].split(':')
             market_list.append(market_code1.split('/')[0])
             market_list.append(market_code2.split('/')[0])
         market_list = list(set(market_list))
@@ -207,8 +207,8 @@ class InitCore:
                     organized_markets[market][product_type]["PERPETUAL"].append(product)
 
         # Process each entry in the enabled_markets
-        for entry in self.enabled_market_code_services:
-            pairs = entry.split(":")
+        for entry in self.enabled_market_code_combinations:
+            pairs = entry['market_code_combination'].split(":")
             for pair in pairs:
                 market, quote_asset = pair.split("/")
                 # Handle different market types
@@ -501,14 +501,14 @@ class InitCore:
                 raise Exception(f"Cannot find the convert rate for {title}")
         return convert_rate
     
-    def update_convert_rate_dict(self, loop_time_secs=30):
+    def update_convert_rate_dict(self, convert_rate_dict, loop_time_secs=30):
         while True:
             try:
-                for each_market_combi in self.enabled_market_code_services:
-                    target_market_code, origin_market_code = each_market_combi.split(':')
+                for each_market_combi in self.enabled_market_code_combinations:
+                    target_market_code, origin_market_code = each_market_combi['market_code_combination'].split(':')
                     target_market, target_quote_asset = target_market_code.split('/')
                     origin_market, origin_quote_asset = origin_market_code.split('/')
-                    self.convert_rate_dict[each_market_combi] = self.convert_asset_rate(origin_market, origin_quote_asset, target_market, target_quote_asset)
+                    convert_rate_dict[each_market_combi['market_code_combination']] = self.convert_asset_rate(origin_market, origin_quote_asset, target_market, target_quote_asset)
                 if self.convert_rate_initialized is False:
                     self.convert_rate_initialized = True
             except Exception as e:

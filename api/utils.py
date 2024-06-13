@@ -32,9 +32,9 @@ def decrypt_data(encrypted_data: bytes) -> bytes:
     """Decrypt data."""
     return fernet.decrypt(encrypted_data)
 
-async def find_api_keys(acw_user_uuid: UUID, exchange: str, spot: bool, futures: bool, db: AsyncSession):
-    # First fetch all trade_config that has the given acw_user_uuid
-    trade_configs = await db.execute(select(models.TradeConfig).filter(models.TradeConfig.acw_user_uuid == acw_user_uuid))
+async def find_api_keys(user: UUID, exchange: str, spot: bool, futures: bool, db: AsyncSession):
+    # First fetch all trade_config that has the given user
+    trade_configs = await db.execute(select(models.TradeConfig).filter(models.TradeConfig.user == user))
     trade_configs = trade_configs.scalars().all()
     # Fetch the list API keys whose trade_config_uuid is in the trade_configs    
     api_key_list = []

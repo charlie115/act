@@ -76,6 +76,7 @@ class TradeBase(BaseModel):
 
 class TradeCreate(TradeBase):
     uuid: Optional[UUID] = None
+    # uuid: UUID
     trade_config_uuid: UUID
     registered_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
     last_updated_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
@@ -96,25 +97,70 @@ class Trade(TradeBase):
     class Config:
         orm_mode = True
 
+class TradeLogBase(BaseModel):
+    trade_uuid: UUID
+    trade_config_uuid: UUID
+    registered_datetime: datetime
+    last_updated_datetime: datetime
+    base_asset: str
+    usdt_conversion: bool
+    low: Decimal
+    high: Decimal
+    trade_capital: Optional[Decimal] = None
+    deleted: Optional[bool] = False
+    status: Optional[str] = None
+    remark: Optional[str] = None
+    
+class TradeLogCreate(TradeLogBase):
+    registered_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    last_updated_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    
+class TradeLogUpdate(TradeLogBase):
+    trade_uuid: Optional[UUID] = None
+    trade_config_uuid: Optional[UUID] = None
+    registered_datetime: Optional[datetime] = None
+    last_updated_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    base_asset: Optional[str] = None
+    usdt_conversion: Optional[bool] = None
+    low: Optional[Decimal] = None
+    high: Optional[Decimal] = None
+    
+class TradeLog(TradeLogBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
 class RepeatTradeBase(BaseModel):
     uuid: UUID
     trade_uuid: UUID
     registered_datetime: datetime
-    last_update_datetime: datetime
+    last_updated_datetime: datetime
+    kline_interval: Optional[str] = None
+    kline_num: Optional[int] = None
     pauto_num: Optional[Decimal] = None
-    switch: Optional[int] = None
-    auto_trade_switch: Optional[int] = None
-    enter_target_market_order_id: Optional[str] = None
-    enter_origin_market_order_id: Optional[str] = None
-    exit_target_market_order_id: Optional[str] = None
-    exit_origin_market_order_id: Optional[str] = None
-    status: str
+    auto_repeat_switch: int
+    auto_repeat_num: int
+    status: Optional[str] = None
     remark: Optional[str] = None
 
 class RepeatTradeCreate(RepeatTradeBase):
     uuid: Optional[UUID] = None
     registered_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    last_update_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    last_updated_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    
+class RepeatTradeUpdate(RepeatTradeBase):
+    uuid: Optional[UUID] = None
+    trade_uuid: Optional[UUID] = None
+    registered_datetime: Optional[datetime] = None
+    last_updated_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    kline_interval: Optional[str] = None
+    kline_num: Optional[int] = None
+    pauto_num: Optional[Decimal] = None
+    auto_repeat_switch: Optional[int] = None
+    auto_repeat_num: Optional[int] = None
+    status: Optional[str] = None
+    remark: Optional[str] = None
 
 class RepeatTrade(RepeatTradeBase):
     id: int
@@ -126,7 +172,7 @@ class ExchangeApiKeyBase(BaseModel):
     uuid: UUID
     trade_config_uuid: UUID
     registered_datetime: datetime
-    last_update_datetime: datetime
+    last_updated_datetime: datetime
     market_code: str
     exchange: str
     spot: bool
@@ -139,7 +185,7 @@ class ExchangeApiKeyCreate(ExchangeApiKeyBase):
     uuid: Optional[UUID] = None
     trade_config_uuid: UUID
     registered_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    last_update_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    last_updated_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
     market_code: str
     exchange: Optional[str] = None
     spot: Optional[bool] = None
@@ -153,7 +199,7 @@ class ExchangeApiKeyUpdate(ExchangeApiKeyBase):
     uuid: Optional[UUID] = None
     trade_config_uuid: Optional[UUID] = None
     registered_datetime: Optional[datetime] = None
-    last_update_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    last_updated_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
     market_code: Optional[str] = None
     exchange: Optional[str] = None
     spot: Optional[bool] = None
@@ -169,8 +215,78 @@ class ExchangeApiKey(ExchangeApiKeyBase):
 
     class Config:
         orm_mode = True
-
-
+        
+class OrderHistoryBase(BaseModel):
+    order_id: str
+    trade_config_uuid: UUID
+    trade_uuid: UUID
+    registered_datetime: datetime
+    order_type: str
+    market_code: str
+    symbol: str
+    quote_asset: str
+    side: str
+    price: Decimal
+    qty: Decimal
+    fee: Decimal
+    remark: Optional[str] = None
+    
+class OrderHistory(OrderHistoryBase):
+    id: int
+    
+    class Config:
+        orm_mode = True
+        
+class TradeHistoryBase(BaseModel):
+    uuid: UUID
+    trade_config_uuid: UUID
+    trade_uuid: UUID
+    registered_datetime: datetime
+    trade_side: str
+    base_asset: str
+    target_order_id: str
+    origin_order_id: str
+    target_premium_value: Decimal
+    executed_premium_value: Decimal
+    slippage_p: Decimal
+    dollar: Decimal
+    remark: Optional[str] = None
+    
+class TradeHistory(TradeHistoryBase):
+    id: int
+    
+    class Config:
+        orm_mode = True
+        
+class PnlHistoryBase(BaseModel):
+    uuid: UUID
+    trade_config_uuid: UUID
+    trade_uuid: UUID
+    registered_datetime: datetime
+    market_code_combination: str
+    enter_trade_history_uuid: UUID
+    exit_trade_history_uuid: UUID
+    realized_premium_gap_p: Decimal
+    target_currency: str
+    target_pnl: Decimal
+    target_total_fee: Decimal
+    target_pnl_after_fee: Decimal
+    origin_currency: str
+    origin_pnl: Decimal
+    origin_total_fee: Decimal
+    origin_pnl_after_fee: Decimal
+    total_currency: str
+    total_pnl: Decimal
+    total_pnl_after_fee: Decimal
+    total_pnl_after_fee_kimp: Optional[Decimal] = None # Temporary
+    remark: Optional[str] = None
+    
+class PnlHistory(PnlHistoryBase):
+    id: int
+    
+    class Config:
+        orm_mode = True
+        
 ######################## Schema without database #######################################
 class SpotPosition(BaseModel):
     asset: str
@@ -204,3 +320,28 @@ class Capital(BaseModel):
     before_pnl: Decimal
     pnl: Decimal
     after_pnl: Decimal
+
+
+# schemas for pboundary regression data processing
+class RegressionLine(BaseModel):
+    x: list
+    y: list
+
+class PredictedPoints(BaseModel):
+    x: list
+    y: list
+
+class Pboundary(BaseModel):
+   regression_line: RegressionLine
+   predicted_points: PredictedPoints
+   
+# schemas for wallet deposit system
+class DepositAddress(BaseModel):
+    asset: str
+    address: str
+    tag: Optional[str] = None
+
+class DepositHistory(BaseModel):
+    status: str
+    deposited: bool
+    amount: Decimal
