@@ -61,18 +61,18 @@ class KlineConsumer(AsyncWebsocketConsumer):
             if stream:
                 stream = stream[0]
 
+                data = {
+                    "result": None,
+                    "type": "publish",
+                    "status": "OK",
+                }
+
                 try:
                     stream_key, stream_data = stream
                     entry_id, entry_data = stream_data[0]
                     kline_data = pickle.loads(entry_data[b"data"]).to_json(
                         orient="records"
                     )
-
-                    data = {
-                        "result": None,
-                        "type": "publish",
-                        "status": "OK",
-                    }
                     data["result"] = kline_data
 
                 except Exception as err:
