@@ -1,98 +1,110 @@
 [
   {
-      "model": "infocore.marketcode",
-      "pk": 1,
-      "fields": {
-          "name": "Binance",
-          "code": "BINANCE_SPOT/USDT"
-      }
+    "model": "infocore.marketcode",
+    "pk": 1,
+    "fields": {
+      "name": "Binance",
+      "code": "BINANCE_SPOT/USDT",
+      "type": "SPOT"
+    }
   },
   {
-      "model": "infocore.marketcode",
-      "pk": 2,
-      "fields": {
-          "name": "Binance USD-M (USDT)",
-          "code": "BINANCE_USD_M/USDT"
-      }
+    "model": "infocore.marketcode",
+    "pk": 2,
+    "fields": {
+      "name": "Binance USD-M (USDT)",
+      "code": "BINANCE_USD_M/USDT",
+      "type": "FUTURES"
+    }
   },
   {
-      "model": "infocore.marketcode",
-      "pk": 3,
-      "fields": {
-          "name": "Binance COIN-M (USD)",
-          "code": "BINANCE_COIN_M/USD"
-      }
+    "model": "infocore.marketcode",
+    "pk": 3,
+    "fields": {
+      "name": "Binance COIN-M (USD)",
+      "code": "BINANCE_COIN_M/USD",
+      "type": "FUTURES"
+    }
   },
   {
-      "model": "infocore.marketcode",
-      "pk": 4,
-      "fields": {
-          "name": "UPbit",
-          "code": "UPBIT_SPOT/KRW"
-      }
+    "model": "infocore.marketcode",
+    "pk": 4,
+    "fields": {
+      "name": "UPbit",
+      "code": "UPBIT_SPOT/KRW",
+      "type": "SPOT"
+    }
   },
   {
-      "model": "infocore.marketcode",
-      "pk": 5,
-      "fields": {
-          "name": "UPbit (BTC)",
-          "code": "UPBIT_SPOT/BTC"
-      }
+    "model": "infocore.marketcode",
+    "pk": 5,
+    "fields": {
+      "name": "UPbit (BTC)",
+      "code": "UPBIT_SPOT/BTC",
+      "type": "SPOT"
+    }
   },
   {
-      "model": "infocore.marketcode",
-      "pk": 6,
-      "fields": {
-          "name": "Bithumb",
-          "code": "BITHUMB_SPOT/KRW"
-      }
+    "model": "infocore.marketcode",
+    "pk": 6,
+    "fields": {
+      "name": "Bithumb",
+      "code": "BITHUMB_SPOT/KRW",
+      "type": "SPOT"
+    }
   },
   {
-      "model": "infocore.marketcode",
-      "pk": 7,
-      "fields": {
-          "name": "OKX (USDT)",
-          "code": "OKX_SPOT/USDT"
-      }
+    "model": "infocore.marketcode",
+    "pk": 7,
+    "fields": {
+      "name": "OKX (USDT)",
+      "code": "OKX_SPOT/USDT",
+      "type": "SPOT"
+    }
   },
   {
-      "model": "infocore.marketcode",
-      "pk": 8,
-      "fields": {
-          "name": "OKX USD-M (USDT)",
-          "code": "OKX_USD_M/USDT"
-      }
+    "model": "infocore.marketcode",
+    "pk": 8,
+    "fields": {
+      "name": "OKX USD-M (USDT)",
+      "code": "OKX_USD_M/USDT",
+      "type": "FUTURES"
+    }
   },
   {
-      "model": "infocore.marketcode",
-      "pk": 9,
-      "fields": {
-          "name": "OKX COIN-M (USD)",
-          "code": "OKX_COIN_M/USD"
-      }
+    "model": "infocore.marketcode",
+    "pk": 9,
+    "fields": {
+      "name": "OKX COIN-M (USD)",
+      "code": "OKX_COIN_M/USD",
+      "type": "FUTURES"
+    }
   },
   {
-      "model": "infocore.marketcode",
-      "pk": 10,
-      "fields": {
-          "name": "Bybit (USDT)",
-          "code": "BYBIT_SPOT/USDT"
-      }
+    "model": "infocore.marketcode",
+    "pk": 10,
+    "fields": {
+      "name": "Bybit (USDT)",
+      "code": "BYBIT_SPOT/USDT",
+      "type": "SPOT"
+    }
   },
   {
-      "model": "infocore.marketcode",
-      "pk": 11,
-      "fields": {
-          "name": "Bybit USD-M (USDT)",
-          "code": "BYBIT_USD_M/USDT"
-      }
+    "model": "infocore.marketcode",
+    "pk": 11,
+    "fields": {
+      "name": "Bybit USD-M (USDT)",
+      "code": "BYBIT_USD_M/USDT",
+      "type": "FUTURES"
+    }
   },
   {
-      "model": "infocore.marketcode",
-      "pk": 12,
-      "fields": {
-          "name": "Bybit COIN-M (USD)",
-          "code": "BYBIT_COIN_M/USD"
-      }
+    "model": "infocore.marketcode",
+    "pk": 12,
+    "fields": {
+      "name": "Bybit COIN-M (USD)",
+      "code": "BYBIT_COIN_M/USD",
+      "type": "FUTURES"
+    }
   }
 ]
