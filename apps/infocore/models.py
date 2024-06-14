@@ -13,11 +13,34 @@ class Asset(models.Model):
 
 
 class MarketCode(models.Model):
+    SPOT = "SPOT"
+    USD_M = "USD_M"
+    COIN_M = "COIN_M"
+    FUTURES = "FUTURES"
+    MarketTypes = [
+        (SPOT, SPOT),
+        (USD_M, USD_M),
+        (COIN_M, COIN_M),
+        (FUTURES, FUTURES),
+    ]
+
     name = models.CharField(max_length=150)
     code = models.CharField(max_length=150, unique=True)
+    type = models.CharField(choices=MarketTypes)
+
+    def save(self, *args, **kwargs):
+        pk = self.pk
+        if pk is None:
+            self.type = MarketCode.get_type(self.code)
+
+        super(MarketCode, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.code
+
+    @staticmethod
+    def get_type(code):
+        return "SPOT" if "SPOT" in code else "FUTURES"
 
     class Meta:
         verbose_name = "Market Code"

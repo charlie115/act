@@ -70,9 +70,22 @@ class MarketCodeAdmin(ModelAdmin):
     list_display = [
         "name",
         "code",
+        "type",
     ]
+    list_filter = ["type"]
     search_fields = ["code", "name"]
     ordering = ["name"]
+    add_fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "name",
+                    "code",
+                )
+            },
+        ),
+    )
 
 
 admin.site.register(Asset, AssetAdmin)
