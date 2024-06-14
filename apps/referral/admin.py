@@ -13,18 +13,12 @@ class ReferralCodeForm(ReferralCodeMixin, forms.ModelForm):
     code = forms.CharField(
         widget=forms.TextInput({"class": " ".join([*INPUT_CLASSES, "w-72"])}),
     )
-    target_market_code = forms.ChoiceField(
-        choices=[
-            (market_code.code, market_code.code)
-            for market_code in MarketCode.objects.all()
-        ],
+    target_market_code = forms.ModelChoiceField(
+        queryset=MarketCode.objects.all(),
         widget=forms.Select({"class": " ".join([*SELECT_CLASSES, "w-72"])}),
     )
-    origin_market_code = forms.ChoiceField(
-        choices=[
-            (market_code.code, market_code.code)
-            for market_code in MarketCode.objects.all()
-        ],
+    origin_market_code = forms.ModelChoiceField(
+        queryset=MarketCode.objects.all(),
         widget=forms.Select({"class": " ".join([*SELECT_CLASSES, "w-72"])}),
     )
     contact = forms.CharField(
