@@ -1,10 +1,5 @@
 import React from 'react';
 
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-
-import { useTranslation } from 'react-i18next';
-
 import AlarmSupportBotSettings from 'components/AlarmSupportBotSettings';
 import TradeSupportBotSettings from 'components/TradeSupportBotSettings';
 

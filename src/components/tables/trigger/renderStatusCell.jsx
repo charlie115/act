@@ -4,7 +4,19 @@ import Box from '@mui/material/Box';
 
 import i18n from 'configs/i18n';
 
-export default function renderStatusCell({ cell }) {
+export default function renderStatusCell({ cell, row: { original } }) {
+  if (original.trade_capital === null)
+    return (
+      <Box
+        component="small"
+        sx={{
+          color: original.trigger_switch ? 'success.light' : 'error.light',
+        }}
+      >
+        {original.trigger_switch ? i18n.t('Upward') : i18n.t('Downward')}
+      </Box>
+    );
+
   if (cell.getValue() === null) return '-';
 
   if (cell.getValue() === -2)
@@ -45,13 +57,4 @@ export default function renderStatusCell({ cell }) {
     );
 
   return null;
-
-  // return (
-  //   <Box
-  //     component="small"
-  //     sx={{ color: original.trigger_switch ? 'success.main' : 'error.main' }}
-  //   >
-  //     {original.trigger_switch ? i18n.t('Upward') : i18n.t('Downward')}
-  //   </Box>
-  // );
 }

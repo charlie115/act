@@ -8,21 +8,14 @@ import React, {
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import ClickAwayListener from '@mui/material/ClickAwayListener';
 import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 
-import Grow from '@mui/material/Grow';
 import LinearProgress from '@mui/material/LinearProgress';
 import ListItem from '@mui/material/ListItem';
 import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction';
 import ListItemText from '@mui/material/ListItemText';
-import MenuList from '@mui/material/MenuList';
-import Paper from '@mui/material/Paper';
-import Popper from '@mui/material/Popper';
 import Stack from '@mui/material/Stack';
 
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -75,12 +68,12 @@ const MarketCodeCombinationSelector = forwardRef(
       []
     );
 
-    const handleListKeyDown = (e) => {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        setOpen(false);
-      } else if (e.key === 'Escape') setOpen(false);
-    };
+    // const handleListKeyDown = (e) => {
+    //   if (e.key === 'Tab') {
+    //     e.preventDefault();
+    //     setOpen(false);
+    //   } else if (e.key === 'Escape') setOpen(false);
+    // };
 
     const handleSelect = (e, item) => {
       if (item.disabled) return;

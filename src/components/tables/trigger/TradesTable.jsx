@@ -162,7 +162,7 @@ export default function TradesTable({
         })
           .toLocal()
           .toLocaleString(DateTime.DATETIME_MED),
-        status: trade.trigger_switch,
+        status: trade.trade_switch,
         isTether: trade.usdt_conversion,
         isDeleteLoading,
       })),

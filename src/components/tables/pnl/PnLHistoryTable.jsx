@@ -212,7 +212,7 @@ export default function PnLHistoryTable({
           DateTime.DATETIME_MED
         ),
         isTether: tradeData.usdt_conversion,
-        status: tradeData.trigger_switch,
+        status: tradeData.trade_switch,
         marketCodes: {
           targetMarketCode: marketCodeCombination.target.value,
           originMarketCode: marketCodeCombination.origin.value,
