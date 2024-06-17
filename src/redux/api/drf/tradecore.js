@@ -98,7 +98,7 @@ const api = drfApi.injectEndpoints({
           );
           const results = await Promise.allSettled(promises);
           const okResults = results.filter(
-            (result) => result.value.meta.response.ok
+            (result) => result.value?.meta?.response?.ok
           );
 
           const data = okResults.reduce(
@@ -307,6 +307,7 @@ export const {
   useGetTradeHistoryQuery,
   useGetTradeHistoryByUuidQuery,
   useGetTradesByTradeConfigQuery,
+  useLazyGetExchangeApiKeyQuery,
   useLazyGetPnlHistoryQuery,
   useLazyGetPBoundaryQuery,
   useLazyGetRepeatTradesByTradeConfigQuery,

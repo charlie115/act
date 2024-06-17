@@ -27,7 +27,7 @@ function FundingRate({ diff, fundingTime, value, decimal = 3, isMobile, sx }) {
           <Countdown
             date={DateTime.fromISO(fundingTime).toJSDate()}
             renderer={({ hours, minutes, seconds }) => (
-              <Box component="small">
+              <Box sx={{ fontSize: '0.75em' }}>
                 {isMobile
                   ? `${hours.toString().padStart(2, '0')}:${minutes
                       .toString()

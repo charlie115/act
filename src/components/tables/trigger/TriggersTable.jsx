@@ -30,7 +30,10 @@ import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
 import { DateTime } from 'luxon';
 
-import { useGetAssetsQuery } from 'redux/api/drf/infocore';
+import {
+  useGetAssetsQuery,
+  useGetFundingRateByMarketCodeQuery,
+} from 'redux/api/drf/infocore';
 import {
   useDeleteMultipleTradesMutation,
   useDeleteRepeatTradeMutation,
@@ -59,13 +62,15 @@ import { TRIGGER_LIST } from 'constants/lists';
 import TradeHistoryTable from 'components/tables/trade_history/TradeHistoryTable';
 
 import renderAssetIconCell from 'components/tables/common/renderAssetIconCell';
+import renderCurrencyFormatCell from 'components/tables/common/renderCurrencyFormatCell';
 import renderExpandCell from 'components/tables/common/renderExpandCell';
+import renderFundingRateHeader from 'components/tables/common/renderFundingRateHeader';
+import renderFundingRateCell from 'components/tables/common/renderFundingRateCell';
 
-import renderAutoRepeatCell from './renderAutoRepeatCell';
+import renderAutoRepeatSwitchCell from './renderAutoRepeatSwitchCell';
 import renderMarketCodesCell from './renderMarketCodesCell';
 import renderSelectCell from './renderSelectCell';
 import renderStatusCell from './renderStatusCell';
-import renderTransactionAmountCell from './renderTransactionAmountCell';
 import renderValueCell from './renderValueCell';
 
 import renderSelectHeader from './renderSelectHeader';
@@ -94,6 +99,8 @@ export default function TriggersTable({
 
   const [autoRepeatTrade, setAutoRepeatTrade] = useState();
 
+  const [assetsByMarketCode, setAssetsByMarketCode] = useState();
+
   const [selectedAsset, setSelectedAsset] = useState('');
 
   const [deleteAlert, setDeleteAlert] = useState(false);
@@ -108,7 +115,7 @@ export default function TriggersTable({
 
   const [klineInterval, setKlineInterval] = useState('1T');
 
-  const { data, isFetching, isLoading } = useGetAllTradesQuery(
+  const { data, isFetching, isLoading, isSuccess } = useGetAllTradesQuery(
     { tradeConfigUuids },
     { pollingInterval: 1000 * 60, skip: !!autoRepeatTrade }
   );
@@ -132,6 +139,14 @@ export default function TriggersTable({
     { skip: !selectedTrade }
   );
 
+  const { data: fundingRate } = useGetFundingRateByMarketCodeQuery(
+    { assetsByMarketCode },
+    {
+      pollingInterval: 1000 * 60,
+      skip: !assetsByMarketCode,
+    }
+  );
+
   const { data: assetsData } = useGetAssetsQuery();
 
   const marketCodes = useMemo(() => {
@@ -152,6 +167,34 @@ export default function TriggersTable({
       ),
     [marketCodes, user?.trade_config_allocations]
   );
+
+  useEffect(() => {
+    if (isSuccess && data?.length > 0) {
+      const byMarketCodeAssets = {};
+      data
+        .filter((datum) => datum.trade_capital !== null)
+        .forEach((datum) => {
+          const tradeConfig = tradeConfigAllocations.find(
+            (o) => o.uuid === datum.trade_config_uuid
+          );
+          if (!tradeConfig?.target?.value?.includes('SPOT')) {
+            if (!byMarketCodeAssets[tradeConfig.target.value])
+              byMarketCodeAssets[tradeConfig.target.value] = {};
+            byMarketCodeAssets[tradeConfig.target.value][
+              datum.base_asset
+            ] = true;
+          }
+          if (!tradeConfig?.origin?.value?.includes('SPOT')) {
+            if (!byMarketCodeAssets[tradeConfig.origin.value])
+              byMarketCodeAssets[tradeConfig.origin.value] = {};
+            byMarketCodeAssets[tradeConfig.origin.value][
+              datum.base_asset
+            ] = true;
+          }
+        });
+      setAssetsByMarketCode(byMarketCodeAssets);
+    }
+  }, [data, isSuccess, tradeConfigAllocations]);
 
   useEffect(() => {
     if (isDeleteSuccess) {
@@ -177,7 +220,7 @@ export default function TriggersTable({
         accessorKey: 'select',
         enableGlobalFilter: false,
         enableSorting: false,
-        size: isMobile ? 20 : 30,
+        size: isMobile ? 15 : 30,
         header: renderSelectHeader,
         cell: renderSelectCell,
       },
@@ -215,10 +258,10 @@ export default function TriggersTable({
         cell: renderValueCell,
       },
       {
-        accessorKey: 'transactionAmount',
+        accessorKey: 'tradeCapital',
         size: isMobile ? 25 : 80,
-        header: t('Transaction Amount'),
-        cell: renderTransactionAmountCell,
+        header: t('Trade Capital'),
+        cell: renderCurrencyFormatCell,
       },
       {
         accessorKey: 'status',
@@ -226,24 +269,64 @@ export default function TriggersTable({
         header: t('Status'),
         cell: renderStatusCell,
       },
-      {
-        accessorKey: 'created',
-        size: isMobile ? 40 : 110,
-        header: t('Created'),
-        props: { sx: { fontSize: 11 } },
-      },
+      ...(marketCodeCombination.value === 'ALL' && !isMobile
+        ? [
+            {
+              accessorKey: 'targetFundingRate',
+              header: t('Funding Rate'),
+              size: isMobile ? 25 : 80,
+              cell: renderFundingRateCell,
+            },
+            {
+              accessorKey: 'originFundingRate',
+              header: t('Funding Rate'),
+              size: isMobile ? 25 : 80,
+              cell: renderFundingRateCell,
+            },
+          ]
+        : []),
+      ...(marketCodeCombination.target &&
+      !marketCodeCombination.target.isSpot &&
+      !isMobile
+        ? [
+            {
+              accessorKey: 'targetFundingRate',
+              header: renderFundingRateHeader,
+              cell: renderFundingRateCell,
+              size: isMobile ? 25 : 80,
+            },
+          ]
+        : []),
+      ...(marketCodeCombination.origin &&
+      !marketCodeCombination.origin.isSpot &&
+      !isMobile
+        ? [
+            {
+              accessorKey: 'originFundingRate',
+              header: renderFundingRateHeader,
+              cell: renderFundingRateCell,
+              size: isMobile ? 25 : 80,
+            },
+          ]
+        : []),
       {
         accessorKey: 'autoRepeatStatus',
         size: isMobile ? 30 : 75,
         header: t('Repeat Transaction Status'),
-        props: { sx: { fontSize: 12 } },
+        slotProps: { cell: { sx: { fontSize: 12 } } },
       },
       {
         accessorKey: 'autoRepeatSwitch',
         size: isMobile ? 35 : 80,
         header: t('Auto Repeat'),
-        cell: renderAutoRepeatCell,
+        cell: renderAutoRepeatSwitchCell,
         props: { sx: { textAlign: 'center' } },
+      },
+      {
+        accessorKey: 'created',
+        size: isMobile ? 40 : 110,
+        header: t('Created'),
+        props: { sx: { fontSize: 11 } },
       },
       {
         accessorKey: 'edit',
@@ -255,7 +338,7 @@ export default function TriggersTable({
         header: <span />,
       },
     ],
-    [i18n.language, isMobile]
+    [marketCodeCombination, i18n.language, isMobile]
   );
 
   const tableData = useMemo(() => {
@@ -295,16 +378,33 @@ export default function TriggersTable({
         const tradeConfig = tradeConfigAllocations.find(
           (o) => o.uuid === trade.trade_config_uuid
         );
+
+        const targetFR =
+          fundingRate?.[tradeConfig?.target.value]?.[trade.base_asset]?.[0];
+        const originFR =
+          fundingRate?.[tradeConfig?.origin.value]?.[trade.base_asset]?.[0];
+
         const autoRepeat = repeatTrades?.find(
           (item) => item.trade_uuid === trade.uuid
         );
+        let autoRepeatStatus = '-';
+        let autoRepeatSwitch = null;
+        if (trade.trade_capital !== null) {
+          if (autoRepeat?.status) autoRepeatStatus = autoRepeat.status;
+          else
+            autoRepeatStatus = autoRepeat?.auto_repeat_switch
+              ? t('Normal')
+              : t('Operable');
+          autoRepeatSwitch = !!autoRepeat?.auto_repeat_switch;
+        }
+
         return {
           ...trade,
           baseAsset: trade.base_asset,
           name: trade.base_asset,
           entry: trade.low,
           exit: trade.high,
-          transactionAmount: trade.trade_capital,
+          tradeCapital: trade.trade_capital,
           created: DateTime.fromISO(trade.registered_datetime, {
             zone: 'UTC',
           })
@@ -312,19 +412,40 @@ export default function TriggersTable({
             .toLocaleString(DateTime.DATETIME_MED),
           isTether: trade.usdt_conversion,
           isDeleteLoading,
-          status: trade.trigger_switch,
+          status: trade.trade_switch,
+          ...(targetFR
+            ? {
+                targetFundingRate: targetFR.funding_rate * 100,
+                targetFundingRateIcon:
+                  marketCodeCombination?.value === 'ALL'
+                    ? tradeConfig.target.icon
+                    : null,
+                targetFR,
+              }
+            : { targetFundingRate: !fundingRate ? undefined : null }),
+          ...(originFR
+            ? {
+                originFundingRate: originFR.funding_rate * 100,
+                originFundingRateIcon:
+                  marketCodeCombination?.value === 'ALL'
+                    ? tradeConfig.origin.icon
+                    : null,
+                originFR,
+              }
+            : { originFundingRate: !fundingRate ? undefined : null }),
           marketCodes: {
             targetMarketCode: tradeConfig.target.value,
             originMarketCode: tradeConfig.origin.value,
           },
           icon: assetsData?.[trade.base_asset]?.icon,
-          autoRepeatSwitch: !!autoRepeat?.auto_repeat_switch,
-          autoRepeatStatus: autoRepeat?.status || t('Operable'),
+          autoRepeatSwitch,
+          autoRepeatStatus,
           autoRepeat,
         };
       });
   }, [
     data,
+    fundingRate,
     repeatTrades,
     assetsData,
     selectedAsset,
@@ -332,6 +453,7 @@ export default function TriggersTable({
     selectedTriggerType,
     tradeConfigAllocations,
     isDeleteLoading,
+    i18n.language,
   ]);
 
   const assetSearchProps = useMemo(
@@ -459,7 +581,7 @@ export default function TriggersTable({
             baseAsset={original.baseAsset}
             defaultEntry={original.entry}
             defaultExit={original.exit}
-            defaultTransactionAmount={original.trade_capital}
+            defaultTradeCapital={original.trade_capital}
             isTether={original.isTether}
             tradeConfigUuid={original.trade_config_uuid}
             usdtConversion={original.usdt_conversion}
@@ -550,6 +672,10 @@ export default function TriggersTable({
             isMobile,
             klineInterval,
             triggerConfig,
+            marketCodes: {
+              targetMarketCode: marketCodeCombination?.target?.value,
+              originMarketCode: marketCodeCombination?.origin?.value,
+            },
             displayTradeHistory,
             tradeConfigAllocation,
             tradeHistoryData,

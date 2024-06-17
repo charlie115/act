@@ -21,6 +21,7 @@ import Grid from '@mui/material/Grid';
 import Input from '@mui/material/Input';
 import InputAdornment from '@mui/material/InputAdornment';
 import InputLabel from '@mui/material/InputLabel';
+import LinearProgress from '@mui/material/LinearProgress';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Slider from '@mui/material/Slider';
 import Snackbar from '@mui/material/Snackbar';
@@ -48,6 +49,7 @@ import { useSelector } from 'react-redux';
 
 import { useGetDollarQuery } from 'redux/api/drf/infocore';
 import {
+  useGetExchangeApiKeyQuery,
   useLazyGetPBoundaryQuery,
   usePostRepeatTradeMutation,
   usePostTradeMutation,
@@ -87,6 +89,7 @@ const CreateTriggerForm = forwardRef(
     const user = useSelector((state) => state.auth.user);
 
     const [alertMessage, setAlertMessage] = useState(null);
+    const [apiKeys, setApiKeys] = useState();
     const [autoRepeat, setAutoRepeat] = useState(0);
     const [disabled, setDisabled] = useState(false);
     const [setup, setSetup] = useState('manual');
@@ -127,7 +130,7 @@ const CreateTriggerForm = forwardRef(
       defaultValues: {
         entry: '',
         exit: '',
-        gap: '',
+        tradeCapital: tradeType === 'autoTrade' ? '' : undefined,
         isTether: isTetherPriceView || false,
       },
       mode: 'all',
@@ -138,6 +141,18 @@ const CreateTriggerForm = forwardRef(
     const entry = useWatch({ control, name: 'entry' });
     const exit = useWatch({ control, name: 'exit' });
     const isTether = useWatch({ control, name: 'isTether' });
+
+    const {
+      data: exchangeApiKey,
+      isError,
+      isFetching,
+      isSuccess,
+    } = useGetExchangeApiKeyQuery(
+      { tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid },
+      {
+        skip: tradeType !== 'autoTrade',
+      }
+    );
 
     const {
       data: dollar,
@@ -196,11 +211,11 @@ const CreateTriggerForm = forwardRef(
     const onSubmit = async (data) => {
       const autoSetupValues = autoSetupForm.getValues();
 
-      let trade;
-      let tradeConfigUuid = tradeConfigAllocation?.trade_config_uuid;
-      if (isValid)
-        if (!tradeConfigAllocation) {
-          try {
+      try {
+        let trade;
+        let tradeConfigUuid = tradeConfigAllocation?.trade_config_uuid;
+        if (isValid)
+          if (!tradeConfigAllocation) {
             const results = await postTradeConfig({
               acw_user_uuid: user?.uuid,
               target_market_code: marketCodes?.targetMarketCode,
@@ -215,39 +230,39 @@ const CreateTriggerForm = forwardRef(
               high: parseFloat(data.exit),
               trade_capital:
                 tradeType === 'autoTrade'
-                  ? parseInt(data.transactionAmount.replace(/,/g, ''), 10)
+                  ? parseInt(data.tradeCapital.replace(/,/g, ''), 10)
                   : undefined,
               trade_switch: tradeType === 'autoTrade' ? 0 : undefined,
             }).unwrap();
-          } catch (err) {
-            setAlertMessage({
-              message: t('An error occurred. Please try again.'),
-              status: 'error',
-            });
-          }
-        } else
-          trade = await postTrade({
-            base_asset: baseAsset,
-            trade_config_uuid: tradeConfigAllocation.trade_config_uuid,
-            usdt_conversion: data.isTether,
-            low: parseFloat(data.entry),
-            high: parseFloat(data.exit),
-            trade_capital:
-              tradeType === 'autoTrade'
-                ? parseInt(data.transactionAmount.replace(/,/g, ''), 10)
-                : undefined,
-            trade_switch: tradeType === 'autoTrade' ? 0 : undefined,
-          }).unwrap();
-      if (autoRepeat && trade)
-        postRepeatTrade({
-          trade_config_uuid: tradeConfigUuid,
-          trade_uuid: trade.uuid,
-          kline_interval: interval,
-          kline_num: autoSetupValues?.klineNum,
-          auto_repeat_num: 0, // TODO: Replace with actual value
-          pauto_num: autoSetupValues?.percentGap,
-          auto_repeat_switch: autoRepeat,
+          } else
+            trade = await postTrade({
+              base_asset: baseAsset,
+              trade_config_uuid: tradeConfigAllocation.trade_config_uuid,
+              usdt_conversion: data.isTether,
+              low: parseFloat(data.entry),
+              high: parseFloat(data.exit),
+              trade_capital:
+                tradeType === 'autoTrade'
+                  ? parseInt(data.tradeCapital.replace(/,/g, ''), 10)
+                  : undefined,
+              trade_switch: tradeType === 'autoTrade' ? 0 : undefined,
+            }).unwrap();
+        if (autoRepeat && trade)
+          postRepeatTrade({
+            trade_config_uuid: tradeConfigUuid,
+            trade_uuid: trade.uuid,
+            kline_interval: interval,
+            kline_num: autoSetupValues?.klineNum,
+            auto_repeat_num: 0, // TODO: Replace with actual value
+            pauto_num: autoSetupValues?.percentGap,
+            auto_repeat_switch: autoRepeat,
+          });
+      } catch (e) {
+        setAlertMessage({
+          message: t('An error occurred. Please try again.'),
+          status: 'error',
         });
+      }
     };
 
     useEffect(() => {
@@ -330,6 +345,7 @@ const CreateTriggerForm = forwardRef(
           const [predictedEntry, predictedExit] = pBoundary.predicted_points.y;
           setValue('entry', predictedEntry);
           setValue('exit', predictedExit);
+          trigger('tradeCapital');
           if (!predictionSeriesRef.current)
             predictionSeriesRef.current = klineChartRef?.current
               ?.getChart()
@@ -401,6 +417,16 @@ const CreateTriggerForm = forwardRef(
     }, [setup]);
 
     useEffect(() => {
+      const target = exchangeApiKey?.find(
+        (o) => o.market_code === tradeConfigAllocation?.target_market_code
+      );
+      const origin = exchangeApiKey?.find(
+        (o) => o.market_code === tradeConfigAllocation?.origin_market_code
+      );
+      if (target && origin) setApiKeys({ target, origin });
+    }, [exchangeApiKey, tradeConfigAllocation]);
+
+    useEffect(() => {
       reset();
       autoSetupForm.reset(
         { klineNum: 200, interval, percentGap: 1 }
@@ -424,6 +450,22 @@ const CreateTriggerForm = forwardRef(
     }, [disabled]);
 
     useEffect(() => () => onTriggerConfigChange({}), []);
+
+    if (isFetching) return <LinearProgress />;
+
+    if (isError || (isSuccess && !apiKeys))
+      return (
+        <Box
+          sx={{
+            color: 'error.main',
+            fontStyle: 'italic',
+            py: 4,
+            textAlign: 'center',
+          }}
+        >
+          {t('Invalid API Keys!')}
+        </Box>
+      );
 
     return (
       <Box sx={{ py: 4, opacity: disabled ? 0.2 : 1 }}>
@@ -762,9 +804,17 @@ const CreateTriggerForm = forwardRef(
             {tradeType === 'autoTrade' && (
               <Grid item md xs={12} sx={{ pt: '12px !important' }}>
                 <Controller
-                  name="transactionAmount"
+                  name="tradeCapital"
                   control={control}
-                  rules={{ required: true }}
+                  defaultValue=""
+                  rules={{
+                    required: true,
+                    validate: {
+                      minimum: (value) =>
+                        parseInt(value?.replace(/,/g, ''), 10) >= 10000 ||
+                        t('Trade capital must be at least 10,000 or more.'),
+                    },
+                  }}
                   render={({ field, fieldState }) => (
                     <NumberFormatWrapper
                       fullWidth
@@ -772,8 +822,8 @@ const CreateTriggerForm = forwardRef(
                       allowNegative={false}
                       decimalScale={0}
                       customInput={TextField}
-                      error={fieldState.error}
-                      label={t('Transaction Amount')}
+                      error={!!fieldState.error}
+                      label={t('Trade Capital')}
                       variant="standard"
                       InputProps={{
                         startAdornment: (

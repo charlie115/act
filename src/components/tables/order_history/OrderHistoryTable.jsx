@@ -34,7 +34,7 @@ export default function OrderHistoryTable({ tradeConfigUuid, uuid }) {
       {
         accessorKey: 'datetime',
         size: isMobile ? 30 : 80,
-        header: t('Date'),
+        header: t('Transaction Date'),
         cell: renderDateCell,
       },
       {

@@ -67,7 +67,9 @@ export default function PnLHistory({ marketCodeCombination }) {
 
   const pnlDataByPeriod = useMemo(() => {
     const groupedData = groupBy(data, (o) =>
-      DateTime.fromISO(o.registered_datetime).startOf(period).toMillis()
+      DateTime.fromISO(o.registered_datetime, { zone: 'UTC' })
+        .startOf(period)
+        .toMillis()
     );
     return groupedData;
   }, [data, format, period]);

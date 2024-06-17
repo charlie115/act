@@ -62,13 +62,13 @@ const AssetSearchInput = forwardRef(
       apiOptions
     );
 
-    const assets = useMemo(
-      () =>
-        Object.keys(currentData ?? {})
+    const assets = useMemo(() => {
+      if (!currentData?.disconnected)
+        return Object.keys(currentData ?? {})
           .sort()
-          .join(),
-      [currentData]
-    );
+          .join();
+      return '';
+    }, [currentData]);
 
     useEffect(() => {
       if (assets) setOptions(assets.split(','));

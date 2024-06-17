@@ -115,7 +115,12 @@ function AssetTradeConfig({
               value={currentTab}
               orientation={isMobile ? 'horizontal' : 'vertical'}
               variant={isMobile ? 'scrollable' : 'standard'}
-              onChange={(e, newValue) => setCurrentTab(newValue)}
+              onChange={async (e, newValue) => {
+                if (newValue === 1) {
+                  // await getExchangeApiKey()
+                }
+                setCurrentTab(newValue);
+              }}
               sx={
                 isMobile
                   ? undefined

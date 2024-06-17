@@ -32,10 +32,10 @@ import DeleteAlert from 'components/DeleteAlert';
 import ReactTableUI from 'components/ReactTableUI';
 import UpdateTriggerForm from 'components/UpdateTriggerForm';
 
+import renderCurrencyFormatCell from 'components/tables/common/renderCurrencyFormatCell';
 import renderExpandCell from 'components/tables/common/renderExpandCell';
 import renderSelectCell from './renderSelectCell';
 import renderStatusCell from './renderStatusCell';
-import renderTransactionAmountCell from './renderTransactionAmountCell';
 import renderValueCell from './renderValueCell';
 
 import renderSelectHeader from './renderSelectHeader';
@@ -112,10 +112,10 @@ export default function TradesTable({
       ...(tradeType === 'autoTrade'
         ? [
             {
-              accessorKey: 'transactionAmount',
+              accessorKey: 'tradeCapital',
               size: isMobile ? 80 : 120,
-              header: t('Transaction Amount'),
-              cell: renderTransactionAmountCell,
+              header: t('Trade Capital'),
+              cell: renderCurrencyFormatCell,
             },
           ]
         : []),
@@ -182,7 +182,7 @@ export default function TradesTable({
           baseAsset={original.baseAsset}
           defaultEntry={original.entry}
           defaultExit={original.exit}
-          defaultTransactionAmount={original.trade_capital}
+          defaultTradeCapital={original.trade_capital}
           isTether={original.isTether}
           tradeConfigUuid={original.trade_config_uuid}
           usdtConversion={original.usdt_conversion}

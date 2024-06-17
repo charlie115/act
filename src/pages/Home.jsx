@@ -62,9 +62,10 @@ function Home() {
         .toObject();
       if (diff.minutes > 60) {
         window.location.reload();
-      } else if (diff.minutes > 1) {
-        setQueryKey(DateTime.now().toMillis());
       }
+      // else if (diff.minutes > 5) {
+      //   setQueryKey(DateTime.now().toMillis());
+      // }
     }
   }, [isFocused]);
 
@@ -148,6 +149,9 @@ function Home() {
             isMobile={isMobile}
             timezone={timezone}
             queryKey={queryKey}
+            onDisconnected={() => {
+              setQueryKey(DateTime.now().toMillis());
+            }}
           />
         </Box>
       </Box>

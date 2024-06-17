@@ -29,7 +29,7 @@ export default function UpdateTriggerForm({
   baseAsset,
   defaultEntry,
   defaultExit,
-  defaultTransactionAmount,
+  defaultTradeCapital,
   isTether,
   tradeConfigUuid,
   tradeType,
@@ -44,8 +44,7 @@ export default function UpdateTriggerForm({
     defaultValues: {
       entry: defaultEntry,
       exit: defaultExit,
-      transactionAmount:
-        tradeType === 'autoTrade' ? defaultTransactionAmount : undefined,
+      tradeCapital: tradeType === 'autoTrade' ? defaultTradeCapital : undefined,
     },
     mode: 'all',
   });
@@ -63,8 +62,8 @@ export default function UpdateTriggerForm({
         low: parseFloat(data.entry),
         high: parseFloat(data.exit),
         trade_capital:
-          tradeType === 'autoTrade'
-            ? parseInt(data.transactionAmount.replace(/,/g, ''), 10)
+          tradeType === 'autoTrade' && !!data.tradeCapital
+            ? parseInt(`${data.tradeCapital}`.replace(/,/g, ''), 10)
             : undefined,
         base_asset: baseAsset,
         trade_config_uuid: tradeConfigUuid,
@@ -210,7 +209,7 @@ export default function UpdateTriggerForm({
         {tradeType === 'autoTrade' && (
           <Grid item md xs={12} sx={{ pt: '12px !important' }}>
             <Controller
-              name="transactionAmount"
+              name="tradeCapital"
               control={control}
               rules={{ required: true }}
               render={({ field, fieldState }) => (
@@ -220,8 +219,8 @@ export default function UpdateTriggerForm({
                   allowNegative={false}
                   decimalScale={0}
                   customInput={TextField}
-                  error={fieldState.error}
-                  label={t('Transaction Amount')}
+                  error={!!fieldState.error}
+                  label={t('Trade Capital')}
                   variant="standard"
                   InputProps={{
                     startAdornment: (

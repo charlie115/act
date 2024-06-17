@@ -137,7 +137,12 @@ const PremiumDataChartViewer = forwardRef(
     }, [marketCodes]);
 
     useEffect(() => {
-      if (data && !chartDataType && !defaultDisabledChartDataType) {
+      if (
+        data &&
+        !data.disconnected &&
+        !chartDataType &&
+        !defaultDisabledChartDataType
+      ) {
         if (data?.[baseAsset]?.tp === null) {
           setChartDataType('LS');
           setDisabledChartDataType({ tp: true });

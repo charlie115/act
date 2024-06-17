@@ -84,7 +84,7 @@ export default function TradeHistoryTable({
         accessorKey: 'datetime',
         enableSorting: false,
         size: isMobile ? 25 : 80,
-        header: t('Date'),
+        header: t('Transaction Date'),
         cell: renderDateCell,
       },
       {
@@ -186,7 +186,7 @@ export default function TradeHistoryTable({
         accessorKey: 'datetime',
         enableSorting: false,
         size: isMobile ? 30 : 80,
-        header: t('Date'),
+        header: t('Transaction Date'),
         cell: renderDateCell,
       },
       {

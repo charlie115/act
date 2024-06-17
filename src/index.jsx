@@ -10,6 +10,8 @@ import { Provider } from 'react-redux';
 import { persistStore } from 'redux-persist';
 import { PersistGate } from 'redux-persist/integration/react';
 
+import { setupListeners } from '@reduxjs/toolkit/query';
+
 import store from 'redux/store';
 
 import FullScreenLoading from 'components/FullScreenLoading';
@@ -20,6 +22,8 @@ import reportWebVitals from './reportWebVitals';
 import 'configs/i18n';
 
 import 'animate.css';
+
+setupListeners(store.dispatch);
 
 const persistor = persistStore(store);
 

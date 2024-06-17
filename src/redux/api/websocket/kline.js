@@ -49,8 +49,19 @@ const api = websocketApi.injectEndpoints({
         const onClose = memoize(() => {
           try {
             updateCachedData((draft) => {
-              draft = {};
-              draft.status = 'DISCONNECTED';
+              Object.keys(draft).forEach((key) => delete draft[key]);
+              draft.disconnected = true;
+            });
+          } catch {
+            /* empty */
+          }
+        });
+
+        const onError = memoize(() => {
+          try {
+            updateCachedData((draft) => {
+              Object.keys(draft).forEach((key) => delete draft[key]);
+              draft.disconnected = true;
             });
           } catch {
             /* empty */
@@ -61,6 +72,7 @@ const api = websocketApi.injectEndpoints({
           await cacheDataLoaded;
           socket.addEventListener('message', onMessage);
           socket.addEventListener('close', onClose);
+          socket.addEventListener('error', onError);
         } catch {
           // no-op in case `cacheEntryRemoved` resolves before `cacheDataLoaded`,
           // in which case `cacheDataLoaded` will throw
@@ -69,6 +81,8 @@ const api = websocketApi.injectEndpoints({
 
         socket.close();
         socket.removeEventListener('message', onMessage);
+        socket.removeEventListener('close', onClose);
+        socket.removeEventListener('error', onError);
       },
     }),
   }),

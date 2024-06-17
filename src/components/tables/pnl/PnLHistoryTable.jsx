@@ -67,7 +67,7 @@ export default function PnLHistoryTable({
       {
         accessorKey: 'datetime',
         size: isMobile ? 30 : 100,
-        header: t('Date'),
+        header: t('Transaction Date'),
         cell: renderDateCell,
       },
       {
@@ -138,7 +138,10 @@ export default function PnLHistoryTable({
     () =>
       orderBy(
         data || [],
-        (o) => DateTime.fromISO(o.registered_datetime).toMillis(),
+        (o) =>
+          DateTime.fromISO(o.registered_datetime, {
+            zone: 'UTC',
+          }).toMillis(),
         'desc'
       ).map((item) => ({
         ...item,

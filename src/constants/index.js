@@ -1,8 +1,37 @@
+import i18n from 'configs/i18n';
+
 export const DATE_FORMAT_API_QUERY = "yyyy-MM-dd'T'HH:mm:ss";
 
 export const DATE_FORMAT_BY_UNIT = {
   minutes: 'HH:mm',
   hours: 'HH:mm',
+};
+
+export const DEPOSIT_TYPE = {
+  COMMISSION: {
+    getLabel: () => i18n.t('Commission'),
+    color: 'success.main',
+  },
+  COUPON: {
+    getLabel: () => i18n.t('Coupon'),
+    color: 'success.main',
+  },
+  DEPOSIT: {
+    getLabel: () => i18n.t('deposit-type.Deposit'),
+    color: 'success.main',
+  },
+  FEE: {
+    getLabel: () => i18n.t('Fee'),
+    color: 'error.main',
+  },
+  TRANSFER: {
+    getLabel: () => i18n.t('Transfer'),
+    color: 'error.main',
+  },
+  WITHDRAW: {
+    getLabel: () => i18n.t('Withdrawal'),
+    color: 'error.main',
+  },
 };
 
 export const REGEX = {

@@ -119,7 +119,13 @@ export default function TopUpDeposit({ tradeConfigUuid }) {
   }, [activeStep]);
 
   return (
-    <Box sx={{ mx: 'auto', width: { xs: '100%', md: '50%' } }}>
+    <Box
+      sx={{
+        mx: 'auto',
+        mt: { xs: 4, md: 0 },
+        width: { xs: '100%', md: '50%' },
+      }}
+    >
       <Typography variant="h6" sx={{ mb: 4, textAlign: 'center' }}>
         {t('Top-up Deposit')}
       </Typography>

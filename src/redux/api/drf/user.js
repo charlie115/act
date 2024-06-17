@@ -41,6 +41,13 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    getDepositHistory: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/users/deposit-history/',
+        params,
+      }),
+    }),
   }),
 });
 
@@ -50,5 +57,6 @@ export const {
   useDeleteFavoriteAssetMutation,
   useGetFavoriteAssetsQuery,
   useGetDepositBalanceQuery,
+  useGetDepositHistoryQuery,
   useLazyGetDepositBalanceQuery,
 } = api;

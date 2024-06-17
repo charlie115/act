@@ -200,28 +200,30 @@ export default function PositionTable({ marketCodeCombination }) {
       return acc;
     }, {});
 
-    return Object.keys(mergedData).map((key) => {
-      const item = mergedData[key];
-      const data = {
-        asset: key,
-        icon: assetsData?.[key]?.icon,
-        target_market_pos: item[isTargetSpot ? 'free' : 'qty'] || 0,
-        target_market_roi: item.ROI || 0,
-        target_market_entry_price: item.entry_price || 0,
-        target_market_liquidation_price: item.liquidation_price || 0,
-        target_market_margin_type: item.margin_type,
-        origin_market_pos: item[isOriginSpot ? 'free' : 'qty'] || 0,
-        origin_market_roi: item.ROI || 0,
-        origin_market_entry_price: item.entry_price || 0,
-        origin_market_liquidation_price: item.liquidation_price || 0,
-        origin_market_margin_type: item.margin_type,
-      };
-      const hedge = Math.abs(data.target_market_pos - data.origin_market_pos);
-      return {
-        hedge_status: parseFloat(hedge.toFixed(1)) <= ERROR_RATE,
-        ...data,
-      };
-    });
+    return Object.keys(mergedData)
+      .filter((key) => key !== 'KRW')
+      .map((key) => {
+        const item = mergedData[key];
+        const data = {
+          asset: key,
+          icon: assetsData?.[key]?.icon,
+          target_market_pos: item[isTargetSpot ? 'free' : 'qty'] || 0,
+          target_market_roi: item.ROI || 0,
+          target_market_entry_price: item.entry_price || 0,
+          target_market_liquidation_price: item.liquidation_price || 0,
+          target_market_margin_type: item.margin_type,
+          origin_market_pos: item[isOriginSpot ? 'free' : 'qty'] || 0,
+          origin_market_roi: item.ROI || 0,
+          origin_market_entry_price: item.entry_price || 0,
+          origin_market_liquidation_price: item.liquidation_price || 0,
+          origin_market_margin_type: item.margin_type,
+        };
+        const hedge = data.target_market_pos + data.origin_market_pos; // Math.abs(data.target_market_pos - data.origin_market_pos);
+        return {
+          hedge_status: parseFloat(hedge.toFixed(5)) <= ERROR_RATE,
+          ...data,
+        };
+      });
   }, [
     assetsData,
     marketCodeCombination,

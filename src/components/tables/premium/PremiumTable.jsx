@@ -53,8 +53,9 @@ import ReactTableUI from 'components/ReactTableUI';
 import { REGEX } from 'constants';
 
 import renderExpandCell from 'components/tables/common/renderExpandCell';
-import renderFundingRateHeader from './renderFundingRateHeader';
-import renderFundingRateCell from './renderFundingRateCell';
+import renderFundingRateHeader from 'components/tables/common/renderFundingRateHeader';
+import renderFundingRateCell from 'components/tables/common/renderFundingRateCell';
+
 import renderNameCell from './renderNameCell';
 import renderPremiumCell from './renderPremiumCell';
 import renderPriceCell from './renderPriceCell';
@@ -73,6 +74,7 @@ function PremiumTable({
   isTetherPriceView,
   isMobile,
   queryKey,
+  onDisconnected,
 }) {
   const dispatch = useDispatch();
   const { i18n, t } = useTranslation();
@@ -108,10 +110,10 @@ function PremiumTable({
     { skip: !marketCodes }
   );
 
-  const realTimeDataList = useMemo(
-    () => orderBy(Object.values(realTimeData ?? {}), 'atp24h', 'desc'),
-    [realTimeData]
-  );
+  const realTimeDataList = useMemo(() => {
+    if (realTimeData?.disconnected) return [];
+    return orderBy(Object.values(realTimeData ?? {}), 'atp24h', 'desc');
+  }, [realTimeData]);
 
   const { data: assetsData, isSuccess: isAssetsDataSuccess } =
     useGetAssetsQuery();
@@ -263,8 +265,6 @@ function PremiumTable({
               accessorKey: 'targetFundingRate',
               enableGlobalFilter: false,
               size: isMobile ? 40 : 60,
-              // header: (props) =>
-              //   renderFundingRateHeader({ ...props, marketCodes }),
               header: renderFundingRateHeader,
               cell: renderFundingRateCell,
             },
@@ -380,13 +380,17 @@ function PremiumTable({
     ]
   );
 
+  useEffect(() => {
+    if (realTimeData?.disconnected) onDisconnected();
+  }, [realTimeData]);
+
   const prevAssets = usePrevious(assets);
   useEffect(() => {
     if (isSuccess) {
       if (realTimeData.length === 0) {
         setReady(false);
         timeoutRef.current = setTimeout(() => {
-          setAssets([]);
+          // setAssets([]);
           setReady(true);
         }, 5000);
       } else {

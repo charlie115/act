@@ -122,7 +122,7 @@ export default function AutoRepeatForm({
             size="small"
           >
             <ToggleButton
-              disabled={!repeatTradesResult.data?.[0]}
+              // disabled={!repeatTradesResult.data?.[0]}
               value="true"
               sx={{ px: 2, py: 0.5 }}
             >

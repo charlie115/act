@@ -21,8 +21,10 @@ export default function DepositBalance() {
 
   const [balance, setBalance] = useState();
 
-  const { data } = useGetDepositBalanceQuery({}, { pollingInterval: 5000 });
-  // { user: user.uuid } // TODO: Check if filter is needed
+  const { data, isFetching } = useGetDepositBalanceQuery(
+    {},
+    { pollingInterval: 5000 }
+  );
 
   useEffect(() => {
     if (data?.results?.length) {
@@ -39,9 +41,13 @@ export default function DepositBalance() {
       >
         <AccountBalanceWalletIcon />
       </IconButton>
-      <Typography sx={{ fontSize: '1.15em', fontWeight: 700 }}>
-        {balance ? formatIntlNumber(parseFloat(balance), 2, 2) : '...'}
-      </Typography>
+      {isFetching ? (
+        '...'
+      ) : (
+        <Typography sx={{ fontSize: '1.15em', fontWeight: 700 }}>
+          {balance ? formatIntlNumber(parseFloat(balance), 2, 2) : 0}
+        </Typography>
+      )}
     </Stack>
   );
 }
