@@ -20,8 +20,9 @@ export default function DepositBalance() {
   const { user } = useSelector((state) => state.auth);
 
   const [balance, setBalance] = useState();
+  const [ready, setReady] = useState(false);
 
-  const { data, isFetching } = useGetDepositBalanceQuery(
+  const { data, isSuccess } = useGetDepositBalanceQuery(
     {},
     { pollingInterval: 5000 }
   );
@@ -33,6 +34,10 @@ export default function DepositBalance() {
     }
   }, [data, user]);
 
+  useEffect(() => {
+    if (isSuccess) setReady(true);
+  }, [isSuccess]);
+
   return (
     <Stack direction="row" alignItems="center" sx={{ px: 4 }}>
       <IconButton
@@ -41,7 +46,7 @@ export default function DepositBalance() {
       >
         <AccountBalanceWalletIcon />
       </IconButton>
-      {isFetching ? (
+      {!ready ? (
         '...'
       ) : (
         <Typography sx={{ fontSize: '1.15em', fontWeight: 700 }}>
