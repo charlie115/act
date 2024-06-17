@@ -163,6 +163,7 @@ export default function TradesTable({
           .toLocal()
           .toLocaleString(DateTime.DATETIME_MED),
         status: trade.trade_switch,
+        tradeCapital: trade.trade_capital,
         isTether: trade.usdt_conversion,
         isDeleteLoading,
       })),
