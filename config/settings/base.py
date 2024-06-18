@@ -130,13 +130,13 @@ MIDDLEWARE = (
 #############
 DATABASES = {
     "default": dj_database_url.config(
-        default=env("COMMUNITY_DB_URL"), conn_max_age=600
+        default=env("COMMUNITY_DB_URL"),
     ),
     "newscore": dj_database_url.config(
-        default=env("NEWSCORE_DB_URL"), conn_max_age=600
+        default=env("NEWSCORE_DB_URL"),
     ),
     "messagecore": dj_database_url.config(
-        default=env("MESSAGECORE_DB_URL"), conn_max_age=600
+        default=env("MESSAGECORE_DB_URL"),
     ),
 }
 
