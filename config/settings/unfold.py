@@ -52,6 +52,11 @@ UNFOLD = {
                             "admin:socialaccounts_proxysocialapp_changelist"
                         ),
                     },
+                    {
+                        "title": _("Board"),
+                        "icon": "forum",
+                        "link": reverse_lazy("admin:board_post_changelist"),
+                    },
                 ],
             },
             {
@@ -263,6 +268,27 @@ UNFOLD = {
                     "link": reverse_lazy(
                         "admin:socialaccounts_proxysocialaccount_changelist"
                     ),
+                },
+            ],
+        },
+        {
+            "models": [
+                "board.postcategory",
+                "board.post",
+                "board.comment",
+            ],
+            "items": [
+                {
+                    "title": _("Posts"),
+                    "link": reverse_lazy("admin:board_post_changelist"),
+                },
+                {
+                    "title": _("Comments"),
+                    "link": reverse_lazy("admin:board_comment_changelist"),
+                },
+                {
+                    "title": _("Categories"),
+                    "link": reverse_lazy("admin:board_postcategory_changelist"),
                 },
             ],
         },

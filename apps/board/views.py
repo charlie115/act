@@ -1,0 +1,194 @@
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework.filters import OrderingFilter
+
+from lib.views import BaseViewSet
+from board.models import PostCategory, Post, Comment, PostLikes, PostViews
+from board.serializers import (
+    PostCategorySerializer,
+    PostSerializer,
+    CommentSerializer,
+    PostLikesSerializer,
+    PostViewsSerializer,
+)
+
+
+@extend_schema(tags=["Comment"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List comments",
+        description="Returns a list of all `comments`.",
+    ),
+    create=extend_schema(
+        operation_id="Create a comment",
+        description="Creates a new `comment`.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve a comment",
+        description="Retrieves the details of an existing `comment`.",
+    ),
+    update=extend_schema(
+        operation_id="Fully update a comment",
+        description="Fully updates an existing `comment`.<br>"
+        "*All the previous values of the `comment` will be replaced with the new values provided. "
+        "Any parameters not provided will be unset.*",
+    ),
+    partial_update=extend_schema(
+        operation_id="Update a comment",
+        description="Updates an existing `comment`.<br>"
+        "*Only the parameters specified will be updated while the rest will be left unchanged.*",
+    ),
+    destroy=extend_schema(
+        operation_id="Delete a comment",
+        description="Deletes an existing `comment`.",
+    ),
+)
+class CommentViewSet(BaseViewSet):
+    queryset = Comment.objects.filter(
+        parent__isnull=True
+    )  # no need to return replies in main list
+    lookup_field = "id"
+    serializer_class = CommentSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = (
+        "id",
+        # "username",
+        "date_created",
+        "post",
+        "parent",
+    )
+    ordering = [
+        "id",
+        "date_created",
+    ]
+    http_method_names = ["get", "post", "put", "patch", "delete"]
+
+
+@extend_schema(tags=["PostCategory"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List post categories",
+        description="Returns a list of all `post categories`.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve a post category",
+        description="Retrieves the details of an existing `post category`.",
+    ),
+)
+class PostCategoryViewSet(BaseViewSet):
+    queryset = PostCategory.objects.all()
+    lookup_field = "id"
+    serializer_class = PostCategorySerializer
+    permission_classes = []
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = (
+        "id",
+        "name",
+        "code",
+    )
+    ordering = [
+        "id",
+        "name",
+    ]
+    http_method_names = ["get"]
+
+
+@extend_schema(tags=["Post"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List posts",
+        description="Returns a list of all `posts`.",
+    ),
+    create=extend_schema(
+        operation_id="Create a post",
+        description="Creates a new `post`.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve a post",
+        description="Retrieves the details of an existing `post`.",
+    ),
+    update=extend_schema(
+        operation_id="Fully update a post",
+        description="Fully updates an existing `post`.<br>"
+        "*All the previous values of the `post` will be replaced with the new values provided. "
+        "Any parameters not provided will be unset.*",
+    ),
+    partial_update=extend_schema(
+        operation_id="Update a post",
+        description="Updates an existing `post`.<br>"
+        "*Only the parameters specified will be updated while the rest will be left unchanged.*",
+    ),
+    destroy=extend_schema(
+        operation_id="Delete a post",
+        description="Deletes an existing `post`.",
+    ),
+)
+class PostViewSet(BaseViewSet):
+    queryset = Post.objects.all()
+    lookup_field = "id"
+    serializer_class = PostSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = (
+        "id",
+        # "username",
+        "title",
+        "date_created",
+        "category",
+        "content",
+    )
+    ordering = [
+        "id",
+        "date_created",
+    ]
+    http_method_names = ["get", "post", "put", "patch", "delete"]
+
+
+@extend_schema(tags=["PostLikes"])
+@extend_schema_view(
+    create=extend_schema(
+        operation_id="Like a post",
+        description="Adds a new `post like` for a user.",
+    ),
+)
+class PostLikesViewSet(BaseViewSet):
+    queryset = PostLikes.objects.all()
+    lookup_field = "id"
+    serializer_class = PostLikesSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = (
+        "id",
+        # "username",
+        "post",
+        "date_liked",
+    )
+    ordering = [
+        "id",
+        "date_liked",
+    ]
+    http_method_names = ["post"]
+
+
+@extend_schema(tags=["PostViews"])
+@extend_schema_view(
+    create=extend_schema(
+        operation_id="View a post",
+        description="Adds a new `post view` for a user.<br>"
+        "View per post is counted only once per day for a user.",
+    ),
+)
+class PostViewsViewSet(BaseViewSet):
+    queryset = PostViews.objects.all()
+    lookup_field = "id"
+    serializer_class = PostViewsSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = (
+        "id",
+        # "username",
+        "post",
+        "date_viewed",
+    )
+    ordering = [
+        "id",
+        "date_viewed",
+    ]
+    http_method_names = ["post"]

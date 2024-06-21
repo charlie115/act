@@ -16,6 +16,10 @@ SPECTACULAR_SETTINGS = {
                 "tags": ["Auth"],
             },
             {
+                "name": "BOARD",
+                "tags": ["PostCategory", "Post", "Comment", "PostLikes", "PostViews"],
+            },
+            {
                 "name": "CHAT",
                 "tags": ["PastChatMessages", "RandomUsername"],
             },

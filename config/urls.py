@@ -37,6 +37,7 @@ urlpatterns = [
     path(mkpath(""), APIListView.as_view(), name="api-root"),
     path(mkpath("admin/"), admin.site.urls),
     path(mkpath("auth/"), include("authentication.urls")),
+    path(mkpath("board/"), include("board.urls")),
     path(mkpath("chat/"), include("chat.urls")),
     path(mkpath("referral/"), include("referral.urls.urls")),
     path(mkpath("users/"), include("users.urls")),

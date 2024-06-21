@@ -93,6 +93,7 @@ LOCAL_APPS = (
     "main",
     "api",
     "authentication",
+    "board",
     "chat",
     "fee",
     "socialaccounts",

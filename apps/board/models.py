@@ -1,0 +1,101 @@
+from django.db import models
+
+from django.conf import settings
+from django.utils.timezone import now
+from django.utils.translation import gettext_lazy as _
+
+
+class PostCategory(models.Model):
+    name = models.CharField(max_length=50)
+    code = models.CharField(max_length=10, unique=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Post Category"
+        verbose_name_plural = "Post Categories"
+
+
+class Post(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="user_posts",
+    )
+    title = models.CharField(max_length=500)
+    category = models.ForeignKey(
+        PostCategory,
+        on_delete=models.CASCADE,
+        related_name="category_posts",
+    )
+    content = models.TextField(null=True, blank=True)
+    date_created = models.DateTimeField(_("date created"), default=now)
+
+    def __str__(self):
+        return f"Post #{self.pk} ({self.title})"
+
+
+class Comment(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="user_comments",
+    )
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="replies",
+    )
+    content = models.TextField(null=True, blank=True)
+    date_created = models.DateTimeField(_("date created"), default=now)
+
+    def __str__(self):
+        return f"{self.user.email} comment #{self.id}"
+
+
+class PostLikes(models.Model):
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name="likes",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="liked_posts",
+    )
+    date_liked = models.DateTimeField(_("date liked"), default=now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["post", "user"],
+                name="unique_likes__post__user",
+            )
+        ]
+        verbose_name_plural = "Post Likes"
+
+
+class PostViews(models.Model):
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name="views",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="viewed_posts",
+    )
+    date_viewed = models.DateTimeField(_("date viewed"), default=now)
+
+    class Meta:
+        verbose_name_plural = "Post Views"
