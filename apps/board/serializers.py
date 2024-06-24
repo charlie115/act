@@ -12,7 +12,7 @@ class CommentSerializer(serializers.ModelSerializer):
         slug_field="uuid",
         write_only=True,
     )
-    username = serializers.StringRelatedField()
+    username = serializers.StringRelatedField(source="user.username")
     replies = serializers.SerializerMethodField()
 
     def get_replies(self, instance):
@@ -47,7 +47,7 @@ class PostSerializer(serializers.ModelSerializer):
         slug_field="uuid",
         write_only=True,
     )
-    username = serializers.StringRelatedField()
+    username = serializers.StringRelatedField(source="user.username")
     category = serializers.SlugRelatedField(
         queryset=PostCategory.objects.all(), slug_field="code"
     )
