@@ -34,6 +34,7 @@ class UserFavoriteAssetsSerializer(
 
 class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
     picture = serializers.SerializerMethodField()
+    username = serializers.StringRelatedField(source="user.username")
 
     def get_picture(self, obj):
         google_accounts = obj.user.socialaccount_set.filter(provider="google")
@@ -44,7 +45,7 @@ class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer
 
     class Meta:
         model = UserProfile
-        fields = ("level", "points", "picture")
+        fields = ("level", "points", "picture", "username")
 
 
 class UserSerializer(serializers.ModelSerializer):

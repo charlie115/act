@@ -4,6 +4,7 @@ from rest_framework import exceptions, serializers
 from lib.datetime import TZ_ASIA_SEOUL
 from board.models import PostCategory, Post, Comment, PostLikes, PostViews
 from users.models import User
+from users.serializers import UserProfileSerializer
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -12,8 +13,8 @@ class CommentSerializer(serializers.ModelSerializer):
         slug_field="uuid",
         write_only=True,
     )
-    username = serializers.StringRelatedField(source="user.username")
     replies = serializers.SerializerMethodField()
+    user_profile = serializers.SerializerMethodField()
 
     def get_replies(self, instance):
         if instance.replies:
@@ -21,17 +22,20 @@ class CommentSerializer(serializers.ModelSerializer):
         else:
             return []
 
+    def get_user_profile(self, obj):
+        return UserProfileSerializer(obj.user.profile).data
+
     class Meta:
         model = Comment
         fields = (
             "id",
             "user",
-            "username",
             "date_created",
             "content",
             "post",
             "parent",
             "replies",
+            "user_profile",
         )
 
 
@@ -47,7 +51,6 @@ class PostSerializer(serializers.ModelSerializer):
         slug_field="uuid",
         write_only=True,
     )
-    username = serializers.StringRelatedField(source="user.username")
     category = serializers.SlugRelatedField(
         queryset=PostCategory.objects.all(), slug_field="code"
     )
@@ -56,6 +59,7 @@ class PostSerializer(serializers.ModelSerializer):
     views = serializers.SerializerMethodField()
     liked = serializers.SerializerMethodField()
     viewed = serializers.SerializerMethodField()
+    user_profile = serializers.SerializerMethodField()
 
     def get_comments(self, instance):
         return len(instance.comments.all())
@@ -86,12 +90,14 @@ class PostSerializer(serializers.ModelSerializer):
             )
         )
 
+    def get_user_profile(self, obj):
+        return UserProfileSerializer(obj.user.profile).data
+
     class Meta:
         model = Post
         fields = (
             "id",
             "user",
-            "username",
             "title",
             "date_created",
             "category",
@@ -101,6 +107,7 @@ class PostSerializer(serializers.ModelSerializer):
             "views",
             "liked",
             "viewed",
+            "user_profile",
         )
         extra_kwargs = {
             "id": {"read_only": True},
