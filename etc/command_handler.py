@@ -31,6 +31,8 @@ class CommandHandler:
         
     def fetch_command(self):
         command_message_df = self.acw_api.get_message(type='COMMAND') # Need to be changed to 'command' when the API is ready
+        if len(command_message_df) == 0:
+            return
         command_message_df = command_message_df[(command_message_df['telegram_chat_id']==0)&(command_message_df['read']==False)&(command_message_df['title']==self.node)]
         if len(command_message_df) == 0:
             return

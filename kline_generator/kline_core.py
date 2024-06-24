@@ -140,8 +140,6 @@ class InitKlineCore:
                     pickled_ohlc_df = pickle.dumps(ohlc_df)
                     # Save into redis db for current data
                     self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
-                    # # Publish to redis pubsub
-                    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df) # Current
                     # publish Stream
                     self.redis_client_db0.redis_conn.xadd(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', {'data': pickled_ohlc_df}, maxlen=10, approximate=True)
                     # Append into redis db for historical data
@@ -155,8 +153,6 @@ class InitKlineCore:
                     new_ohlc_1T_kline['closed'] = True
                     pickled_ohlc_df = pickle.dumps(new_ohlc_1T_kline)
                     self.local_redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
-                    # Publish to redis pubsub
-                    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
                     # Directly insert into the DB
                     insert_db_thread = Thread(target=self.insert_kline_to_db, args=(new_ohlc_1T_kline, f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline"))
                     insert_db_thread.start()
@@ -282,8 +278,10 @@ class InitKlineCore:
                         resampled_ohlc_last_df.loc[:, 'datetime_now'] = resampled_ohlc_last_df['datetime_now'] + datetime.timedelta(hours=int(resample_period[:-1]))
                         # # Save into the Redis DB
                         # self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
-                        # PUBSUB
-                        self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
+                        # # PUBSUB
+                        # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
+                        # publish Stream
+                        self.redis_client_db0.redis_conn.xadd(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', {'data': pickle.dumps(resampled_ohlc_last_df)}, maxlen=10, approximate=True)
                     except Exception as e:
                         self.kline_logger.error(f"Exception: {e}, \nError in ohlc_day_resample_loader: {e}, resampled_ohlc_last_df: {resampled_ohlc_last_df}, original_ohlc_1T_now: {original_ohlc_1T_now}")
                         time.sleep(3)
@@ -374,8 +372,10 @@ class InitKlineCore:
                         resampled_ohlc_last_df.loc[:, 'datetime_now'] = resampled_ohlc_last_df['datetime_now'] + datetime.timedelta(hours=int(resample_period[:-1]))
                         # # Save into the Redis DB
                         # self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
-                        # PUBSUB
-                        self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
+                        # # PUBSUB
+                        # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
+                        # publish Stream
+                        self.redis_client_db0.redis_conn.xadd(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', {'data': pickle.dumps(resampled_ohlc_last_df)}, maxlen=10, approximate=True)
                     except Exception as e:
                         self.kline_logger.error(f"Exception: {e}, \nError in ohlc_hour_resample_loader: {e}, resampled_ohlc_last_df: {resampled_ohlc_last_df}, original_ohlc_1T_now: {original_ohlc_1T_now}")
                         time.sleep(3)
@@ -469,8 +469,10 @@ class InitKlineCore:
                         resampled_ohlc_last_df.loc[:, 'datetime_now'] = resampled_ohlc_last_df['datetime_now'] + datetime.timedelta(minutes=int(resample_period[:-1]))
                         # # Save into the Redis DB
                         # self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{converted_resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
-                        # PUBSUB
-                        self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
+                        # # PUBSUB
+                        # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
+                        # publish Stream
+                        self.redis_client_db0.redis_conn.xadd(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', {'data': pickle.dumps(resampled_ohlc_last_df)}, maxlen=10, approximate=True)
                     except Exception as e:
                         self.kline_logger.error(f"Exception: {e}, \nError in ohlc_min_resample_loader: {e}, resampled_ohlc_last_df: {resampled_ohlc_last_df}, original_ohlc_1T_now: {original_ohlc_1T_now}")
                         time.sleep(3)

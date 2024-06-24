@@ -7,6 +7,7 @@ import numpy as np
 import os
 import sys
 from multiprocessing import Process
+import traceback
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
@@ -27,6 +28,8 @@ class InitAbitrageCore:
         self.store_funding_diff_proc.start()
         self.store_average_fundingrate_proc = Process(target=self.store_average_funding_loop, daemon=True)
         self.store_average_fundingrate_proc.start()
+        self.remove_delisted_funding_rate_proc = Process(target=self.remove_delisted_funding_rate_loop, daemon=True)
+        self.remove_delisted_funding_rate_proc.start()
     
     def store_funding_diff_loop(self, loop_time_secs=60):
         self.logger.info(f"store_funding_diff_loop started.")
@@ -36,7 +39,7 @@ class InitAbitrageCore:
                 self.store_funding_diff()
                 self.logger.info(f"store_funding_diff took {time.time()-start} seconds.")
             except Exception as e:
-                self.logger.error(f"Error in store_arbitrage_diff_loop: {e}")
+                self.logger.error(f"Error in store_arbitrage_diff_loop: {e}\n{traceback.format_exc()}")
             time.sleep(loop_time_secs)
 
     def store_average_funding_loop(self, loop_time_secs=120):
@@ -48,6 +51,17 @@ class InitAbitrageCore:
                 self.logger.info(f"store_average_funding_rate took {time.time()-start} seconds.")
             except Exception as e:
                 self.logger.error(f"Error in store_average_funding_rate_loop: {e}")
+            time.sleep(loop_time_secs)
+            
+    def remove_delisted_funding_rate_loop(self, loop_time_secs=3600):
+        self.logger.info(f"remove_delisted_funding_rate_loop started.")
+        while True:
+            try:
+                start = time.time()
+                self.remove_delisted_funding_rate()
+                self.logger.info(f"remove_delisted_funding_rate took {time.time()-start} seconds.")
+            except Exception as e:
+                self.logger.error(f"Error in remove_delisted_funding_rate_loop: {e}")
             time.sleep(loop_time_secs)
 
     def store_funding_diff(self, head=None, same_exchange=False):
@@ -233,6 +247,63 @@ class InitAbitrageCore:
             temp_arbitrage_fundingrate_collection.delete_many({})
             temp_arbitrage_fundingrate_collection.insert_many(average_df.sort_values('funding_rate', ascending=False).to_dict('records'))
             temp_arbitrage_fundingrate_collection.rename(arbitrage_collection_name, dropTarget=True)
+        mongo_db_conn.close()
+        return
+    
+    def remove_delisted_funding_rate(self, old_timewindow_hours=16):
+        mongo_db_conn = self.db_client.get_conn()
+        
+        exchange_list = []
+        for each_market_code_combi in self.total_enabled_market_klines:
+            first_market_code, second_market_code = each_market_code_combi.split(":")
+            first_market, first_quote_asset = first_market_code.split('/')
+            first_exchange = first_market.split('_')[0]
+            first_market_type = first_market.replace(f'{first_exchange}_','')
+            second_market, second_quote_asset = second_market_code.split('/')
+            second_exchange = second_market_code.split('_')[0]
+            second_market_type = second_market.replace(f'{second_exchange}_','')
+            if first_market_type in ["USD_M", "COIN_M"]:
+                exchange_list.append(first_exchange)
+            if second_market_type in ["USD_M", "COIN_M"]:
+                exchange_list.append(second_exchange)
+        exchange_list = list(set(exchange_list))
+        perpetual_tup_list = []
+        for each_exchange in exchange_list:
+            for each_market_type in ['USD_M', 'COIN_M']:
+                perpetual_tup_list.append((each_exchange, each_market_type))
+                
+        for perpetual_tup in perpetual_tup_list:
+            exchange = perpetual_tup[0]
+            market_type = perpetual_tup[1]
+            mongo_db = mongo_db_conn[f"{exchange}_fundingrate"]
+            mongo_db_collection = mongo_db[f"{market_type}"]
+            
+            pipeline = [
+                {"$match": {"perpetual": True}},
+                {"$sort": {"datetime_now": -1}},
+                {"$group": {
+                    "_id": "$symbol",  # Group by symbol
+                    "latest_document": {"$first": "$$ROOT"}  # Get the first document after sorting (i.e., the latest)
+                }}
+            ]
+            
+            # Execute the aggregation pipeline
+            result = list(mongo_db_collection.aggregate(pipeline))
+            
+            # Now `result` will have the latest document for each symbol with 'quote_asset'
+            # Convert the result into a DataFrame
+            # The latest documents are under 'latest_document' in the result
+            latest_documents = [doc['latest_document'] for doc in result]
+            funding_df = pd.DataFrame(latest_documents).drop(columns=["_id", "perpetual"])
+            
+            # Find symbols whose funding_time is older than current time - old_timewindow_hours
+            funding_df['funding_time'] = pd.to_datetime(funding_df['funding_time'])
+            funding_df = funding_df[funding_df['funding_time'] < datetime.datetime.utcnow() - datetime.timedelta(hours=old_timewindow_hours)]
+            delisted_symbols = list(funding_df['symbol'].values)
+            # Delete
+            mongo_db_collection.delete_many({"symbol": {"$in": delisted_symbols}})
+            # Log
+            self.logger.info(f"Deleting funding_rate data for {exchange}_{market_type} delisted symbols: {delisted_symbols}")
         mongo_db_conn.close()
         return
 
