@@ -110,8 +110,10 @@ class InitBinanceAdaptor:
                 self.binance_plug_logger.info(f"self.info_dict is None or self.info_dict.get('binance_usd_m_info_df') is None, Fetched from API")
             else:
                 usd_m_exchange_info_df = self.info_dict.get('binance_usd_m_info_df')
+            # Remove status != TRADING
+            usd_m_exchange_info_df = usd_m_exchange_info_df[usd_m_exchange_info_df['status'] == 'TRADING']
             binance_fund = pd.DataFrame(bi_client.futures_mark_price())
-            binance_fund = binance_fund.merge(usd_m_exchange_info_df[['symbol','base_asset','quote_asset']], on='symbol', how='left')
+            binance_fund = binance_fund.merge(usd_m_exchange_info_df[['symbol','base_asset','quote_asset']], on='symbol', how='inner')
             binance_fund = binance_fund.rename(columns={'lastFundingRate':'funding_rate', 'nextFundingTime':'funding_time'})
             binance_fund.loc[:,'funding_time'] = binance_fund.loc[:,'funding_time'].apply(lambda x: datetime.datetime.fromtimestamp(x/1000, tz=datetime.timezone.utc))
             binance_fund.loc[:,'funding_time'] = binance_fund.loc[:,'funding_time'].dt.tz_localize(None)
