@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from rest_framework import exceptions, serializers
 
 from lib.datetime import TZ_ASIA_SEOUL
-from board.models import PostCategory, Post, Comment, PostLikes, PostViews
+from board.models import PostCategory, Post, PostImage, Comment, PostLikes, PostViews
 from users.models import User
 from users.serializers import UserProfileSerializer
 
@@ -45,6 +45,14 @@ class PostCategorySerializer(serializers.ModelSerializer):
         fields = ("id", "name", "code")
 
 
+class PostImageSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField()
+
+    class Meta:
+        model = PostImage
+        fields = ["image", "date_uploaded"]
+
+
 class PostSerializer(serializers.ModelSerializer):
     user = serializers.SlugRelatedField(
         queryset=User.objects.all(),
@@ -54,12 +62,27 @@ class PostSerializer(serializers.ModelSerializer):
     category = serializers.SlugRelatedField(
         queryset=PostCategory.objects.all(), slug_field="code"
     )
+    images = serializers.ListField(
+        default=[],
+        write_only=True,
+        child=serializers.ImageField(),
+    )
     comments = serializers.SerializerMethodField()
     likes = serializers.SerializerMethodField()
     views = serializers.SerializerMethodField()
     liked = serializers.SerializerMethodField()
     viewed = serializers.SerializerMethodField()
     user_profile = serializers.SerializerMethodField()
+
+    def create(self, validated_data):
+        images = validated_data.pop("images")
+
+        post = super().create(validated_data)
+
+        for img in images:
+            PostImage.objects.create(image=img, post=post)
+
+        return post
 
     def get_comments(self, instance):
         return len(instance.comments.all())
@@ -93,6 +116,19 @@ class PostSerializer(serializers.ModelSerializer):
     def get_user_profile(self, obj):
         return UserProfileSerializer(obj.user.profile).data
 
+    def to_representation(self, instance):
+        images = PostImageSerializer(
+            instance.post_images.all(),
+            many=True,
+            context={"request": self.context["request"]},
+        ).data
+
+        data = super().to_representation(instance)
+
+        data["images"] = images
+
+        return data
+
     class Meta:
         model = Post
         fields = (
@@ -102,6 +138,7 @@ class PostSerializer(serializers.ModelSerializer):
             "date_created",
             "category",
             "content",
+            "images",
             "comments",
             "likes",
             "views",

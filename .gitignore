@@ -58,7 +58,7 @@ Thumbs.db
 *venv*
 
 # Build/static files
-assets/
+media/
 build/
 static/
 

@@ -36,6 +36,16 @@ class Post(models.Model):
         return f"Post #{self.pk} ({self.title})"
 
 
+class PostImage(models.Model):
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name="post_images",
+    )
+    image = models.ImageField(upload_to="posts/images/")
+    date_uploaded = models.DateTimeField(_("date uploaded"), default=now)
+
+
 class Comment(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
