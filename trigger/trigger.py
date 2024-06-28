@@ -61,6 +61,8 @@ class InitTrigger:
     def fetch_users_with_negative_balance(self):
         try:
             balance_df = self.acw_api.get_deposit_balance()
+            if len(balance_df) == 0:
+                return []
             negative_balance_df = balance_df[balance_df['balance'].astype('float')<=0]
             return negative_balance_df['user'].to_list()
         except Exception as e:

@@ -26,7 +26,7 @@ class CommandHandler:
                 content = f'Error in fetch_command_loop: {e}'
                 full_content = title + '\n' + content
                 self.logger.error(full_content + '\n' + traceback.format_exc())
-                self.acw_api.create_message(self.admin_telegram_id, title, self.node, 'ERROR', full_content)
+                # self.acw_api.create_message(self.admin_telegram_id, title, self.node, 'ERROR', full_content) # Temporary
                 time.sleep(1)
         
     def fetch_command(self):

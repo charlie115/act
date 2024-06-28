@@ -3,6 +3,7 @@ import json
 import sys
 import argparse
 import time
+from threading import Thread
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
@@ -82,9 +83,10 @@ if __name__ == '__main__':
 
     time.sleep(5)
 
-    # Initiate TelegramBot with Trigger engine
-    # admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_telegram_id_list)
-    # admin_telegram_bot.updater.idle()
+    # Initiate TelegramBot with Trigger engine for admin use
+    admin_telegram_bot = InitTelegramBot(telegram_bot_token, logging_dir, node, db_dict, core, register_monitor_msg, admin_telegram_id_list)
+    idle_thread = Thread(target=admin_telegram_bot.updater.idle, daemon=True)
+    idle_thread.start()
     
     # Start command handler loop
     command_handler = CommandHandler(node, admin_telegram_id, core, logging_dir)

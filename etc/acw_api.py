@@ -9,12 +9,16 @@ from threading import Thread
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 with open(upper_dir + "/trade_core_config.json") as f:
     config = json.load(f)
+from loggers.logger import KimpBotLogger
 
 node = config['node']
 prod = config['node_settings'][node]['prod']
 
+logging_dir = "/loggers/logs/"
+
 class AcwApi:
-    def __init__(self, prod=prod):
+    def __init__(self, prod=prod, logging_dir=upper_dir+logging_dir):
+        self.logger = KimpBotLogger("acw_api", logging_dir).logger
         if prod is False:
             self.verify = False
             self.url = config['acw_setting']['dev_url']
@@ -52,25 +56,28 @@ class AcwApi:
             raise Exception("Error: " + str(response.status_code) + "\n" + response.text)
         
     def create_message(self, telegram_chat_id, title, origin, type, content=None, remark=None, code=None, sent=False, send_times=1, send_term=1):
-        url = self.url + self.message_url
-        new_message_dict = {
-            "datetime": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
-            "telegram_chat_id": telegram_chat_id,
-            "title": title,
-            "origin": origin,
-            "type": type.upper(),
-            "content": content,
-            "remark": remark,
-            "code": code,
-            "sent": sent,
-            "send_times": send_times,
-            "send_term": send_term
-        }
-        response = requests.post(url, json=new_message_dict, verify=self.verify)
-        if response.status_code == 201:
-            return response.json()
-        else:
-            raise Exception("Error: " + str(response.status_code) + "\n" + response.text)
+        try:
+            url = self.url + self.message_url
+            new_message_dict = {
+                "datetime": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+                "telegram_chat_id": telegram_chat_id,
+                "title": title,
+                "origin": origin,
+                "type": type.upper(),
+                "content": content,
+                "remark": remark,
+                "code": code,
+                "sent": sent,
+                "send_times": send_times,
+                "send_term": send_term
+            }
+            response = requests.post(url, json=new_message_dict, verify=self.verify)
+            if response.status_code == 201:
+                return response.json()
+            else:
+                raise Exception("Error: " + str(response.status_code) + "\n" + response.text)
+        except Exception as e:
+            self.logger.error(f"Error in create_message: {e}")
         
     def update_read_message(self, id):
         url = self.url + self.message_url
