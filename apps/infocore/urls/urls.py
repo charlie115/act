@@ -7,6 +7,7 @@ from infocore.views import (
     DollarView,
     MarketCodesView,
     KlineDataView,
+    KlineVolatilityView,
     WalletStatusView,
 )
 from lib.views import BaseAPIListView
@@ -62,6 +63,9 @@ urlpatterns = [
         name="funding-rate",
     ),
     path("kline/", KlineDataView.as_view(), name="kline-view"),
+    path(
+        "kline-volatility/", KlineVolatilityView.as_view(), name="kline-volatility-view"
+    ),
     path("market-codes/", MarketCodesView.as_view(), name="market-codes-view"),
     path("wallet-status/", WalletStatusView.as_view(), name="wallet-status-view"),
 ]

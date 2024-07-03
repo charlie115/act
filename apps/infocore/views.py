@@ -21,6 +21,8 @@ from infocore.serializers import (
     FundingRateDiffDataSerializer,
     KlineDataSerializer,
     KlineDataQueryParamsSerializer,
+    KlineVolatilityQueryParamsSerializer,
+    KlineVolatilitySerializer,
     WalletStatusQueryParamsSerializer,
     WalletStatusResponseSerializer,
 )
@@ -221,6 +223,75 @@ class KlineDataView(views.APIView):
             [KlineDataSerializer(item, context={"tz": tz}).data for item in cursor],
             key=lambda item: item["datetime_now"],
         )
+
+        return results
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Get kline volatility",
+        description="Returns kline volatility info",
+        parameters=[KlineVolatilityQueryParamsSerializer],
+        responses={200: KlineVolatilitySerializer},
+        tags=["KlineVolatility"],
+    ),
+)
+class KlineVolatilityView(views.APIView):
+    http_method_names = ["get"]
+    permission_classes = []
+    page_size = 200
+
+    def get(self, request):
+        query_params = KlineVolatilityQueryParamsSerializer(data=request.query_params)
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        data = self.get_data(
+            target_market_code=query.get("target_market_code", ""),
+            origin_market_code=query.get("origin_market_code", ""),
+            base_assets=query.get("base_asset", ""),
+            tz=query.get("tz"),
+        )
+
+        return response.Response(data)
+
+    def get_data(
+        self,
+        target_market_code,
+        origin_market_code,
+        base_assets,
+        tz,
+    ):
+        database = "kline_volatility_info"
+        collection = "180"
+
+        # Get database and collection
+        db = MONGODB_CLI.get_database(database)
+        coll = db.get_collection(collection)
+
+        market_code_combination = f"{target_market_code}:{origin_market_code}"
+
+        # Prepare parameters
+        query_filter = {
+            "market_code_combination": market_code_combination,
+        }
+        if base_assets:
+            query_filter["base_asset"] = {"$in": base_assets}
+
+        projection = {
+            "_id": False,
+        }
+
+        # Query collection
+        cursor = coll.find(
+            filter=query_filter,
+            projection=projection,
+        )
+
+        # Serialize
+        results = [
+            KlineVolatilitySerializer(item, context={"tz": tz}).data for item in cursor
+        ]
 
         return results
 

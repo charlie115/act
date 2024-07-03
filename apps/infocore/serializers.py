@@ -74,6 +74,23 @@ class KlineDataSerializer(serializers.Serializer):
     closed = serializers.BooleanField()
 
 
+class KlineVolatilityQueryParamsSerializer(serializers.Serializer):
+    target_market_code = serializers.CharField(required=True)
+    origin_market_code = serializers.CharField(required=True)
+    base_asset = CharacterSeparatedField()
+    tz = TimezoneField(default=UTC)
+
+
+class KlineVolatilitySerializer(serializers.Serializer):
+    market_code_combination = serializers.CharField()
+    base_asset = serializers.CharField()
+    volatility_index = FloatOrNoneField()
+    datetime_now = DateTimeWithTzField(
+        format=DATE_TIME_TZ_FORMAT,
+        default_timezone=TZ_UTC,
+    )
+
+
 class FundingRateDataQueryParamsSerializer(serializers.Serializer):
     market_code = serializers.CharField(required=True)
     base_asset = CharacterSeparatedField()
