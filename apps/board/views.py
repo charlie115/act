@@ -1,6 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.filters import OrderingFilter
+from rest_framework.pagination import PageNumberPagination
 
 from lib.views import BaseViewSet
 from board.models import PostCategory, Post, Comment, PostLikes, PostViews
@@ -11,6 +12,17 @@ from board.serializers import (
     PostLikesSerializer,
     PostViewsSerializer,
 )
+
+
+class CustomPageNumberPagination(PageNumberPagination):
+    """
+    Pagination doesn't work when using rest_framework.pagination.PageNumberPagination directly,
+    nor using lib.pagination.CustomPageNumberPagination.
+    I believe there's a bug with the order of the modules, so for now,
+    we have to define our classes in the same module.
+    """
+
+    page_size = 50
 
 
 @extend_schema(tags=["Comment"])
@@ -58,10 +70,10 @@ class CommentViewSet(BaseViewSet):
         "parent",
     )
     ordering = [
-        "id",
-        "date_created",
+        "-date_created",
     ]
     http_method_names = ["get", "post", "put", "patch", "delete"]
+    pagination_class = CustomPageNumberPagination
 
 
 @extend_schema(tags=["PostCategory"])
@@ -137,10 +149,10 @@ class PostViewSet(BaseViewSet):
         "content",
     )
     ordering = [
-        "id",
-        "date_created",
+        "-date_created",
     ]
     http_method_names = ["get", "post", "put", "patch", "delete"]
+    pagination_class = CustomPageNumberPagination
 
 
 @extend_schema(tags=["PostLikes"])
