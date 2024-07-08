@@ -79,8 +79,16 @@ class PostSerializer(serializers.ModelSerializer):
 
         post = super().create(validated_data)
 
+        new_content = post.content
+
         for img in images:
-            PostImage.objects.create(image=img, post=post)
+            post_image = PostImage.objects.create(image=img, post=post)
+            new_content = new_content.replace(
+                f'img src="{img.name}"', f'img src="{post_image.image.url}"'
+            )
+
+        post.content = new_content
+        post.save()
 
         return post
 
