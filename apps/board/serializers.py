@@ -60,7 +60,7 @@ class PostSerializer(serializers.ModelSerializer):
         write_only=True,
     )
     category = serializers.SlugRelatedField(
-        queryset=PostCategory.objects.all(), slug_field="code"
+        queryset=PostCategory.objects.all(), slug_field="name"
     )
     images = serializers.ListField(
         default=[],
