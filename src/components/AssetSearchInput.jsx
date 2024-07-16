@@ -31,7 +31,15 @@ import { useDebounce } from '@uidotdev/usehooks';
 
 const AssetSearchInput = forwardRef(
   (
-    { apiOptions, apiParams, onChange, onSelect, selectIcon, showSelect },
+    {
+      apiOptions,
+      apiParams,
+      customList,
+      onChange,
+      onSelect,
+      selectIcon,
+      showSelect,
+    },
     ref
   ) => {
     const inputRef = useRef();
@@ -56,10 +64,15 @@ const AssetSearchInput = forwardRef(
       []
     );
 
+    const realTimeKlineOptions = useMemo(() => {
+      if (customList) return { ...apiOptions, skip: true };
+      return apiOptions;
+    }, [apiOptions, customList]);
+
     const { data: assetsData } = useGetAssetsQuery();
     const { currentData, isFetching } = useGetRealTimeKlineQuery(
       apiParams,
-      apiOptions
+      realTimeKlineOptions
     );
 
     const assets = useMemo(() => {
@@ -71,9 +84,10 @@ const AssetSearchInput = forwardRef(
     }, [currentData]);
 
     useEffect(() => {
-      if (assets) setOptions(assets.split(','));
+      if (customList) setOptions(customList.sort());
+      else if (assets) setOptions(assets.split(','));
       else setOptions([]);
-    }, [assets]);
+    }, [assets, customList]);
 
     useEffect(() => {
       onChange(debouncedSearchValue);

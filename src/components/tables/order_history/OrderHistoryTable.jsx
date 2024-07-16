@@ -19,8 +19,6 @@ export default function OrderHistoryTable({ tradeConfigUuid, uuid }) {
 
   const { i18n, t } = useTranslation();
 
-  // const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 5 });
-
   const { data, isFetching } = useGetOrderHistoryByUuidQuery(
     {
       uuid,
@@ -91,16 +89,10 @@ export default function OrderHistoryTable({ tradeConfigUuid, uuid }) {
 
   return (
     <ReactTableUI
-      // enableTablePaginationUI
       ref={tableRef}
       columns={columns}
       data={tableData}
-      options={{
-        getRowId,
-        // state: { pagination },
-        // onExpandedChange: (newExpanded) => setExpanded(newExpanded()),
-        // onPaginationChange: setPagination,
-      }}
+      options={{ getRowId }}
       getCellProps={() => ({ onClick: () => {}, sx: { height: 40 } })}
       showProgressBar={isFetching}
       isLoading={isFetching}

@@ -19,6 +19,7 @@ module.exports = {
       list: ['i18next.t', 'i18n.t', 't'],
       extensions: ['.js', '.jsx'],
     },
+    compatibilityJSON: 'v4',
     removeUnusedKeys: true,
     trans: {
       component: 'Trans',

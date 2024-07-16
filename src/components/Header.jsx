@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -43,11 +43,29 @@ export default function Header() {
   const { loggedin } = useSelector((state) => state.auth);
 
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
-  const [pages, setPages] = useState({});
+  const [pages, setPages] = useState();
+
+  const currentRoute = useMemo(
+    () =>
+      pages?.find(
+        (page) =>
+          page.path === location.pathname ||
+          page.children?.find((child) =>
+            location.pathname.includes(child.path.replace(/:(.*)/, ''))
+          )
+      ),
+    [pages, location.pathname]
+  );
 
   useEffect(() => {
-    import('configs/navigation').then((res) => setPages(res.default));
+    import('configs/navigation').then((res) =>
+      setPages(res.default?.main?.filter((page) => page.displayInHeader))
+    );
   }, []);
+
+  useEffect(() => {
+    // location.pathname
+  }, [location.pathname]);
 
   return (
     // <AppBar position="sticky" sx={{ bgcolor: 'dark.light' }}>
@@ -81,20 +99,20 @@ export default function Header() {
           onClose={() => setMenuAnchorEl(null)}
           sx={{ display: { xs: 'block', md: 'none' } }}
         >
-          {pages.main?.map((page) => (
+          {pages?.map((page) => (
             <MenuItem
               key={page.name}
               onClick={() => {
                 navigate(page.path);
                 setMenuAnchorEl(null);
               }}
-              selected={page.path === location.pathname}
+              selected={page.path === currentRoute?.path}
             >
               <ListItemIcon>
                 <page.icon />
               </ListItemIcon>
               <ListItemText sx={{ fontWeight: 700 }}>
-                {page.getTitle()}
+                {page?.getTitle()}
               </ListItemText>
             </MenuItem>
           ))}
@@ -105,14 +123,14 @@ export default function Header() {
         sx={{ flexGrow: { xs: 1, md: 0 } }}
       />
       <Box sx={{ flexGrow: 1, ml: 3, display: { xs: 'none', md: 'flex' } }}>
-        {pages.main?.map((page) => (
+        {pages?.map((page) => (
           <MenuButton
             key={page.name}
-            active={page.path === location.pathname}
+            active={page.path === currentRoute?.path}
             onClick={() => navigate(page.path)}
             sx={{ ml: 1, my: 2, px: 1 }}
           >
-            {page.getTitle()}
+            {page?.getTitle()}
           </MenuButton>
         ))}
       </Box>

@@ -73,6 +73,11 @@ function App() {
               '::-webkit-scrollbar-thumb:window-inactive': {
                 opacity: 0,
               },
+              '.show-more-or-less': {
+                color: theme.palette.secondary.main,
+                cursor: 'pointer',
+                fontSize: 12,
+              },
             },
           }}
         />

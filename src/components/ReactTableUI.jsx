@@ -36,6 +36,7 @@ const ReactTableUI = forwardRef(
       getCellProps,
       getRowProps,
       getTableProps,
+      hideHeader,
       noDisplayMessage,
       showProgressBar,
       isLoading,
@@ -72,77 +73,79 @@ const ReactTableUI = forwardRef(
       <Box>
         {showProgressBar && <LinearProgress />}
         <Table {...(getTableProps ? getTableProps(table) : {})}>
-          <thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    colSpan={header.colSpan}
-                    onClick={header.column.getToggleSortingHandler()}
-                    sx={{
-                      width: header.getSize(),
-                      color: header.column.getIsSorted()
-                        ? theme.palette.text.main
-                        : theme.palette.grey[
-                            theme.palette.mode === 'dark' ? '200' : '700'
-                          ],
-                      fontSize: {
-                        xs: '0.5rem',
-                        md: '0.6rem',
-                        lg: '0.7rem',
-                      },
-                      lineHeight: 1.1,
-                      userSelect: 'none',
-                      verticalAlign: 'middle',
-                      whiteSpace: 'normal',
-                      wordWrap: 'break-word',
-                      ...(getHeaderProps ? getHeaderProps(header)?.sx : {}),
-                      ...header.column.columnDef.props?.sx,
-                      ...header.column.columnDef.slotProps?.header?.sx,
-                      cursor: header.column.getCanSort()
-                        ? 'pointer'
-                        : undefined,
-                      ...(header.isPlaceholder ? { opacity: 0 } : {}),
-                    }}
-                  >
-                    {header.isPlaceholder ? null : (
-                      <Box component="span" sx={{ position: 'relative' }}>
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                        {{
-                          asc: (
-                            <ArrowDropUpIcon
-                              sx={{
-                                color: 'text.main',
-                                position: 'absolute',
-                                bottom: '50%',
-                                right: '-1em',
-                                transform: 'translateY(50%)',
-                              }}
-                            />
-                          ),
-                          desc: (
-                            <ArrowDropDownIcon
-                              sx={{
-                                color: 'text.main',
-                                position: 'absolute',
-                                bottom: '50%',
-                                right: '-1em',
-                                transform: 'translateY(50%)',
-                              }}
-                            />
-                          ),
-                        }[header.column.getIsSorted()] ?? null}
-                      </Box>
-                    )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </thead>
+          {!hideHeader && (
+            <thead>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      onClick={header.column.getToggleSortingHandler()}
+                      sx={{
+                        width: header.getSize(),
+                        color: header.column.getIsSorted()
+                          ? theme.palette.text.main
+                          : theme.palette.grey[
+                              theme.palette.mode === 'dark' ? '200' : '700'
+                            ],
+                        fontSize: {
+                          xs: '0.5rem',
+                          md: '0.6rem',
+                          lg: '0.7rem',
+                        },
+                        lineHeight: 1.1,
+                        userSelect: 'none',
+                        verticalAlign: 'middle',
+                        whiteSpace: 'normal',
+                        wordWrap: 'break-word',
+                        ...(getHeaderProps ? getHeaderProps(header)?.sx : {}),
+                        ...header.column.columnDef.props?.sx,
+                        ...header.column.columnDef.slotProps?.header?.sx,
+                        cursor: header.column.getCanSort()
+                          ? 'pointer'
+                          : undefined,
+                        ...(header.isPlaceholder ? { opacity: 0 } : {}),
+                      }}
+                    >
+                      {header.isPlaceholder ? null : (
+                        <Box component="span" sx={{ position: 'relative' }}>
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {{
+                            asc: (
+                              <ArrowDropUpIcon
+                                sx={{
+                                  color: 'text.main',
+                                  position: 'absolute',
+                                  bottom: '50%',
+                                  right: '-1em',
+                                  transform: 'translateY(50%)',
+                                }}
+                              />
+                            ),
+                            desc: (
+                              <ArrowDropDownIcon
+                                sx={{
+                                  color: 'text.main',
+                                  position: 'absolute',
+                                  bottom: '50%',
+                                  right: '-1em',
+                                  transform: 'translateY(50%)',
+                                }}
+                              />
+                            ),
+                          }[header.column.getIsSorted()] ?? null}
+                        </Box>
+                      )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </thead>
+          )}
           <tbody>
             {!isLoading
               ? rows.map((row) =>

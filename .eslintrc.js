@@ -32,6 +32,7 @@ module.exports = {
       },
     ],
     'import/no-unresolved': ['error', { caseSensitive: false }],
+    'jsx-a11y/anchor-is-valid': 'off',
     'no-param-reassign': 'off',
     'no-unused-vars': [
       'warn',

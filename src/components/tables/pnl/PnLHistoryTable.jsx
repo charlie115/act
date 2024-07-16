@@ -287,14 +287,12 @@ export default function PnLHistoryTable({
   return (
     <ReactTableUI
       enableTablePaginationUI
-      // ref={tableRef}
       columns={columns}
       data={tableData}
       options={{
         getRowId,
         state: { expanded },
         onExpandedChange: (newExpanded) => setExpanded(newExpanded() || {}),
-        //   onPaginationChange: setPagination,
         meta: {
           isMobile,
           onUuidClick,

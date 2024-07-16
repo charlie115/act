@@ -105,11 +105,7 @@ const api = drfApi.injectEndpoints({
       }),
     }),
     postAsset: builder.mutation({
-      query: (body) => ({
-        url: '/infocore/assets/',
-        method: 'POST',
-        body,
-      }),
+      query: (body) => ({ url: '/infocore/assets/', method: 'POST', body }),
       invalidatesTags: ['Assets'],
     }),
   }),

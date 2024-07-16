@@ -274,13 +274,13 @@ export default function TriggersTable({
             {
               accessorKey: 'targetFundingRate',
               header: t('Funding Rate'),
-              size: isMobile ? 25 : 80,
+              size: isMobile ? 25 : 85,
               cell: renderFundingRateCell,
             },
             {
               accessorKey: 'originFundingRate',
               header: t('Funding Rate'),
-              size: isMobile ? 25 : 80,
+              size: isMobile ? 25 : 85,
               cell: renderFundingRateCell,
             },
           ]
@@ -293,7 +293,7 @@ export default function TriggersTable({
               accessorKey: 'targetFundingRate',
               header: renderFundingRateHeader,
               cell: renderFundingRateCell,
-              size: isMobile ? 25 : 80,
+              size: isMobile ? 25 : 85,
             },
           ]
         : []),
@@ -305,26 +305,26 @@ export default function TriggersTable({
               accessorKey: 'originFundingRate',
               header: renderFundingRateHeader,
               cell: renderFundingRateCell,
-              size: isMobile ? 25 : 80,
+              size: isMobile ? 25 : 85,
             },
           ]
         : []),
       {
         accessorKey: 'autoRepeatStatus',
-        size: isMobile ? 30 : 75,
+        size: isMobile ? 30 : 60,
         header: t('Repeat Transaction Status'),
         slotProps: { cell: { sx: { fontSize: 12 } } },
       },
       {
         accessorKey: 'autoRepeatSwitch',
-        size: isMobile ? 35 : 80,
+        size: isMobile ? 30 : 60,
         header: t('Auto Repeat'),
         cell: renderAutoRepeatSwitchCell,
         props: { sx: { textAlign: 'center' } },
       },
       {
         accessorKey: 'created',
-        size: isMobile ? 40 : 110,
+        size: isMobile ? 40 : 100,
         header: t('Created'),
         props: { sx: { fontSize: 11 } },
       },

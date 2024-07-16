@@ -35,6 +35,7 @@ const MarketCodeCombinationSelector = forwardRef(
       value,
       loading,
       marketCodesRequired,
+      tradeSupportRequired,
       onSelectItem,
       buttonStyle,
     },
@@ -145,6 +146,11 @@ const MarketCodeCombinationSelector = forwardRef(
               <ListItem
                 dense
                 key={item.value}
+                disabled={
+                  tradeSupportRequired &&
+                  !item.value === 'ALL' &&
+                  !item.tradeSupport
+                }
                 selected={item.value === value.value}
                 onClick={(e) => handleSelect(e, item)}
                 sx={{

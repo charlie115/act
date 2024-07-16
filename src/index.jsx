@@ -22,6 +22,9 @@ import reportWebVitals from './reportWebVitals';
 import 'configs/i18n';
 
 import 'animate.css';
+import 'quill/dist/quill.core.css';
+import 'quill/dist/quill.bubble.css';
+import 'quill/dist/quill.snow.css';
 
 setupListeners(store.dispatch);
 

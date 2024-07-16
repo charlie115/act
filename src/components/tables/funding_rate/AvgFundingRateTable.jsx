@@ -33,6 +33,7 @@ import isEqual from 'lodash/isEqual';
 import orderBy from 'lodash/orderBy';
 import uniqBy from 'lodash/uniqBy';
 
+import AssetSearchInput from 'components/AssetSearchInput';
 import DropdownMenu from 'components/DropdownMenu';
 import LightWeightFundingRateChart from 'components/charts/LightWeightFundingRateChart';
 import ReactTableUI from 'components/ReactTableUI';
@@ -57,11 +58,14 @@ export default function AvgFundingRateTable() {
   const [assets, setAssets] = useState([]);
   const [expanded, setExpanded] = useState({});
 
+  const [searchValue, setSearchValue] = useState('');
+  const globalFilter = useDebounce(searchValue, 300);
+
   const [marketList, setMarketList] = useState([]);
   const [selectedMarket, setSelectedMarket] = useState();
 
-  const [avgFundingRateParams, setAvgFundingRateParams] = useState({ n: 100 });
-  const [n, setN] = useState(100);
+  const [avgFundingRateParams, setAvgFundingRateParams] = useState({ n: 10 });
+  const [n, setN] = useState(10);
 
   const debouncedN = useDebounce(n, 1000);
 
@@ -228,7 +232,12 @@ export default function AvgFundingRateTable() {
               setN(value);
             } else setN();
           }}
-          sx={{ width: isMobile ? 80 : 120 }}
+          inputProps={{ sx: { p: 1.25 } }}
+          sx={{ mr: 'auto!important', width: isMobile ? 80 : 120 }}
+        />
+        <AssetSearchInput
+          customList={assets}
+          onChange={(value) => setSearchValue(value)}
         />
       </Stack>
       <Box sx={{ boxShadow: 2 }}>
@@ -237,7 +246,7 @@ export default function AvgFundingRateTable() {
           columns={columns}
           data={tableData}
           options={{
-            state: { expanded, pagination },
+            state: { expanded, globalFilter, pagination },
             onExpandedChange: (newExpanded) => setExpanded(newExpanded()),
             onPaginationChange: setPagination,
             meta: { theme, isMobile, expandIcon: InsightsIcon },

@@ -32,13 +32,14 @@ import {
 
 import { useTranslation } from 'react-i18next';
 
-import { usePrevious } from '@uidotdev/usehooks';
+import { useDebounce, usePrevious } from '@uidotdev/usehooks';
 
 import isEqual from 'lodash/isEqual';
 import orderBy from 'lodash/orderBy';
 import uniq from 'lodash/uniq';
 import uniqBy from 'lodash/uniqBy';
 
+import AssetSearchInput from 'components/AssetSearchInput';
 import DropdownMenu from 'components/DropdownMenu';
 import PremiumDataChartViewer from 'components/PremiumDataChartViewer';
 import ReactTableUI, { TableCell, TableRow } from 'components/ReactTableUI';
@@ -70,6 +71,9 @@ export default function FundingRateDiffTable() {
   const [selectedRow, setSelectedRow] = useState();
 
   const [sameExchangeChecked, setSameExchangeChecked] = useState(false);
+
+  const [searchValue, setSearchValue] = useState('');
+  const globalFilter = useDebounce(searchValue, 300);
 
   const [expanded, setExpanded] = useState({});
   const [pagination, setPagination] = useState({
@@ -363,6 +367,11 @@ export default function FundingRateDiffTable() {
           control={<Checkbox />}
           label={t('Within the same exchange')}
           onChange={(e) => setSameExchangeChecked(e.target.checked)}
+          sx={{ mr: 'auto!important' }}
+        />
+        <AssetSearchInput
+          customList={assets}
+          onChange={(value) => setSearchValue(value)}
         />
       </Stack>
       <Box sx={{ boxShadow: 2 }}>
@@ -381,6 +390,7 @@ export default function FundingRateDiffTable() {
                 symbolY: false,
               },
               expanded,
+              globalFilter,
               pagination,
             },
             onExpandedChange: setExpanded,

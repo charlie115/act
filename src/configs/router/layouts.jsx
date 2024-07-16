@@ -99,14 +99,14 @@ export function MainLayout() {
   return (
     <>
       <Helmet>
-        <title>{currentRoute.getTitle()} — Ar-Kimp</title>
+        <title>{currentRoute?.getTitle()} — ArbiCrypto</title>
       </Helmet>
       <GlobalSnackbarProvider>
         <Box>
           <Header />
           <Box sx={{ mb: 4, p: 1 }}>
             <React.Suspense fallback={<LinearProgress />}>
-              <TVTickerWidget isVisible={currentRoute.displayTicker} />
+              <TVTickerWidget isVisible={currentRoute?.displayTicker} />
             </React.Suspense>
             <Box
               component={Paper}
@@ -123,7 +123,7 @@ export function MainLayout() {
                 <CSSTransition
                   unmountOnExit
                   key={location.pathname}
-                  nodeRef={currentRoute.ref}
+                  nodeRef={currentRoute?.ref}
                   timeout={3000}
                   classNames="pages"
                 >
@@ -207,7 +207,7 @@ export function MainLayout() {
               </IconButton>
             </Box>
           )}
-          <ChatWidget isVisible={currentRoute.displayChat} />
+          <ChatWidget isVisible={currentRoute?.displayChat} />
         </Box>
       </GlobalSnackbarProvider>
     </>

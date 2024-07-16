@@ -36,10 +36,18 @@ import { RIGHT_SIDEBAR_WIDTH } from 'constants';
 
 export default function MainLayout() {
   const location = useLocation();
+
   const { i18n } = useTranslation();
 
   const currentRoute = useMemo(
-    () => routes.find((route) => route.path === location.pathname),
+    () =>
+      routes.find(
+        (route) =>
+          route.path === location.pathname ||
+          route.children?.find((child) =>
+            location.pathname.includes(child.path.replace(/:(.*)/, ''))
+          )
+      ),
     [location.pathname, i18n.language]
   );
 
@@ -78,10 +86,12 @@ export default function MainLayout() {
 
   if (loggedin && !telegramBot && !user) return null;
 
+  const title = currentRoute?.getTitle();
+
   return (
     <>
       <Helmet>
-        <title>{currentRoute.getTitle()} — Ar-Kimp</title>
+        <title>{title || ''} — ArbiCrypto</title>
       </Helmet>
       <GlobalSnackbarProvider>
         <Box sx={{ display: 'flex' }}>
@@ -91,7 +101,7 @@ export default function MainLayout() {
           <Main ref={mainRef} open={open} sx={{ mb: 4, p: 1 }}>
             <DrawerHeader />
             <React.Suspense fallback={<LinearProgress />}>
-              <TVTickerWidget isVisible={currentRoute.displayTicker} />
+              <TVTickerWidget isVisible={currentRoute?.displayTicker} />
             </React.Suspense>
             <Box
               component={Paper}
@@ -107,7 +117,7 @@ export default function MainLayout() {
                 <CSSTransition
                   unmountOnExit
                   key={location.pathname}
-                  nodeRef={currentRoute.ref}
+                  nodeRef={currentRoute?.ref}
                   timeout={3000}
                   classNames="pages"
                 >
@@ -136,7 +146,7 @@ export default function MainLayout() {
             </Box>
           )}
           <ChatWidget
-            isVisible={currentRoute.displayChat}
+            isVisible={currentRoute?.displayChat}
             onStateChange={(state) => setOpen(state.open)}
           />
         </Box>

@@ -40,10 +40,7 @@ export default function DepositBalance() {
 
   return (
     <Stack direction="row" alignItems="center" sx={{ px: 4 }}>
-      <IconButton
-        color="info"
-        onClick={() => navigate('/bot', { state: { defaultTab: 'deposit' } })}
-      >
+      <IconButton color="info" onClick={() => navigate('/bot/deposit')}>
         <AccountBalanceWalletIcon />
       </IconButton>
       {!ready ? (

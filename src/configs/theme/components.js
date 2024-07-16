@@ -33,6 +33,12 @@ export default {
     },
   },
   MuiDialog: { styleOverrides: { root: { zIndex: 1800 } } },
+  MuiFilledInput: {
+    styleOverrides: {
+      input: { padding: '12px !important' },
+      textarea: { padding: '4px !important' },
+    },
+  },
   MuiMenu: { styleOverrides: { root: { zIndex: 1800 } } },
   MuiPopper: { styleOverrides: { root: { zIndex: 1800 } } },
   MuiTableSortLabel: {

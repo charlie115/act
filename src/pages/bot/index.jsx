@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-import { Navigate, useLocation } from 'react-router-dom';
-
-import SwipeableViews from 'react-swipeable-views';
+import {
+  Link,
+  Navigate,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
-import LinearProgress from '@mui/material/LinearProgress';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 
@@ -36,25 +39,17 @@ import uniqBy from 'lodash/uniqBy';
 
 import a11yProps from 'utils/a11yProps';
 
-import TabPanel from 'components/TabPanel';
-
-import APIKeySettings from 'components/APIKeySettings';
-import BotSettings from 'components/BotSettings';
-import Deposit from 'components/Deposit';
 import MarketCodeCombinationSelector from 'components/MarketCodeCombinationSelector';
-import PnLHistory from 'components/PnLHistory';
-import PositionTable from 'components/tables/position/PositionTable';
-import TriggersTable from 'components/tables/trigger/TriggersTable';
 
 import { MARKET_CODE_LIST } from 'constants/lists';
 
 const TAB = {
-  triggers: 0,
-  position: 1,
-  pnlHistory: 2,
-  botSettings: 3,
-  apiKeySettings: 4,
-  deposit: 5,
+  triggers: '/bot/triggers',
+  position: '/bot/position',
+  pnlHistory: '/bot/pnl-history',
+  botSettings: '/bot/settings',
+  apiKey: '/bot/api-key',
+  deposit: '/bot/deposit',
   userGuide: 6,
   supportCenter: 7,
 };
@@ -62,56 +57,52 @@ const TAB = {
 const TABS = [
   {
     id: TAB.triggers,
-    name: 'triggers',
+    name: '/bot/triggers',
     getLabel: () => i18n.t('Triggers'),
-    component: TriggersTable,
   },
   {
     id: TAB.position,
-    name: 'position',
+    name: '/bot/position',
     getLabel: () => i18n.t('Position'),
-    component: PositionTable,
   },
   {
     id: TAB.pnlHistory,
-    name: 'pnlHistory',
+    name: '/bot/pnl-history',
     getLabel: () => i18n.t('PnL History'),
-    component: PnLHistory,
   },
   {
     id: TAB.botSettings,
-    name: 'botSettings',
+    name: '/bot/settings',
     getLabel: () => i18n.t('BOT Settings'),
-    component: BotSettings,
   },
   {
-    id: TAB.apiKeySettings,
-    name: 'apiKeySettings',
+    id: TAB.apiKey,
+    name: '/bot/api-key',
     getLabel: () => i18n.t('API Key Settings'),
-    component: APIKeySettings,
   },
   {
     id: TAB.deposit,
-    name: 'deposit',
+    name: '/bot/deposit',
     getLabel: () => i18n.t('Deposit'),
-    component: Deposit,
   },
   {
     id: TAB.userGuide,
     name: 'userGuide',
     getLabel: () => i18n.t('User Guide'),
     component: Box,
+    disabled: true,
   },
   {
     id: TAB.supportCenter,
     name: 'supportCenter',
     getLabel: () => i18n.t('Support Center'),
     component: Box,
+    disabled: true,
   },
 ];
 
 const MARKET_CODES_REQUIRED = [TAB.botSettings, TAB.deposit, TAB.position];
-const TRADE_SUPPORT_REQUIRED = [TAB.pnlHistory, TAB.apiKeySettings];
+const TRADE_SUPPORT_REQUIRED = [TAB.pnlHistory, TAB.apiKey];
 
 export default function Bot() {
   const marketCodeSelectorRef = useRef();
@@ -122,6 +113,7 @@ export default function Bot() {
 
   const theme = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -156,21 +148,12 @@ export default function Bot() {
   const [lastActive, setLastActive] = useState();
   const [queryKey, setQueryKey] = useState(DateTime.now().toMillis());
 
-  const [currentTab, setCurrentTab] = useState(
-    location.state?.defaultTab ? TAB[location.state.defaultTab] : 0
-  );
   const [marketCodeCombinationList, setMarketCodeCombinationList] = useState(
     []
   );
   const [selectedMarketCodeCombination, setSelectedMarketCodeCombination] =
     useState();
   const [postTradeConfig, tradeConfigResults] = usePostTradeConfigMutation();
-
-  useEffect(() => () => window.history.replaceState(null, ''), []);
-  useEffect(() => {
-    if (location.state?.defaultTab)
-      setCurrentTab(TAB[location.state.defaultTab]);
-  }, [location.state]);
 
   useEffect(() => {
     if (nodes?.results?.length > 0) {
@@ -216,9 +199,9 @@ export default function Bot() {
               ...item,
               disabled:
                 !tradeConfigAllocation?.trade_config_uuid ||
-                (MARKET_CODES_REQUIRED.includes(currentTab) &&
+                (MARKET_CODES_REQUIRED.includes(location.pathname) &&
                   !selectedMarketCodeCombination) ||
-                (TRADE_SUPPORT_REQUIRED.includes(currentTab) &&
+                (TRADE_SUPPORT_REQUIRED.includes(location.pathname) &&
                   !item.tradeSupport),
               target: {
                 ...target,
@@ -277,9 +260,15 @@ export default function Bot() {
         )
       );
       setMarketCodeCombinationList(marketCodes);
-      if (!selectedMarketCodeCombination)
-        setSelectedMarketCodeCombination(marketCodes[0]);
-      else if (
+      if (!selectedMarketCodeCombination) {
+        if (location.state?.marketCodeCombination) {
+          setSelectedMarketCodeCombination(
+            marketCodes.find(
+              (o) => o.value === location.state.marketCodeCombination
+            )
+          );
+        } else setSelectedMarketCodeCombination(marketCodes[0]);
+      } else if (
         selectedMarketCodeCombination.value !== 'ALL' &&
         !selectedMarketCodeCombination.tradeConfigUuid
       ) {
@@ -297,7 +286,13 @@ export default function Bot() {
           }));
       }
     }
-  }, [nodes, currentTab, selectedMarketCodeCombination, user]);
+  }, [
+    location.pathname,
+    location.state,
+    nodes,
+    selectedMarketCodeCombination,
+    user,
+  ]);
 
   useEffect(() => {
     if (!isFocused) setLastActive(DateTime.now().toMillis());
@@ -315,12 +310,25 @@ export default function Bot() {
 
   useEffect(() => {
     if (
-      MARKET_CODES_REQUIRED.includes(currentTab) &&
-      (!selectedMarketCodeCombination ||
+      MARKET_CODES_REQUIRED.includes(location.pathname) &&
+      ((!selectedMarketCodeCombination &&
+        !location.state?.marketCodeCombination) ||
         selectedMarketCodeCombination?.value === 'ALL')
     )
       marketCodeSelectorRef?.current?.open();
-  }, [currentTab, selectedMarketCodeCombination]);
+  }, [location.pathname, location.state, selectedMarketCodeCombination]);
+
+  useEffect(() => {
+    if (
+      TRADE_SUPPORT_REQUIRED.includes(location.pathname) &&
+      !location.state?.marketCodeCombination &&
+      !selectedMarketCodeCombination?.tradeSupport
+    ) {
+      marketCodeSelectorRef?.current?.open();
+    }
+  }, [location.pathname, location.state, selectedMarketCodeCombination]);
+
+  useEffect(() => () => window.history.replaceState(null, ''), []);
 
   if (!loggedin)
     return <Navigate replace to="/login" state={{ from: location }} />;
@@ -330,31 +338,42 @@ export default function Bot() {
       <Box sx={isMobile ? { maxWidth: window.innerWidth * 0.95 } : {}}>
         <Grid container sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Grid item md xs={12}>
-            <Tabs
-              allowScrollButtonsMobile
-              scrollButtons
-              aria-label="arbitrage-tabs"
-              variant="scrollable"
-              value={currentTab}
-              onChange={(e, newValue) => setCurrentTab(newValue)}
-              sx={{ borderBottom: 0, mb: 0 }}
-            >
-              {TABS.map(({ id, name, getLabel }) => (
-                <Tab
-                  key={name}
-                  label={getLabel()}
-                  value={id}
-                  disabled={
-                    id > TAB.deposit ||
-                    // (MARKET_CODES_REQUIRED.includes(id) &&
-                    //   selectedMarketCodeCombination?.value === 'ALL') ||
-                    (TRADE_SUPPORT_REQUIRED.includes(id) &&
-                      !selectedMarketCodeCombination?.tradeSupport)
-                  }
-                  {...a11yProps({ id, name })}
-                />
-              ))}
-            </Tabs>
+            {location.pathname === '/bot' ? (
+              <Box />
+            ) : (
+              <Tabs
+                allowScrollButtonsMobile
+                scrollButtons
+                aria-label="arbitrage-tabs"
+                variant="scrollable"
+                value={location.pathname}
+                // value={currentTab}
+                // onChange={(e, newValue) => setCurrentTab(newValue)}
+                sx={{ borderBottom: 0, mb: 0 }}
+              >
+                {TABS.map(({ id, name, disabled, getLabel }) => (
+                  <Tab
+                    component={Link}
+                    key={name}
+                    label={getLabel()}
+                    value={name}
+                    to={name}
+                    state={{
+                      marketCodeCombination:
+                        selectedMarketCodeCombination?.value,
+                    }}
+                    disabled={
+                      disabled ||
+                      // (MARKET_CODES_REQUIRED.includes(id) &&
+                      //   selectedMarketCodeCombination?.value === 'ALL') ||
+                      (TRADE_SUPPORT_REQUIRED.includes(name) &&
+                        !selectedMarketCodeCombination?.tradeSupport)
+                    }
+                    {...a11yProps({ id, name })}
+                  />
+                ))}
+              </Tabs>
+            )}
           </Grid>
           <Grid
             item
@@ -372,25 +391,47 @@ export default function Bot() {
               options={marketCodeCombinationList}
               value={selectedMarketCodeCombination}
               loading={tradeConfigResults.isLoading}
-              marketCodesRequired={MARKET_CODES_REQUIRED.includes(currentTab)}
+              marketCodesRequired={MARKET_CODES_REQUIRED.includes(
+                location.pathname
+              )}
+              tradeSupportRequired={TRADE_SUPPORT_REQUIRED.includes(
+                location.pathname
+              )}
               onSelectItem={(newValue) => {
                 if (
-                  (MARKET_CODES_REQUIRED.includes(currentTab) ||
-                    TRADE_SUPPORT_REQUIRED.includes(currentTab)) &&
+                  (MARKET_CODES_REQUIRED.includes(location.pathname) ||
+                    TRADE_SUPPORT_REQUIRED.includes(location.pathname)) &&
                   newValue.value === 'ALL'
                 )
-                  setCurrentTab(0);
+                  navigate('/bot');
                 setSelectedMarketCodeCombination(newValue);
               }}
             />
           </Grid>
         </Grid>
       </Box>
-      <SwipeableViews
+      <Box sx={{ overflowX: 'hidden', mb: 2, p: 1 }}>
+        {!selectedMarketCodeCombination ||
+        (MARKET_CODES_REQUIRED.includes(location.pathname) &&
+          selectedMarketCodeCombination.value === 'ALL') ? (
+          <Box />
+        ) : (
+          <Outlet
+            context={{
+              marketCodeSelectorRef,
+              queryKey,
+              tradeConfigAllocations,
+              tradeConfigUuids,
+              marketCodeCombination: selectedMarketCodeCombination,
+            }}
+          />
+        )}
+      </Box>
+      {/* <SwipeableViews
         axis={theme.direction === 'rtl' ? 'x-reverse' : 'x'}
         index={currentTab}
         onChangeIndex={(newIndex) => setCurrentTab(newIndex)}
-      >
+        >
         {TABS.map(({ id, name, ...others }) => (
           <TabPanel
             key={name}
@@ -419,7 +460,7 @@ export default function Bot() {
             )}
           </TabPanel>
         ))}
-      </SwipeableViews>
+      </SwipeableViews> */}
     </Box>
   );
 }
