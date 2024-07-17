@@ -189,10 +189,14 @@ class PostViewsSerializer(serializers.ModelSerializer):
     date_viewed = serializers.DateTimeField(read_only=True)
 
     def get_user_latest_view(self, post, user):
-        return PostViews.objects.filter(
-            post=post,
-            user=user,
-        ).latest("date_viewed")
+        return (
+            PostViews.objects.filter(
+                post=post,
+                user=user,
+            )
+            .order_by("date_viewed")
+            .last()
+        )
 
     def validate(self, attrs):
         latest_view = self.get_user_latest_view(user=attrs["user"], post=attrs["post"])
