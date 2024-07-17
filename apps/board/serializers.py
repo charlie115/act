@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from rest_framework import exceptions, serializers
 
-from lib.datetime import TZ_ASIA_SEOUL
+from lib.datetime import DATE_TIME_TZ_FORMAT, TZ_ASIA_SEOUL
 from board.models import PostCategory, Post, PostImage, Comment, PostLikes, PostViews
 from users.models import User
 from users.serializers import UserProfileSerializer
@@ -69,9 +69,9 @@ class PostSerializer(serializers.ModelSerializer):
     )
     comments = serializers.SerializerMethodField()
     likes = serializers.SerializerMethodField()
-    views = serializers.SerializerMethodField()
     liked = serializers.SerializerMethodField()
-    viewed = serializers.SerializerMethodField()
+    views = serializers.SerializerMethodField()
+    last_view = serializers.SerializerMethodField()
     user_profile = serializers.SerializerMethodField()
 
     def create(self, validated_data):
@@ -111,15 +111,22 @@ class PostSerializer(serializers.ModelSerializer):
             )
         )
 
-    def get_viewed(self, instance):
-        return (
+    def get_last_view(self, instance):
+        latest_view = None
+
+        if (
             "request" in self.context
             and hasattr(self.context["request"], "user")
             and isinstance(self.context["request"].user, User)
-            and PostViewsSerializer().has_user_viewed_post_today(
-                post=instance, user=self.context["request"].user
+        ):
+            latest_view = PostViewsSerializer().get_user_latest_view(
+                post=instance,
+                user=self.context["request"].user,
             )
-        )
+            if latest_view:
+                latest_view = latest_view.date_viewed.strftime(DATE_TIME_TZ_FORMAT)
+
+        return latest_view
 
     def get_user_profile(self, obj):
         return UserProfileSerializer(obj.user.profile).data
@@ -149,9 +156,9 @@ class PostSerializer(serializers.ModelSerializer):
             "images",
             "comments",
             "likes",
-            "views",
             "liked",
-            "viewed",
+            "views",
+            "last_view",
             "user_profile",
         )
         extra_kwargs = {
@@ -181,30 +188,24 @@ class PostViewsSerializer(serializers.ModelSerializer):
     )
     date_viewed = serializers.DateTimeField(read_only=True)
 
-    def has_user_viewed_post_today(self, post, user):
-        today = datetime.now(tz=TZ_ASIA_SEOUL)
-
-        try:
-            PostViews.objects.get(
-                post=post,
-                user=user,
-                date_viewed__gte=today.replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                ),
-                date_viewed__lte=today.replace(
-                    hour=23,
-                    minute=59,
-                    second=59,
-                    microsecond=timedelta.max.microseconds,
-                ),
-            )
-        except PostViews.DoesNotExist:
-            return False
-
-        return True
+    def get_user_latest_view(self, post, user):
+        return PostViews.objects.filter(
+            post=post,
+            user=user,
+        ).latest("date_viewed")
 
     def validate(self, attrs):
-        if self.has_user_viewed_post_today(user=attrs["user"], post=attrs["post"]):
+        latest_view = self.get_user_latest_view(user=attrs["user"], post=attrs["post"])
+
+        today = datetime.now(tz=TZ_ASIA_SEOUL)
+        today_start = today.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today.replace(
+            hour=23,
+            minute=59,
+            second=59,
+            microsecond=timedelta.max.microseconds,
+        )
+        if latest_view and today_start <= latest_view.date_viewed <= today_end:
             raise exceptions.ValidationError(
                 {"post": "User has already viewed Post today."}
             )
