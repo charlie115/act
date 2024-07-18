@@ -33,7 +33,7 @@ class Post(models.Model):
     date_created = models.DateTimeField(_("date created"), default=now)
 
     def __str__(self):
-        return f"Post #{self.pk} ({self.title})"
+        return f"Post #{self.pk}"
 
 
 class PostImage(models.Model):
@@ -68,7 +68,7 @@ class Comment(models.Model):
     date_created = models.DateTimeField(_("date created"), default=now)
 
     def __str__(self):
-        return f"{self.user.email} comment #{self.id}"
+        return f"Comment #{self.pk}"
 
 
 class PostLikes(models.Model):

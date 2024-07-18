@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.urls import reverse
+from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
@@ -89,20 +91,26 @@ class PostAdmin(ModelAdmin):
     list_display = [
         "id",
         "title",
-        "user",
-        "date_created",
+        "show_user_link",
         "category",
         "get_comments",
         "get_likes",
         "get_views",
+        "date_created",
     ]
-
+    list_display_links = [
+        "id",
+        "title",
+    ]
     list_filter = [
         "category",
     ]
     search_fields = [
+        "id",
         "title",
-        "user",
+        "user__uuid",
+        "user__email",
+        "user__username",
     ]
     ordering = ["id"]
     inlines = [
@@ -110,23 +118,22 @@ class PostAdmin(ModelAdmin):
         CommentsInline,
     ]
 
+    @admin.display(description="User")
+    def show_user_link(self, obj):
+        url = reverse("admin:users_user_change", args=(obj.user.pk,))
+        return format_html(f"<a href='{url}'>{obj.user}</a>")
+
+    @admin.display(description="Comments")
     def get_comments(self, obj):
         return len(obj.comments.all())
 
-    get_comments.short_description = "Comments"
-    get_comments.allow_tags = True
-
+    @admin.display(description="Likes")
     def get_likes(self, obj):
         return len(obj.likes.all())
 
-    get_likes.short_description = "Likes"
-    get_likes.allow_tags = True
-
+    @admin.display(description="Views")
     def get_views(self, obj):
         return len(obj.views.all())
-
-    get_views.short_description = "Views"
-    get_views.allow_tags = True
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -138,17 +145,50 @@ class PostAdmin(ModelAdmin):
 class CommentAdmin(ModelAdmin):
     list_display = [
         "id",
-        "user",
-        "post",
-        "parent",
+        "show_user_link",
+        "show_post_link",
+        "get_content_preview",
+        "show_parent_link",
+        "get_replies",
         "date_created",
     ]
+    list_display_links = [
+        "id",
+        "get_content_preview",
+    ]
     search_fields = [
-        "user",
-        "post",
+        "user__uuid",
+        "user__email",
+        "user__username",
+        "post__id",
     ]
     ordering = ["id"]
     inlines = [RepliesInline]
+
+    @admin.display(description="User")
+    def show_user_link(self, obj):
+        url = reverse("admin:users_user_change", args=(obj.user.pk,))
+        return format_html(f"<a href='{url}'>{obj.user}</a>")
+
+    @admin.display(description="Post")
+    def show_post_link(self, obj):
+        url = reverse("admin:board_post_change", args=(obj.post.pk,))
+        return format_html(f"<a href='{url}'>{obj.post}</a>")
+
+    @admin.display(description="Parent")
+    def show_parent_link(self, obj):
+        url = reverse(
+            "admin:board_comment_change", args=(obj.parent.pk if obj.parent else None,)
+        )
+        return format_html(f"<a href='{url}'>{obj.parent}</a>") if obj.parent else "-"
+
+    @admin.display(description="Content")
+    def get_content_preview(self, obj):
+        return obj.content[:100] if obj.content else obj.content
+
+    @admin.display(description="Replies")
+    def get_replies(self, obj):
+        return len(obj.replies.all())
 
     def has_add_permission(self, request, obj=None):
         return False
