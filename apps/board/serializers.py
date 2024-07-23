@@ -54,7 +54,7 @@ class PostImageSerializer(serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
-    user = serializers.SlugRelatedField(
+    author = serializers.SlugRelatedField(
         queryset=User.objects.all(),
         slug_field="uuid",
         write_only=True,
@@ -69,10 +69,10 @@ class PostSerializer(serializers.ModelSerializer):
     )
     comments = serializers.SerializerMethodField()
     likes = serializers.SerializerMethodField()
-    liked = serializers.SerializerMethodField()
     views = serializers.SerializerMethodField()
+    author_profile = serializers.SerializerMethodField()
+    liked = serializers.SerializerMethodField()
     last_view = serializers.SerializerMethodField()
-    user_profile = serializers.SerializerMethodField()
 
     def create(self, validated_data):
         images = validated_data.pop("images")
@@ -128,7 +128,7 @@ class PostSerializer(serializers.ModelSerializer):
 
         return latest_view
 
-    def get_user_profile(self, obj):
+    def get_author_profile(self, obj):
         return UserProfileSerializer(obj.user.profile).data
 
     def to_representation(self, instance):
@@ -148,7 +148,7 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = (
             "id",
-            "user",
+            "author",
             "title",
             "date_created",
             "category",
@@ -156,10 +156,10 @@ class PostSerializer(serializers.ModelSerializer):
             "images",
             "comments",
             "likes",
-            "liked",
             "views",
+            "author_profile",
+            "liked",
             "last_view",
-            "user_profile",
         )
         extra_kwargs = {
             "id": {"read_only": True},

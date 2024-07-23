@@ -75,6 +75,17 @@ class CommentViewSet(BaseViewSet):
     http_method_names = ["get", "post", "put", "patch", "delete"]
     pagination_class = CustomPageNumberPagination
 
+    def get_queryset(self):
+        return super(BaseViewSet, self).get_queryset()
+
+    def get_permissions(self):
+        permission_classes = self.permission_classes
+
+        if self.action in ["list", "retrieve"]:
+            permission_classes = []
+
+        return [permission() for permission in permission_classes]
+
 
 @extend_schema(tags=["PostCategory"])
 @extend_schema_view(
@@ -153,6 +164,17 @@ class PostViewSet(BaseViewSet):
     ]
     http_method_names = ["get", "post", "put", "patch", "delete"]
     pagination_class = CustomPageNumberPagination
+
+    def get_queryset(self):
+        return super(BaseViewSet, self).get_queryset()
+
+    def get_permissions(self):
+        permission_classes = self.permission_classes
+
+        if self.action in ["list", "retrieve"]:
+            permission_classes = []
+
+        return [permission() for permission in permission_classes]
 
 
 @extend_schema(tags=["PostLikes"])
