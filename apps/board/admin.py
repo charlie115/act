@@ -5,7 +5,40 @@ from django.utils.safestring import mark_safe
 
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 
-from board.models import PostCategory, Post, PostImage, Comment
+from board.models import (
+    PostCategory,
+    Post,
+    PostImage,
+    PostReactions,
+    Comment,
+)
+
+
+class LevelsAdmin(ModelAdmin):
+    list_display = ["id", "level", "points"]
+    search_fields = ["level", "points"]
+    ordering = ["level"]
+    verbose_name_plural = "Levels"
+
+
+class UserLevelsAdmin(ModelAdmin):
+    list_display = [
+        "user",
+        "community_level",
+        "total_points",
+        "last_updated_datetime",
+    ]
+    search_fields = ["user__email", "user__username", "total_points"]
+    list_filter = ["community_level"]
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class PostCategoryAdmin(ModelAdmin):
@@ -95,6 +128,7 @@ class PostAdmin(ModelAdmin):
         "category",
         "get_comments",
         "get_likes",
+        "get_dislikes",
         "get_views",
         "date_created",
     ]
@@ -127,11 +161,15 @@ class PostAdmin(ModelAdmin):
     def get_comments(self, obj):
         return len(obj.comments.all())
 
-    @admin.display(description="Likes")
+    @admin.display(description="👍")
     def get_likes(self, obj):
-        return len(obj.likes.all())
+        return len(obj.reactions.filter(reaction=PostReactions.LIKE))
 
-    @admin.display(description="Views")
+    @admin.display(description="👎")
+    def get_dislikes(self, obj):
+        return len(obj.reactions.filter(reaction=PostReactions.DISLIKE))
+
+    @admin.display(description="👁️‍🗨️")
     def get_views(self, obj):
         return len(obj.views.all())
 
@@ -150,7 +188,13 @@ class CommentAdmin(ModelAdmin):
         "get_content_preview",
         "show_parent_link",
         "get_replies",
+        "get_likes",
+        "get_dislikes",
         "date_created",
+    ]
+    list_display_links = [
+        "id",
+        "get_content_preview",
     ]
     list_display_links = [
         "id",
@@ -189,6 +233,14 @@ class CommentAdmin(ModelAdmin):
     @admin.display(description="Replies")
     def get_replies(self, obj):
         return len(obj.replies.all())
+
+    @admin.display(description="👍")
+    def get_likes(self, obj):
+        return len(obj.reactions.filter(reaction=PostReactions.LIKE))
+
+    @admin.display(description="👎")
+    def get_dislikes(self, obj):
+        return len(obj.reactions.filter(reaction=PostReactions.DISLIKE))
 
     def has_add_permission(self, request, obj=None):
         return False

@@ -4,13 +4,21 @@ from rest_framework.filters import OrderingFilter
 from rest_framework.pagination import PageNumberPagination
 
 from lib.views import BaseViewSet
-from board.models import PostCategory, Post, Comment, PostLikes, PostViews
+from board.models import (
+    PostCategory,
+    Post,
+    PostReactions,
+    PostViews,
+    Comment,
+    CommentReactions,
+)
 from board.serializers import (
     PostCategorySerializer,
     PostSerializer,
-    CommentSerializer,
-    PostLikesSerializer,
+    PostReactionsSerializer,
     PostViewsSerializer,
+    CommentSerializer,
+    CommentsReactionsSerializer,
 )
 
 
@@ -177,27 +185,27 @@ class PostViewSet(BaseViewSet):
         return [permission() for permission in permission_classes]
 
 
-@extend_schema(tags=["PostLikes"])
+@extend_schema(tags=["PostReactions"])
 @extend_schema_view(
     create=extend_schema(
-        operation_id="Like a post",
-        description="Adds a new `post like` for a user.",
+        operation_id="React to a post",
+        description="Adds a new `post reaction` for a user.",
     ),
 )
-class PostLikesViewSet(BaseViewSet):
-    queryset = PostLikes.objects.all()
+class PostReactionsViewSet(BaseViewSet):
+    queryset = PostReactions.objects.all()
     lookup_field = "id"
-    serializer_class = PostLikesSerializer
+    serializer_class = PostReactionsSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = (
         "id",
         # "username",
         "post",
-        "date_liked",
+        "date_updated",
     )
     ordering = [
         "id",
-        "date_liked",
+        "date_updated",
     ]
     http_method_names = ["post"]
 
@@ -224,5 +232,30 @@ class PostViewsViewSet(BaseViewSet):
     ordering = [
         "id",
         "date_viewed",
+    ]
+    http_method_names = ["post"]
+
+
+@extend_schema(tags=["CommentReactions"])
+@extend_schema_view(
+    create=extend_schema(
+        operation_id="React to a comment",
+        description="Adds a new `comment reaction` for a user.",
+    ),
+)
+class CommentReactionsViewSet(BaseViewSet):
+    queryset = CommentReactions.objects.all()
+    lookup_field = "id"
+    serializer_class = CommentsReactionsSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = (
+        "id",
+        # "username",
+        "comment",
+        "date_updated",
+    )
+    ordering = [
+        "id",
+        "date_updated",
     ]
     http_method_names = ["post"]

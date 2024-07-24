@@ -4,9 +4,10 @@ from lib.views import BaseAPIListView
 from board.views import (
     PostCategoryViewSet,
     PostViewSet,
-    CommentViewSet,
-    PostLikesViewSet,
+    PostReactionsViewSet,
     PostViewsViewSet,
+    CommentViewSet,
+    CommentReactionsViewSet,
 )
 
 
@@ -27,9 +28,10 @@ app_name = "board"
 
 router = DocumentedRouter()
 router.register(r"posts", PostViewSet)
-router.register(r"comments", CommentViewSet)
-router.register(r"post-likes", PostLikesViewSet)
+router.register(r"post-reactions", PostReactionsViewSet)
 router.register(r"post-views", PostViewsViewSet)
 router.register(r"post-category", PostCategoryViewSet)
+router.register(r"comments", CommentViewSet)
+router.register(r"comments-reactions", CommentReactionsViewSet)
 
 urlpatterns = router.urls

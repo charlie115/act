@@ -2,41 +2,17 @@ from datetime import datetime, timedelta
 from rest_framework import exceptions, serializers
 
 from lib.datetime import DATE_TIME_TZ_FORMAT, TZ_ASIA_SEOUL
-from board.models import PostCategory, Post, PostImage, Comment, PostLikes, PostViews
+from board.models import (
+    PostCategory,
+    Post,
+    PostImage,
+    PostReactions,
+    PostViews,
+    Comment,
+    CommentReactions,
+)
 from users.models import User
 from users.serializers import UserProfileSerializer
-
-
-class CommentSerializer(serializers.ModelSerializer):
-    user = serializers.SlugRelatedField(
-        queryset=User.objects.all(),
-        slug_field="uuid",
-        write_only=True,
-    )
-    replies = serializers.SerializerMethodField()
-    user_profile = serializers.SerializerMethodField()
-
-    def get_replies(self, instance):
-        if instance.replies:
-            return CommentSerializer(instance.replies.all(), many=True).data
-        else:
-            return []
-
-    def get_user_profile(self, obj):
-        return UserProfileSerializer(obj.user.profile).data
-
-    class Meta:
-        model = Comment
-        fields = (
-            "id",
-            "user",
-            "date_created",
-            "content",
-            "post",
-            "parent",
-            "replies",
-            "user_profile",
-        )
 
 
 class PostCategorySerializer(serializers.ModelSerializer):
@@ -69,10 +45,11 @@ class PostSerializer(serializers.ModelSerializer):
     )
     comments = serializers.SerializerMethodField()
     likes = serializers.SerializerMethodField()
+    dislikes = serializers.SerializerMethodField()
     views = serializers.SerializerMethodField()
-    author_profile = serializers.SerializerMethodField()
-    liked = serializers.SerializerMethodField()
+    reaction = serializers.SerializerMethodField()
     last_view = serializers.SerializerMethodField()
+    author_profile = serializers.SerializerMethodField()
 
     def create(self, validated_data):
         images = validated_data.pop("images")
@@ -96,20 +73,30 @@ class PostSerializer(serializers.ModelSerializer):
         return len(instance.comments.all())
 
     def get_likes(self, instance):
-        return len(instance.likes.all())
+        return len(instance.reactions.filter(reaction=PostReactions.LIKE))
+
+    def get_dislikes(self, instance):
+        return len(instance.reactions.filter(reaction=PostReactions.DISLIKE))
 
     def get_views(self, instance):
         return len(instance.views.all())
 
-    def get_liked(self, instance):
-        return (
+    def get_reaction(self, instance):
+        if (
             "request" in self.context
             and hasattr(self.context["request"], "user")
             and isinstance(self.context["request"].user, User)
-            and bool(
-                self.context["request"].user.liked_posts.filter(post=instance).first()
+            and self.context["request"]
+            .user.post_reactions.filter(post=instance)
+            .first()
+        ):
+            return (
+                self.context["request"]
+                .user.post_reactions.filter(post=instance)
+                .first()
+                .reaction
             )
-        )
+        return None
 
     def get_last_view(self, instance):
         latest_view = None
@@ -156,9 +143,10 @@ class PostSerializer(serializers.ModelSerializer):
             "images",
             "comments",
             "likes",
+            "dislikes",
             "views",
             "author_profile",
-            "liked",
+            "reaction",
             "last_view",
         )
         extra_kwargs = {
@@ -167,17 +155,17 @@ class PostSerializer(serializers.ModelSerializer):
         }
 
 
-class PostLikesSerializer(serializers.ModelSerializer):
+class PostReactionsSerializer(serializers.ModelSerializer):
     user = serializers.SlugRelatedField(
         queryset=User.objects.all(),
         slug_field="uuid",
         write_only=True,
     )
-    date_liked = serializers.DateTimeField(read_only=True)
+    date_updated = serializers.DateTimeField(read_only=True)
 
     class Meta:
-        model = PostLikes
-        fields = ("id", "user", "post", "date_liked")
+        model = PostReactions
+        fields = ("id", "user", "post", "reaction", "date_updated")
 
 
 class PostViewsSerializer(serializers.ModelSerializer):
@@ -218,3 +206,77 @@ class PostViewsSerializer(serializers.ModelSerializer):
     class Meta:
         model = PostViews
         fields = ("id", "user", "post", "date_viewed")
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.SlugRelatedField(
+        queryset=User.objects.all(),
+        slug_field="uuid",
+        write_only=True,
+    )
+    replies = serializers.SerializerMethodField()
+    likes = serializers.SerializerMethodField()
+    dislikes = serializers.SerializerMethodField()
+    reaction = serializers.SerializerMethodField()
+    author_profile = serializers.SerializerMethodField()
+
+    def get_replies(self, instance):
+        if instance.replies:
+            return CommentSerializer(instance.replies.all(), many=True).data
+        else:
+            return []
+
+    def get_likes(self, instance):
+        return len(instance.reactions.filter(reaction=CommentReactions.LIKE))
+
+    def get_dislikes(self, instance):
+        return len(instance.reactions.filter(reaction=CommentReactions.DISLIKE))
+
+    def get_reaction(self, instance):
+        if (
+            "request" in self.context
+            and hasattr(self.context["request"], "user")
+            and isinstance(self.context["request"].user, User)
+            and self.context["request"]
+            .user.comment_reactions.filter(comment=instance)
+            .first()
+        ):
+            return (
+                self.context["request"]
+                .user.comment_reactions.filter(comment=instance)
+                .first()
+                .reaction
+            )
+        return None
+
+    def get_author_profile(self, obj):
+        return UserProfileSerializer(obj.user.profile).data
+
+    class Meta:
+        model = Comment
+        fields = (
+            "id",
+            "author",
+            "date_created",
+            "content",
+            "post",
+            "parent",
+            "replies",
+            "likes",
+            "dislikes",
+            "reaction",
+            "author_profile",
+        )
+
+
+class CommentsReactionsSerializer(serializers.ModelSerializer):
+    user = serializers.SlugRelatedField(
+        queryset=User.objects.all(),
+        slug_field="uuid",
+        write_only=True,
+    )
+    date_updated = serializers.DateTimeField(read_only=True)
+
+    class Meta:
+        model = CommentReactions
+        fields = ("id", "user", "comment", "reaction", "date_updated")

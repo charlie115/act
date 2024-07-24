@@ -1,6 +1,5 @@
-from django.db import models
-
 from django.conf import settings
+from django.db import models
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
@@ -71,27 +70,35 @@ class Comment(models.Model):
         return f"Comment #{self.pk}"
 
 
-class PostLikes(models.Model):
+class PostReactions(models.Model):
+    LIKE = "LIKE"
+    DISLIKE = "DISLIKE"
+    Reactions = (
+        (LIKE, LIKE),
+        (DISLIKE, DISLIKE),
+    )
+
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
-        related_name="likes",
+        related_name="reactions",
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="liked_posts",
+        related_name="post_reactions",
     )
-    date_liked = models.DateTimeField(_("date liked"), default=now)
+    reaction = models.CharField(choices=Reactions, default=LIKE)
+    date_updated = models.DateTimeField(_("date updated"), default=now)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=["post", "user"],
-                name="unique_likes__post__user",
+                name="unique_reactions__post__user",
             )
         ]
-        verbose_name_plural = "Post Likes"
+        verbose_name_plural = "Post Reactions"
 
 
 class PostViews(models.Model):
@@ -109,3 +116,34 @@ class PostViews(models.Model):
 
     class Meta:
         verbose_name_plural = "Post Views"
+
+
+class CommentReactions(models.Model):
+    LIKE = "LIKE"
+    DISLIKE = "DISLIKE"
+    Reactions = (
+        (LIKE, LIKE),
+        (DISLIKE, DISLIKE),
+    )
+
+    comment = models.ForeignKey(
+        Comment,
+        on_delete=models.CASCADE,
+        related_name="reactions",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="comment_reactions",
+    )
+    reaction = models.CharField(choices=Reactions, default=LIKE)
+    date_updated = models.DateTimeField(_("date updated"), default=now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["comment", "user"],
+                name="unique_reactions__comment__user",
+            )
+        ]
+        verbose_name_plural = "Comment Reactions"
