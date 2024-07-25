@@ -32,6 +32,7 @@ class PostImageSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
         queryset=User.objects.all(),
+        source="user",
         slug_field="uuid",
         write_only=True,
     )
@@ -211,6 +212,7 @@ class PostViewsSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
         queryset=User.objects.all(),
+        source="user",
         slug_field="uuid",
         write_only=True,
     )
