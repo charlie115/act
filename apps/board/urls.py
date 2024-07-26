@@ -32,6 +32,6 @@ router.register(r"post-reactions", PostReactionsViewSet)
 router.register(r"post-views", PostViewsViewSet)
 router.register(r"post-category", PostCategoryViewSet)
 router.register(r"comments", CommentViewSet)
-router.register(r"comments-reactions", CommentReactionsViewSet)
+router.register(r"comment-reactions", CommentReactionsViewSet)
 
 urlpatterns = router.urls

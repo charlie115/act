@@ -48,9 +48,10 @@ class PostSerializer(serializers.ModelSerializer):
     likes = serializers.SerializerMethodField()
     dislikes = serializers.SerializerMethodField()
     views = serializers.SerializerMethodField()
-    reaction = serializers.SerializerMethodField()
-    last_view = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
     author_profile = serializers.SerializerMethodField()
+    user_view = serializers.SerializerMethodField()
+    user_reaction = serializers.SerializerMethodField()
 
     def create(self, validated_data):
         images = validated_data.pop("images")
@@ -70,36 +71,38 @@ class PostSerializer(serializers.ModelSerializer):
 
         return post
 
-    def get_comments(self, instance):
-        return len(instance.comments.all())
+    def get_comments(self, obj):
+        return len(obj.comments.all())
 
-    def get_likes(self, instance):
-        return len(instance.reactions.filter(reaction=PostReactions.LIKE))
+    def get_likes(self, obj):
+        return len(obj.reactions.filter(reaction=PostReactions.LIKE))
 
-    def get_dislikes(self, instance):
-        return len(instance.reactions.filter(reaction=PostReactions.DISLIKE))
+    def get_dislikes(self, obj):
+        return len(obj.reactions.filter(reaction=PostReactions.DISLIKE))
 
-    def get_views(self, instance):
-        return len(instance.views.all())
+    def get_views(self, obj):
+        return len(obj.views.all())
 
-    def get_reaction(self, instance):
+    def get_images(self, obj):
+        return PostImageSerializer(
+            obj.post_images.all(),
+            many=True,
+            context={"request": self.context["request"]},
+        ).data
+
+    def get_user_reaction(self, obj):
         if (
             "request" in self.context
             and hasattr(self.context["request"], "user")
             and isinstance(self.context["request"].user, User)
-            and self.context["request"]
-            .user.post_reactions.filter(post=instance)
-            .first()
+            and self.context["request"].user.post_reactions.filter(post=obj).first()
         ):
-            return (
-                self.context["request"]
-                .user.post_reactions.filter(post=instance)
-                .first()
-                .reaction
-            )
+            return PostReactionsSerializer(
+                self.context["request"].user.post_reactions.filter(post=obj).first()
+            ).data
         return None
 
-    def get_last_view(self, instance):
+    def get_user_view(self, obj):
         latest_view = None
 
         if (
@@ -108,7 +111,7 @@ class PostSerializer(serializers.ModelSerializer):
             and isinstance(self.context["request"].user, User)
         ):
             latest_view = PostViewsSerializer().get_user_latest_view(
-                post=instance,
+                post=obj,
                 user=self.context["request"].user,
             )
             if latest_view:
@@ -119,36 +122,23 @@ class PostSerializer(serializers.ModelSerializer):
     def get_author_profile(self, obj):
         return UserProfileSerializer(obj.user.profile).data
 
-    def to_representation(self, instance):
-        images = PostImageSerializer(
-            instance.post_images.all(),
-            many=True,
-            context={"request": self.context["request"]},
-        ).data
-
-        data = super().to_representation(instance)
-
-        data["images"] = images
-
-        return data
-
     class Meta:
         model = Post
         fields = (
             "id",
             "author",
             "title",
-            "date_created",
             "category",
             "content",
-            "images",
             "comments",
             "likes",
             "dislikes",
             "views",
+            "images",
+            "date_created",
             "author_profile",
-            "reaction",
-            "last_view",
+            "user_reaction",
+            "user_view",
         )
         extra_kwargs = {
             "id": {"read_only": True},
@@ -219,36 +209,35 @@ class CommentSerializer(serializers.ModelSerializer):
     replies = serializers.SerializerMethodField()
     likes = serializers.SerializerMethodField()
     dislikes = serializers.SerializerMethodField()
-    reaction = serializers.SerializerMethodField()
     author_profile = serializers.SerializerMethodField()
+    user_reaction = serializers.SerializerMethodField()
 
-    def get_replies(self, instance):
-        if instance.replies:
-            return CommentSerializer(instance.replies.all(), many=True).data
+    def get_replies(self, obj):
+        if obj.replies:
+            return CommentSerializer(obj.replies.all(), many=True).data
         else:
             return []
 
-    def get_likes(self, instance):
-        return len(instance.reactions.filter(reaction=CommentReactions.LIKE))
+    def get_likes(self, obj):
+        return len(obj.reactions.filter(reaction=CommentReactions.LIKE))
 
-    def get_dislikes(self, instance):
-        return len(instance.reactions.filter(reaction=CommentReactions.DISLIKE))
+    def get_dislikes(self, obj):
+        return len(obj.reactions.filter(reaction=CommentReactions.DISLIKE))
 
-    def get_reaction(self, instance):
+    def get_user_reaction(self, obj):
         if (
             "request" in self.context
             and hasattr(self.context["request"], "user")
             and isinstance(self.context["request"].user, User)
             and self.context["request"]
-            .user.comment_reactions.filter(comment=instance)
+            .user.comment_reactions.filter(comment=obj)
             .first()
         ):
-            return (
+            return CommentReactionsSerializer(
                 self.context["request"]
-                .user.comment_reactions.filter(comment=instance)
+                .user.comment_reactions.filter(comment=obj)
                 .first()
-                .reaction
-            )
+            ).data
         return None
 
     def get_author_profile(self, obj):
@@ -259,19 +248,19 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "author",
-            "date_created",
             "content",
             "post",
             "parent",
             "replies",
             "likes",
             "dislikes",
-            "reaction",
+            "date_created",
             "author_profile",
+            "user_reaction",
         )
 
 
-class CommentsReactionsSerializer(serializers.ModelSerializer):
+class CommentReactionsSerializer(serializers.ModelSerializer):
     user = serializers.SlugRelatedField(
         queryset=User.objects.all(),
         slug_field="uuid",

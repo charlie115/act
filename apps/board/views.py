@@ -18,7 +18,7 @@ from board.serializers import (
     PostReactionsSerializer,
     PostViewsSerializer,
     CommentSerializer,
-    CommentsReactionsSerializer,
+    CommentReactionsSerializer,
 )
 
 
@@ -207,7 +207,7 @@ class PostReactionsViewSet(BaseViewSet):
         "id",
         "date_updated",
     ]
-    http_method_names = ["post"]
+    http_method_names = ["post", "put", "patch", "delete"]
 
 
 @extend_schema(tags=["PostViews"])
@@ -246,7 +246,7 @@ class PostViewsViewSet(BaseViewSet):
 class CommentReactionsViewSet(BaseViewSet):
     queryset = CommentReactions.objects.all()
     lookup_field = "id"
-    serializer_class = CommentsReactionsSerializer
+    serializer_class = CommentReactionsSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = (
         "id",
@@ -258,4 +258,4 @@ class CommentReactionsViewSet(BaseViewSet):
         "id",
         "date_updated",
     ]
-    http_method_names = ["post"]
+    http_method_names = ["post", "put", "patch", "delete"]
