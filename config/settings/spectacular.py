@@ -17,7 +17,7 @@ SPECTACULAR_SETTINGS = {
             },
             {
                 "name": "BOARD",
-                "tags": ["PostCategory", "Post", "Comment", "PostLikes", "PostViews"],
+                "tags": ["Post", "Comment", "PostLikes", "PostViews"],
             },
             {
                 "name": "CHAT",

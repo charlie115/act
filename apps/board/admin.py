@@ -6,7 +6,6 @@ from django.utils.safestring import mark_safe
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 
 from board.models import (
-    PostCategory,
     Post,
     PostImage,
     PostReactions,
@@ -41,41 +40,24 @@ class UserLevelsAdmin(ModelAdmin):
         return False
 
 
-class PostCategoryAdmin(ModelAdmin):
-    list_display = ["id", "name", "code"]
-    search_fields = ["name", "code"]
-
-
-class RepliesInline(TabularInline):
-    model = Comment
-    fields = ["get_id", "user", "content", "date_created"]
-    readonly_fields = ["get_id", "date_created"]
-    verbose_name = "Reply"
-    verbose_name_plural = "Replies"
-    show_change_link = True
-    extra = 0
-
-    def get_id(self, obj):
-        return obj.id
-
-    get_id.short_description = "ID"
-    get_id.allow_tags = True
-
-    def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        return queryset.filter(parent__isnull=False)
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-
 class CommentsInline(TabularInline):
     model = Comment
-    readonly_fields = ["get_id", "date_created"]
-    fields = ["get_id", "user", "content", "date_created"]
+    readonly_fields = [
+        "get_id",
+        "get_replies",
+        "get_likes",
+        "get_dislikes",
+        "date_created",
+    ]
+    fields = [
+        "get_id",
+        "user",
+        "content",
+        "get_replies",
+        "get_likes",
+        "get_dislikes",
+        "date_created",
+    ]
     show_change_link = True
     extra = 0
 
@@ -84,6 +66,18 @@ class CommentsInline(TabularInline):
 
     get_id.short_description = "ID"
     get_id.allow_tags = True
+
+    @admin.display(description="Replies")
+    def get_replies(self, obj):
+        return len(obj.replies.all())
+
+    @admin.display(description="👍")
+    def get_likes(self, obj):
+        return len(obj.reactions.filter(reaction=PostReactions.LIKE))
+
+    @admin.display(description="👎")
+    def get_dislikes(self, obj):
+        return len(obj.reactions.filter(reaction=PostReactions.DISLIKE))
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
@@ -94,6 +88,15 @@ class CommentsInline(TabularInline):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+class RepliesInline(CommentsInline):
+    verbose_name = "Reply"
+    verbose_name_plural = "Replies"
+
+    def get_queryset(self, request):
+        queryset = super(CommentsInline, self).get_queryset(request)
+        return queryset.filter(parent__isnull=False)
 
 
 class ImagesInline(StackedInline):
@@ -249,6 +252,5 @@ class CommentAdmin(ModelAdmin):
         return False
 
 
-admin.site.register(PostCategory, PostCategoryAdmin)
 admin.site.register(Post, PostAdmin)
 admin.site.register(Comment, CommentAdmin)

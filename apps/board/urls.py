@@ -2,7 +2,6 @@ from rest_framework import routers
 
 from lib.views import BaseAPIListView
 from board.views import (
-    PostCategoryViewSet,
     PostViewSet,
     PostReactionsViewSet,
     PostViewsViewSet,
@@ -30,7 +29,6 @@ router = DocumentedRouter()
 router.register(r"posts", PostViewSet)
 router.register(r"post-reactions", PostReactionsViewSet)
 router.register(r"post-views", PostViewsViewSet)
-router.register(r"post-category", PostCategoryViewSet)
 router.register(r"comments", CommentViewSet)
 router.register(r"comment-reactions", CommentReactionsViewSet)
 

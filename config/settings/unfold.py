@@ -273,7 +273,6 @@ UNFOLD = {
         },
         {
             "models": [
-                "board.postcategory",
                 "board.post",
                 "board.comment",
             ],
@@ -285,10 +284,6 @@ UNFOLD = {
                 {
                     "title": _("Comments"),
                     "link": reverse_lazy("admin:board_comment_changelist"),
-                },
-                {
-                    "title": _("Categories"),
-                    "link": reverse_lazy("admin:board_postcategory_changelist"),
                 },
             ],
         },

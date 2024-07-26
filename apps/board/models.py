@@ -4,30 +4,27 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
 
-class PostCategory(models.Model):
-    name = models.CharField(max_length=50)
-    code = models.CharField(max_length=10, unique=True)
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        verbose_name = "Post Category"
-        verbose_name_plural = "Post Categories"
-
-
 class Post(models.Model):
+    ANNOUNCEMENT = "Announcement"
+    FREEWRITING = "Freewriting"
+    QUESTION = "Question"
+    INVESTMENT_STRATEGY = "Investment Strategy"
+    INFORMATION = "Information"
+    Categories = (
+        (ANNOUNCEMENT, ANNOUNCEMENT),
+        (FREEWRITING, FREEWRITING),
+        (QUESTION, QUESTION),
+        (INVESTMENT_STRATEGY, INVESTMENT_STRATEGY),
+        (INFORMATION, INFORMATION),
+    )
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="user_posts",
+        related_name="board_authored_posts",
     )
     title = models.CharField(max_length=500)
-    category = models.ForeignKey(
-        PostCategory,
-        on_delete=models.CASCADE,
-        related_name="category_posts",
-    )
+    category = models.CharField(choices=Categories)
     content = models.TextField(null=True, blank=True)
     date_created = models.DateTimeField(_("date created"), default=now)
 
@@ -49,7 +46,7 @@ class Comment(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="user_comments",
+        related_name="board_authored_comments",
     )
     post = models.ForeignKey(
         Post,
@@ -86,7 +83,7 @@ class PostReactions(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="post_reactions",
+        related_name="board_post_reactions",
     )
     reaction = models.CharField(choices=Reactions, default=LIKE)
     date_updated = models.DateTimeField(_("date updated"), default=now)
@@ -95,7 +92,7 @@ class PostReactions(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["post", "user"],
-                name="unique_reactions__post__user",
+                name="unique__post_reactions__post__user",
             )
         ]
         verbose_name_plural = "Post Reactions"
@@ -110,7 +107,7 @@ class PostViews(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="viewed_posts",
+        related_name="board_viewed_posts",
     )
     date_viewed = models.DateTimeField(_("date viewed"), default=now)
 
@@ -134,7 +131,7 @@ class CommentReactions(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="comment_reactions",
+        related_name="board_comment_reactions",
     )
     reaction = models.CharField(choices=Reactions, default=LIKE)
     date_updated = models.DateTimeField(_("date updated"), default=now)
@@ -143,7 +140,7 @@ class CommentReactions(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["comment", "user"],
-                name="unique_reactions__comment__user",
+                name="unique__comment_reactions__comment__user",
             )
         ]
         verbose_name_plural = "Comment Reactions"

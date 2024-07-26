@@ -5,7 +5,6 @@ from rest_framework.pagination import PageNumberPagination
 
 from lib.views import BaseViewSet
 from board.models import (
-    PostCategory,
     Post,
     PostReactions,
     PostViews,
@@ -13,7 +12,6 @@ from board.models import (
     CommentReactions,
 )
 from board.serializers import (
-    PostCategorySerializer,
     PostSerializer,
     PostReactionsSerializer,
     PostViewsSerializer,
@@ -93,35 +91,6 @@ class CommentViewSet(BaseViewSet):
             permission_classes = []
 
         return [permission() for permission in permission_classes]
-
-
-@extend_schema(tags=["PostCategory"])
-@extend_schema_view(
-    list=extend_schema(
-        operation_id="List post categories",
-        description="Returns a list of all `post categories`.",
-    ),
-    retrieve=extend_schema(
-        operation_id="Retrieve a post category",
-        description="Retrieves the details of an existing `post category`.",
-    ),
-)
-class PostCategoryViewSet(BaseViewSet):
-    queryset = PostCategory.objects.all()
-    lookup_field = "id"
-    serializer_class = PostCategorySerializer
-    permission_classes = []
-    filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = (
-        "id",
-        "name",
-        "code",
-    )
-    ordering = [
-        "id",
-        "name",
-    ]
-    http_method_names = ["get"]
 
 
 @extend_schema(tags=["Post"])
