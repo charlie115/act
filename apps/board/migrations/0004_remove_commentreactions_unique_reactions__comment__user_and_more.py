@@ -5,26 +5,6 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
-def migrate_categories(apps, schema_editor):
-    """
-    We can't import the Post model directly as it may be a newer
-    version than this migration expects. We use the historical version.
-    """
-    categories = [
-        "Announcement",
-        "Freewriting",
-        "Question",
-        "Investment Strategy",
-        "Information",
-    ]
-    Post = apps.get_model("board", "Post")
-    for post in Post.objects.all():
-        post.category = (
-            post.category.name if post.category.name in categories else "Freewriting"
-        )
-        post.save()
-
-
 class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -32,7 +12,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(migrate_categories),
         migrations.RemoveConstraint(
             model_name="commentreactions",
             name="unique_reactions__comment__user",
@@ -111,8 +90,5 @@ class Migration(migrations.Migration):
             constraint=models.UniqueConstraint(
                 fields=("post", "user"), name="unique__post_reactions__post__user"
             ),
-        ),
-        migrations.DeleteModel(
-            name="PostCategory",
         ),
     ]
