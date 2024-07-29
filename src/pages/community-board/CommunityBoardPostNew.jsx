@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -15,16 +15,14 @@ import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CircleIcon from '@mui/icons-material/Circle';
 
 import { Controller, useForm } from 'react-hook-form';
 
 import { useTranslation } from 'react-i18next';
 
 import { useSelector } from 'react-redux';
-import {
-  useGetBoardPostCategoryQuery,
-  usePostBoardPostMutation,
-} from 'redux/api/drf/board';
+import { usePostBoardPostMutation } from 'redux/api/drf/board';
 
 import mime from 'mime';
 
@@ -32,18 +30,22 @@ import useGlobalSnackbar from 'hooks/useGlobalSnackbar';
 
 import RichTextEditor from 'components/RichTextEditor';
 
+import { USER_ROLE } from 'constants';
+import { POST_CATEGORY_LIST } from 'constants/lists';
+
 export default function CommunityBoardPostNew() {
   const quillRef = useRef();
 
+  const location = useLocation();
   const navigate = useNavigate();
 
   const { t } = useTranslation();
 
-  const { user } = useSelector((state) => state.auth);
+  const { loggedin, user } = useSelector((state) => state.auth);
 
   const { openSnackbar } = useGlobalSnackbar();
 
-  const { data: categories, isFetching } = useGetBoardPostCategoryQuery();
+  const [categories, setCategories] = useState([]);
 
   const [createBoardPost, { data: boardPost, isError, isLoading, isSuccess }] =
     usePostBoardPostMutation();
@@ -80,17 +82,27 @@ export default function CommunityBoardPostNew() {
     );
 
     const formData = new FormData();
-    formData.append('user', user.uuid);
+    formData.append('author', user.uuid);
     formData.append('title', data.title);
     formData.append('category', data.category);
     formData.append('content', newContent);
 
     images.forEach((image) => {
-      formData.append('images', image);
+      formData.append('image', image);
     });
 
     createBoardPost(formData);
   };
+
+  useEffect(() => {
+    setCategories(
+      POST_CATEGORY_LIST.filter((category) =>
+        user.role !== USER_ROLE.admin && user.role !== USER_ROLE.internal
+          ? category.value !== 'Announcement'
+          : true
+      )
+    );
+  }, [user]);
 
   useEffect(() => {
     if (isSuccess && boardPost)
@@ -104,11 +116,12 @@ export default function CommunityBoardPostNew() {
       });
   }, [isError]);
 
-  const loading = isFetching || isLoading;
+  if (!loggedin)
+    return <Navigate replace to="/login" state={{ from: location }} />;
 
   return (
     <Paper elevation={2} sx={{ p: 2 }}>
-      {loading && <LinearProgress />}
+      {isLoading && <LinearProgress />}
       <Button
         color="info"
         startIcon={<ArrowBackIcon />}
@@ -125,7 +138,7 @@ export default function CommunityBoardPostNew() {
         <Button
           type="submit"
           variant="contained"
-          disabled={!isDirty || !isValid || loading}
+          disabled={!isDirty || !isValid || isLoading}
           sx={{ float: 'right', mb: 3 }}
         >
           {t('Post')}
@@ -135,7 +148,10 @@ export default function CommunityBoardPostNew() {
             <Controller
               name="title"
               control={control}
-              rules={{ required: true }}
+              rules={{
+                required: true,
+                maxLength: { value: 150, message: t('Too many characters') },
+              }}
               render={({ field, fieldState }) => (
                 <FormControl
                   fullWidth
@@ -147,7 +163,7 @@ export default function CommunityBoardPostNew() {
                   <FilledInput
                     autoFocus
                     size="large"
-                    readOnly={loading}
+                    readOnly={isLoading}
                     {...field}
                   />
                   <FormHelperText>{fieldState.error?.message}</FormHelperText>
@@ -171,16 +187,19 @@ export default function CommunityBoardPostNew() {
                   <FormLabel>{t('Category')}</FormLabel>
                   <Select
                     displayEmpty
-                    disabled={loading}
+                    disabled={isLoading}
                     inputProps={{ 'aria-label': 'Category' }}
                     {...field}
                   >
                     <MenuItem value="">
                       <em>{t('Please select a category')}</em>
                     </MenuItem>
-                    {categories?.map((category) => (
-                      <MenuItem key={category.code} value={category.name}>
-                        {category.name}
+                    {categories.map((category) => (
+                      <MenuItem key={category.value} value={category.value}>
+                        <CircleIcon
+                          sx={{ color: category.color, fontSize: 12, mr: 1 }}
+                        />
+                        {category.getLabel()}
                       </MenuItem>
                     ))}
                   </Select>
@@ -201,7 +220,7 @@ export default function CommunityBoardPostNew() {
                 <RichTextEditor
                   showToolbar
                   ref={quillRef}
-                  readOnly={loading}
+                  readOnly={isLoading}
                   onTextChange={(change) => {
                     if (change?.ops?.[0]?.delete) field.onChange('');
                     else field.onChange(quillRef?.current?.getSemanticHTML());

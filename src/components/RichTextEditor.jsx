@@ -161,7 +161,12 @@ const RichTextEditor = forwardRef(
           ref={containerRef}
           sx={{
             minHeight: readOnly ? 'auto' : 400,
-            '.ql-container': { border: 'none!important' },
+            '.ql-container': {
+              border: 'none!important',
+              '.ql-editor': {
+                minHeight: readOnly ? 'auto' : 400,
+              },
+            },
           }}
         />
       </Box>

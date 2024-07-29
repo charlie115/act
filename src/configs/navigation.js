@@ -22,7 +22,6 @@ const PnLHistory = lazy(() => import('pages/bot/PnLHistory'));
 const Settings = lazy(() => import('pages/bot/Settings'));
 const Triggers = lazy(() => import('pages/bot/Triggers'));
 
-// const Bot = lazy(() => import('pages/Bot'));
 const Home = lazy(() => import('pages/Home'));
 // const Investment = lazy(() => import('pages/Investment'));
 const Login = lazy(() => import('pages/Login'));

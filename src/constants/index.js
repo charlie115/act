@@ -1,3 +1,6 @@
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+
 import i18n from 'configs/i18n';
 
 export const DATE_FORMAT_API_QUERY = "yyyy-MM-dd'T'HH:mm:ss";
@@ -34,6 +37,17 @@ export const DEPOSIT_TYPE = {
   },
 };
 
+export const POST_REACTION_TYPE = {
+  DISLIKE: {
+    value: 'DISLIKE',
+    icon: ThumbDownIcon,
+  },
+  LIKE: {
+    value: 'LIKE',
+    icon: ThumbUpIcon,
+  },
+};
+
 export const REGEX = {
   chatMention: /\B@([\w_]+)/,
   // eslint-disable-next-line no-control-regex
@@ -50,5 +64,8 @@ export const REGEX = {
 export const RIGHT_SIDEBAR_WIDTH = 360;
 
 export const USER_ROLE = {
+  admin: 'ADMIN',
+  internal: 'INTERNAL',
+  user: 'USER',
   visitor: 'VISITOR',
 };

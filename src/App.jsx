@@ -77,6 +77,7 @@ function App() {
                 color: theme.palette.secondary.main,
                 cursor: 'pointer',
                 fontSize: 12,
+                // display: 'block',
               },
             },
           }}

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -12,21 +12,20 @@ import FormControl from '@mui/material/FormControl';
 import FormHelperText from '@mui/material/FormHelperText';
 import LinearProgress from '@mui/material/LinearProgress';
 import LoadingButton from '@mui/lab/LoadingButton';
+import MUILink from '@mui/material/Link';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-import Tooltip from '@mui/material/Tooltip';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import CloseIcon from '@mui/icons-material/Close';
 import CommentIcon from '@mui/icons-material/Comment';
-import FavoriteIcon from '@mui/icons-material/Favorite';
 import PersonIcon from '@mui/icons-material/Person';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-
-import ShowMoreText from 'react-show-more-text';
 
 import { Controller, useForm } from 'react-hook-form';
 
@@ -35,8 +34,10 @@ import { useSelector } from 'react-redux';
 import {
   useGetBoardCommentsQuery,
   useGetBoardPostByIdQuery,
+  useDeleteBoardPostReactionsMutation,
   usePostBoardCommentMutation,
-  usePostBoardPostLikesMutation,
+  usePatchBoardPostReactionsMutation,
+  usePostBoardPostReactionsMutation,
   usePostBoardPostViewsMutation,
 } from 'redux/api/drf/board';
 
@@ -48,32 +49,26 @@ import isNumber from 'lodash/isNumber';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
 
-import CommunityBoardReply, {
-  CommunityBoardReplyForm,
-} from 'components/CommunityBoardReply';
+import CommunityBoardComment from 'components/CommunityBoardComment';
 import RichTextEditor from 'components/RichTextEditor';
 
-function countReplies(comment) {
-  let count = comment?.replies?.length || 0;
-  comment?.replies?.forEach((reply) => {
-    count += countReplies(reply);
-  });
-
-  return count;
-}
+import { POST_REACTION_TYPE } from 'constants';
 
 export default function CommunityBoardPost() {
   const commentInputRef = useRef();
   const quillRef = useRef();
 
+  const location = useLocation();
   const navigate = useNavigate();
   const params = useParams();
 
-  const { user } = useSelector((state) => state.auth);
+  const { loggedin, user } = useSelector((state) => state.auth);
 
   const { t } = useTranslation();
 
   const [addComment, setAddComment] = useState(false);
+
+  const [reaction, setReaction] = useState();
 
   const { control, formState, handleSubmit, reset } = useForm({
     defaultValues: { content: '' },
@@ -90,31 +85,43 @@ export default function CommunityBoardPost() {
   const { data: post } = useGetBoardPostByIdQuery(params?.postId, {
     skip: !params?.postId,
   });
-  const [postLikes] = usePostBoardPostLikesMutation();
+
+  const [deleteReactions] = useDeleteBoardPostReactionsMutation();
+  const [patchReactions] = usePatchBoardPostReactionsMutation();
+  const [postReactions] = usePostBoardPostReactionsMutation();
   const [postViews] = usePostBoardPostViewsMutation();
 
   const [createComment, { isLoading, isSuccess }] =
     usePostBoardCommentMutation();
 
-  const [expandReplies, setExpandReplies] = useState({});
-
-  const onSubmit = (data) => {
-    createComment({ user: user.uuid, post: params?.postId, ...data });
+  const onPostReaction = (e, newReaction) => {
+    if (post.user_reaction) {
+      if (newReaction)
+        patchReactions({ id: post.user_reaction.id, reaction: newReaction });
+      else deleteReactions(post.user_reaction.id);
+    } else
+      postReactions({ post: post.id, user: user.uuid, reaction: newReaction });
   };
 
-  const postComments = useMemo(
-    () =>
-      comments?.map((comment) => {
-        const noOfReplies = countReplies(comment);
-        return { ...comment, noOfReplies };
-      }),
-    [comments]
-  );
+  const onSubmit = (data) => {
+    createComment({ author: user?.uuid, post: params?.postId, ...data });
+  };
 
   useEffect(() => {
-    if (isNumber(post?.id) && !post?.viewed)
-      postViews({ post: post.id, user: user.uuid });
+    if (user && isNumber(post?.id)) {
+      if (post.user_view) {
+        const lastView = DateTime.fromISO(post.user_view).setZone('Asia/Seoul');
+        if (lastView < DateTime.now().setZone('Asia/Seoul').startOf('day'))
+          postViews({ post: post.id, user: user.uuid });
+      } else postViews({ post: post.id, user: user.uuid });
+    }
   }, [post?.id, user]);
+
+  useEffect(() => {
+    if (post?.user_reaction)
+      setReaction(POST_REACTION_TYPE[post.user_reaction.reaction].value);
+    else setReaction();
+  }, [post?.user_reaction]);
 
   useEffect(() => {
     if (post?.content) {
@@ -138,7 +145,7 @@ export default function CommunityBoardPost() {
       <Button
         color="info"
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate(-1)}
+        onClick={() => navigate('/community-board')}
       >
         {t('Back')}
       </Button>
@@ -154,7 +161,7 @@ export default function CommunityBoardPost() {
           <Box>
             <Stack alignItems="center" direction="row" spacing={0.5}>
               <PersonIcon fontSize="small" />
-              <Box>{post?.user_profile?.username}</Box>
+              <Box>{post?.author_profile?.username}</Box>
             </Stack>
             <Box component="small" sx={{ color: 'secondary.main' }}>
               {DateTime.fromISO(post?.date_created).toLocaleString(
@@ -162,22 +169,7 @@ export default function CommunityBoardPost() {
               )}
             </Box>
           </Box>
-          <Button
-            color="error"
-            variant="contained"
-            disabled={!post?.id || post?.liked}
-            endIcon={<FavoriteIcon />}
-            onClick={() => postLikes({ post: post?.id, user: user.uuid })}
-            sx={{ px: 4 }}
-          >
-            {post?.liked ? t('Liked') : t('Like')}
-          </Button>
           <Stack alignItems="center" direction="row" spacing={1}>
-            <Box>
-              <ThumbUpIcon sx={{ fontSize: 11.5 }} />{' '}
-              {formatIntlNumber(post.likes)}
-            </Box>
-            <Divider orientation="vertical" flexItem />
             <Box>
               <CommentIcon sx={{ fontSize: 11.5 }} />{' '}
               {formatIntlNumber(post.comments)}
@@ -187,26 +179,70 @@ export default function CommunityBoardPost() {
               <VisibilityIcon sx={{ fontSize: 11.5 }} />{' '}
               {formatIntlNumber(post.views)}
             </Box>
+            <Divider orientation="vertical" flexItem />
+            <Box>
+              <ThumbUpIcon sx={{ fontSize: 11.5 }} />{' '}
+              {formatIntlNumber(post.likes)}
+            </Box>
+            <Box>
+              <ThumbDownIcon sx={{ fontSize: 11.5 }} />{' '}
+              {formatIntlNumber(post.dislikes)}
+            </Box>
+            {loggedin && (
+              <ToggleButtonGroup
+                exclusive
+                color="secondary"
+                size="small"
+                value={reaction}
+                onChange={onPostReaction}
+                sx={{ margin: '0 0 0 24px!important' }}
+              >
+                {['LIKE', 'DISLIKE'].map((value) => {
+                  const { icon: Icon } = POST_REACTION_TYPE[value];
+                  return (
+                    <ToggleButton key={value} value={value} aria-label={value}>
+                      <Icon
+                        color={value === reaction ? 'primary' : undefined}
+                        sx={{ fontSize: 16 }}
+                      />
+                    </ToggleButton>
+                  );
+                })}
+              </ToggleButtonGroup>
+            )}
           </Stack>
         </Stack>
         <Card sx={{ clear: 'both', my: 2, p: { sm: 2, md: 4 } }}>
           <RichTextEditor readOnly ref={quillRef} />
         </Card>
         <Divider sx={{ my: 2 }} />
-        <Typography variant="h6">
+        <Typography variant="h6" sx={{ display: 'inline', mr: 1 }}>
           {t('Comments')} ({formatIntlNumber(post.comments)})
-          <Button
-            disableRipple
-            color="info"
-            size="small"
-            variant={addComment ? 'contained' : 'outlined'}
-            endIcon={addComment ? <CloseIcon /> : <AddIcon />}
-            sx={{ mx: 2, p: 0.25 }}
-            onClick={() => setAddComment((state) => !state)}
-          >
-            {t('Add')}
-          </Button>
         </Typography>
+        {loggedin ? (
+          !addComment && (
+            <Button
+              disableRipple
+              color="info"
+              size="small"
+              variant="outlined"
+              endIcon={<AddIcon />}
+              sx={{ p: 0.25 }}
+              onClick={() => setAddComment(true)}
+            >
+              {t('Add')}
+            </Button>
+          )
+        ) : (
+          <MUILink
+            component={Link}
+            to="/login"
+            state={{ from: location }}
+            sx={{ fontStyle: 'italic' }}
+          >
+            {t('Login to leave a comment')}
+          </MUILink>
+        )}
         <Collapse in={addComment}>
           <Box
             component="form"
@@ -224,90 +260,37 @@ export default function CommunityBoardPost() {
                     autoFocus
                     multiline
                     inputRef={commentInputRef}
-                    rows={2}
+                    rows={3}
                     size="large"
-                    // readOnly={isLoading}
-                    sx={{ my: 2, py: 2 }}
+                    readOnly={isLoading}
+                    sx={{ my: 2, py: 0 }}
                     {...field}
                   />
                   <FormHelperText>{fieldState.error?.message}</FormHelperText>
                 </FormControl>
               )}
             />
+            <Button onClick={() => setAddComment(false)} sx={{ mr: 2 }}>
+              {t('Cancel')}
+            </Button>
             <LoadingButton
               type="submit"
               variant="contained"
               disabled={!isDirty || !isValid}
               loading={isLoading}
             >
-              {t('Leave Comment')}
+              {t('Add Comment')}
             </LoadingButton>
           </Box>
         </Collapse>
-        {postComments?.map((comment) => (
+        {comments?.map((comment) => (
           <Card key={comment.id} sx={{ mt: 2 }}>
-            <Stack
-              alignItems="center"
-              direction="row"
-              spacing={1}
-              sx={{ p: 1 }}
-            >
-              <PersonIcon sx={{ fontSize: 14 }} />
-              <Box component="small" sx={{ fontWeight: 700 }}>
-                {comment.user_profile?.username}
-              </Box>
-              <Divider orientation="vertical" flexItem />
-              <Tooltip
-                placement="top"
-                title={DateTime.fromISO(comment.date_created).toLocaleString(
-                  DateTime.DATETIME_MED
-                )}
-              >
-                <Box
-                  component="small"
-                  sx={{ color: 'secondary.main', cursor: 'pointer' }}
-                >
-                  {DateTime.fromISO(comment.date_created).toRelativeCalendar()}
-                </Box>
-              </Tooltip>
-            </Stack>
-            <Divider />
-            <Box sx={{ p: 2 }}>
-              <ShowMoreText
-                lines={3}
-                more={t('Show more')}
-                less={t('Show less')}
-                anchorClass="show-more-or-less"
-              >
-                <Typography gutterBottom>{comment.content}</Typography>
-              </ShowMoreText>
-              <CommunityBoardReplyForm
-                parent={comment}
-                post={post}
-                user={user}
-                onExpandReplies={() =>
-                  setExpandReplies((state) => ({
-                    ...state,
-                    [comment.id]: state[comment.id] ? undefined : true,
-                  }))
-                }
-                onSuccess={() =>
-                  setExpandReplies((state) => ({
-                    ...state,
-                    [comment.id]: true,
-                  }))
-                }
-              />
-              {expandReplies[comment.id] &&
-                comment.replies?.map((reply) => (
-                  <CommunityBoardReply
-                    key={reply.id}
-                    post={post}
-                    reply={reply}
-                    user={user}
-                  />
-                ))}
-            </Box>
+            <CommunityBoardComment
+              isParentComment
+              post={post}
+              comment={comment}
+              user={user}
+            />
           </Card>
         ))}
       </Box>

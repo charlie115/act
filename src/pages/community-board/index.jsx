@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -22,9 +22,6 @@ export default function CommunityBoard() {
 
   const { loggedin } = useSelector((state) => state.auth);
 
-  if (!loggedin)
-    return <Navigate replace to="/login" state={{ from: location }} />;
-
   if (location.pathname.includes('post'))
     return (
       <Box sx={{ flex: 1, p: 2 }}>
@@ -35,18 +32,20 @@ export default function CommunityBoard() {
   return (
     <Box sx={{ flex: 1, p: 2 }}>
       <Paper elevation={2} sx={{ minHeight: '100%', p: 2 }}>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() =>
-            navigate('/community-board/post/new', {
-              state: { from: location },
-            })
-          }
-          sx={{ mb: 4 }}
-        >
-          {t('New')}
-        </Button>
+        {loggedin && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() =>
+              navigate('/community-board/post/new', {
+                state: { from: location },
+              })
+            }
+            sx={{ mb: 4 }}
+          >
+            {t('New')}
+          </Button>
+        )}
         <CommunityBoardPostsTable />
       </Paper>
     </Box>

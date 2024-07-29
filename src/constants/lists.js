@@ -3,6 +3,7 @@ import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 
 import i18n from 'configs/i18n';
+import colors from 'configs/theme/colors';
 
 import BinanceSvg from 'assets/svg/binance.svg';
 import BithumbSvg from 'assets/svg/bithumb.svg';
@@ -44,6 +45,12 @@ export const CHART_DATA_TYPE = [
     getLabel: () => i18n.t('Funding Rate Difference'),
     value: 'FRD',
   },
+  // {
+  //   getKimpLabel: () => i18n.t('Avg Funding Rate Difference'),
+  //   getTetherLabel: () => i18n.t('Avg Funding Rate Difference'),
+  //   getLabel: () => i18n.t('Avg Funding Rate Difference'),
+  //   value: 'AFRD',
+  // },
 ];
 
 export const EXCHANGE_LIST = [
@@ -223,6 +230,34 @@ export const PERIOD_LIST = [
   { value: 'day', getLabel: () => i18n.t('Daily') },
   { value: 'week', getLabel: () => i18n.t('Weekly') },
   { value: 'month', getLabel: () => i18n.t('Monthly') },
+];
+
+export const POST_CATEGORY_LIST = [
+  {
+    color: colors.error.main,
+    value: 'Announcement',
+    getLabel: () => i18n.t('Announcement'),
+  },
+  {
+    color: colors.purple['600'],
+    value: 'Freewriting',
+    getLabel: () => i18n.t('Freewriting'),
+  },
+  {
+    color: colors.accent.main,
+    value: 'Question',
+    getLabel: () => i18n.t('Question'),
+  },
+  {
+    color: colors.teal['600'],
+    value: 'Investment Strategy',
+    getLabel: () => i18n.t('Investment Strategy'),
+  },
+  {
+    color: colors.info.main,
+    value: 'Information',
+    getLabel: () => i18n.t('Information'),
+  },
 ];
 
 export const TRADING_VIEW_TICKER_SYMBOLS = [
