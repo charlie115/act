@@ -209,7 +209,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     def get_fields(self):
         fields = super(CommentSerializer, self).get_fields()
-        fields["replies"] = CommentSerializer(many=True)
+        fields["replies"] = CommentSerializer(many=True, read_only=True)
         return fields
 
     def get_likes(self, obj):
