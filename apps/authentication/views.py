@@ -64,6 +64,7 @@ class AuthGoogleLoginView(SocialLoginView):
         )
 
         auth_logs_today = UserAuthLog.objects.filter(
+            user=self.user,
             endpoint="/login/",
             date_logged__gte=today_start,
             date_logged__lte=today_end,
