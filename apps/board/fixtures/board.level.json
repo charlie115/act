@@ -1,0 +1,242 @@
+[
+{
+    "model": "board.level",
+    "pk": 1,
+    "fields": {
+        "level": 1,
+        "points": 0
+    }
+},
+{
+    "model": "board.level",
+    "pk": 2,
+    "fields": {
+        "level": 2,
+        "points": 100
+    }
+},
+{
+    "model": "board.level",
+    "pk": 3,
+    "fields": {
+        "level": 3,
+        "points": 200
+    }
+},
+{
+    "model": "board.level",
+    "pk": 4,
+    "fields": {
+        "level": 4,
+        "points": 300
+    }
+},
+{
+    "model": "board.level",
+    "pk": 5,
+    "fields": {
+        "level": 5,
+        "points": 400
+    }
+},
+{
+    "model": "board.level",
+    "pk": 6,
+    "fields": {
+        "level": 6,
+        "points": 500
+    }
+},
+{
+    "model": "board.level",
+    "pk": 7,
+    "fields": {
+        "level": 7,
+        "points": 600
+    }
+},
+{
+    "model": "board.level",
+    "pk": 8,
+    "fields": {
+        "level": 8,
+        "points": 700
+    }
+},
+{
+    "model": "board.level",
+    "pk": 9,
+    "fields": {
+        "level": 9,
+        "points": 800
+    }
+},
+{
+    "model": "board.level",
+    "pk": 10,
+    "fields": {
+        "level": 10,
+        "points": 900
+    }
+},
+{
+    "model": "board.level",
+    "pk": 11,
+    "fields": {
+        "level": 11,
+        "points": 1000
+    }
+},
+{
+    "model": "board.level",
+    "pk": 12,
+    "fields": {
+        "level": 12,
+        "points": 1100
+    }
+},
+{
+    "model": "board.level",
+    "pk": 13,
+    "fields": {
+        "level": 13,
+        "points": 1200
+    }
+},
+{
+    "model": "board.level",
+    "pk": 14,
+    "fields": {
+        "level": 14,
+        "points": 1300
+    }
+},
+{
+    "model": "board.level",
+    "pk": 15,
+    "fields": {
+        "level": 15,
+        "points": 1400
+    }
+},
+{
+    "model": "board.level",
+    "pk": 16,
+    "fields": {
+        "level": 16,
+        "points": 1500
+    }
+},
+{
+    "model": "board.level",
+    "pk": 17,
+    "fields": {
+        "level": 17,
+        "points": 1600
+    }
+},
+{
+    "model": "board.level",
+    "pk": 18,
+    "fields": {
+        "level": 18,
+        "points": 1700
+    }
+},
+{
+    "model": "board.level",
+    "pk": 19,
+    "fields": {
+        "level": 19,
+        "points": 1800
+    }
+},
+{
+    "model": "board.level",
+    "pk": 20,
+    "fields": {
+        "level": 20,
+        "points": 1900
+    }
+},
+{
+    "model": "board.level",
+    "pk": 21,
+    "fields": {
+        "level": 21,
+        "points": 2000
+    }
+},
+{
+    "model": "board.level",
+    "pk": 22,
+    "fields": {
+        "level": 22,
+        "points": 2100
+    }
+},
+{
+    "model": "board.level",
+    "pk": 23,
+    "fields": {
+        "level": 23,
+        "points": 2200
+    }
+},
+{
+    "model": "board.level",
+    "pk": 24,
+    "fields": {
+        "level": 24,
+        "points": 2300
+    }
+},
+{
+    "model": "board.level",
+    "pk": 25,
+    "fields": {
+        "level": 25,
+        "points": 2400
+    }
+},
+{
+    "model": "board.level",
+    "pk": 26,
+    "fields": {
+        "level": 26,
+        "points": 2500
+    }
+},
+{
+    "model": "board.level",
+    "pk": 27,
+    "fields": {
+        "level": 27,
+        "points": 2600
+    }
+},
+{
+    "model": "board.level",
+    "pk": 28,
+    "fields": {
+        "level": 28,
+        "points": 2700
+    }
+},
+{
+    "model": "board.level",
+    "pk": 29,
+    "fields": {
+        "level": 29,
+        "points": 2800
+    }
+},
+{
+    "model": "board.level",
+    "pk": 30,
+    "fields": {
+        "level": 30,
+        "points": 2900
+    }
+}
+]

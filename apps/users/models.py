@@ -176,6 +176,24 @@ class UserProfile(models.Model):
         verbose_name = "User Profile"
 
 
+class UserAuthLog(models.Model):
+    """Logs everytime a user uses authentication.
+
+    Currently used for board level purposes where we track when a user logs in for the day.
+    But model might be useful in the future so I'll just use endpoint column for future purposes.
+
+    Naming followed from django_admin_log table.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.DO_NOTHING,
+        related_name="auth_logs",
+    )
+    endpoint = models.CharField(max_length=50)
+    date_logged = models.DateTimeField(default=now)
+
+
 class UserFavoriteAssets(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

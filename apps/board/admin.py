@@ -10,10 +10,12 @@ from board.models import (
     PostImage,
     PostReactions,
     Comment,
+    Level,
+    UserLevels,
 )
 
 
-class LevelsAdmin(ModelAdmin):
+class LevelAdmin(ModelAdmin):
     list_display = ["id", "level", "points"]
     search_fields = ["level", "points"]
     ordering = ["level"]
@@ -199,10 +201,6 @@ class CommentAdmin(ModelAdmin):
         "id",
         "get_content_preview",
     ]
-    list_display_links = [
-        "id",
-        "get_content_preview",
-    ]
     search_fields = [
         "user__uuid",
         "user__email",
@@ -252,5 +250,7 @@ class CommentAdmin(ModelAdmin):
         return False
 
 
+admin.site.register(Level, LevelAdmin)
+admin.site.register(UserLevels, UserLevelsAdmin)
 admin.site.register(Post, PostAdmin)
 admin.site.register(Comment, CommentAdmin)

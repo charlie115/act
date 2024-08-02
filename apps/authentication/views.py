@@ -6,6 +6,7 @@ from allauth.socialaccount import providers
 from allauth.socialaccount.models import SocialLogin
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from allauth.socialaccount.providers.telegram.provider import TelegramProvider
+from datetime import datetime, timedelta
 from django.conf import settings
 from dj_rest_auth.registration.views import SocialLoginView
 from dj_rest_auth.views import (
@@ -21,9 +22,11 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import exceptions, permissions, response
 from rest_framework_simplejwt.views import TokenVerifyView
 
+from lib.datetime import TZ_ASIA_SEOUL
 from authentication.adapters import CustomGoogleOAuth2Adapter
+from board.models import UserLevels
 from socialaccounts.models import ProxySocialAccount
-from users.models import User, UserRole, UserSocialApps
+from users.models import User, UserRole, UserSocialApps, UserAuthLog
 from users.serializers import UserSerializer
 
 
@@ -38,6 +41,35 @@ class AuthGoogleLoginView(SocialLoginView):
     adapter_class = CustomGoogleOAuth2Adapter
     client_class = OAuth2Client
     http_method_names = ["post"]
+
+    def process_login(self):
+        super().process_login()
+
+        # Log
+        UserAuthLog.objects.create(user=self.user, endpoint="/login/")
+
+        # Check if User has logged in today and add points to community_level
+        today = datetime.now(tz=TZ_ASIA_SEOUL)
+        today_start = today.replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+        today_end = today.replace(
+            hour=23,
+            minute=59,
+            second=59,
+            microsecond=timedelta.max.microseconds,
+        )
+
+        auth_logs_today = UserAuthLog.objects.filter(
+            endpoint="/login/",
+            date_logged__gte=today_start,
+            date_logged__lte=today_end,
+        )
+        if len(auth_logs_today) == 1:  # first login
+            UserLevels().update_level(user=self.user, points=UserLevels.LOGIN_POINTS)
 
 
 @extend_schema(tags=["Auth"])
@@ -110,6 +142,12 @@ class AuthTelegramLoginView(LoginView):
 
         return response.Response(response_data)
 
+    def process_login(self):
+        super().process_login()
+
+        # Log
+        UserAuthLog.objects.create(user=self.user, endpoint="/login/telegram/")
+
 
 @extend_schema(tags=["Auth"])
 @extend_schema_view(
@@ -121,6 +159,12 @@ class AuthTelegramLoginView(LoginView):
 )
 class AuthBasicLoginView(LoginView):
     http_method_names = ["post"]
+
+    def process_login(self):
+        super().process_login()
+
+        # Log
+        UserAuthLog.objects.create(user=self.user, endpoint="/login/basic/")
 
 
 @extend_schema(tags=["Auth"])

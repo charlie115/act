@@ -7,6 +7,7 @@ python manage.py migrate --settings=config.settings.test --database=messagecore
 echo "Loading fixtures..."
 python manage.py loaddata infocore.marketcode.json
 python manage.py loaddata fee.feerate.json
+python manage.py loaddata board.level.json
 
 echo "Starting server.."
 python manage.py runserver --settings=config.settings.test 0.0.0.0:8000

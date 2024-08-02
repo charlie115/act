@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
@@ -88,6 +89,21 @@ class PostReactions(models.Model):
     reaction = models.CharField(choices=Reactions, default=LIKE)
     date_updated = models.DateTimeField(_("date updated"), default=now)
 
+    def save(self, *args, **kwargs):
+        super(PostReactions, self).save(*args, **kwargs)
+
+        if self.reaction == PostReactions.LIKE:
+            UserLevels().update_level(
+                user=self.post.user,
+                points=UserLevels.LIKE_POINTS,
+            )
+
+        if self.reaction == PostReactions.DISLIKE:
+            UserLevels().update_level(
+                user=self.post.user,
+                points=UserLevels.DISLIKE_POINTS,
+            )
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -136,6 +152,21 @@ class CommentReactions(models.Model):
     reaction = models.CharField(choices=Reactions, default=LIKE)
     date_updated = models.DateTimeField(_("date updated"), default=now)
 
+    def save(self, *args, **kwargs):
+        super(CommentReactions, self).save(*args, **kwargs)
+
+        if self.reaction == CommentReactions.LIKE:
+            UserLevels().update_level(
+                user=self.comment.user,
+                points=UserLevels.LIKE_POINTS,
+            )
+
+        if self.reaction == CommentReactions.DISLIKE:
+            UserLevels().update_level(
+                user=self.comment.user,
+                points=UserLevels.DISLIKE_POINTS,
+            )
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -144,3 +175,70 @@ class CommentReactions(models.Model):
             )
         ]
         verbose_name_plural = "Comment Reactions"
+
+
+class Level(models.Model):
+    level = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(30)],
+    )
+    points = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(3000)],
+    )
+
+    def __str__(self):
+        return f"Level {self.level}"
+
+
+class UserLevels(models.Model):
+    LOGIN_POINTS = 5
+    LIKE_POINTS = 1
+    DISLIKE_POINTS = -1
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="community_level",
+    )
+    community_level = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(30)],
+    )
+    total_points = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(3000)],
+    )
+    last_updated_datetime = models.DateTimeField(
+        default=now
+    )  # just following fee level naming...
+
+    def update_level(self, user, points=1):
+        # Get or create User community_level
+        try:
+            user_community_level = UserLevels.objects.get(user=user)
+        except UserLevels.DoesNotExist:
+            user_community_level = UserLevels.objects.create(user=user)
+
+        user_community_level.total_points += points
+
+        # Get User's new level based on the updated points
+        if user_community_level.total_points < 0:
+            community_level = Level.objects.get(points__lte=0)
+        else:
+            community_level = Level.objects.filter(
+                points__lte=user_community_level.total_points
+            ).last()
+
+        # Set User's new community_level
+        user_community_level.community_level = community_level.level
+        user_community_level.last_updated_datetime = now()
+        user_community_level.save()
+
+    def __str__(self):
+        return (
+            f"{self.user.email}: level {self.community_level} ({self.total_points} pts)"
+        )
+
+    class Meta:
+        verbose_name_plural = "Levels"

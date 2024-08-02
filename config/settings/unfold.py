@@ -273,6 +273,8 @@ UNFOLD = {
         },
         {
             "models": [
+                "board.level",
+                "board.userlevels",
                 "board.post",
                 "board.comment",
             ],
@@ -284,6 +286,14 @@ UNFOLD = {
                 {
                     "title": _("Comments"),
                     "link": reverse_lazy("admin:board_comment_changelist"),
+                },
+                {
+                    "title": _("Levels"),
+                    "link": reverse_lazy("admin:board_level_changelist"),
+                },
+                {
+                    "title": _("User Levels"),
+                    "link": reverse_lazy("admin:board_userlevels_changelist"),
                 },
             ],
         },

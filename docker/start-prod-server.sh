@@ -7,6 +7,7 @@ python manage.py migrate --settings=config.settings.prod --database=messagecore
 echo "Loading fixtures..."
 python manage.py loaddata infocore.marketcode.json
 python manage.py loaddata fee.feerate.json
+python manage.py loaddata board.level.json
 
 echo "Running collectstatic..."
 python manage.py collectstatic --settings=config.settings.prod --noinput
