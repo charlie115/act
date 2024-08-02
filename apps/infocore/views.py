@@ -317,7 +317,7 @@ class FundingRateDataView(views.APIView):
         data = self.get_data(
             market_code=query.get("market_code", ""),
             base_assets=query.get("base_asset", ""),
-            past=query.get("past", ""),
+            last_n=query.get("last_n", None),
             start_funding_time=query.get("start_funding_time", None),
             end_funding_time=query.get("end_funding_time", None),
             tz=query.get("tz"),
@@ -326,7 +326,7 @@ class FundingRateDataView(views.APIView):
         return response.Response(data)
 
     def get_data(
-        self, market_code, base_assets, past, start_funding_time, end_funding_time, tz
+        self, market_code, base_assets, last_n, start_funding_time, end_funding_time, tz
     ):
         try:
             market_code, quote_asset = market_code.split("/")
@@ -383,8 +383,8 @@ class FundingRateDataView(views.APIView):
                 by="datetime_now"
             )
 
-            if not past:
-                base_asset_data = base_asset_data.tail(1)
+            if last_n != -1:
+                base_asset_data = base_asset_data.tail(last_n)
 
             base_asset_data = base_asset_data.to_dict(orient="records")
 

@@ -94,14 +94,25 @@ class KlineVolatilitySerializer(serializers.Serializer):
 class FundingRateDataQueryParamsSerializer(serializers.Serializer):
     market_code = serializers.CharField(required=True)
     base_asset = CharacterSeparatedField()
-    past = serializers.BooleanField(default=False)
+    last_n = serializers.IntegerField(
+        default=1,
+        required=False,
+        help_text="Returns only the last n from the queried data."
+        "-1 will return everything from the queried data.",
+    )
     start_funding_time = serializers.DateTimeField(
         required=False,
         input_formats=[DATE_TIME_FORMAT],
+        help_text="If start/end funding time is provided, "
+        "initial queried data will be limited to that date range."
+        "Otherwise, whole data will be queried.",
     )
     end_funding_time = serializers.DateTimeField(
         required=False,
         input_formats=[DATE_TIME_FORMAT],
+        help_text="If start/end funding time is provided, "
+        "initial queried data will be limited to that date range."
+        "Otherwise, whole data will be queried.",
     )
     tz = TimezoneField(default=UTC)
 
