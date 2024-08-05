@@ -20,7 +20,7 @@ export default function BrandLogo({ onClick, size = 140, sx }) {
         component="img"
         src={noBgLogo}
         alt="ArbiCrypto"
-        sx={{ width: size, mr: 0.5 }}
+        sx={{ width: { xs: size * 0.7, md: size }, mr: 0.5 }}
       />
       <Box
         component="small"

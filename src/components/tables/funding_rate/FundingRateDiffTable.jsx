@@ -317,7 +317,7 @@ export default function FundingRateDiffTable() {
         </TableRow>
         {row.getIsExpanded() && renderSubComponent && (
           <TableRow key={`${row.id}-expand-panel`}>
-            <TableCell colSpan={row.getVisibleCells().length}>
+            <TableCell colSpan={row.getVisibleCells().length} sx={{ p: 0 }}>
               {renderSubComponent({ row, meta: table.options.meta })}
             </TableCell>
           </TableRow>
@@ -331,6 +331,7 @@ export default function FundingRateDiffTable() {
     ({ row, meta }) => (
       <Box>
         <PremiumDataChartViewer
+          showAvgFundingRateDiff
           showFundingRate
           showFundingRateDiff
           showMarketCodes

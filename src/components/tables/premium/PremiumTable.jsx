@@ -25,6 +25,7 @@ import {
 import {
   useGetAssetsQuery,
   useGetFundingRateQuery,
+  useGetKlineVolatilityQuery,
   useGetWalletStatusQuery,
   usePostAssetMutation,
 } from 'redux/api/drf/infocore';
@@ -61,6 +62,7 @@ import renderPremiumCell from './renderPremiumCell';
 import renderPriceCell from './renderPriceCell';
 import renderSpreadCell from './renderSpreadCell';
 import renderStarCell from './renderStarCell';
+import renderVolatilityCell from './renderVolatilityCell';
 import renderVolumeCell from './renderVolumeCell';
 import renderWalletStatusCell from './renderWalletStatusCell';
 
@@ -170,6 +172,11 @@ function PremiumTable({
       }
     );
 
+  const { data: klineVolatilityData } = useGetKlineVolatilityQuery(
+    { baseAsset: assetsParam, ...marketCodesParam },
+    { skip: !ready || !assetsParam || !marketCodesParam }
+  );
+
   const [createFavoriteAsset, createFavoriteRes] =
     useCreateFavoriteAssetMutation();
   const [deleteFavoriteAsset, deleteFavoriteRes] =
@@ -259,6 +266,13 @@ function PremiumTable({
         header: t('Spread'),
         cell: renderSpreadCell,
       },
+      {
+        accessorKey: 'volatility',
+        enableGlobalFilter: false,
+        size: 50,
+        header: t('Volatility'),
+        cell: renderVolatilityCell,
+      },
       ...(!marketCodes?.targetMarketCode.includes('SPOT')
         ? [
             {
@@ -340,11 +354,16 @@ function PremiumTable({
             ),
           };
 
+          const volatility = klineVolatilityData?.find(
+            (o) => o.base_asset === name
+          )?.volatility_index;
+
           return {
             name,
             favoriteAssetId,
             icon: assetsData?.[name]?.icon,
             spread: asset ? asset.SL_close - asset.LS_close : '',
+            volatility,
             ...(targetFR
               ? {
                   targetFundingRate: targetFR.funding_rate * 100,
@@ -372,6 +391,7 @@ function PremiumTable({
       targetFundingRate,
       originFundingRate,
       walletStatus,
+      klineVolatilityData,
       assetsData,
       favoriteAssets,
       localFavoriteAssets,

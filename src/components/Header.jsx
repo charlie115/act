@@ -70,7 +70,7 @@ export default function Header() {
   return (
     // <AppBar position="sticky" sx={{ bgcolor: 'dark.light' }}>
     //   <Container maxWidth="xxl">
-    <Toolbar>
+    <Toolbar sx={{ maxHeight: 65.6 }}>
       <Box
         sx={{
           alignItems: 'center',
@@ -128,16 +128,18 @@ export default function Header() {
             key={page.name}
             active={page.path === currentRoute?.path}
             onClick={() => navigate(page.path)}
-            sx={{ ml: 1, my: 2, px: 1 }}
+            sx={{ fontSize: { md: 11, lg: '1em' }, ml: 1, my: 2, px: 1 }}
           >
             {page?.getTitle()}
           </MenuButton>
         ))}
       </Box>
       <Stack
+        useFlexGap
+        flexWrap="wrap"
         direction="row"
         spacing={{ xs: 1, sm: 2 }}
-        sx={{ alignItems: 'center' }}
+        sx={{ alignItems: 'center', justifyContent: 'end' }}
       >
         {loggedin && <DepositBalance />}
         <LanguageSelector />

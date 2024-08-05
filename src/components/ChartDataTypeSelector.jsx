@@ -26,8 +26,10 @@ const ToggleBtn = styled(ToggleButton)(() => ({
 function ChartDataTypeSelector({
   defaultValue,
   disabled,
+  isFundingRateValid,
   isKimpExchange,
   isTetherPriceView,
+  showAvgFundingRateDiff,
   showFundingRate,
   showFundingRateDiff,
   onChange,
@@ -55,15 +57,23 @@ function ChartDataTypeSelector({
       CHART_DATA_TYPE.filter((datum) => {
         if (!showFundingRate && datum.value === 'FR') return false;
         if (!showFundingRateDiff && datum.value === 'FRD') return false;
+        if (!showAvgFundingRateDiff && datum.value === 'AFRD') return false;
         return true;
       }).map((datum) => ({
         ...datum,
         label: isKimpExchange
           ? [isTetherPriceView ? datum.getTetherLabel() : datum.getKimpLabel()]
           : datum.getLabel(),
+        disabled: datum.value === 'AFRD' && !isFundingRateValid,
       }))
     );
-  }, [i18n.language, isKimpExchange, isTetherPriceView, showFundingRate]);
+  }, [
+    i18n.language,
+    isFundingRateValid,
+    isKimpExchange,
+    isTetherPriceView,
+    showFundingRate,
+  ]);
 
   if (chartData.length === 0) return null;
 

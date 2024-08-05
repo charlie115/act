@@ -23,10 +23,14 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 import { useTheme } from '@mui/material/styles';
 
+import { useGetFundingRateQuery } from 'redux/api/drf/infocore';
 import { useGetRealTimeKlineQuery } from 'redux/api/websocket/kline';
 import { useSelector } from 'react-redux';
 
 import isUndefined from 'lodash/isUndefined';
+import orderBy from 'lodash/orderBy';
+
+import { DateTime } from 'luxon';
 
 import { useTranslation } from 'react-i18next';
 
@@ -37,6 +41,7 @@ import IntervalSelector from 'components/IntervalSelector';
 import { MARKET_CODE_LIST } from 'constants/lists';
 import { USER_ROLE } from 'constants';
 
+import LightWeightAvgFundingRateDiffChart from 'components/charts/LightWeightAvgFundingRateDiffChart';
 import LightWeightPremiumKlineChart from 'components/charts/LightWeightPremiumKlineChart';
 import LightWeightFundingRateChart from 'components/charts/LightWeightFundingRateChart';
 import LightWeightFundingRateDiffChart from 'components/charts/LightWeightFundingRateDiffChart';
@@ -55,6 +60,7 @@ const PremiumDataChartViewer = forwardRef(
       onRemoveFavoriteAsset,
       queryKey,
       showExchangeWallets,
+      showAvgFundingRateDiff,
       showFundingRate,
       showFundingRateDiff,
       showMarketCodes,
@@ -68,6 +74,8 @@ const PremiumDataChartViewer = forwardRef(
       walletNetworks,
       walletStatus,
     } = baseAssetData;
+
+    const { timezone: tz } = useSelector((state) => state.app);
 
     const { loggedin, user } = useSelector((state) => state.auth);
     const isAuthorized = loggedin && user.role !== USER_ROLE.visitor;
@@ -96,6 +104,8 @@ const PremiumDataChartViewer = forwardRef(
     const [disabledChartDataType, setDisabledChartDataType] = useState();
 
     const [subtrahend, setSubtrahend] = useState('origin');
+
+    const [isFundingRateValid, setIsFundingRateValid] = useState(false);
 
     const { targetMarketCode, originMarketCode } = useMemo(
       () => ({
@@ -130,6 +140,25 @@ const PremiumDataChartViewer = forwardRef(
       { skip: !marketCodes }
     );
 
+    const { data: apiTargetData } = useGetFundingRateQuery(
+      {
+        baseAsset,
+        tz,
+        marketCode: marketCodes.targetMarketCode,
+        lastN: 3,
+      },
+      { skip: !showAvgFundingRateDiff }
+    );
+    const { data: apiOriginData } = useGetFundingRateQuery(
+      {
+        baseAsset,
+        tz,
+        marketCode: marketCodes.originMarketCode,
+        lastN: 3,
+      },
+      { skip: !showAvgFundingRateDiff }
+    );
+
     useEffect(() => {
       const value = marketCodes?.targetMarketCode;
       setTitle(`${baseAsset} / ${value?.split('/').pop()}`);
@@ -151,7 +180,8 @@ const PremiumDataChartViewer = forwardRef(
     }, [data?.[baseAsset]?.tp, chartDataType, defaultDisabledChartDataType]);
 
     useEffect(() => {
-      if (chartDataType === 'FRD') setSubtrahend('origin');
+      if (chartDataType === 'FRD' || chartDataType === 'AFRD')
+        setSubtrahend('origin');
       else setSubtrahend();
     }, [chartDataType]);
 
@@ -163,6 +193,33 @@ const PremiumDataChartViewer = forwardRef(
       if (defaultDisabledChartDataType)
         setDisabledChartDataType(defaultDisabledChartDataType);
     }, [defaultDisabledChartDataType]);
+
+    useEffect(() => {
+      if (apiTargetData?.[baseAsset] && apiOriginData?.[baseAsset]) {
+        const fundingRateData = {};
+        apiTargetData?.[baseAsset]?.forEach((target) => {
+          if (!fundingRateData[target.funding_time]) {
+            const origin = apiOriginData?.[baseAsset]?.find(
+              (o) => o.funding_time === target.funding_time
+            );
+            if (origin)
+              fundingRateData[target.funding_time] = {
+                target,
+                origin,
+              };
+          }
+        });
+        const isValid = orderBy(
+          Object.keys(fundingRateData ?? {}),
+          (o) => DateTime.fromISO(o).toMillis(),
+          'asc'
+        ).reduce((acc, value) => {
+          const { target, origin } = fundingRateData[value];
+          return acc && origin?.funding_time === target?.funding_time;
+        }, true);
+        setIsFundingRateValid(isValid);
+      }
+    }, [apiTargetData?.[baseAsset], apiOriginData?.[baseAsset]]);
 
     const isFavorite = !isUndefined(favoriteAssetId);
 
@@ -245,16 +302,18 @@ const PremiumDataChartViewer = forwardRef(
               sm={6}
               sx={{ display: 'flex', justifyContent: 'center' }}
             >
-              {chartDataType !== 'FR' && chartDataType !== 'FRD' && (
-                <IntervalSelector
-                  defaultValue={klineInterval}
-                  disabled={!isAuthorized}
-                  onChange={(value) => {
-                    premiumKlineChartRef?.current?.reinitialize();
-                    setKlineInterval(value);
-                  }}
-                />
-              )}
+              {chartDataType !== 'FR' &&
+                chartDataType !== 'FRD' &&
+                chartDataType !== 'AFRD' && (
+                  <IntervalSelector
+                    defaultValue={klineInterval}
+                    disabled={!isAuthorized}
+                    onChange={(value) => {
+                      premiumKlineChartRef?.current?.reinitialize();
+                      setKlineInterval(value);
+                    }}
+                  />
+                )}
             </Grid>
             <Grid
               item
@@ -266,8 +325,10 @@ const PremiumDataChartViewer = forwardRef(
                 <ChartDataTypeSelector
                   defaultValue={chartDataType}
                   disabled={disabledChartDataType}
+                  isFundingRateValid={isFundingRateValid}
                   isKimpExchange={isKimpExchange}
                   isTetherPriceView={isTetherPriceView}
+                  showAvgFundingRateDiff={showAvgFundingRateDiff}
                   showFundingRate={
                     showFundingRate &&
                     (!targetMarketCode.value.includes('SPOT') ||
@@ -419,6 +480,34 @@ function ChartRenderer({
             onSwapMarketCodes={onSwapMarketCodes}
           />
           <LightWeightFundingRateDiffChart
+            baseAsset={baseAsset}
+            marketCodes={{
+              targetMarketCode: targetMarketCode.value,
+              originMarketCode: originMarketCode.value,
+            }}
+            subtrahend={subtrahend}
+          />
+        </>
+      );
+    case 'AFRD':
+      return (
+        <>
+          <MarketCodesRenderer
+            {...(chartDataType !== 'AFRD'
+              ? { leftMarket: targetMarketCode, rightMarket: originMarketCode }
+              : {
+                  leftMarket:
+                    subtrahend === 'origin'
+                      ? targetMarketCode
+                      : originMarketCode,
+                  rightMarket:
+                    subtrahend === 'origin'
+                      ? originMarketCode
+                      : targetMarketCode,
+                })}
+            onSwapMarketCodes={onSwapMarketCodes}
+          />
+          <LightWeightAvgFundingRateDiffChart
             baseAsset={baseAsset}
             marketCodes={{
               targetMarketCode: targetMarketCode.value,

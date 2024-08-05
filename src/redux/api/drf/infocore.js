@@ -93,6 +93,10 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    getKlineVolatility: builder.query({
+      keepUnusedDataFor: 5,
+      query: (params) => ({ url: '/infocore/kline-volatility/', params }),
+    }),
     getMarketCodes: builder.query({
       keepUnusedDataFor: 5,
       query: () => '/infocore/market-codes/',
@@ -120,6 +124,7 @@ export const {
   useGetFundingRateByMarketCodeQuery,
   useGetFundingRateDiffQuery,
   useGetHistoricalKlineQuery,
+  useGetKlineVolatilityQuery,
   useGetMarketCodesQuery,
   useGetWalletStatusQuery,
   useLazyGetFundingRateQuery,

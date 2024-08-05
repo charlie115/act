@@ -6,7 +6,7 @@ import { DateTime } from 'luxon';
 
 export default function renderDateCreatedCell({ cell }) {
   return (
-    <Typography>
+    <Typography sx={{ fontSize: { xs: '0.9em', md: '1em' } }}>
       {
         DateTime.fromISO(cell.getValue()).toLocaleString(
           DateTime.DATE_MED_WITH_WEEKDAY

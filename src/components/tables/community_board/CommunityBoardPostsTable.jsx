@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Pagination from '@mui/material/Pagination';
 
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { alpha, useTheme } from '@mui/material/styles';
 
 import { useSelector } from 'react-redux';
@@ -21,11 +22,12 @@ import renderDateCreatedCell from './renderDateCreatedCell';
 import renderStatsCell from './renderStatsCell';
 import renderViewedCell from './renderViewedCell';
 
-export default function CommunityBoardPostsTable() {
+export default function CommunityBoardPostsTable({ filters }) {
   const location = useLocation();
   const navigate = useNavigate();
 
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [noOfPages, setNoOfPages] = useState();
   const [page, setPage] = useState(1);
@@ -41,30 +43,62 @@ export default function CommunityBoardPostsTable() {
   const columns = useMemo(
     () => [
       ...(loggedin
-        ? [{ accessorKey: 'user_view', maxSize: 40, cell: renderViewedCell }]
+        ? [
+            {
+              accessorKey: 'user_view',
+              maxSize: isMobile ? 20 : 40,
+              cell: renderViewedCell,
+            },
+          ]
         : []),
       {
         accessorKey: 'title',
-        maxSize: 120,
+        maxSize: isMobile ? 80 : 120,
         props: { sx: { fontWeight: 700 } },
       },
-      { accessorKey: 'author', maxSize: 100, cell: renderAuthorCell },
-      { accessorKey: 'category', maxSize: 80, cell: renderCategoryCell },
-      { accessorKey: 'stats', maxSize: 125, cell: renderStatsCell },
-      { accessorKey: 'date_created', maxSize: 80, cell: renderDateCreatedCell },
+      {
+        accessorKey: 'author',
+        maxSize: isMobile ? 75 : 100,
+        cell: renderAuthorCell,
+      },
+      {
+        accessorKey: 'category',
+        maxSize: isMobile ? 50 : 80,
+        cell: renderCategoryCell,
+      },
+      {
+        accessorKey: 'stats',
+        maxSize: isMobile ? 120 : 125,
+        cell: renderStatsCell,
+      },
+      ...(isMobile
+        ? []
+        : [
+            {
+              accessorKey: 'date_created',
+              maxSize: isMobile ? 40 : 80,
+              cell: renderDateCreatedCell,
+            },
+          ]),
     ],
-    [loggedin]
+    [loggedin, isMobile]
   );
 
   const posts = results?.results || [];
   const data = useMemo(
     () =>
-      posts?.map((post) => ({
-        ...post,
-        author: post.author_profile?.username,
-        loggedInUser: user?.username,
-      })) || [],
-    [posts, user]
+      posts
+        ?.filter((post) =>
+          filters?.categoryFilter
+            ? post.category === filters.categoryFilter.value
+            : true
+        )
+        ?.map((post) => ({
+          ...post,
+          author: post.author_profile?.username,
+          loggedInUser: user?.username,
+        })) || [],
+    [posts, user, filters?.categoryFilter]
   );
 
   useEffect(() => {
@@ -89,7 +123,10 @@ export default function CommunityBoardPostsTable() {
         data={data}
         isLoading={isFetching}
         showProgressBar={isFetching}
-        options={{ getRowId: (row) => row.id }}
+        options={{
+          getRowId: (row) => row.id,
+          state: { globalFilter: filters?.search },
+        }}
         getCellProps={() => ({
           sx: { py: 0.5, wordWrap: 'break-word' },
         })}
@@ -105,7 +142,11 @@ export default function CommunityBoardPostsTable() {
           },
         })}
         getTableProps={() => ({
-          sx: { borderTop: 0.5, borderColor: 'grey.600', fontSize: '1.15em' },
+          sx: {
+            borderTop: 0.5,
+            borderColor: 'grey.600',
+            fontSize: { xs: '0.95em', md: '1.15em' },
+          },
         })}
       />
       {noOfPages > 1 && (

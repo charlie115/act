@@ -39,14 +39,16 @@ export default function DepositBalance() {
   }, [isSuccess]);
 
   return (
-    <Stack direction="row" alignItems="center" sx={{ px: 4 }}>
+    <Stack direction="row" alignItems="center" sx={{ px: { xs: 2, md: 4 } }}>
       <IconButton color="info" onClick={() => navigate('/bot/deposit')}>
         <AccountBalanceWalletIcon />
       </IconButton>
       {!ready ? (
         '...'
       ) : (
-        <Typography sx={{ fontSize: '1.15em', fontWeight: 700 }}>
+        <Typography
+          sx={{ fontSize: { xs: '0.75em', md: '1.15em' }, fontWeight: 700 }}
+        >
           {balance ? formatIntlNumber(parseFloat(balance), 2, 2) : 0}
         </Typography>
       )}

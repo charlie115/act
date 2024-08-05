@@ -51,7 +51,7 @@ export default function LightWeightFundingRateChart({
     startFundingTime,
     endFundingTime,
     tz,
-    past: true,
+    lastN: -1,
   });
 
   const chartData = useMemo(

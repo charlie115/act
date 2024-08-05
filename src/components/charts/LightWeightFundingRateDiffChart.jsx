@@ -25,7 +25,6 @@ import { DATE_FORMAT_API_QUERY, USER_ROLE } from 'constants';
 import LightWeightBaseChart from './LightWeightBaseChart';
 
 export default function LightWeightFundingRateDiffChart({
-  symbol,
   baseAsset,
   marketCodes,
   subtrahend,
@@ -54,7 +53,7 @@ export default function LightWeightFundingRateDiffChart({
       endFundingTime,
       tz,
       marketCode: marketCodes.targetMarketCode,
-      past: true,
+      lastN: -1,
     });
   const { data: apiOriginData, isFetching: isFetchingOrigin } =
     useGetFundingRateQuery({
@@ -63,7 +62,7 @@ export default function LightWeightFundingRateDiffChart({
       endFundingTime,
       tz,
       marketCode: marketCodes.originMarketCode,
-      past: true,
+      lastN: -1,
     });
 
   const chartData = useMemo(
@@ -149,9 +148,9 @@ export default function LightWeightFundingRateDiffChart({
                   ? currentData.value
                   : currentData.close;
               return `
-              <div style="color: ${theme.palette.primary.main}">${
-                symbol || baseAsset
-              }</div>
+              <div style="color: ${
+                theme.palette.primary.main
+              }">${baseAsset}</div>
               <div style="font-size: 18px; margin: 4px 0px; color: ${
                 theme.palette.text.main
               }">${formatIntlNumber(price, 3, 1)}<small>%</small></div>

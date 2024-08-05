@@ -294,6 +294,7 @@
   "Username must have {{min}}~{{max}} characters": "Username must have {{min}}~{{max}} characters",
   "Username must only include letters (A-Z or 한글), numbers (0-9), underscores (_), and periods (.)": "Username must only include letters (A-Z or 한글), numbers (0-9), underscores (_), and periods (.)",
   "Username must start with a letter": "Username must start with a letter",
+  "Value must be between {{min}}~{{max}}": "Value must be between {{min}}~{{max}}",
   "Value out of range": "Value out of range",
   "View Tether conversion": "View Tether conversion",
   "Volatility": "Volatility",

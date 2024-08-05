@@ -45,12 +45,12 @@ export const CHART_DATA_TYPE = [
     getLabel: () => i18n.t('Funding Rate Difference'),
     value: 'FRD',
   },
-  // {
-  //   getKimpLabel: () => i18n.t('Avg Funding Rate Difference'),
-  //   getTetherLabel: () => i18n.t('Avg Funding Rate Difference'),
-  //   getLabel: () => i18n.t('Avg Funding Rate Difference'),
-  //   value: 'AFRD',
-  // },
+  {
+    getKimpLabel: () => i18n.t('Avg Funding Rate Difference'),
+    getTetherLabel: () => i18n.t('Avg Funding Rate Difference'),
+    getLabel: () => i18n.t('Avg Funding Rate Difference'),
+    value: 'AFRD',
+  },
 ];
 
 export const EXCHANGE_LIST = [
