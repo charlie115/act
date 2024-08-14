@@ -41,7 +41,7 @@
     "mime": "^4.0.4",
     "mui-image": "^1.0.7",
     "qs": "^6.11.2",
-    "quill": "2.0.2",
+    "quill": "^2.0.2",
     "react": "^18.2.0",
     "react-app-polyfill": "^3.0.0",
     "react-calendar": "^4.6.1",
