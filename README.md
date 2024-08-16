@@ -48,8 +48,26 @@ You can run and test the app by running it directly, or running the docker conta
 
 ### Deployment ###
 
-This app is deployed as a docker container. You can check the Dockerfile for more information if you want to know the detailed steps.
+This project is deployed as a docker container. You can check the Dockerfile for more information if you want to know the detailed steps.
 
 
-Normally, this container is deployed to the prod together with other [arbitrage_community](https://bitbucket.org/arbitrage-community-website/arbitrage_community/) apps.
+This container is deployed to the prod together with other [arbitrage_community](https://bitbucket.org/arbitrage-community-website/arbitrage_community/) projects. But before that, we have to build the image for this project so it can be included in [arbitrage_community](https://bitbucket.org/arbitrage-community-website/arbitrage_community/) deployment.
 
+We normally build images in the server itself. So first, we place our source code in the server (under `/opt/`), then we build the image.
+
+1. Go to project directory.
+    ```
+    cd /opt/news_core
+    ```
+    *Clone the repository if it doesn't exist yet.*
+
+2. Build the appropriate image.
+    ```
+    docker build . --target {env} -t {image-name}
+    ```
+
+    * Image name for test environment: `news-core:test`
+    * Image name for production: `news-core`
+        * *(Which is the same as `news-core:latest`)*
+
+Then it's good to go. Container will be up once `docker compose up` is run in [arbitrage_community](https://bitbucket.org/arbitrage-community-website/arbitrage_community/).
