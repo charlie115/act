@@ -1,29 +1,55 @@
-# README #
+# NewsCore #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+This project crawls crypto news, sns and announcements posts and store data in a separate postgres db. You can view these data in Arbicrypto News tab.
 
-### What is this repository for? ###
+We currently source them from the following media:
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+* News - scrapes every minute
+  * zdnet
+  * etoday
+  * einfomax
+  * bonmedia
+  * fnnews
+  * decenter
+  * blockstreet
+  * coindeskkorea
+  * coinreaders
+  * blockmedia
 
-### How do I get set up? ###
+* SNS - scrapes every 10 minutes
+  * X (Twitter) - however, since Elon limited public x data, we get it from Nitter instead
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+* Announcement - scrapes every hour
+  * UPbit
+  * Bithumb
+  * OKX
+  * Bybit
+  * Binance
 
-### Contribution guidelines ###
 
-* Writing tests
-* Code review
-* Other guidelines
 
-### Who do I talk to? ###
+### Development ###
 
-* Repo owner or admin
-* Other community or team contact
+You can run and test the app by running it directly, or running the docker container.
+
+#### Run directly ####
+
+1. Create virtual environment.
+2. Install requirements.
+3. You can run the scripts inside `scripts/` folder or manually run scrapy crawl commands.
+
+#### Run docker container ####
+
+1. Prepare `.env.dev` file. See `.env.example`.
+2. Build and run.
+    ```
+    docker compose up --build -d
+    ```
+
+### Deployment ###
+
+This app is deployed as a docker container. You can check the Dockerfile for more information if you want to know the detailed steps.
+
+
+Normally, this container is deployed to the prod together with other [arbitrage_community](https://bitbucket.org/arbitrage-community-website/arbitrage_community/) apps.
+
