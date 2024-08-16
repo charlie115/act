@@ -1,70 +1,81 @@
-# Getting Started with Create React App
+# ArbiCrypto (community_web)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the project repository for [ArbiCrypto](https://arbicrypto.net/).
 
-## Available Scripts
+## Setup
 
-In the project directory, you can run:
+- Package manager: [PNPM](https://pnpm.io/)
+- Node version: [Node v18.15.0 LTS](https://nodejs.org/en/blog/release/v18.15.0)
+- Bootstrapped with: [Create React App](https://github.com/facebook/create-react-app)
 
-### `npm start`
+## Translations
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+The project uses [i18next](https://www.i18next.com/) and [react-i18next](https://react.i18next.com/) for translations.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- Configuration file: [configs/i18n.js](src/configs/i18n.js)
+- `pnpm run scan:i18n` to extract translation keys from the code ([i18next-scanner.config.js](i18next-scanner.config.js)); the project uses [i18next-scanner](https://i18next.github.io/i18next-scanner/)
+- Add translation values to the appropriate translation files:
+  - [src/assets/translations/en.json](src/assets/translations/en.json)
+  - [src/assets/translations/ko.json](src/assets/translations/ko.json)
+  - [src/assets/translations/zh.json](src/assets/translations/zh.json)
 
-### `npm test`
+## Environment Variables
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Refer to [.env.test.example](.env.test.example) and [.env.production.example](.env.production.example).
 
-### `npm run build`
+For values, see here:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- [PROD](https://halo-soft.atlassian.net/wiki/spaces/KB/pages/295025/Server+List#Environment-Variables)
+- [TEST](https://halo-soft.atlassian.net/wiki/spaces/KB/pages/295025/Server+List#Environment-Variables.1)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Test Deployment
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Run `pnpm run build:test` to create the build for test deployment.
 
-### `npm run eject`
+Copy the **build** directory to the test server.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- For Unix-based operating systems, run `scp -r build <SERVER_NAME>:~/test-community-web`
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+  _Make sure to setup the test server configuration in .ssh/config_
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Production Deployment
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Switch to **master** branch. \
+Merge **development** branch to **master** and resolve conflicts.
 
-## Learn More
+Run `pnpm run build:production` to create the production build.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Copy the **build** directory to the production server.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- For Unix-based operating systems, run `scp -r build <SERVER_NAME>:~/prod-community-web`
 
-### Code Splitting
+  _Make sure to setup the production server configuration in .ssh/config_
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Development
 
-### Analyzing the Bundle Size
+Switch to **development** branch.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Run `pnpm start` to start the web app in development mode. Open [http://localhost:3000](http://localhost:3000) to view in the browser.
 
-### Making a Progressive Web App
+### Directory Structure
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+```
+.
+├── public
+└── src
+    ├── assets
+    ├── components
+    ├── configs
+    ├── constants
+    ├── hooks
+    ├── pages
+    ├── redux
+    └── utils
+```
 
-### Advanced Configuration
+### Things to note
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- This project uses [ESLint](https://eslint.org/) to find problems in the code. [eslint-config-airbnb](https://www.npmjs.com/package/eslint-config-airbnb) is used as base coding style guide. Rules can be added in the configuration file ([.eslintrc.js](.eslintrc.js)).
+- When creating a new directory in src, it is important to add the path in [jsconfig.json](jsconfig.json) and [.eslintrc.js](eslintrc.js) _(settings > import/resolver > eslint-import-resolver-custom-alias)_ in order to correctly resolve absolute imports.
+- This project uses [http-proxy-middleware](https://www.npmjs.com/package/http-proxy-middleware) to proxy `/api/` to the test DRF domain. Configuration can be found in [setupProxy.js](src/setupProxy.js)
+- Set up new **navigation** pages in [configs/navigation.js](src/configs/navigation.js)
