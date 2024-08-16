@@ -1,45 +1,83 @@
-**Edit a file, create a new file, and clone from Bitbucket in under 2 minutes**
+# Community DRF
 
-When you're done, you can delete the content in this README and update the file with details for others getting started with your repository.
+This project is the backend for arbitrage community using django and drf. It contains the logic for all community related especially apps that are connected to Users. 
 
-*We recommend that you open this README in another tab as you perform the tasks below. You can [watch our video](https://youtu.be/0ocf7u76WSo) for a full demo of all the steps in this tutorial. Open the video in a new tab to avoid leaving Bitbucket.*
-
----
-
-## Edit a file
-
-You’ll start by editing this README file to learn how to edit a file in Bitbucket.
-
-1. Click **Source** on the left side.
-2. Click the README.md link from the list of files.
-3. Click the **Edit** button.
-4. Delete the following text: *Delete this line to make a change to the README from Bitbucket.*
-5. After making your change, click **Commit** and then **Commit** again in the dialog. The commit page will open and you’ll see the change you just made.
-6. Go back to the **Source** page.
+This project also provides the APIs for the frontend, and acts as the middleman between frontend and core projects.
 
 ---
 
-## Create a file
+## Development
 
-Next, you’ll add a new file to this repository.
+You can develop and run server directly, or run it in docker container.
 
-1. Click the **New file** button at the top of the **Source** page.
-2. Give the file a filename of **contributors.txt**.
-3. Enter your name in the empty file space.
-4. Click **Commit** and then **Commit** again in the dialog.
-5. Go back to the **Source** page.
 
-Before you move on, go ahead and explore the repository. You've already seen the **Source** page, but check out the **Commits**, **Branches**, and **Settings** pages.
+#### Run directly ####
+
+1. Create virtual environment.
+2. Install requirements.
+3. For first time development, you have to run migrations.
+    ```
+    python manage.py migrate
+    ```
+4. Run server. 
+    ```
+    python manage.py runserver
+    ```
+
+#### Run docker container ####
+
+1. Prepare `.env.dev` file. See `.env.example`.
+2. Build and run.
+    ```
+    docker compose up --build -d
+    ```
+
+
+Project is live at http://127.0.0.1:8000/.  
+Django admin is available at http://127.0.0.1:8000/admin/.
 
 ---
 
-## Clone a repository
 
-Use these steps to clone from SourceTree, our client for using the repository command-line free. Cloning allows you to work on your files locally. If you don't yet have SourceTree, [download and install first](https://www.sourcetreeapp.com/). If you prefer to clone from the command line, see [Clone a repository](https://confluence.atlassian.com/x/4whODQ).
+### Deployment ###
 
-1. You’ll see the clone button under the **Source** heading. Click that button.
-2. Now click **Check out in SourceTree**. You may need to create a SourceTree account or log in.
-3. When you see the **Clone New** dialog in SourceTree, update the destination path and name if you’d like to and then click **Clone**.
-4. Open the directory you just created to see your repository’s files.
+This project is deployed as a docker container. You can check the Dockerfile for more information if you want to know the detailed steps.
 
-Now that you're more familiar with your Bitbucket repository, go ahead and add a new file locally. You can [push your change back to Bitbucket with SourceTree](https://confluence.atlassian.com/x/iqyBMg), or you can [add, commit,](https://confluence.atlassian.com/x/8QhODQ) and [push from the command line](https://confluence.atlassian.com/x/NQ0zDQ).
+This container is deployed to the prod together with other [arbitrage_community](https://bitbucket.org/arbitrage-community-website/arbitrage_community/) projects. But before that, we have to build the image for this project so it can be included in [arbitrage_community](https://bitbucket.org/arbitrage-community-website/arbitrage_community/) deployment.
+
+We normally build images in the server itself. So first, we place our source code in the server (under `/opt/`), then we build the image.
+
+1. Go to project directory.
+    ```
+    cd /opt/community_drf
+    ```
+    *Clone the repository if it doesn't exist yet.*
+
+2. Build the appropriate image. Along with community_drf, we also have to build images for celery beat and worker.  
+    * Test
+        ```
+        docker build . --target test -t community-drf:test
+        docker build . --target test -t community-celery-worker:test
+        docker build . --target test -t community-celery-beat:test
+        ```
+    * Production
+        ```
+        docker build . --target prod -t community-drf
+        docker build . --target prod -t community-celery-worker
+        docker build . --target prod -t community-celery-beat
+        ```
+
+    * Image name for test environment:
+        * `community-drf:test`
+        * `community-celery-worker:test`
+        * `community-celery-beat:test`
+    * Image name for production:
+        * `community-drf`
+        * `community-celery-worker`
+        * `community-celery-beat`
+        * Which is the same as 
+            * `community-drf:latest`
+            * `community-celery-worker:latest`
+            * `community-celery-beat:latest`
+
+Then it's good to go. Container will be up once `docker compose up` is run in [arbitrage_community](https://bitbucket.org/arbitrage-community-website/arbitrage_community/).
