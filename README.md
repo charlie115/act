@@ -33,8 +33,8 @@ You can develop and run server directly, or run it in docker container.
     ```
 
 
-Project is live at http://127.0.0.1:8000/.  
-Django admin is available at http://127.0.0.1:8000/admin/.
+Project is live at [http://127.0.0.1:8000/](http://127.0.0.1:8000/).  
+Django admin is available at [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/).
 
 ---
 
