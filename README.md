@@ -1,30 +1,30 @@
 # NewsCore #
 
-This project crawls crypto news, sns and announcements posts and store data in a separate postgres db. You can view these data in Arbicrypto News tab.
+This project scrapes crypto news, sns and announcements posts and store data in a separate postgres db. You can view these data in Arbicrypto News tab.
 
 We currently source them from the following media:
 
 * News - scrapes every minute
-  * zdnet
-  * etoday
-  * einfomax
-  * bonmedia
-  * fnnews
-  * decenter
-  * blockstreet
-  * coindeskkorea
-  * coinreaders
-  * blockmedia
+    * zdnet
+    * etoday
+    * einfomax
+    * bonmedia
+    * fnnews
+    * decenter
+    * blockstreet
+    * coindeskkorea
+    * coinreaders
+    * blockmedia
 
-* SNS - scrapes every 10 minutes
-  * X (Twitter) - however, since Elon limited public x data, we get it from Nitter instead
+* SNS - scrapes every 10 minutes  
+    * X (Twitter) - however, since Elon limited public x data, we get it from Nitter instead
 
-* Announcement - scrapes every hour
-  * UPbit
-  * Bithumb
-  * OKX
-  * Bybit
-  * Binance
+* Announcement - scrapes every hour  
+    * UPbit
+    * Bithumb
+    * OKX
+    * Bybit
+    * Binance
 
 
 
