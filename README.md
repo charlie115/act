@@ -1,6 +1,7 @@
 # Arbitrage Community #
 
 Setups the full arbitrage community system:
+
 * Nginx and Certbot
 * Databases
 * Frontend
