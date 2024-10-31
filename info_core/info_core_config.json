@@ -1,0 +1,276 @@
+{
+    "node": "info_core_dev",
+    "node_settings":
+    {
+        "info_core_dev":
+        {
+            "MASTER": true,
+            "prod": false,
+            "db_settings": "dev_mongodb_docker",
+            "redis_settings": "dev_redis_docker",
+            "telegram_bot_name": "info_core_dev_bot",
+            "reference_node": null,
+            "enabled_market_klines": [
+                "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT"
+            ]
+        },
+        "kline_core1_dev":
+        {
+            "MASTER": false,
+            "prod": false,
+            "db_settings": "dev_mongodb_remote",
+            "redis_settings": "dev_redis_remote",
+            "telegram_bot_name": null,
+            "reference_node": "info_core_dev_bot",
+            "enabled_market_klines": [
+                "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT"
+            ]
+        },
+        "info_core":
+        {
+            "MASTER": true,
+            "prod": true,
+            "db_settings": "mongodb_docker",
+            "redis_settings": "redis_docker",
+            "telegram_bot_name": "info_core_bot",
+            "reference_node": null,
+            "enabled_market_klines": [
+            ]
+        },
+        "kline_core1":
+        {
+            "MASTER": false,
+            "prod": true,
+            "db_settings": "mongodb_remote",
+            "redis_settings": "redis_remote",
+            "telegram_bot_name": null,
+            "reference_node": "info_core",
+            "enabled_market_klines": [
+                "UPBIT_SPOT/KRW:BYBIT_USD_M/USDT",
+                "UPBIT_SPOT/KRW:UPBIT_SPOT/BTC",
+                "UPBIT_SPOT/KRW:OKX_SPOT/USDT",
+                "UPBIT_SPOT/KRW:OKX_USD_M/USDT",
+                "BYBIT_USD_M/USDT:OKX_USD_M/USDT",
+                "UPBIT_SPOT/KRW:BINANCE_SPOT/USDT",
+                "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT",
+                "BITHUMB_SPOT/KRW:BINANCE_SPOT/USDT",
+                "BITHUMB_SPOT/KRW:BINANCE_USD_M/USDT",
+                "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT",
+                "BINANCE_USD_M/USDT:OKX_USD_M/USDT",
+                "BINANCE_USD_M/USDT:BINANCE_COIN_M/USD"
+            ]
+        },
+        "kline_core2":
+        {
+            "MASTER": false,
+            "prod": true,
+            "db_settings": "mongodb_remote",
+            "redis_settings": "redis_remote",
+            "telegram_bot_name": null,
+            "reference_node": "info_core",
+            "enabled_market_klines": [
+                "BYBIT_USD_M/USDT:BYBIT_COIN_M/USD",
+                "BYBIT_SPOT/USDT:BYBIT_USD_M/USDT",
+                "BYBIT_SPOT/USDT:BYBIT_COIN_M/USD",
+                "OKX_USD_M/USDT:OKX_COIN_M/USD",
+                "OKX_SPOT/USDT:OKX_USD_M/USDT",
+                "OKX_SPOT/USDT:OKX_COIN_M/USD",
+                "BYBIT_USD_M/USDT:OKX_COIN_M/USD",
+                "OKX_USD_M/USDT:BYBIT_COIN_M/USD",
+                "BYBIT_SPOT/USDT:OKX_SPOT/USDT"
+            ]
+        }
+    },
+    "telegram_bot_setting": 
+    {
+        "monitor_bot": "2107044564:AAFJUX_f2BEA-tp5TLxtOMUg5cqGE_mYnQo",
+        "test_bot": "1334132077:AAE7Pvj0bu4sHGKWlH6VsZFsSkcwPrwxB6I",
+        "kp_trade_monitor": "5556345865:AAFJy8wdyTjKxDBOb89bTRFsNs6UFMn4twY",
+        "info_core_bot": "6608050589:AAEAYn3eX2G2UyIe7EoblIEJaGOTNltGaQQ",
+        "info_core_dev_bot": "6661285565:AAGjGdZKYhwgQ5CcuDMZumEwaEGbzdTWAHE"
+    },
+    "telegram_admin_id":
+    {
+        "charlie1155": 1390695186
+    },
+    "monitor_setting":
+    {
+        "monitor_bot": "kp_trade_monitor",
+        "monitor_bot_api_url": "http://221.148.128.213:22180/api/monitor_v1/monitorbot/"
+    },
+    "acw_setting":
+    {
+        "dev_url": "https://acw-test.orbitholdings.org/api/",
+        "prod_url": "https://arbicrypto.net/api/"
+    },
+    "database_setting":
+    {
+        "mycore":
+        {
+            "host":"121.129.140.175",
+            "port":3312,
+            "user":"root",
+            "passwd":"13245dh"
+        },
+        "mycore_local":
+        {
+            "host":"localhost",
+            "port":3306,
+            "user":"root",
+            "passwd":"13245dh"
+        },
+        "mycore2":
+        {
+            "host":"203.210.53.251",
+            "port":3306,
+            "user":"root",
+            "passwd":"13245dh"
+        },
+        "mycore2_local":
+        {
+            "host":"localhost",
+            "port":3306,
+            "user":"root",
+            "passwd":"13245dh"
+        },
+        "core1":
+        {
+            "host":"222.106.173.213",
+            "port":22153,
+            "user":"root",
+            "passwd":"13245dh!!"
+        },
+        "core1_local":
+        {
+            "host":"localhost",
+            "port":3306,
+            "user":"root",
+            "passwd":"13245dh!!"
+        },
+        "core2":
+        {
+            "host":"222.106.173.216",
+            "port":22153,
+            "user":"root",
+            "passwd":"13245dh!!"
+        },
+        "core2_local":
+        {
+            "host":"localhost",
+            "port":22153,
+            "user":"root",
+            "passwd":"13245dh!!"
+        },
+        "hcore1_local":
+        {
+            "host":"localhost",
+            "port":22153,
+            "user":"root",
+            "passwd":"13245dh!!"
+        },
+        "hcore1":
+        {
+            "host":"218.153.174.26",
+            "port":22153,
+            "user":"root",
+            "passwd":"13245dh!!"
+        },
+        "dev_postgres_docker":
+        {
+            "host":"postgres",
+            "port":25432,
+            "user":"test",
+            "passwd":"CommunityPostgres123!"
+        },
+        "dev_mongodb_docker":
+        {
+            "host":"mongodb",
+            "port":27017,
+            "user": "test",
+            "passwd": "CommunityMongodb123!"
+        },
+        "dev_redis_docker":
+        {
+            "host": "redis",
+            "port": 6379,
+            "passwd": "CommunityRedis123!"
+        },
+        "dev_mongodb_remote":
+        {
+            "host": "14.52.68.128",
+            "port": 27017,
+            "user": "test",
+            "passwd": "CommunityMongodb123!"
+        },
+        "dev_redis_remote":
+        {
+            "host": "14.52.68.128",
+            "port": 6379,
+            "passwd": "CommunityRedis123!"
+        },
+        "postgres_docker":
+        {
+            "host":"acw",
+            "port":5432,
+            "user":"test",
+            "passwd":"9b_D2yf£2N3c"
+        },
+        "mongodb_docker":
+        {
+            "host":"mongodb",
+            "port":27017,
+            "user": "acw",
+            "passwd": "o,hOL6M11zg,"
+        },
+        "redis_docker":
+        {
+            "host": "redis",
+            "port": 6379,
+            "passwd": "lZ-B-P236_n>"
+        },
+        "mongodb_remote":
+        {
+            "host": "221.148.128.212",
+            "port": 27017,
+            "user": "acw",
+            "passwd": "o,hOL6M11zg,"
+        },
+        "redis_remote":
+        {
+            "host": "221.148.128.212",
+            "port": 6379,
+            "passwd": "lZ-B-P236_n>"
+        }
+    },
+
+    "exchange_api_key":
+    {
+        "binance_read_only":
+        {
+            "api_key":"4PFfYsObYyUaMlk7m6tT9qIl8X8P3WCUsyu1lEyZ4h50VfTMPIQCNdL9eOJCl3Lb",
+            "secret_key":"011Z1W9p4425AZgtCNbs5L1d77ehZFNmBIwT0pz1SJGP7EiOlPILfWBglbVsxMcK"
+        },
+        "okx_read_only":
+        {
+            "api_key":"fcb66a6e-0443-4743-8d9b-61caf7eab662",
+            "secret_key":"0029E09874B38F5AC7E68E9DFC348667",
+            "passphrase": "121431Rn!!"
+        },
+        "upbit_read_only":
+        {
+            "api_key":"x2AKLfsRtAgRxFjQ7p9TZTAg6E1SveoqfNfD8MK8",
+            "secret_key":"svEran52QdsUyJdxAPYoTgFT2MXsHc5ZiKsKPxTL"
+        },
+        "bithumb_read_only":
+        {
+            "api_key": "076d0c00a319a6db24ee7a7114316cdd",
+            "secret_key": "28b0b3f7deea6e74f534ef1eb1dc890b"
+        },
+        "bybit_read_only":
+        {
+            "api_key": "S3YKBbD0kz1WwcfqZD",
+            "secret_key": "390M6dKJ9J0uEK7vXYAl3qxVCh944tRrzHah"
+        }
+    },
+    "openai_api_key": "REDACTED_OPENAI_KEY"
+}
