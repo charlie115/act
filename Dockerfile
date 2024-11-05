@@ -51,7 +51,7 @@ RUN pip install -r requirements.txt
 #############
 FROM base AS dev
 
-COPY ./docker/start-dev-service.sh /usr/local/bin/start-dev-service.sh
+COPY ./info_core/docker/start-dev-service.sh /usr/local/bin/start-dev-service.sh
 COPY ./.env.dev .env
 
 CMD ["start-dev-service.sh"]
@@ -61,7 +61,7 @@ CMD ["start-dev-service.sh"]
 #############
 FROM base AS test
 
-COPY ./docker/start-test-service.sh /usr/local/bin/start-test-service.sh
+COPY ./info_core/docker/start-test-service.sh /usr/local/bin/start-test-service.sh
 COPY ./.env.test .env
 
 CMD ["start-test-service.sh"]
@@ -71,7 +71,7 @@ CMD ["start-test-service.sh"]
 ##############
 FROM base AS prod
 
-COPY ./docker/start-prod-service.sh /usr/local/bin/start-prod-service.sh
+COPY ./info_core/docker/start-prod-service.sh /usr/local/bin/start-prod-service.sh
 COPY ./.env.prod .env
 
 CMD ["start-prod-service.sh"]
