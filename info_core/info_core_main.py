@@ -138,8 +138,8 @@ if __name__ == '__main__':
     # For Test
     register_monitor_msg.register(ADMIN_TELEGRAM_ID, NODE, 'info', f"info_core_main|NODE:{NODE} has started.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
 
-    # idle
-    from telegram_bot_plugin.telegram_bot import InitTelegramBot
+    # # idle
+    # from telegram_bot_plugin.telegram_bot import InitTelegramBot
     
     # Initiate Kimp core (Websocket engine)
     core = InitCore(logging_dir,
@@ -156,20 +156,20 @@ if __name__ == '__main__':
 
     time.sleep(5)
 
-    # Initiate TelegramBot with Trigger engine
-    if MASTER:
-        telegram_bot_token = "6661285565:AAGjGdZKYhwgQ5CcuDMZumEwaEGbzdTWAHE" # Temporary. Later it will use acw's message system to communicate with info_core
-        admin_telegram_bot = InitTelegramBot(telegram_bot_token,
-                                             logging_dir,
-                                             NODE,
-                                             redis_dict,
-                                             mongo_db_dict,
-                                             core,
-                                             register_monitor_msg,
-                                             TOTAL_ADMIN_TELEGRAM_ID_LIST,
-                                             ENALBED_ARBITRAGE_MARKETS)
+    # # Initiate TelegramBot with Trigger engine
+    # if MASTER:
+    #     telegram_bot_token = "6661285565:AAGjGdZKYhwgQ5CcuDMZumEwaEGbzdTWAHE" # Temporary. Later it will use acw's message system to communicate with info_core
+    #     admin_telegram_bot = InitTelegramBot(telegram_bot_token,
+    #                                          logging_dir,
+    #                                          NODE,
+    #                                          redis_dict,
+    #                                          mongo_db_dict,
+    #                                          core,
+    #                                          register_monitor_msg,
+    #                                          TOTAL_ADMIN_TELEGRAM_ID_LIST,
+    #                                          ENALBED_ARBITRAGE_MARKETS)
 
     # Start command handler loop
-    command_handler = CommandHandler(NODE, ADMIN_TELEGRAM_ID, core, logging_dir)
+    command_handler = CommandHandler(ACW_API_URL, NODE, PROD, ADMIN_TELEGRAM_ID, core, logging_dir)
     command_handler.fetch_command_loop()
 

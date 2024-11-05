@@ -17,13 +17,11 @@ upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from loggers.logger import InfoCoreLogger
 from etc.redis_connector.redis_helper import RedisHelper
-from standalone_func.kline_data_generator import (resample_ohlc_df,
-                                                  generate_ohlc_df,
+from standalone_func.kline_data_generator import (
                                                   insert_kline_to_db, 
-                                                  ohlc_1T_loader, 
-                                                  ohlc_day_resample_loader, 
-                                                  ohlc_hour_resample_loader, 
-                                                  ohlc_min_resample_loader)
+                                                  ohlc_1T_generator,
+                                                  ohlc_interval_generator,
+                                                  )
 from standalone_func.price_df_generator import get_price_df
 
 class InitKlineCore:
@@ -66,121 +64,46 @@ class InitKlineCore:
         for market_combination in self.enabled_market_klines:
             target_market_code = market_combination.split(':')[0]
             origin_market_code = market_combination.split(':')[1]
-            for i, each_kline_type in enumerate(self.enabled_kline_types):
-                if each_kline_type.endswith('T'):
-                    if each_kline_type == '1T':
-                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"] = Process(
-                            target=ohlc_1T_loader,
-                            args=(
-                                self.info_dict,
-                                self.convert_rate_dict,
-                                generate_ohlc_df,
-                                insert_kline_to_db,
-                                target_market_code,
-                                origin_market_code,
-                                self.register_monitor_msg,
-                                self.admin_id,
-                                self.node,
-                                self.redis_dict,
-                                self.mongodb_dict,
-                                self.logging_dir
-                            ),
-                            daemon=True
-                        )
-                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].start()
-                    else:
-                        count = int(re.search(r'\d+', each_kline_type).group()) / int(re.search(r'\d+', self.enabled_kline_types[i-1]).group())
-                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"] = Process(
-                            target=ohlc_min_resample_loader,
-                            args=(
-                                resample_ohlc_df,
-                                insert_kline_to_db,
-                                target_market_code,
-                                origin_market_code,
-                                self.enabled_kline_types[i-1],
-                                each_kline_type,
-                                count,
-                                self.register_monitor_msg,
-                                self.admin_id,
-                                self.node,
-                                self.redis_dict,
-                                self.mongodb_dict,
-                                self.logging_dir
-                            ),
-                            daemon=True
-                        )
-                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"].start()
-                elif each_kline_type.endswith('H'):
-                    if each_kline_type == '1H':
-                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"] = Process(
-                            target=ohlc_hour_resample_loader,
-                            args=(
-                                resample_ohlc_df,
-                                insert_kline_to_db,
-                                target_market_code,
-                                origin_market_code,
-                                "30min",
-                                "1h",
-                                2,
-                                self.register_monitor_msg,
-                                self.admin_id,
-                                self.node,
-                                self.redis_dict,
-                                self.mongodb_dict,
-                                self.logging_dir
-                            ),
-                            daemon=True
-                        )
-                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"].start()
-                    else:
-                        count = int(re.search(r'\d+', each_kline_type).group()) / int(re.search(r'\d+', self.enabled_kline_types[i-1]).group())
-                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"] = Process(
-                            target=ohlc_hour_resample_loader,
-                            args=(
-                                resample_ohlc_df,
-                                insert_kline_to_db,
-                                target_market_code,
-                                origin_market_code,
-                                self.enabled_kline_types[i-1],
-                                each_kline_type,
-                                count,
-                                self.register_monitor_msg,
-                                self.admin_id,
-                                self.node,
-                                self.redis_dict,
-                                self.mongodb_dict,
-                                self.logging_dir
-                            ),
-                            daemon=True
-                        )
-                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"].start()
-                elif each_kline_type.endswith('D'):
-                    if each_kline_type == "1D":
-                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"] = Process(
-                            target=ohlc_day_resample_loader,
-                            args=(
-                                resample_ohlc_df,
-                                insert_kline_to_db,
-                                target_market_code,
-                                origin_market_code,
-                                "4H",
-                                "1D",
-                                6,
-                                self.register_monitor_msg,
-                                self.admin_id,
-                                self.node,
-                                self.redis_dict,
-                                self.mongodb_dict,
-                                self.logging_dir
-                            ),
-                            daemon=True
-                        )
-                        self.kline_proc_dict[f"{market_combination}_{each_kline_type}_reample_loader"].start()
-                    else:
-                        pass
+            for each_kline_type in self.enabled_kline_types:
+                if each_kline_type == '1T':
+                    self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"] = Process(
+                        target=ohlc_1T_generator,
+                        args=(
+                            self.info_dict,
+                            self.convert_rate_dict,
+                            insert_kline_to_db,
+                            target_market_code,
+                            origin_market_code,
+                            self.register_monitor_msg,
+                            self.admin_id,
+                            self.node,
+                            self.redis_dict,
+                            self.mongodb_dict,
+                            self.logging_dir
+                        ),
+                        daemon=True
+                    )
+                    self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].start()
                 else:
-                    raise ValueError(f"Invalid kline_type: {each_kline_type}")
-                time.sleep(1)
+                    self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"] = Process(
+                        target=ohlc_interval_generator,
+                        args=(
+                            each_kline_type,
+                            insert_kline_to_db,
+                            target_market_code,
+                            origin_market_code,
+                            self.register_monitor_msg,
+                            self.admin_id,
+                            self.node,
+                            self.redis_dict,
+                            self.mongodb_dict,
+                            self.logging_dir,
+                        ),
+                        daemon=True
+                    )
+                    self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].start()
+                    
+                time.sleep(0.25)
                 
     def register_enabled_market_klines(self):
         self.kline_logger.info(f"register_enabled_market_klines|Registering enabled market klines:{self.enabled_market_klines} to redis Started..")

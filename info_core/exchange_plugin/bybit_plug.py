@@ -2,6 +2,7 @@ import os
 import sys
 import datetime
 import pandas as pd
+pd.set_option('future.no_silent_downcasting', True)
 import time
 import traceback
 import requests
@@ -51,10 +52,9 @@ class Bybit:
         info_df = info_df.join(info_df['leverageFilter'].apply(pd.Series))
         info_df = info_df.join(info_df['lotSizeFilter'].apply(pd.Series))
         info_df = info_df.join(info_df['priceFilter'].apply(pd.Series)).drop(columns=['leverageFilter','lotSizeFilter', 'priceFilter'], axis=1)
-        result = info_df['perpetual'].replace('LinearPerpetual', True)
-        result = result.replace('LinearFutures', False)
-        result = result.infer_objects(copy=False)
-        info_df.loc[:, 'perpetual'] = result
+        # result = info_df['perpetual'].replace({'LinearPerpetual': True, 'LinearFutures': False}).astype(bool)
+        # info_df['perpetual'] = result
+        info_df['perpetual'] = pd.Series(info_df['perpetual'].replace({'LinearPerpetual': True, 'LinearFutures': False}), dtype="boolean")
         return info_df
     
     def coin_m_exchange_info(self):
@@ -64,10 +64,11 @@ class Bybit:
         info_df = info_df.join(info_df['leverageFilter'].apply(pd.Series))
         info_df = info_df.join(info_df['lotSizeFilter'].apply(pd.Series))
         info_df = info_df.join(info_df['priceFilter'].apply(pd.Series)).drop(columns=['leverageFilter','lotSizeFilter', 'priceFilter'], axis=1)
-        result = info_df['perpetual'].replace('InversePerpetual', True)
-        result = result.replace('InverseFutures', False)
-        result = result.infer_objects(copy=False)
-        info_df.loc[:, 'perpetual'] = result
+        # result = info_df['perpetual'].replace('InversePerpetual', True)
+        # result = result.replace('InverseFutures', False)
+        # result = result.infer_objects(copy=False)
+        # info_df.loc[:, 'perpetual'] = result
+        info_df['perpetual'] = pd.Series(info_df['perpetual'].replace({'LinearPerpetual': True, 'LinearFutures': False}), dtype="boolean")
         return info_df
 
 class InitBybitAdaptor:
@@ -145,10 +146,11 @@ class InitBybitAdaptor:
             ticker_df = self.usd_m_all_tickers()
         else:
             ticker_df = self.coin_m_all_tickers()
-        funding_df = ticker_df[['symbol','base_asset','quote_asset','fundingRate','nextFundingTime']]
-        funding_df.loc[:, 'perpetual'] = funding_df.loc[:, 'fundingRate'].apply(lambda x: True if x != '' else False)
+        funding_df = ticker_df.loc[:, ['symbol','base_asset','quote_asset','fundingRate','nextFundingTime']]
+        funding_df['perpetual'] = funding_df.loc[:, 'fundingRate'].apply(lambda x: True if x != '' else False)
         funding_df.loc[:, ['fundingRate','nextFundingTime']] = funding_df.loc[:, ['fundingRate','nextFundingTime']].apply(pd.to_numeric, errors='coerce')
         funding_df.loc[:, 'nextFundingTime'] = funding_df.loc[:, 'nextFundingTime'].apply(lambda x: datetime.datetime.fromtimestamp(x/1000, tz=datetime.timezone.utc))
-        funding_df.loc[:, 'nextFundingTime'] = funding_df.loc[:, 'nextFundingTime'].dt.tz_localize(None)
+        # Convert 'nextFundingTime' to datetime
+        funding_df.loc[:, 'nextFundingTime'] = pd.to_datetime(funding_df['nextFundingTime']).dt.tz_localize(None)
         funding_df = funding_df.rename(columns={'fundingRate':"funding_rate", "nextFundingTime":"funding_time"})
         return funding_df

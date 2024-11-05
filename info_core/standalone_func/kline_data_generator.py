@@ -43,6 +43,7 @@ def insert_kline_to_db(kline_df, channel_name, register_monitor_msg, redis_dict,
         db = mongodb_conn[converted_market_code_combination]
 
         closed_kline_df = kline_df[kline_df['closed']==True]
+        closed_kline_df['datetime_now'] = pd.to_datetime(closed_kline_df['datetime_now']).dt.tz_localize(None)
         if len(closed_kline_df) == 0:
             logger.info(f'insert_kline_to_db|{channel_name} No klines to be inserted')
             # print(f'insert_kline_to_db|{channel_name} No klines to be inserted') # TEST
@@ -78,8 +79,8 @@ def insert_kline_to_db(kline_df, channel_name, register_monitor_msg, redis_dict,
                     # self.kline_logger.info(f"insert_kline_to_db|database: {market_code_combination}, collection:{collection_name}, Inserting {len(df_to_insert)} klines took {time.time() - start2} seconds")
             if count != 0:
                 # TEST
-                logger.info(f"insert_kline_to_db|database: {market_code_combination}, Filtering {count} klines for {len(inserted_coin_list)} unique base_assets took {filtering_time} seconds")
-                logger.info(f"insert_kline_to_db|database: {market_code_combination}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {insert_time} seconds")
+                # logger.info(f"insert_kline_to_db|database: {market_code_combination} {kline_type}, Filtering {count} klines for {len(inserted_coin_list)} unique base_assets took {filtering_time} seconds")
+                # logger.info(f"insert_kline_to_db|database: {market_code_combination} {kline_type}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {insert_time} seconds")
                 # TEST
                 logger.info(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds")
             # print(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds") # TEST
@@ -87,70 +88,10 @@ def insert_kline_to_db(kline_df, channel_name, register_monitor_msg, redis_dict,
     except:
         logger.error(f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}")
         register_monitor_msg.register(admin_id, node, 'error', f"insert_kline_to_db", content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}", code=None, sent_switch=0, send_counts=1, remark=None)
-
-def generate_ohlc_df(appended_df, logger, freq='1T'):
-    freq = freq.replace('T', 'min').replace('H', 'h')
-    df = appended_df.set_index(['base_asset', 'datetime_now'])
-    ohlc_df = pd.DataFrame()
-    if 'tp_premium' in df.columns:
-        df['tp_premium'] = pd.to_numeric(df['tp_premium'], errors='coerce')
-        tp_ohlc_df = df.groupby(['base_asset', pd.Grouper(level='datetime_now', freq=freq)])['tp_premium'].ohlc()
-        # add prefix of tp_ to the column names
-        tp_ohlc_df.columns = ['tp_' + col for col in tp_ohlc_df.columns]
-        ohlc_df = pd.concat([ohlc_df, tp_ohlc_df], axis=1)
-    if 'LS_premium' in df.columns:
-        df['LS_premium'] = pd.to_numeric(df['LS_premium'], errors='coerce')
-        LS_ohlc_df = df.groupby(['base_asset', pd.Grouper(level='datetime_now', freq=freq)])['LS_premium'].ohlc()
-        # add prefix of LS_ to the column names
-        LS_ohlc_df.columns = ['LS_' + col for col in LS_ohlc_df.columns]
-        ohlc_df = pd.concat([ohlc_df, LS_ohlc_df], axis=1)
-    if 'SL_premium' in df.columns:
-        df['SL_premium'] = pd.to_numeric(df['SL_premium'], errors='coerce')
-        SL_ohlc_df = df.groupby(['base_asset', pd.Grouper(level='datetime_now', freq=freq)])['SL_premium'].ohlc()
-        # add prefix of SL_ to the column names
-        SL_ohlc_df.columns = ['SL_' + col for col in SL_ohlc_df.columns]
-        ohlc_df = pd.concat([ohlc_df, SL_ohlc_df], axis=1)
-    if 'tp_premium' not in df.columns and 'LS_premium' not in df.columns and 'SL_premium' not in df.columns:
-        raise ValueError('There is no proper column in the dataframe')
-    # TEST
-    ohlc_df['dollar'] = df['dollar'].iloc[-1]
-    ohlc_df.reset_index(inplace=True)
-    # TEST
-    try:
-        ohlc_df['record_count'] = appended_df.groupby('base_asset')['base_asset'].count().values
-    except Exception as e:
-        content = f"Error in generate_ohlc_df: {traceback.format_exc()}\n ohlc_df:{ohlc_df}, appended_df.groupby('base_asset'):{appended_df.groupby('base_asset')}\n appended_df:{appended_df}"
-        logger.error(content)
-    return ohlc_df
     
-def resample_ohlc_df(ohlc_df, resample_period, closed_count):
-    resample_period = resample_period.replace('T', 'min').replace('H', 'h')
-    ohlc_df['count'] = 1
-    ohlc_df = ohlc_df.set_index(['base_asset','datetime_now'])
-    resampled_df = ohlc_df.groupby('base_asset').resample(resample_period, level='datetime_now').agg({
-        'tp_open': 'first',
-        'tp_high': 'max',
-        'tp_low': 'min',
-        'tp_close': 'last',
-        'LS_open': 'first',
-        'LS_high': 'max',
-        'LS_low': 'min',
-        'LS_close': 'last',
-        'SL_open': 'first',
-        'SL_high': 'max',
-        'SL_low': 'min',
-        'SL_close': 'last',
-        'dollar': 'last',
-        'count': 'sum'
-    })
-    resampled_df = resampled_df.reset_index()
-    resampled_df['closed'] = resampled_df['count'].apply(lambda x: True if x==closed_count else False)
-    return resampled_df
-    
-def ohlc_1T_loader(
+def ohlc_1T_generator(
     info_dict,
     convert_rate_dict,
-    generate_ohlc_df,
     insert_kline_to_db,
     target_market_code,
     origin_market_code,
@@ -164,45 +105,146 @@ def ohlc_1T_loader(
     max_length=300
     ):
     logger = InfoCoreLogger("kline_core", logging_dir).logger
+    logger.info(f"ohlc_1T_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code} has started.")
     remote_redis = RedisHelper(**redis_dict)
     local_redis = RedisHelper()
-    columns_to_merge = ['base_asset', 'tp', 'scr', 'atp24h', 'converted_tp']
-    appended_premium_df = pd.DataFrame()
     datetime_now = datetime.datetime.utcnow()
-    # Set stream maxlen
+    per_minute_ohlc_df = pd.DataFrame()
+
+    # Initialize columns outside the loop
+    prefixes = ['tp', 'LS', 'SL']
+    price_columns = ['tp_premium', 'LS_premium', 'SL_premium']
+    other_columns = ['tp', 'scr', 'atp24h', 'converted_tp']
+    ohlc_columns = [f"{prefix}_{col}" for prefix in prefixes for col in ['open', 'high', 'low', 'close']]
+
+    for col in ohlc_columns + other_columns:
+        per_minute_ohlc_df[col] = np.nan  # Initialize columns with NaN
+
     remote_redis.get_redis_client().xtrim(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', maxlen=max_length)
+
+    loop_downtime_sec = 0.05
     while True:
-        time.sleep(loop_downtime_sec)
         try:
+            time.sleep(loop_downtime_sec)
             datetime_before = datetime_now
-            premium_df = get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logging_dir=logging_dir)
             datetime_now = datetime.datetime.utcnow()
+            premium_df = get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logging_dir=logging_dir)
             premium_df['datetime_now'] = datetime_now
-            appended_premium_df = pd.concat([appended_premium_df, premium_df], axis=0)
-            appended_premium_df.loc[: ,'datetime_now'] = pd.to_datetime(appended_premium_df['datetime_now'])
-            # print(f"redis saving ohlc_1T_now time: {time.time()-start}")
+
+            # Extract necessary columns and set 'base_asset' as the index
+            prices_df = premium_df.set_index('base_asset')[price_columns + other_columns]
+
+            # Keep only base_assets that are in prices_df (remove delisted cryptos)
+            per_minute_ohlc_df = per_minute_ohlc_df.reindex(prices_df.index)
+
+            # Identify new base_assets (where 'LS_open' is NaN)
+            mask_new = per_minute_ohlc_df['LS_open'].isna()
+
+            # For new base_assets, initialize OHLC values
+            if mask_new.any():
+                # Extract prices for new base_assets
+                new_prices = prices_df.loc[mask_new, price_columns]
+                
+                # Create a DataFrame for the OHLC columns
+                # This will have columns like 'tp_open', 'tp_high', ..., 'SL_close'
+                ohlc_cols = [f'{prefix}_{col}' for prefix in prefixes for col in ['open', 'high', 'low', 'close']]
+                
+                # Repeat the prices for 'open', 'high', 'low', 'close'
+                # The shape of new_prices.values is (num_assets, num_prefixes)
+                # We need to repeat each price 4 times (for 'open', 'high', 'low', 'close')
+                repeated_prices = np.repeat(new_prices.values, 4, axis=1)
+                
+                # Create a DataFrame with the repeated prices
+                new_ohlc_values = pd.DataFrame(
+                    data=repeated_prices,
+                    index=new_prices.index,
+                    columns=ohlc_cols
+                )
+                
+
+                # Assign the new OHLC values to per_minute_ohlc_df
+                per_minute_ohlc_df.loc[mask_new, ohlc_cols] = new_ohlc_values.astype('float64')
+                
+                # Assign other columns
+                per_minute_ohlc_df.loc[mask_new, other_columns] = prices_df.loc[mask_new, other_columns].astype('float64')
+
+            # Update other columns for new base_assets
+            per_minute_ohlc_df.loc[mask_new, other_columns] = prices_df.loc[mask_new, other_columns].astype('float64')
+
+            # Create a mapping from prefixes to price columns
+            prefix_price_map = dict(zip(prefixes, price_columns))
+
+            # Create prices_df_prices with columns as prefixes
+            prices_df_prices = prices_df[price_columns].rename(columns=dict(zip(price_columns, prefixes)))
+
+            # Update 'high' for all prefixes
+            per_minute_ohlc_df_high = per_minute_ohlc_df[[f'{prefix}_high' for prefix in prefixes]].rename(columns=lambda x: x.replace('_high', ''))
+            per_minute_ohlc_df_high = np.maximum(per_minute_ohlc_df_high, prices_df_prices).astype('float64')
+            per_minute_ohlc_df_high.columns = [f'{col}_high' for col in per_minute_ohlc_df_high.columns]
+            per_minute_ohlc_df.update(per_minute_ohlc_df_high)
+
+            # Update 'low' for all prefixes
+            per_minute_ohlc_df_low = per_minute_ohlc_df[[f'{prefix}_low' for prefix in prefixes]].rename(columns=lambda x: x.replace('_low', ''))
+            per_minute_ohlc_df_low = np.minimum(per_minute_ohlc_df_low, prices_df_prices).astype('float64')
+            per_minute_ohlc_df_low.columns = [f'{col}_low' for col in per_minute_ohlc_df_low.columns]
+            per_minute_ohlc_df.update(per_minute_ohlc_df_low)
+
+            # Update 'close' for all prefixes
+            per_minute_ohlc_df_close = prices_df_prices.copy().astype('float64')
+            per_minute_ohlc_df_close.columns = [f'{col}_close' for col in per_minute_ohlc_df_close.columns]
+            per_minute_ohlc_df.update(per_minute_ohlc_df_close)
+
+            # Update other columns
+            per_minute_ohlc_df[other_columns] = prices_df[other_columns]
+
+            # Update per_minute_ohlc_df in the Redis 'now' data
+            ohlc_now_df = per_minute_ohlc_df.reset_index()
+            ohlc_now_df['datetime_now'] = datetime_now
+            pickled_ohlc_now_df = pickle.dumps(ohlc_now_df)
+            local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_now_df)
+            
+            # Publish Stream
+            remote_redis.get_redis_client().xadd(
+                f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now',
+                {'data': pickled_ohlc_now_df},
+                maxlen=10,
+                approximate=True
+            )
+
+            # Check if the minute has changed
             if datetime_before.minute != datetime_now.minute:
-                adjusted_datetime_now = datetime.datetime(datetime_now.year, datetime_now.month, datetime_now.day, datetime_now.hour, datetime_now.minute)
-                cut_appended_premium_df = appended_premium_df[appended_premium_df['datetime_now'] < adjusted_datetime_now]
-                ohlc_df = generate_ohlc_df(cut_appended_premium_df, logger)
-                ohlc_df = ohlc_df.merge(premium_df[columns_to_merge], on=['base_asset'], how='inner')
+                adjusted_datetime_now = datetime.datetime(
+                    datetime_now.year, datetime_now.month, datetime_now.day, datetime_now.hour, datetime_now.minute
+                )
+                # Finalize the per-minute OHLC DataFrame
+                ohlc_df = per_minute_ohlc_df.reset_index()
+                ohlc_df['datetime_now'] = adjusted_datetime_now - datetime.timedelta(minutes=1)
+                ohlc_df['dollar'] = get_dollar_dict()['price']
+                ohlc_df['closed'] = True
+
+                # Serialize and store the ohlc_df
                 pickled_ohlc_df = pickle.dumps(ohlc_df)
-                # Save into redis db for current data
+                # Save into Redis for current data
                 local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
-                # publish Stream
-                remote_redis.get_redis_client().xadd(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', {'data': pickled_ohlc_df}, maxlen=10, approximate=True)
-                # Append into redis db for historical data
+                # Publish Stream
+                remote_redis.get_redis_client().xadd(
+                    f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now',
+                    {'data': pickled_ohlc_df},
+                    maxlen=10,
+                    approximate=True
+                )
+                # Append into Redis for historical data
                 old_ohlc_1T_kline = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline')
                 if old_ohlc_1T_kline is None:
                     old_ohlc_1T_kline = pd.DataFrame()
                 else:
                     old_ohlc_1T_kline = pickle.loads(old_ohlc_1T_kline)
+                    # Keep only base_assets that are in ohlc_df
                     old_ohlc_1T_kline = old_ohlc_1T_kline[old_ohlc_1T_kline['base_asset'].isin(ohlc_df['base_asset'].unique())]
-                new_ohlc_1T_kline = pd.concat([old_ohlc_1T_kline, ohlc_df], axis=0).tail(max_length*ohlc_df['base_asset'].nunique())
-                new_ohlc_1T_kline['closed'] = True
+                new_ohlc_1T_kline = pd.concat([old_ohlc_1T_kline, ohlc_df], axis=0).tail(max_length * ohlc_df['base_asset'].nunique())
                 pickled_ohlc_df = pickle.dumps(new_ohlc_1T_kline)
                 local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
-                # Directly insert into the DB
+                # Insert into the database
                 insert_db_thread = Thread(
                     target=insert_kline_to_db,
                     args=(
@@ -217,307 +259,107 @@ def ohlc_1T_loader(
                     )
                 )
                 insert_db_thread.start()
-                appended_premium_df = appended_premium_df[appended_premium_df['datetime_now'] >= adjusted_datetime_now]
-            else:
-                # Save into redis db for current data
-                ohlc_df = generate_ohlc_df(appended_premium_df, logger)
-                ohlc_df = ohlc_df.merge(premium_df[columns_to_merge], on=['base_asset'], how='inner')
-                pickled_ohlc_df = pickle.dumps(ohlc_df)
-                local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
-                # # Publish to redis pubsub
-                # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df) # Current
-                # publish Stream
-                remote_redis.get_redis_client().xadd(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', {'data': pickled_ohlc_df}, maxlen=10, approximate=True)
+                # Reset per_minute_ohlc_df for the new minute
+                per_minute_ohlc_df = pd.DataFrame()
+                # Re-initialize columns for the new DataFrame
+                for col in ohlc_columns + other_columns:
+                    per_minute_ohlc_df[col] = np.nan
         except Exception as e:
-            content = f"ohlc_1T_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_1T_loader: {traceback.format_exc()}\n appended_premium_df:{appended_premium_df}, premium_df:{premium_df}"
+            content = f"ohlc_1T_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_1T_loader: {traceback.format_exc()}"
             logger.error(content)
             register_monitor_msg.register(admin_id, node, 'error', f"ohlc_1T_loader got an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
             time.sleep(3)
-                
-def ohlc_day_resample_loader(
-    resample_ohlc_df,
-    insert_kline_to_db,
-    target_market_code,
-    origin_market_code,
-    original_period,
-    resample_period,
-    resample_closed_count,
-    register_monitor_msg,
-    admin_id,
-    node,
-    redis_dict,
-    mongodb_dict,
-    logging_dir,
-    loop_downtime_sec=0.1,
-    max_length=300
-    ):
-    resample_period_number = int(re.search(r'\d+', resample_period).group())
-    logger = InfoCoreLogger("kline_core", logging_dir).logger
-    remote_redis = RedisHelper(**redis_dict)
-    local_redis = RedisHelper()
-    columns_to_merge = ['base_asset', 'tp', 'scr', 'atp24h', 'converted_tp']
-    while True:
-        original_ohlc_kline_df = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')
-        if original_ohlc_kline_df is not None:
-            break
-        time.sleep(5)
-
-    start = time.time()
-    original_ohlc_1T_now = pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
-    resampled_ohlc_history_df = resample_ohlc_df(pickle.loads(original_ohlc_kline_df), resample_period, closed_count=resample_closed_count)
-    resampled_ohlc_history_df = resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
-    pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-    local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-    # Publish to redis pubsub
-    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-    # Directly insert into the DB
-    insert_db_thread = Thread(
-        target=insert_kline_to_db,
-        args=(
-            resampled_ohlc_history_df,
-            f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline",
-            register_monitor_msg,
-            redis_dict,
-            mongodb_dict,
-            admin_id,
-            node,
-            logger
-        )
-    )
-    insert_db_thread.start()
-    logger.info(f"ohlc_day_resample_loader has started. {target_market_code}:{origin_market_code}_{resample_period}_kline, initial generating and storing resampled_ohlc_history_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
-
-    datetime_now = datetime.datetime.utcnow()        
-    while True:
-        time.sleep(loop_downtime_sec)
-        try:
-            datetime_before = datetime_now
-            original_ohlc_1T_now = pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
-            try:
-                original_ohlc_history_last_datetime = pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')).iloc[-1]['datetime_now']
-            except TypeError:
-                print(f"original_ohlc_history_last_datetime is None")
-                continue
-            resampled_ohlc_history_df = pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline'))
-            datetime_now = datetime.datetime.utcnow()
-            if ((datetime_before.hour // resample_period_number != datetime_now.hour // resample_period_number) or
-                sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique())):
-                # concatenate fetched resampled_ohlc_history_df and newly generated resampled_ohlc_history_df
-                start = time.time()
-                new_resampled_ohlc_history_df = resample_ohlc_df(pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')), resample_period, closed_count=resample_closed_count)
-                new_resampled_ohlc_history_df = new_resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
-                resampled_ohlc_history_df = pd.concat([resampled_ohlc_history_df, new_resampled_ohlc_history_df], axis=0, ignore_index=True)
-                resampled_ohlc_history_df = resampled_ohlc_history_df.drop_duplicates(subset=['base_asset', 'datetime_now'], keep='last').groupby('base_asset').tail(max_length)
-                # print(f"resampling ohlc_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
-                # Save into the Redis DB
-                # start = time.time()
-                pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-                local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-                # Publish to redis pubsub
-                # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-                # Directly insert into the DB
-                insert_db_thread = Thread(
-                    target=insert_kline_to_db,
-                    args=(
-                        resampled_ohlc_history_df,
-                        f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline",
-                        register_monitor_msg,
-                        redis_dict,
-                        mongodb_dict,
-                        admin_id,
-                        node,
-                        logger
-                    )
-                )
-                insert_db_thread.start()
-                # self.kline_logger.info(f"redis saving {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}")
-                if sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique()):
-                    removed_list = [x for x in resampled_ohlc_history_df['base_asset'].unique() if x not in original_ohlc_1T_now['base_asset'].unique()]
-                    added_list = [x for x in original_ohlc_1T_now['base_asset'].unique() if x not in resampled_ohlc_history_df['base_asset'].unique()]
-                    logger.info(f"{target_market_code}:{origin_market_code}_{resample_period}_kline base_asset is not matched. added: {added_list}, removed: {removed_list}")
-                    if len(removed_list) != 0:
-                        # remove the removed base_asset from resampled_ohlc_history_df and overwrite it
-                        resampled_ohlc_history_df = resampled_ohlc_history_df[~resampled_ohlc_history_df['base_asset'].isin(removed_list)]
-                        pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-                        local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-                        logger.info(f"resampled_ohlc_history_df has been overwritten. removed_list: {removed_list}")
-                    time.sleep(5)
-            else:
-                # generate resampled_ohlc_now_df
-                resampled_ohlc_last_df = resampled_ohlc_history_df.groupby('base_asset').tail(1).reset_index(drop=True).copy()
-                try:
-                    # Compare it to thr original_ohlc_1T_now
-                    resampled_ohlc_last_df.loc[:, 'tp_high'] = np.where(resampled_ohlc_last_df['tp_high']>original_ohlc_1T_now['tp_high'], resampled_ohlc_last_df['tp_high'], original_ohlc_1T_now['tp_high'])
-                    resampled_ohlc_last_df.loc[:, 'tp_low'] = np.where(resampled_ohlc_last_df['tp_low']<original_ohlc_1T_now['tp_low'], resampled_ohlc_last_df['tp_low'], original_ohlc_1T_now['tp_low'])
-                    resampled_ohlc_last_df.loc[:, 'tp_close'] = original_ohlc_1T_now['tp_close']
-                    resampled_ohlc_last_df.loc[:, 'LS_high'] = np.where(resampled_ohlc_last_df['LS_high']>original_ohlc_1T_now['LS_high'], resampled_ohlc_last_df['LS_high'], original_ohlc_1T_now['LS_high'])
-                    resampled_ohlc_last_df.loc[:, 'LS_low'] = np.where(resampled_ohlc_last_df['LS_low']<original_ohlc_1T_now['LS_low'], resampled_ohlc_last_df['LS_low'], original_ohlc_1T_now['LS_low'])
-                    resampled_ohlc_last_df.loc[:, 'LS_close'] = original_ohlc_1T_now['LS_close']
-                    resampled_ohlc_last_df.loc[:, 'SL_high'] = np.where(resampled_ohlc_last_df['SL_high']>original_ohlc_1T_now['SL_high'], resampled_ohlc_last_df['SL_high'], original_ohlc_1T_now['SL_high'])
-                    resampled_ohlc_last_df.loc[:, 'SL_low'] = np.where(resampled_ohlc_last_df['SL_low']<original_ohlc_1T_now['SL_low'], resampled_ohlc_last_df['SL_low'], original_ohlc_1T_now['SL_low'])
-                    resampled_ohlc_last_df.loc[:, 'SL_close'] = original_ohlc_1T_now['SL_close']
-                    resampled_ohlc_last_df[columns_to_merge] = original_ohlc_1T_now[columns_to_merge]
-                    resampled_ohlc_last_df.loc[:, 'datetime_now'] = resampled_ohlc_last_df['datetime_now'] + datetime.timedelta(days=resample_period_number)
-                    # # Save into the Redis DB
-                    # self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
-                    # # PUBSUB
-                    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
-                    # publish Stream
-                    remote_redis.get_redis_client().xadd(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', {'data': pickle.dumps(resampled_ohlc_last_df)}, maxlen=10, approximate=True)
-                except Exception as e:
-                    logger.error(f"Exception: {e}, \nError in ohlc_day_resample_loader: {e}, resampled_ohlc_last_df: {resampled_ohlc_last_df}, original_ohlc_1T_now: {original_ohlc_1T_now}")
-                    time.sleep(3)
-        except Exception as e:
-            content = f"ohlc_day_resample_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, original_period:{original_period}, resample_period:{resample_period}, Error in ohlc_day_resample_loader: {traceback.format_exc()}"
-            logger.error(content)
-            register_monitor_msg.register(admin_id, node, 'error', f"ohlc_day_resample_loader got an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
-                
-def ohlc_hour_resample_loader(
-    resample_ohlc_df,
-    insert_kline_to_db,
-    target_market_code,
-    origin_market_code,
-    original_period,
-    resample_period,
-    resample_closed_count,
-    register_monitor_msg,
-    admin_id,
-    node,
-    redis_dict,
-    mongodb_dict,
-    logging_dir,
-    loop_downtime_sec=0.1,
-    max_length=300
-    ):
-    resample_period_number = int(re.search(r'\d+', resample_period).group())
-    logger = InfoCoreLogger("kline_core", logging_dir).logger
-    remote_redis = RedisHelper(**redis_dict)
-    local_redis = RedisHelper()
-    columns_to_merge = ['base_asset', 'tp', 'scr', 'atp24h', 'converted_tp']
-    while True:
-        original_ohlc_kline_df = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')
-        if original_ohlc_kline_df is not None:
-            break
-        time.sleep(5)
-
-    start = time.time()
-    original_ohlc_1T_now = pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
-    resampled_ohlc_history_df = resample_ohlc_df(pickle.loads(original_ohlc_kline_df), resample_period, closed_count=resample_closed_count)
-    resampled_ohlc_history_df = resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
-    pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-    local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-    # Publish to redis pubsub
-    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-    # Directly insert into the DB
-    insert_db_thread = Thread(
-        target=insert_kline_to_db,
-        args=(
-            resampled_ohlc_history_df, 
-            f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline",
-            register_monitor_msg,
-            redis_dict,
-            mongodb_dict,
-            admin_id,
-            node,
-            logger
-        )
-    )
-    insert_db_thread.start()
-    logger.info(f"ohlc_hour_resample_loader has started. {target_market_code}:{origin_market_code}_{resample_period}_kline, initial generating and storing resampled_ohlc_history_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
-
-    datetime_now = datetime.datetime.utcnow()
-    while True:
-        time.sleep(loop_downtime_sec)
-        try:
-            datetime_before = datetime_now
-            original_ohlc_1T_now = pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
-            try:
-                original_ohlc_history_last_datetime = pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')).iloc[-1]['datetime_now']
-            except TypeError:
-                print(f"original_ohlc_history_last_datetime is None")
-                continue
-            resampled_ohlc_history_df = pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline'))
-            datetime_now = datetime.datetime.utcnow()
-            if ((datetime_before.hour // resample_period_number != datetime_now.hour // resample_period_number) or
-                sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique())):
-                # concatenate fetched resampled_ohlc_history_df and newly generated resampled_ohlc_history_df
-                start = time.time()
-                new_resampled_ohlc_history_df = resample_ohlc_df(pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')), resample_period, closed_count=resample_closed_count)
-                new_resampled_ohlc_history_df = new_resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
-                resampled_ohlc_history_df = pd.concat([resampled_ohlc_history_df, new_resampled_ohlc_history_df], axis=0, ignore_index=True)
-                resampled_ohlc_history_df = resampled_ohlc_history_df.drop_duplicates(subset=['base_asset', 'datetime_now'], keep='last').groupby('base_asset').tail(max_length)
-                print(f"resampling ohlc_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
-                # Save into the Redis DB
-                # start = time.time()
-                pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-                local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-                # Publish to redis pubsub
-                # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-                # Directly insert into the DB
-                insert_db_thread = Thread(
-                    target=insert_kline_to_db,
-                    args=(
-                        resampled_ohlc_history_df,
-                        f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline",
-                        register_monitor_msg,
-                        redis_dict,
-                        mongodb_dict,
-                        admin_id,
-                        node,
-                        logger
-                    )
-                )
-                insert_db_thread.start()
-                # self.kline_logger.info(f"redis saving {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}")
-                if sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique()):
-                    removed_list = [x for x in resampled_ohlc_history_df['base_asset'].unique() if x not in original_ohlc_1T_now['base_asset'].unique()]
-                    added_list = [x for x in original_ohlc_1T_now['base_asset'].unique() if x not in resampled_ohlc_history_df['base_asset'].unique()]
-                    logger.info(f"{target_market_code}:{origin_market_code}_{resample_period}_kline base_asset is not matched. added: {added_list}, removed: {removed_list}")
-                    if len(removed_list) != 0:
-                        # remove the removed base_asset from resampled_ohlc_history_df and overwrite it
-                        resampled_ohlc_history_df = resampled_ohlc_history_df[~resampled_ohlc_history_df['base_asset'].isin(removed_list)]
-                        pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-                        local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-                        logger.info(f"resampled_ohlc_history_df has been overwritten. removed_list: {removed_list}")
-                    time.sleep(5)
-            else:
-                # generate resampled_ohlc_now_df
-                resampled_ohlc_last_df = resampled_ohlc_history_df.groupby('base_asset').tail(1).reset_index(drop=True).copy()
-                try:
-                    # Compare it to thr original_ohlc_1T_now
-                    resampled_ohlc_last_df.loc[:, 'tp_high'] = np.where(resampled_ohlc_last_df['tp_high']>original_ohlc_1T_now['tp_high'], resampled_ohlc_last_df['tp_high'], original_ohlc_1T_now['tp_high'])
-                    resampled_ohlc_last_df.loc[:, 'tp_low'] = np.where(resampled_ohlc_last_df['tp_low']<original_ohlc_1T_now['tp_low'], resampled_ohlc_last_df['tp_low'], original_ohlc_1T_now['tp_low'])
-                    resampled_ohlc_last_df.loc[:, 'tp_close'] = original_ohlc_1T_now['tp_close']
-                    resampled_ohlc_last_df.loc[:, 'LS_high'] = np.where(resampled_ohlc_last_df['LS_high']>original_ohlc_1T_now['LS_high'], resampled_ohlc_last_df['LS_high'], original_ohlc_1T_now['LS_high'])
-                    resampled_ohlc_last_df.loc[:, 'LS_low'] = np.where(resampled_ohlc_last_df['LS_low']<original_ohlc_1T_now['LS_low'], resampled_ohlc_last_df['LS_low'], original_ohlc_1T_now['LS_low'])
-                    resampled_ohlc_last_df.loc[:, 'LS_close'] = original_ohlc_1T_now['LS_close']
-                    resampled_ohlc_last_df.loc[:, 'SL_high'] = np.where(resampled_ohlc_last_df['SL_high']>original_ohlc_1T_now['SL_high'], resampled_ohlc_last_df['SL_high'], original_ohlc_1T_now['SL_high'])
-                    resampled_ohlc_last_df.loc[:, 'SL_low'] = np.where(resampled_ohlc_last_df['SL_low']<original_ohlc_1T_now['SL_low'], resampled_ohlc_last_df['SL_low'], original_ohlc_1T_now['SL_low'])
-                    resampled_ohlc_last_df.loc[:, 'SL_close'] = original_ohlc_1T_now['SL_close']
-                    resampled_ohlc_last_df[columns_to_merge] = original_ohlc_1T_now[columns_to_merge]
-                    resampled_ohlc_last_df.loc[:, 'datetime_now'] = resampled_ohlc_last_df['datetime_now'] + datetime.timedelta(hours=resample_period_number)
-                    # # Save into the Redis DB
-                    # self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
-                    # # PUBSUB
-                    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
-                    # publish Stream
-                    remote_redis.get_redis_client().xadd(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', {'data': pickle.dumps(resampled_ohlc_last_df)}, maxlen=10, approximate=True)
-                except Exception as e:
-                    logger.error(f"Exception: {e}, \nError in ohlc_hour_resample_loader: {e}, resampled_ohlc_last_df: {resampled_ohlc_last_df}, original_ohlc_1T_now: {original_ohlc_1T_now}")
-                    time.sleep(3)
-        except Exception as e:
-            content = f"ohlc_hour_resample_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, original_period:{original_period}, resample_period:{resample_period}, Error in ohlc_hour_resample_loader: {traceback.format_exc()}"
-            logger.error(content)
-            register_monitor_msg.register(admin_id, node, 'error', f"ohlc_hour_resample_loader got an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
             
-def ohlc_min_resample_loader(
-    resample_ohlc_df,
+def generate_interval_kline(
+    per_interval_ohlc_df,
+    previous_interval_start,
+    interval_minutes,
+    prefixes,
+    insert_kline_to_db,
+    interval_label,
+    target_market_code,
+    origin_market_code,
+    register_monitor_msg,
+    admin_id,
+    node,
+    redis_dict,
+    mongodb_dict,
+    logger,
+    max_length
+    ):
+    try:
+        local_redis = RedisHelper()
+        # wait until the last 1T kline is available
+        while True:
+            # Load the ohlc_1T_kline
+            pickled_ohlc_1T_kline = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline')
+            if pickled_ohlc_1T_kline is None:
+                logger.warning(f"No 1T Kline data available for {target_market_code}:{origin_market_code}, {interval_label}")
+                return
+            ohlc_1T_kline_df = pickle.loads(pickled_ohlc_1T_kline)
+            last_ohlc_1T_kline_df = ohlc_1T_kline_df[ohlc_1T_kline_df['datetime_now'] == ohlc_1T_kline_df['datetime_now'].max()]
+            last_kline_datetime_upto_minute = pd.to_datetime(last_ohlc_1T_kline_df['datetime_now']).iloc[0].replace(second=0, microsecond=0, tzinfo=None)  
+            
+            if last_kline_datetime_upto_minute == previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1):
+                break
+            else:            
+                logger.info(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Waiting for the last 1T kline to be available")
+                logger.info(f"last_kline_datetime_upto_minute: {last_kline_datetime_upto_minute}")
+                logger.info(f"previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1): {previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1)}")
+                time.sleep(0.05)
+              
+
+        
+        # Finalize the per-interval OHLC DataFrame
+        ohlc_df = per_interval_ohlc_df.reset_index()
+        ohlc_df['datetime_now'] = previous_interval_start
+        ohlc_df['dollar'] = get_dollar_dict()['price']
+        ohlc_df['closed'] = True
+        
+        last_ohlc_1T_kline_df = last_ohlc_1T_kline_df[last_ohlc_1T_kline_df['base_asset'].isin(ohlc_df['base_asset'].unique())]
+        
+        # overwrite close data with the last 1T close data
+        for prefix in prefixes:
+            ohlc_df[f'{prefix}_close'] = last_ohlc_1T_kline_df[f'{prefix}_close'].values
+            
+        # Compare the high and low with the last 1T high and low
+        for prefix in prefixes:
+            ohlc_df[f'{prefix}_high'] = np.maximum(ohlc_df[f'{prefix}_high'], last_ohlc_1T_kline_df[f'{prefix}_high'].values)
+            ohlc_df[f'{prefix}_low'] = np.minimum(ohlc_df[f'{prefix}_low'], last_ohlc_1T_kline_df[f'{prefix}_low'].values)
+
+        # Append into Redis for historical data
+        old_ohlc_kline = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_kline')
+        if old_ohlc_kline is None:
+            old_ohlc_kline = pd.DataFrame()
+        else:
+            old_ohlc_kline = pickle.loads(old_ohlc_kline)
+            # Keep only base_assets that are in ohlc_df
+            old_ohlc_kline = old_ohlc_kline[old_ohlc_kline['base_asset'].isin(ohlc_df['base_asset'].unique())]
+        new_ohlc_kline = pd.concat([old_ohlc_kline, ohlc_df], axis=0).tail(max_length * ohlc_df['base_asset'].nunique())
+        pickled_new_ohlc_kline = pickle.dumps(new_ohlc_kline)
+        local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_kline', pickled_new_ohlc_kline)
+        # Insert into the database
+        insert_kline_to_db(
+            new_ohlc_kline,
+            f"INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_kline",
+            register_monitor_msg,
+            redis_dict,
+            mongodb_dict,
+            admin_id,
+            node,
+            logger
+        )
+    except Exception as e:
+        content = f"ohlc_{interval_label}_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_{interval_label}_generator: {traceback.format_exc()}"
+        logger.error(content)
+        register_monitor_msg.register(admin_id, node, 'error', f"generate_interval_kline {interval_label} got an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
+        time.sleep(3)
+                
+def ohlc_interval_generator(
+    interval_label,
     insert_kline_to_db,
     target_market_code,
     origin_market_code,
-    original_period,
-    resample_period,
-    resample_closed_count,
     register_monitor_msg,
     admin_id,
     node,
@@ -526,129 +368,172 @@ def ohlc_min_resample_loader(
     logging_dir,
     loop_downtime_sec=0.1,
     max_length=300
-    ):
-    resample_period_number = int(re.search(r'\d+', resample_period).group())
-    logger = InfoCoreLogger("kline_core", logging_dir).logger
+):
+    logger = InfoCoreLogger(f"kline_core", logging_dir).logger
+    logger.info(f"Starting kline_core for {target_market_code}:{origin_market_code} with interval_label: {interval_label}")
     remote_redis = RedisHelper(**redis_dict)
     local_redis = RedisHelper()
-    columns_to_merge = ['base_asset', 'tp', 'scr', 'atp24h', 'converted_tp']
+    datetime_now = datetime.datetime.now(datetime.timezone.utc)
 
-    while True:
-        original_ohlc_kline_df = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')
-        if original_ohlc_kline_df is not None:
-            break
-        time.sleep(5)
+    # Determine interval duration in minutes
+    if interval_label.endswith('T'):
+        interval_minutes = int(interval_label[:-1])
+    elif interval_label.endswith('H'):
+        interval_minutes = int(interval_label[:-1]) * 60
+    else:
+        raise ValueError(f"Invalid interval_label: {interval_label}")
 
-    start = time.time()
-    original_ohlc_1T_now = pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
-    resampled_ohlc_history_df = resample_ohlc_df(pickle.loads(original_ohlc_kline_df), resample_period, closed_count=resample_closed_count)
-    resampled_ohlc_history_df = resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
-    pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-    local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-    # Publish to redis pubsub
-    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-    # Directly insert into the DB
-    insert_db_thread = Thread(
-        target=insert_kline_to_db,
-        args=(
-            resampled_ohlc_history_df,
-            f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline",
-            register_monitor_msg,
-            redis_dict,
-            mongodb_dict,
-            admin_id,
-            node,
-            logger
-        )
-    )
-    insert_db_thread.start()
-    logger.info(f"ohlc_min_resample_loader has started. {target_market_code}:{origin_market_code}_{resample_period}_kline, initial generating and storing resampled_ohlc_history_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
+    # Function to get the start time of the interval
+    def get_interval_start(dt):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        else:
+            dt = dt.astimezone(datetime.timezone.utc)
+        interval_seconds = interval_minutes * 60
+        timestamp = dt.timestamp()
+        interval_start_timestamp = (timestamp // interval_seconds) * interval_seconds
+        return datetime.datetime.utcfromtimestamp(interval_start_timestamp).replace(tzinfo=datetime.timezone.utc)
 
-    datetime_now = datetime.datetime.utcnow()
+    # Initialize current interval start
+    current_interval_start = get_interval_start(datetime_now)
+    previous_interval_start = current_interval_start
+
+    per_interval_ohlc_df = pd.DataFrame()
+
+    # Initialize columns outside the loop
+    prefixes = ['tp', 'LS', 'SL']
+    ohlc_columns = [f"{prefix}_{col}" for prefix in prefixes for col in ['open', 'high', 'low', 'close']]
+    other_columns = ['tp', 'scr', 'atp24h', 'converted_tp']
+    all_columns = ohlc_columns + other_columns
+
+    # Initialize per_interval_ohlc_df with NaNs
+    for col in all_columns:
+        per_interval_ohlc_df[col] = np.nan
+
+    initialize_open_prices = True  # Flag to indicate if we need to initialize open prices
+    finalize_interval = False      # Flag to indicate when to finalize the interval
+
     while True:
         time.sleep(loop_downtime_sec)
         try:
-            datetime_before = datetime_now
-            original_ohlc_1T_now = pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now'))
-            try:
-                original_ohlc_history_last_datetime = pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')).iloc[-1]['datetime_now']
-            except TypeError:
-                print(f"original_ohlc_history_last_datetime is None")
+            datetime_now = datetime.datetime.now(datetime.timezone.utc)
+
+            # Fetch the latest 1T Now data from Redis
+            pickled_1T_now = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now')
+            if pickled_1T_now is None:
+                logger.warning(f"No 1T Now data available for {target_market_code}:{origin_market_code}_{interval_label}")
+                time.sleep(5)
                 continue
-            resampled_ohlc_history_df = pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline'))
-            datetime_now = datetime.datetime.utcnow()
-            if ((datetime_before.minute // resample_period_number != datetime_now.minute // resample_period_number) or
-                sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique())):
-                # concatenate fetched resampled_ohlc_history_df and newly generated resampled_ohlc_history_df
-                start = time.time()
-                new_resampled_ohlc_history_df = resample_ohlc_df(pickle.loads(local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{original_period}_kline')), resample_period, closed_count=resample_closed_count)
-                new_resampled_ohlc_history_df = new_resampled_ohlc_history_df.merge(original_ohlc_1T_now[columns_to_merge], on=['base_asset'], how='inner')
-                resampled_ohlc_history_df = pd.concat([resampled_ohlc_history_df, new_resampled_ohlc_history_df], axis=0, ignore_index=True)
-                resampled_ohlc_history_df = resampled_ohlc_history_df.drop_duplicates(subset=['base_asset', 'datetime_now'], keep='last').groupby('base_asset').tail(max_length)
-                logger.info(f"resampling ohlc_df(length: {len(resampled_ohlc_history_df)}): {time.time()-start}")
-                # Save into the Redis DB
-                start = time.time()
-                pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-                local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-                logger.info(f"redis saving {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}")
-                # Publish to redis pubsub
-                start = time.time() # TEST
-                # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-                # Directly insert into the DB
-                insert_db_thread = Thread(
-                    target=insert_kline_to_db,
+            
+            ohlc_1T_df = pickle.loads(pickled_1T_now)
+            ohlc_1T_df_datetime_now = pd.to_datetime(ohlc_1T_df['datetime_now']).iloc[0]
+            ohlc_1T_df_datetime_upto_minute = ohlc_1T_df_datetime_now.replace(second=0, microsecond=0, tzinfo=None)
+
+            # Check if the interval has changed
+            new_interval_start = get_interval_start(datetime_now)
+
+            if new_interval_start != current_interval_start:
+                # The interval has changed
+                finalize_interval = True
+                current_interval_start = new_interval_start
+                initialize_open_prices = True  # Prepare to initialize open prices for the new interval
+
+            # Proceed to process data as usual
+            temp_df = ohlc_1T_df.set_index('base_asset')[all_columns]
+            per_interval_ohlc_df = per_interval_ohlc_df.reindex(temp_df.index)
+
+            # Identify new base_assets
+            mask_new = per_interval_ohlc_df['LS_open'].isna()
+
+            # For new base_assets, initialize OHLC values
+            if mask_new.any():
+                per_interval_ohlc_df.loc[mask_new, ohlc_columns] = temp_df.loc[mask_new, ohlc_columns].astype('float64')
+                per_interval_ohlc_df.loc[mask_new, other_columns] = temp_df.loc[mask_new, other_columns].astype('float64')
+
+            # For existing base_assets, update high, low, close
+            mask_existing = ~mask_new
+            for prefix in prefixes:
+                per_interval_ohlc_df.loc[mask_existing, f'{prefix}_high'] = np.maximum(
+                    per_interval_ohlc_df.loc[mask_existing, f'{prefix}_high'],
+                    temp_df.loc[mask_existing, f'{prefix}_high']
+                )
+                per_interval_ohlc_df.loc[mask_existing, f'{prefix}_low'] = np.minimum(
+                    per_interval_ohlc_df.loc[mask_existing, f'{prefix}_low'],
+                    temp_df.loc[mask_existing, f'{prefix}_low']
+                )
+                per_interval_ohlc_df.loc[mask_existing, f'{prefix}_close'] = temp_df.loc[mask_existing, f'{prefix}_close']
+
+            # Update other columns for existing assets
+            per_interval_ohlc_df.loc[mask_existing, other_columns] = temp_df.loc[mask_existing, other_columns]
+
+            # Update per_interval_ohlc_df in the Redis 'now' data
+            ohlc_now_df = per_interval_ohlc_df.reset_index()
+            ohlc_now_df['datetime_now'] = datetime_now
+            pickled_ohlc_now_df = pickle.dumps(ohlc_now_df)
+            local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_now', pickled_ohlc_now_df)
+
+            # Publish Stream
+            remote_redis.get_redis_client().xadd(
+                f'INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_now',
+                {'data': pickled_ohlc_now_df},
+                maxlen=10,
+                approximate=True
+            )
+
+            # If initialize_open_prices is True and new data is available for the new interval
+            if (initialize_open_prices and 
+                ohlc_1T_df_datetime_upto_minute == current_interval_start.replace(tzinfo=None)):
+                # Initialize per_interval_ohlc_df open prices with temp_df data
+                per_interval_ohlc_df = per_interval_ohlc_df.reindex(temp_df.index)
+
+                # Set open prices
+                per_interval_ohlc_df[ohlc_columns] = temp_df[ohlc_columns]
+                per_interval_ohlc_df[other_columns] = temp_df[other_columns]
+
+                # Reset high and low prices to open prices
+                for prefix in prefixes:
+                    per_interval_ohlc_df[f'{prefix}_high'] = per_interval_ohlc_df[f'{prefix}_open']
+                    per_interval_ohlc_df[f'{prefix}_low'] = per_interval_ohlc_df[f'{prefix}_open']
+
+                initialize_open_prices = False
+
+            # Finalize the interval after processing the last 1T data of the previous interval
+            if (finalize_interval and
+                ohlc_1T_df_datetime_upto_minute == previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1)):
+                
+                generate_interval_kline_thread = Thread(
+                    target=generate_interval_kline,
                     args=(
-                        resampled_ohlc_history_df,
-                        f"INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline",
+                        per_interval_ohlc_df,
+                        previous_interval_start,
+                        interval_minutes,
+                        prefixes,
+                        insert_kline_to_db,
+                        interval_label,
+                        target_market_code,
+                        origin_market_code,
                         register_monitor_msg,
-                        redis_dict,
-                        mongodb_dict,
                         admin_id,
                         node,
-                        logger
-                    )
+                        redis_dict,
+                        mongodb_dict,
+                        logger,
+                        max_length
+                    ),
+                    daemon=True
                 )
-                insert_db_thread.start()
-                logger.info(f"redis publishing {target_market_code}:{origin_market_code}_{resample_period}_kline time: {time.time()-start}") # TEST
-                if sorted(resampled_ohlc_history_df['base_asset'].unique()) != sorted(original_ohlc_1T_now['base_asset'].unique()):
-                    removed_list = [x for x in resampled_ohlc_history_df['base_asset'].unique() if x not in original_ohlc_1T_now['base_asset'].unique()]
-                    added_list = [x for x in original_ohlc_1T_now['base_asset'].unique() if x not in resampled_ohlc_history_df['base_asset'].unique()]
-                    logger.info(f"{target_market_code}:{origin_market_code}_{resample_period}_kline base_asset is not matched. added: {added_list}, removed: {removed_list}")
-                    if len(removed_list) != 0:
-                        # remove the removed base_asset from resampled_ohlc_history_df and overwrite it
-                        resampled_ohlc_history_df = resampled_ohlc_history_df[~resampled_ohlc_history_df['base_asset'].isin(removed_list)]
-                        pickled_resampled_ohlc_history_df = pickle.dumps(resampled_ohlc_history_df)
-                        local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_kline', pickled_resampled_ohlc_history_df)
-                        logger.info(f"resampled_ohlc_history_df has been overwritten. removed_list: {removed_list}")
-                    time.sleep(5)
-            else:
-                # generate resampled_ohlc_now_df
-                resampled_ohlc_last_df = resampled_ohlc_history_df.groupby('base_asset').tail(1).reset_index(drop=True).copy()
-                try:
-                    # Compare it to thr original_ohlc_1T_now
-                    resampled_ohlc_last_df.loc[:, 'tp_high'] = np.where(resampled_ohlc_last_df['tp_high']>original_ohlc_1T_now['tp_high'], resampled_ohlc_last_df['tp_high'], original_ohlc_1T_now['tp_high'])
-                    resampled_ohlc_last_df.loc[:, 'tp_low'] = np.where(resampled_ohlc_last_df['tp_low']<original_ohlc_1T_now['tp_low'], resampled_ohlc_last_df['tp_low'], original_ohlc_1T_now['tp_low'])
-                    resampled_ohlc_last_df.loc[:, 'tp_close'] = original_ohlc_1T_now['tp_close']
-                    resampled_ohlc_last_df.loc[:, 'LS_high'] = np.where(resampled_ohlc_last_df['LS_high']>original_ohlc_1T_now['LS_high'], resampled_ohlc_last_df['LS_high'], original_ohlc_1T_now['LS_high'])
-                    resampled_ohlc_last_df.loc[:, 'LS_low'] = np.where(resampled_ohlc_last_df['LS_low']<original_ohlc_1T_now['LS_low'], resampled_ohlc_last_df['LS_low'], original_ohlc_1T_now['LS_low'])
-                    resampled_ohlc_last_df.loc[:, 'LS_close'] = original_ohlc_1T_now['LS_close']
-                    resampled_ohlc_last_df.loc[:, 'SL_high'] = np.where(resampled_ohlc_last_df['SL_high']>original_ohlc_1T_now['SL_high'], resampled_ohlc_last_df['SL_high'], original_ohlc_1T_now['SL_high'])
-                    resampled_ohlc_last_df.loc[:, 'SL_low'] = np.where(resampled_ohlc_last_df['SL_low']<original_ohlc_1T_now['SL_low'], resampled_ohlc_last_df['SL_low'], original_ohlc_1T_now['SL_low'])
-                    resampled_ohlc_last_df.loc[:, 'SL_close'] = original_ohlc_1T_now['SL_close']
-                    resampled_ohlc_last_df[columns_to_merge] = original_ohlc_1T_now[columns_to_merge]
-                    resampled_ohlc_last_df.loc[:, 'datetime_now'] = resampled_ohlc_last_df['datetime_now'] + datetime.timedelta(minutes=resample_period_number)
-                    # # Save into the Redis DB
-                    # self.redis_client.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{converted_resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
-                    # # PUBSUB
-                    # self.redis_client_db0.publish(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', pickle.dumps(resampled_ohlc_last_df))
-                    # publish Stream
-                    remote_redis.get_redis_client().xadd(f'INFO_CORE|{target_market_code}:{origin_market_code}_{resample_period}_now', {'data': pickle.dumps(resampled_ohlc_last_df)}, maxlen=10, approximate=True)
-                except Exception as e:
-                    logger.error(f"Exception: {e}, \nError in ohlc_min_resample_loader: {e}, resampled_ohlc_last_df: {resampled_ohlc_last_df}, original_ohlc_1T_now: {original_ohlc_1T_now}")
-                    time.sleep(3)
+                generate_interval_kline_thread.start()
+
+                # Reset per_interval_ohlc_df for the new interval
+                per_interval_ohlc_df = pd.DataFrame()
+                for col in all_columns:
+                    per_interval_ohlc_df[col] = np.nan
+
+                finalize_interval = False
+                previous_interval_start = current_interval_start  # Update previous interval start
+
         except Exception as e:
-            content = f"ohlc_min_resample_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, original_period:{original_period}, resample_period:{resample_period}, Error in ohlc_min_resample_loader: {traceback.format_exc()}"
+            content = f"ohlc_{interval_label}_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_{interval_label}_generator: {traceback.format_exc()}"
             logger.error(content)
-            register_monitor_msg.register(admin_id, node, 'error', f"ohlc_min_resample_loader got an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
-
-
+            register_monitor_msg.register(admin_id, node, 'error', f"ohlc_{interval_label}_generator encountered an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
+            time.sleep(3)

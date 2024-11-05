@@ -1,26 +1,15 @@
 import datetime
 import pandas as pd
 import requests
-import os
-import sys
-import json
 from threading import Thread
-# uppend upper dir
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-with open(upper_dir + "/info_core_config.json") as f:
-    config = json.load(f)
-
-node = config['node']
-prod = config['node_settings'][node]['prod']
 
 class AcwApi:
-    def __init__(self, prod=prod):
+    def __init__(self, acw_url, node, prod):
         if prod is False:
             self.verify = False
-            self.url = config['acw_setting']['dev_url']
         else:
             self.verify = True
-            self.url = config['acw_setting']['prod_url']
+        self.url = acw_url
         self.message_url = "messagecore/messages/"
         self.node_url = "tradecore/nodes/"
         self.message_url = "messagecore/messages/"

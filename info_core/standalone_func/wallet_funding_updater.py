@@ -96,6 +96,9 @@ def update_fundingrate(admin_id, node, register_monitor_msg, logger, db_client, 
                     logger.info(f"Collection empty. Inserting {futures_type} funding rate to MongoDB")
                 else:
                     calculate_time_start = time.time()
+                    # Set the dtype of funding_time to datetime64[ns]
+                    funding_df['funding_time'] = pd.to_datetime(funding_df['funding_time'], errors='coerce')
+                    df['funding_time'] = pd.to_datetime(df['funding_time'], errors='coerce')
                     merged_funding_df = funding_df.merge(df, on=['symbol', 'funding_time'], how='left')
                     calculate_time += time.time() - calculate_time_start
                     for _, row in merged_funding_df.iterrows():

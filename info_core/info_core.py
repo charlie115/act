@@ -276,8 +276,8 @@ class InitCore:
                     self.info_dict[data_name] = self.upbit_adaptor.spot_exchange_info()
                 elif data_name == "upbit_spot_ticker_df":
                     self.info_dict[data_name] = self.upbit_adaptor.spot_all_tickers()
-                elif data_name == "upbit_wallet_status_df":
-                    self.info_dict[data_name] = self.upbit_adaptor.wallet_status()
+                # elif data_name == "upbit_wallet_status_df":
+                #     self.info_dict[data_name] = self.upbit_adaptor.wallet_status()
                 elif data_name == "binance_spot_ticker_df":
                     self.info_dict[data_name] = self.binance_adaptor.spot_all_tickers()
                 elif data_name == "binance_spot_info_df":
@@ -306,8 +306,8 @@ class InitCore:
                     self.info_dict[data_name] = self.bithumb_adaptor.spot_exchange_info()
                 elif data_name == "bithumb_spot_ticker_df":
                     self.info_dict[data_name] = self.bithumb_adaptor.spot_all_tickers()
-                elif data_name == "bithumb_wallet_status_df":
-                    self.info_dict[data_name] = self.bithumb_adaptor.wallet_status()
+                # elif data_name == "bithumb_wallet_status_df":
+                #     self.info_dict[data_name] = self.bithumb_adaptor.wallet_status()
                 elif data_name == "bybit_spot_info_df":
                     self.info_dict[data_name] = self.bybit_adaptor.spot_exchange_info()
                 elif data_name == "bybit_spot_ticker_df":
@@ -335,9 +335,10 @@ class InitCore:
                     self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} failed.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
                 time.sleep(loop_time_secs)
 
-    def get_dollar_dict(self):
-        dollar_dict = self.local_redis.get_dict('INFO_CORE|dollar')
-        return dollar_dict
+    # Deprecated
+    # def get_dollar_dict(self):
+    #     dollar_dict = self.local_redis.get_dict('INFO_CORE|dollar')
+    #     return dollar_dict
 
     def get_market_code_list(self):
         market_code_list = []
@@ -467,11 +468,11 @@ class InitCore:
         if convert_rate is None: # not between coins
             # print("1st convert_rate is None, Not between coins")
             if target_quote_asset == "KRW" and origin_quote_asset == "USDT":
-                convert_rate = self.get_dollar_dict()['price']
+                convert_rate = get_dollar_dict()['price']
             elif target_quote_asset == "USDT" and origin_quote_asset == "KRW":
-                convert_rate = 1 / self.get_dollar_dict()['price']
+                convert_rate = 1 / get_dollar_dict()['price']
             elif target_quote_asset == "KRW":
-                convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, "USDT") * self.get_dollar_dict()['price']
+                convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, "USDT") * get_dollar_dict()['price']
             elif origin_quote_asset == "KRW":
                 temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset)
                 if temp_convert_rate is not None:
