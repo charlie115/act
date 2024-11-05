@@ -242,19 +242,6 @@ class InitCore:
                     market_name, market_type = market.split("_")
                 add_market_product(market_name, market_type, quote_asset)
         return organized_markets
-    
-    # def get_enabled_data_name_list(self):
-    #     enabled_data_name_list = []
-    #     for each_market in self.enabled_websocket_list:
-    #         for each_data_name in self.total_data_name_list:
-    #             if each_market.lower() in each_data_name:
-    #                 enabled_data_name_list.append(each_data_name)
-    #         exchange_name = each_market.split('_')[0].lower()
-    #         if f"{exchange_name}_spot_info_df" not in enabled_data_name_list:
-    #             enabled_data_name_list.append(f"{exchange_name}_spot_info_df")
-    #         if f"{exchange_name}_spot_ticker_df" not in enabled_data_name_list:
-    #             enabled_data_name_list.append(f"{exchange_name}_spot_ticker_df")
-    #     return list(set(enabled_data_name_list))
 
     def update_exchange_info_as_df(self, data_name, error_count_limit=1, loop_time_secs=30):
         error_count = 0
@@ -276,8 +263,8 @@ class InitCore:
                     self.info_dict[data_name] = self.upbit_adaptor.spot_exchange_info()
                 elif data_name == "upbit_spot_ticker_df":
                     self.info_dict[data_name] = self.upbit_adaptor.spot_all_tickers()
-                # elif data_name == "upbit_wallet_status_df":
-                #     self.info_dict[data_name] = self.upbit_adaptor.wallet_status()
+                elif data_name == "upbit_wallet_status_df":
+                    self.info_dict[data_name] = self.upbit_adaptor.wallet_status()
                 elif data_name == "binance_spot_ticker_df":
                     self.info_dict[data_name] = self.binance_adaptor.spot_all_tickers()
                 elif data_name == "binance_spot_info_df":

@@ -491,6 +491,7 @@ class InitOkxAdaptor:
     
     def wallet_status(self):
         okx_wallet_status_df = pd.DataFrame(self.my_client.FundingAPI.get_currencies()['data'])
+        okx_wallet_status_df = okx_wallet_status_df[okx_wallet_status_df['chain']!='']
         okx_wallet_status_df = okx_wallet_status_df.rename(columns={"ccy": "asset", "canDep": "deposit", "canWd": "withdraw"})
         def convert_full_name_to_symbol(okx_wallet_status_df, x):
             if x.split('-')[1] in okx_wallet_status_df['name'].unique():
