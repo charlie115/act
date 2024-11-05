@@ -289,6 +289,7 @@ def generate_interval_kline(
     ):
     try:
         local_redis = RedisHelper()
+        error_count = 0
         # wait until the last 1T kline is available
         while True:
             # Load the ohlc_1T_kline
@@ -301,11 +302,19 @@ def generate_interval_kline(
             last_kline_datetime_upto_minute = pd.to_datetime(last_ohlc_1T_kline_df['datetime_now']).iloc[0].replace(second=0, microsecond=0, tzinfo=None)  
             
             if last_kline_datetime_upto_minute == previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1):
+                error_count = 0
                 break
             else:            
                 logger.info(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Waiting for the last 1T kline to be available")
                 logger.info(f"last_kline_datetime_upto_minute: {last_kline_datetime_upto_minute}")
                 logger.info(f"previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1): {previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1)}")
+                error_count += 1
+                if error_count > 100:
+                    logger.error(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Error: Timeout waiting for the last 1T kline to be available")
+                    logger.info(f"last_kline_datetime_upto_minute: {last_kline_datetime_upto_minute}")
+                    logger.info(f"previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1): {previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1)}")
+                    logger.info(f"datetime.datetime.now(): {datetime.datetime.now()}")
+                    return 
                 time.sleep(0.05)
               
 
@@ -373,7 +382,7 @@ def ohlc_interval_generator(
     logger.info(f"Starting kline_core for {target_market_code}:{origin_market_code} with interval_label: {interval_label}")
     remote_redis = RedisHelper(**redis_dict)
     local_redis = RedisHelper()
-    datetime_now = datetime.datetime.now(datetime.timezone.utc)
+    datetime_now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
     # Determine interval duration in minutes
     if interval_label.endswith('T'):
@@ -385,14 +394,12 @@ def ohlc_interval_generator(
 
     # Function to get the start time of the interval
     def get_interval_start(dt):
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=datetime.timezone.utc)
-        else:
-            dt = dt.astimezone(datetime.timezone.utc)
+        if dt.tzinfo is not None:
+            dt = dt.replace(tzinfo=None)
         interval_seconds = interval_minutes * 60
         timestamp = dt.timestamp()
         interval_start_timestamp = (timestamp // interval_seconds) * interval_seconds
-        return datetime.datetime.utcfromtimestamp(interval_start_timestamp).replace(tzinfo=datetime.timezone.utc)
+        return datetime.datetime.fromtimestamp(interval_start_timestamp).replace(tzinfo=None)
 
     # Initialize current interval start
     current_interval_start = get_interval_start(datetime_now)
@@ -416,7 +423,7 @@ def ohlc_interval_generator(
     while True:
         time.sleep(loop_downtime_sec)
         try:
-            datetime_now = datetime.datetime.now(datetime.timezone.utc)
+            datetime_now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
             # Fetch the latest 1T Now data from Redis
             pickled_1T_now = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now')
