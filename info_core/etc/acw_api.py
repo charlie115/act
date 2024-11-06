@@ -2,6 +2,8 @@ import datetime
 import pandas as pd
 import requests
 from threading import Thread
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning) # Should be removed in production
 
 class AcwApi:
     def __init__(self, acw_url, node, prod):

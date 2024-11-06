@@ -126,8 +126,10 @@ def ohlc_1T_generator(
     while True:
         try:
             time.sleep(loop_downtime_sec)
-            datetime_before = datetime_now
-            datetime_now = datetime.datetime.utcnow()
+            # datetime_before = datetime_now
+            datetime_before = datetime_now.replace(second=0, microsecond=0)
+            # datetime_now = datetime.datetime.utcnow()
+            datetime_now = datetime.datetime.utcnow().replace(second=0, microsecond=0)
             premium_df = get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logging_dir=logging_dir)
             premium_df['datetime_now'] = datetime_now
 
@@ -475,7 +477,8 @@ def ohlc_interval_generator(
 
             # Update per_interval_ohlc_df in the Redis 'now' data
             ohlc_now_df = per_interval_ohlc_df.reset_index()
-            ohlc_now_df['datetime_now'] = datetime_now
+            # ohlc_now_df['datetime_now'] = datetime_now
+            ohlc_now_df['datetime_now'] = current_interval_start
             pickled_ohlc_now_df = pickle.dumps(ohlc_now_df)
             local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_now', pickled_ohlc_now_df)
 
