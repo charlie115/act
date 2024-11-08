@@ -202,6 +202,7 @@ def ohlc_1T_generator(
             # Update per_minute_ohlc_df in the Redis 'now' data
             ohlc_now_df = per_minute_ohlc_df.reset_index()
             ohlc_now_df['datetime_now'] = datetime_now
+            ohlc_now_df['dollar'] = get_dollar_dict()['price']
             pickled_ohlc_now_df = pickle.dumps(ohlc_now_df)
             local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_now_df)
             
