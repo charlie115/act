@@ -293,8 +293,8 @@ class InitCore:
                     self.info_dict[data_name] = self.bithumb_adaptor.spot_exchange_info()
                 elif data_name == "bithumb_spot_ticker_df":
                     self.info_dict[data_name] = self.bithumb_adaptor.spot_all_tickers()
-                # elif data_name == "bithumb_wallet_status_df":
-                #     self.info_dict[data_name] = self.bithumb_adaptor.wallet_status()
+                elif data_name == "bithumb_wallet_status_df":
+                    self.info_dict[data_name] = self.bithumb_adaptor.wallet_status()
                 elif data_name == "bybit_spot_info_df":
                     self.info_dict[data_name] = self.bybit_adaptor.spot_exchange_info()
                 elif data_name == "bybit_spot_ticker_df":

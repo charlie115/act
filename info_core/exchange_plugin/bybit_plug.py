@@ -68,7 +68,7 @@ class Bybit:
         # result = result.replace('InverseFutures', False)
         # result = result.infer_objects(copy=False)
         # info_df.loc[:, 'perpetual'] = result
-        info_df['perpetual'] = pd.Series(info_df['perpetual'].replace({'LinearPerpetual': True, 'LinearFutures': False}), dtype="boolean")
+        info_df['perpetual'] = pd.Series(info_df['perpetual'].replace({'InversePerpetual': True, 'InverseFutures': False}), dtype="boolean")
         return info_df
 
 class InitBybitAdaptor:
