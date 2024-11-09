@@ -308,9 +308,9 @@ def generate_interval_kline(
                 error_count = 0
                 break
             else:            
-                logger.info(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Waiting for the last 1T kline to be available")
-                logger.info(f"last_kline_datetime_upto_minute: {last_kline_datetime_upto_minute}")
-                logger.info(f"previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1): {previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1)}")
+                # logger.info(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Waiting for the last 1T kline to be available")
+                # logger.info(f"last_kline_datetime_upto_minute: {last_kline_datetime_upto_minute}")
+                # logger.info(f"previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1): {previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1)}")
                 error_count += 1
                 if error_count > 100:
                     logger.error(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Error: Timeout waiting for the last 1T kline to be available")
