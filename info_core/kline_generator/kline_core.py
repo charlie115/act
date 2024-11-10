@@ -60,50 +60,64 @@ class InitKlineCore:
         self._start_generating_kline()
 
     def _start_generating_kline(self):
-        # Start generating kline
+        # Start generating kline        
         for market_combination in self.enabled_market_klines:
             target_market_code = market_combination.split(':')[0]
             origin_market_code = market_combination.split(':')[1]
             for each_kline_type in self.enabled_kline_types:
-                if each_kline_type == '1T':
-                    self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"] = Process(
-                        target=ohlc_1T_generator,
-                        args=(
-                            self.info_dict,
-                            self.convert_rate_dict,
-                            insert_kline_to_db,
-                            target_market_code,
-                            origin_market_code,
-                            self.register_monitor_msg,
-                            self.admin_id,
-                            self.node,
-                            self.redis_dict,
-                            self.mongodb_dict,
-                            self.logging_dir
-                        ),
-                        daemon=True
-                    )
-                    self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].start()
-                else:
-                    self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"] = Process(
-                        target=ohlc_interval_generator,
-                        args=(
-                            each_kline_type,
-                            insert_kline_to_db,
-                            target_market_code,
-                            origin_market_code,
-                            self.register_monitor_msg,
-                            self.admin_id,
-                            self.node,
-                            self.redis_dict,
-                            self.mongodb_dict,
-                            self.logging_dir,
-                        ),
-                        daemon=True
-                    )
-                    self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].start()
-                    
+                def create_kline_process():
+                    if each_kline_type == "1T":
+                        return Process(
+                            target=ohlc_1T_generator,
+                            args=(
+                                self.info_dict,
+                                self.convert_rate_dict,
+                                insert_kline_to_db,
+                                target_market_code,
+                                origin_market_code,
+                                self.register_monitor_msg,
+                                self.admin_id,
+                                self.node,
+                                self.redis_dict,
+                                self.mongodb_dict,
+                                self.logging_dir
+                            ),
+                            daemon=True
+                        )
+                    else:
+                        return Process(
+                            target=ohlc_interval_generator,
+                            args=(
+                                each_kline_type,
+                                insert_kline_to_db,
+                                target_market_code,
+                                origin_market_code,
+                                self.register_monitor_msg,
+                                self.admin_id,
+                                self.node,
+                                self.redis_dict,
+                                self.mongodb_dict,
+                                self.logging_dir,
+                            ),
+                            daemon=True
+                        )
+                self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"] = create_kline_process()
+                self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].start()
+                
                 time.sleep(0.25)
+                
+                # Add monitoring thread
+                def monitor_kline_process():
+                    while True:
+                        if not self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].is_alive():
+                            self.kline_logger.error(f"Kline process {market_combination}_{each_kline_type}_loader is dead, restarting..")
+                            self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"] = create_kline_process()
+                            self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].start()
+                        time.sleep(2)
+                Thread(target=monitor_kline_process, daemon=True).start()
+                self.kline_logger.info(f"Kline process monitor for {market_combination}_{each_kline_type}_loader started.")
+                    
+                
                 
     def register_enabled_market_klines(self):
         self.kline_logger.info(f"register_enabled_market_klines|Registering enabled market klines:{self.enabled_market_klines} to redis Started..")
