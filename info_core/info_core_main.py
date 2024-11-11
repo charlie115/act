@@ -7,10 +7,8 @@ import time
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from info_core import InitCore
-# from monitor_engine.kimp_core_monitor import InitKimpCoreMonitor
-from etc.register_monitor_msg import RegisterMonitorMsg
-# from kline_generator.kline_core import InitKlineCore
 from etc.command_handler import CommandHandler
+from etc.acw_api import AcwApi
 from dotenv import load_dotenv
 
 class Dummy:
@@ -31,31 +29,27 @@ def get_arguments():
 
     parser = argparse.ArgumentParser()
     # parser.add_argument('--node', '-n', required=True, nargs=1, help='Specify a node name. Configuration will be done based on the node name.', dest='node')
-    parser.add_argument('--proc_n', '-p', nargs=1, help='Specify a number of processes to handle websockets.', default=[1], dest='proc_n')
+    parser.add_argument('--proc_n', '-p', nargs=1, help='Specify a number of processes to handle websockets.', default=[None], dest='proc_n')
     parser.add_argument('--log', '-l', nargs=1, help='Specify a directory to save log files.', default=[logging_dir], dest='logging_dir')
     parser.add_argument('--config', '-c', nargs=1, help='Specify a directory of a config json file.', default=[current_folder_dir+"/.env"], dest='config_dir')
 
-    # node = parser.parse_args().node[0]
-    proc_n = int(parser.parse_args().proc_n[0])
+    proc_n = int(parser.parse_args().proc_n[0]) if parser.parse_args().proc_n[0] is not None else None
     logging_dir = parser.parse_args().logging_dir[0]
     config_dir = parser.parse_args().config_dir[0]
-    # return node, proc_n, logging_dir, input_update_common_info_flag, config_dir
     return proc_n, logging_dir, config_dir
 
 if __name__ == '__main__':
-    # node, proc_n, logging_dir, input_update_common_info_flag, config_dir = get_arguments()
     proc_n, logging_dir, config_dir = get_arguments()
     # Load config
     load_dotenv(config_dir)
     if not os.path.exists(logging_dir):
         os.mkdir(logging_dir)
-    # if node not in config['node_settings'].keys():
-    #     raise Exception(f"Node name should be the one of {list(config['node_settings'].keys())}")
     
     # Access environment variables
     PROD = os.getenv('PROD', 'False').lower() == 'true'
     NODE = os.getenv('NODE')
     MASTER = os.getenv('MASTER').lower() == 'true'
+    PROC_N = int(os.getenv('PROC_N')) if proc_n is None else proc_n
     MONGODB_HOST = os.getenv('MONGODB_HOST')
     MONGODB_PORT = int(os.getenv('MONGODB_PORT', '27017'))  # Set default port if not provided
     MONGODB_USER = os.getenv('MONGODB_USER')
@@ -134,20 +128,21 @@ if __name__ == '__main__':
         "passwd": POSTGRES_PASS
     }
     
-    register_monitor_msg = RegisterMonitorMsg(MONITOR_BOT_TOKEN, MONITOR_BOT_API_URL, ADMIN_TELEGRAM_ID, logging_dir)
-    # For Test
-    register_monitor_msg.register(ADMIN_TELEGRAM_ID, NODE, 'info', f"info_core_main|NODE:{NODE} has started.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
-
-    # # idle
-    # from telegram_bot_plugin.telegram_bot import InitTelegramBot
+    # Starting message
+    acw_api = AcwApi(ACW_API_URL, NODE, PROD)
+    acw_api.create_message_thread(
+        ADMIN_TELEGRAM_ID,
+        f"Node:{NODE} is starting with {PROC_N} processes..",
+        f"Node:{NODE} is starting with {PROC_N} processes..",
+    )
     
     # Initiate Kimp core (Websocket engine)
     core = InitCore(logging_dir,
                     MASTER,
-                    proc_n,
+                    PROC_N,
                     NODE,
                     ADMIN_TELEGRAM_ID,
-                    register_monitor_msg,
+                    acw_api,
                     exchange_api_key_dict,
                     ENABLED_MARKET_KLINES,
                     ENALBED_ARBITRAGE_MARKETS,
@@ -155,19 +150,6 @@ if __name__ == '__main__':
                     redis_dict)
 
     time.sleep(5)
-
-    # # Initiate TelegramBot with Trigger engine
-    # if MASTER:
-    #     telegram_bot_token = "6661285565:AAGjGdZKYhwgQ5CcuDMZumEwaEGbzdTWAHE" # Temporary. Later it will use acw's message system to communicate with info_core
-    #     admin_telegram_bot = InitTelegramBot(telegram_bot_token,
-    #                                          logging_dir,
-    #                                          NODE,
-    #                                          redis_dict,
-    #                                          mongo_db_dict,
-    #                                          core,
-    #                                          register_monitor_msg,
-    #                                          TOTAL_ADMIN_TELEGRAM_ID_LIST,
-    #                                          ENALBED_ARBITRAGE_MARKETS)
 
     # Start command handler loop
     command_handler = CommandHandler(ACW_API_URL, NODE, PROD, ADMIN_TELEGRAM_ID, core, logging_dir)

@@ -12,7 +12,7 @@ import re
 from standalone_func.get_dollar_dict import get_dollar_dict
 from standalone_func.premium_data_generator import get_premium_df
 
-def insert_kline_to_db(kline_df, channel_name, register_monitor_msg, redis_dict, mongodb_dict, admin_id, node, logger):
+def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict, admin_id, node, logger):
     remote_redis = RedisHelper(**redis_dict)
     try:
         service_name = channel_name.split('|')[0].lower()
@@ -87,7 +87,7 @@ def insert_kline_to_db(kline_df, channel_name, register_monitor_msg, redis_dict,
         # mongo_client.close()
     except:
         logger.error(f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}")
-        register_monitor_msg.register(admin_id, node, 'error', f"insert_kline_to_db", content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}", code=None, sent_switch=0, send_counts=1, remark=None)
+        acw_api.create_message_thread(admin_id, 'Error in insert_kline_to_db', content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()[:1995]}")
     
 def ohlc_1T_generator(
     info_dict,
@@ -95,7 +95,7 @@ def ohlc_1T_generator(
     insert_kline_to_db,
     target_market_code,
     origin_market_code,
-    register_monitor_msg,
+    acw_api,
     admin_id,
     node,
     redis_dict,
@@ -255,7 +255,7 @@ def ohlc_1T_generator(
                     args=(
                         new_ohlc_1T_kline,
                         f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline",
-                        register_monitor_msg,
+                        acw_api,
                         redis_dict,
                         mongodb_dict,
                         admin_id,
@@ -272,7 +272,7 @@ def ohlc_1T_generator(
         except Exception as e:
             content = f"ohlc_1T_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_1T_loader: {traceback.format_exc()}"
             logger.error(content)
-            register_monitor_msg.register(admin_id, node, 'error', f"ohlc_1T_loader got an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
+            acw_api.create_message_thread(admin_id, 'Error in ohlc_1T_loader', content=content[:1995])
             time.sleep(3)
             
 def generate_interval_kline(
@@ -284,7 +284,7 @@ def generate_interval_kline(
     interval_label,
     target_market_code,
     origin_market_code,
-    register_monitor_msg,
+    acw_api,
     admin_id,
     node,
     redis_dict,
@@ -358,7 +358,7 @@ def generate_interval_kline(
         insert_kline_to_db(
             new_ohlc_kline,
             f"INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_kline",
-            register_monitor_msg,
+            acw_api,
             redis_dict,
             mongodb_dict,
             admin_id,
@@ -368,7 +368,7 @@ def generate_interval_kline(
     except Exception as e:
         content = f"ohlc_{interval_label}_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_{interval_label}_generator: {traceback.format_exc()}"
         logger.error(content)
-        register_monitor_msg.register(admin_id, node, 'error', f"generate_interval_kline {interval_label} got an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
+        acw_api.create_message_thread(admin_id, f'Error in ohlc_{interval_label}_generator', content=content[:1995])
         time.sleep(3)
                 
 def ohlc_interval_generator(
@@ -376,7 +376,7 @@ def ohlc_interval_generator(
     insert_kline_to_db,
     target_market_code,
     origin_market_code,
-    register_monitor_msg,
+    acw_api,
     admin_id,
     node,
     redis_dict,
@@ -529,7 +529,7 @@ def ohlc_interval_generator(
                         interval_label,
                         target_market_code,
                         origin_market_code,
-                        register_monitor_msg,
+                        acw_api,
                         admin_id,
                         node,
                         redis_dict,
@@ -552,5 +552,5 @@ def ohlc_interval_generator(
         except Exception as e:
             content = f"ohlc_{interval_label}_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_{interval_label}_generator: {traceback.format_exc()}"
             logger.error(content)
-            register_monitor_msg.register(admin_id, node, 'error', f"ohlc_{interval_label}_generator encountered an error", content=content[:1995], code=None, sent_switch=0, send_counts=1, remark=None)
+            acw_api.create_message_thread(admin_id, f'Error in ohlc_{interval_label}_generator', content=content[:1995])
             time.sleep(3)

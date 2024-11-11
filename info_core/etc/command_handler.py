@@ -57,7 +57,7 @@ class CommandHandler:
                 content = f'Invalid command: {command}'
                 content += '\nAvailable commands: status, start, stop, restart'
                 full_content = title + '\n' + content
-                self.acw_api.create_message(self.admin_telegram_id, title, self.node, 'ERROR', full_content)
+                self.acw_api.create_message(self.admin_telegram_id, title, full_content)
     
     def status(self):
         total_status, status_str = self.core.check_status(include_text=True)
@@ -68,7 +68,7 @@ class CommandHandler:
         title = f"{self.node} CORE STATUS"
         content = total_status_str + '\n' + status_str
         full_content = title + '\n' + content
-        self.acw_api.create_message(self.admin_telegram_id, title, self.node, 'INFO', full_content)
+        self.acw_api.create_message(self.admin_telegram_id, title, full_content)
         
     def kline_status(self):
         total_status, status_str = self.core.check_kline_status(include_text=True)
@@ -79,7 +79,7 @@ class CommandHandler:
         title = f"{self.node} KLINE STATUS"
         content = total_status_str + '\n' + status_str
         full_content = title + '\n' + content
-        self.acw_api.create_message(self.admin_telegram_id, title, self.node, 'INFO', full_content)
+        self.acw_api.create_message(self.admin_telegram_id, title, full_content)
         
     def start(self):
         return
@@ -87,26 +87,16 @@ class CommandHandler:
     def stop(self):
         # register message
         title = f'Stopping {self.node}...'
-        content = f'Sending pm2 stop {self.pm2_name}'
-        full_content = title + '\n' + content
-        self.acw_api.create_message(self.admin_telegram_id, title, self.node, 'INFO', full_content)
-        result = os.system(f'pm2 stop {self.pm2_name}')
-        if result == 0:
-            title = f'{self.node} stopped'
-            content = f'{self.node} has been stopped'
-            full_content = title + '\n' + content
-            self.acw_api.create_message(self.admin_telegram_id, title, self.node, 'INFO', full_content)
-        else:
-            title = f'{self.node} failed to stop'
-            content = f'{self.node} failed to stop'
-            full_content = title + '\n' + content
-            self.acw_api.create_message(self.admin_telegram_id, title, self.node, 'ERROR', full_content)
+        self.acw_api.create_message(self.admin_telegram_id, title, title)
+        upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        restart_dir = upper_dir + '/stop.sh'
+        os.system(restart_dir)
         return
     
     def restart(self):
         # register message
         title = f'Restarting {self.node}...'
-        self.acw_api.create_message(self.admin_telegram_id, title, self.node, 'INFO', title)
+        self.acw_api.create_message(self.admin_telegram_id, title, title)
         upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         restart_dir = upper_dir + '/restart.sh'
         os.system(restart_dir)

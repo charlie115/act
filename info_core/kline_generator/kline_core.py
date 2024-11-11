@@ -32,7 +32,7 @@ class InitKlineCore:
         info_dict,
         convert_rate_dict,
         enabled_market_klines,
-        register_monitor_msg,
+        acw_api,
         redis_dict,
         mongodb_dict,
         logging_dir
@@ -41,7 +41,7 @@ class InitKlineCore:
         self.admin_id = admin_id
         self.info_dict = info_dict
         self.convert_rate_dict = convert_rate_dict
-        self.register_monitor_msg = register_monitor_msg
+        self.acw_api = acw_api
         self.logging_dir = logging_dir
         self.kline_logger = InfoCoreLogger("kline_core", logging_dir).logger
         self.kline_logger.info(f"InitKlineCore started.")
@@ -75,7 +75,7 @@ class InitKlineCore:
                                 insert_kline_to_db,
                                 target_market_code,
                                 origin_market_code,
-                                self.register_monitor_msg,
+                                self.acw_api,
                                 self.admin_id,
                                 self.node,
                                 self.redis_dict,
@@ -92,7 +92,7 @@ class InitKlineCore:
                                 insert_kline_to_db,
                                 target_market_code,
                                 origin_market_code,
-                                self.register_monitor_msg,
+                                self.acw_api,
                                 self.admin_id,
                                 self.node,
                                 self.redis_dict,

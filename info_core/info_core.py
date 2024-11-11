@@ -39,7 +39,7 @@ class InitCore:
                  proc_n,
                  node,
                  admin_id,
-                 register_monitor_msg,
+                 acw_api,
                  exchange_api_key_dict,
                  enabled_market_klines,
                  enabled_arbitrage_markets,
@@ -55,7 +55,7 @@ class InitCore:
         self.proc_n = proc_n
         self.monitor_websocket_switch = True
         self.exclude_outliers = True
-        self.register_monitor_msg = register_monitor_msg
+        self.acw_api = acw_api
         self.exchange_api_key_dict = exchange_api_key_dict
         self.enabled_market_klines = enabled_market_klines
         self.enabled_arbitrage_markets = enabled_arbitrage_markets
@@ -144,30 +144,30 @@ class InitCore:
         self.exchange_websocket_dict = {}
         for enabled_websocket_name in self.enabled_websocket_list:
             if enabled_websocket_name == "UPBIT_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = UpbitWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.register_monitor_msg, self.logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = UpbitWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, self.logging_dir)
             elif enabled_websocket_name == "BITHUMB_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = BithumbWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.register_monitor_msg, self.logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BithumbWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, self.logging_dir)
             elif enabled_websocket_name == "BINANCE_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "SPOT", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "SPOT", self.info_dict, logging_dir)
             elif enabled_websocket_name == "BINANCE_USD_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "USD_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "USD_M", self.info_dict, logging_dir)
             elif enabled_websocket_name == "BINANCE_COIN_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "COIN_M", self.info_dict, logging_dir)
             elif enabled_websocket_name == "OKX_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = OkxWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "SPOT", logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = OkxWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "SPOT", logging_dir)
             elif enabled_websocket_name == "OKX_USD_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = OkxUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "USD_M", logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = OkxUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "USD_M", logging_dir)
             elif enabled_websocket_name == "OKX_COIN_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = OkxCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "COIN_M", logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = OkxCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "COIN_M", logging_dir)
             elif enabled_websocket_name == "BYBIT_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = BybitWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "SPOT", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "SPOT", self.info_dict, logging_dir)
             elif enabled_websocket_name == "BYBIT_USD_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BybitUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "USD_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "USD_M", self.info_dict, logging_dir)
             elif enabled_websocket_name == "BYBIT_COIN_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), register_monitor_msg, "COIN_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "COIN_M", self.info_dict, logging_dir)
             else:
                 self.logger.error(f"InitCore|{enabled_websocket_name} is not valid.")
-                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"InitCore|{enabled_websocket_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                self.acw_api.create_message_thread(self.admin_id, f"InitCore|{enabled_websocket_name} is not valid.", f"InitCore|{enabled_websocket_name} is not valid.")
                 break
 
         self.logger.info(f"InitCore|exchange_websocket_dict, {self.exchange_websocket_dict.keys()} has been initiated.")
@@ -176,13 +176,13 @@ class InitCore:
         if master_flag:
             self.wallet_funding_update_proc = Process(
                 target=start_wallet_funding_update,
-                args=(self.admin_id, self.node, self.register_monitor_msg, self.logging_dir, self.mongodb_dict, self.exchange_api_key_dict),
+                args=(self.admin_id, self.node, self.acw_api, self.logging_dir, self.mongodb_dict, self.exchange_api_key_dict),
                 daemon=True
             )
             self.wallet_funding_update_proc.start()
 
             # Start arbitrage core
-            self.arbitrage_generator = InitAbitrageCore(self.admin_id, self.node, self.info_dict, self.register_monitor_msg, self.enabled_arbitrage_markets, self.mongodb_dict, logging_dir)
+            self.arbitrage_generator = InitAbitrageCore(self.admin_id, self.node, self.info_dict, self.acw_api, self.enabled_arbitrage_markets, self.mongodb_dict, logging_dir)
 
         # Loading convert rate
         self.convert_rate_dict = Manager().dict()
@@ -198,7 +198,7 @@ class InitCore:
             self.info_dict,
             self.convert_rate_dict,
             self.enabled_market_klines,
-            register_monitor_msg,
+            acw_api,
             self.redis_dict,
             self.mongodb_dict,
             logging_dir)
@@ -309,7 +309,7 @@ class InitCore:
                     self.info_dict[data_name] = self.bybit_adaptor.coin_m_all_tickers()
                 else:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name} is not valid.")
-                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} is not valid.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                    self.acw_api.create_message_thread(self.admin_id, f"update_exchange_info_as_df|name:{data_name} is not valid.", f"update_exchange_info_as_df|name:{data_name} is not valid.")
                     break
                 end_time = time.time() - start_time
                 self.logger.info(f"update_exchange_info_as_df|name:{data_name} has been updated. ({end_time:.2f} secs), error_count:{error_count}")
@@ -319,7 +319,7 @@ class InitCore:
                 error_count += 1
                 if error_count >= error_count_limit:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name}, {traceback.format_exc()}")
-                    self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_exchange_info_as_df|name:{data_name} failed.", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                    self.acw_api.create_message_thread(self.admin_id, f"update_exchange_info_as_df|name:{data_name} failed.", f"update_exchange_info_as_df|name:{data_name} failed.")
                 time.sleep(loop_time_secs)
 
     # Deprecated
@@ -504,7 +504,7 @@ class InitCore:
                     self.convert_rate_initialized = True
             except Exception as e:
                 self.logger.error(f"update_convert_rate_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
-                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_convert_rate_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                self.acw_api.create_message_thread(self.admin_id, f"update_convert_rate_dict|Exception occured! Error: {e}", f"update_convert_rate_dict|Exception occured! Error: {e}")
             time.sleep(loop_time_secs)
 
     def get_shared_base_asset_list(self, origin_market_code, target_market_code):
@@ -530,46 +530,8 @@ class InitCore:
                     self.shared_base_asset_initialized = True
             except Exception as e:
                 self.logger.error(f"update_shared_base_asset_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
-                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_shared_base_asset_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                self.acw_api.create_message_thread(self.admin_id, f"update_shared_base_asset_dict|Exception occured! Error: {e}", f"update_shared_base_asset_dict|Exception occured! Error: {e}")
             time.sleep(loop_time_secs)
-
-    # def get_premium_df(self, target_market_code, origin_market_code):
-    #     try:
-    #         # POSSIBLE quote_assets: USDT, BUSD, BTC, KRW
-    #         origin_market = origin_market_code.split('/')[0]
-    #         quote_asset_one = origin_market_code.split('/')[1]
-    #         target_market = target_market_code.split('/')[0]
-    #         quote_asset_two = target_market_code.split('/')[1]
-
-    #         origin_market_df = self.exchange_websocket_dict[origin_market].get_price_df()
-    #         origin_market_df = origin_market_df[origin_market_df['quote_asset'] == quote_asset_one]
-    #         target_market_df = self.exchange_websocket_dict[target_market].get_price_df()
-    #         target_market_df = target_market_df[target_market_df['quote_asset'] == quote_asset_two]
-
-    #         shared_base_asset_list = list(set(origin_market_df['base_asset'].values).intersection(set(target_market_df['base_asset'].values)))
-    #         origin_market_df = origin_market_df[origin_market_df['base_asset'].isin(shared_base_asset_list)].sort_values('base_asset').reset_index(drop=True)
-    #         target_market_df = target_market_df[target_market_df['base_asset'].isin(shared_base_asset_list)].sort_values('base_asset').reset_index(drop=True)
-
-    #         convert_rate = self.convert_rate_dict[f"{target_market_code}:{origin_market_code}"]
-    #         origin_market_df[['converted_tp','converted_ap','converted_bp']] = origin_market_df[['tp','ap','bp']] * convert_rate
-
-    #         # divide by target_market_df[['tp','ap','bp']]
-    #         premium_df = pd.DataFrame((target_market_df[['tp','ap','bp']].values - origin_market_df[['converted_tp','converted_bp','converted_ap']].values)/
-    #                                 origin_market_df[['converted_tp','converted_bp','converted_ap']].values, columns=['tp_premium','LS_premium','SL_premium'])
-    #         premium_df['LS_SL_spread'] = premium_df['LS_premium'] - premium_df['SL_premium']
-    #         premium_df[['base_asset','quote_asset','tp','ap','bp','scr','atp24h']] = target_market_df[['base_asset','quote_asset','tp','ap','bp','scr','atp24h']]
-    #         premium_df[['converted_tp','converted_ap','converted_bp']] = origin_market_df[['converted_tp','converted_ap', 'converted_bp']]
-    #         premium_df.loc[:, ['tp_premium','LS_premium','SL_premium','LS_SL_spread']] = premium_df[['tp_premium','LS_premium','SL_premium','LS_SL_spread']] * 100
-    #         premium_df = premium_df.sort_values('atp24h', ascending=False).reset_index(drop=True)
-    #         # TEST
-    #         premium_df['dollar'] = self.get_dollar_dict()['price']
-    #         # TEST
-    #     except Exception as e:
-    #         self.logger.error(f"get_premium_df|Exception occured! Error: {e}, traceback: {traceback.format_exc()}, origin_market_df: {origin_market_df}")
-    #         # raise original exception
-    #         raise e
-    #     return premium_df
-
         
     def fetch_dollar(self, update_dollar_logger, url='https://finance.naver.com/marketindex/exchangeDegreeCountQuote.naver?marketindexCd=FX_USDKRW', timedelta_hours=9):
         # global DOLLAR_INFO_DICT
@@ -592,7 +554,7 @@ class InitCore:
             self.local_redis.set_dict('INFO_CORE|dollar', dict_for_redis)
             update_dollar_logger.info(f"fetch_dollar|Dollar price ({self.update_dollar_return_dict['price']} KRW) has been updated.")
         except Exception as e:
-            self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"fetch_dollar|Exception occured! Error: {e}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+            self.acw_api.create_message_thread(self.admin_id, f"fetch_dollar|Exception occured! Error: {e}", f"fetch_dollar|Exception occured! Error: {e}")
             # print(f'Except executed in get_dollar function, {e}')
             update_dollar_logger.warning(f"fetch_dollar|Exception occured! Error: {e}, pd.read_html(url): {pd.read_html(url)}")
             exchange_rate = pd.read_html(url)[1]
@@ -609,7 +571,7 @@ class InitCore:
                 self.fetch_dollar(update_dollar_logger)
             except Exception as e:
                 self.logger.error(f"fetch_dollar_loop|Exception occured! Error: {e}, {traceback.format_exc()}")
-                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"fetch_dollar_loop|Exception occured! Error: {e}, {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                self.acw_api.create_message_thread(self.admin_id, f"fetch_dollar_loop|Exception occured! Error: {e}", f"fetch_dollar_loop|Exception occured! Error: {e}")
             time.sleep(loop_time)
 
     # TESTTEST
@@ -655,7 +617,7 @@ class InitCore:
                 time.sleep(loop_interval_secs)
             except Exception as e:
                 self.logger.error(f"update_server_check_status|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
-                self.register_monitor_msg.register(self.admin_id, self.node, 'error', f"update_server_check_status|Exception occured! Error: {e}, traceback: {traceback.format_exc()}", content=None, code=None, sent_switch=0, send_counts=1, remark=None)
+                self.acw_api.create_message_thread(self.admin_id, f"update_server_check_status|Exception occured! Error: {e}", f"update_server_check_status|Exception occured! Error: {e}")
                 time.sleep(10)
 
     # def get_server_check_status_list(self):

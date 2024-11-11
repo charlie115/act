@@ -12,6 +12,7 @@ class AcwApi:
         else:
             self.verify = True
         self.url = acw_url
+        self.node = node
         self.message_url = "messagecore/messages/"
         self.node_url = "tradecore/nodes/"
         self.message_url = "messagecore/messages/"
@@ -42,13 +43,13 @@ class AcwApi:
         else:
             raise Exception("Error: " + str(response.status_code) + "\n" + response.text)
         
-    def create_message(self, telegram_chat_id, title, origin, type, content=None, remark=None, code=None, sent=False, send_times=1, send_term=1):
+    def create_message(self, telegram_chat_id, title, content=None, type='MONITOR', remark=None, code=None, sent=False, send_times=1, send_term=1):
         url = self.url + self.message_url
         new_message_dict = {
             "datetime": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
             "telegram_chat_id": telegram_chat_id,
             "title": title,
-            "origin": origin,
+            "origin": self.node,
             "type": type.upper(),
             "content": content,
             "remark": remark,
@@ -71,8 +72,8 @@ class AcwApi:
         else:
             raise Exception("Error: " + str(response.status_code) + "\n" + response.text)
         
-    def create_message_thread(self, telegram_chat_id, title, origin, type, content=None, remark=None, code=None, sent=False, send_times=1, send_term=1):
-        t = Thread(target=self.create_message, args=(telegram_chat_id, title, origin, type, content, remark, code, sent, send_times, send_term), daemon=True)
+    def create_message_thread(self, telegram_chat_id, title, content=None, type='MONITOR', remark=None, code=None, sent=False, send_times=1, send_term=1):
+        t = Thread(target=self.create_message, args=(telegram_chat_id, title, content, type, remark, code, sent, send_times, send_term), daemon=True)
         t.start()
 
     def delete_message(self, id):

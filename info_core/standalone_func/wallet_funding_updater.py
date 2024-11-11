@@ -11,7 +11,7 @@ from etc.db_handler.mongodb_client import InitDBClient
 import pandas as pd
 import traceback
 
-def start_wallet_funding_update(admin_id, node, register_monitor_msg, logging_dir, db_dict, exchange_api_key_dict):
+def start_wallet_funding_update(admin_id, node, acw_api, logging_dir, db_dict, exchange_api_key_dict):
     # Reinitialize the logger inside the function
     logger = InfoCoreLogger("info_core", logging_dir).logger
 
@@ -47,14 +47,14 @@ def start_wallet_funding_update(admin_id, node, register_monitor_msg, logging_di
 
     # Start updating funding rate and wallet status in separate threads
     update_thread_list = []
-    update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, register_monitor_msg, logger, db_client, "BINANCE", binance_adaptor), daemon=True))
-    update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, register_monitor_msg, logger, db_client, "OKX", okx_adaptor, 180), daemon=True))
-    update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, register_monitor_msg, logger, db_client, "BYBIT", bybit_adaptor), daemon=True))
-    update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, register_monitor_msg, logger, db_client, "UPBIT", upbit_adaptor), daemon=True))
-    update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, register_monitor_msg, logger, db_client, "BINANCE", binance_adaptor), daemon=True))
-    update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, register_monitor_msg, logger, db_client, "OKX", okx_adaptor), daemon=True))
-    update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, register_monitor_msg, logger, db_client, "BITHUMB", bithumb_adaptor), daemon=True))
-    update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, register_monitor_msg, logger, db_client, "BYBIT", bybit_adaptor), daemon=True))
+    update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, acw_api, logger, db_client, "BINANCE", binance_adaptor), daemon=True))
+    update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, acw_api, logger, db_client, "OKX", okx_adaptor, 180), daemon=True))
+    update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, acw_api, logger, db_client, "BYBIT", bybit_adaptor), daemon=True))
+    update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "UPBIT", upbit_adaptor), daemon=True))
+    update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "BINANCE", binance_adaptor), daemon=True))
+    update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "OKX", okx_adaptor), daemon=True))
+    update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "BITHUMB", bithumb_adaptor), daemon=True))
+    update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "BYBIT", bybit_adaptor), daemon=True))
 
     for each_thread in update_thread_list:
         each_thread.start()
@@ -62,7 +62,7 @@ def start_wallet_funding_update(admin_id, node, register_monitor_msg, logging_di
         each_thread.join()
 
 # Modify update_fundingrate to accept exchange_adaptor
-def update_fundingrate(admin_id, node, register_monitor_msg, logger, db_client, exchange_name, exchange_adaptor, loop_time_secs=60):
+def update_fundingrate(admin_id, node, acw_api, logger, db_client, exchange_name, exchange_adaptor, loop_time_secs=60):
     logger.info(f"update_fundingrate|{exchange_name} update_fundingrate thread has started.")
 
     while True:
@@ -125,11 +125,11 @@ def update_fundingrate(admin_id, node, register_monitor_msg, logger, db_client, 
         except Exception as e:
             content = f"update_fundingrate|Exception occurred updating {exchange_name}'s funding rate! Error: {e}, {traceback.format_exc()}"
             logger.error(content)
-            register_monitor_msg.register(admin_id, node, 'error', "Error in update_fundingrate", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+            acw_api.create_message_thread(admin_id, "Error in update_fundingrate", content=content)
             time.sleep(loop_time_secs)
 
 # Modify update_wallet_status to accept exchange_adaptor
-def update_wallet_status(admin_id, node, register_monitor_msg, logger, db_client, exchange_name, exchange_adaptor, loop_time_secs=60):
+def update_wallet_status(admin_id, node, acw_api, logger, db_client, exchange_name, exchange_adaptor, loop_time_secs=60):
     logger.info(f"update_wallet_status|{exchange_name} update_wallet_status thread has started.")
     error_count = 0
 
@@ -185,5 +185,5 @@ def update_wallet_status(admin_id, node, register_monitor_msg, logger, db_client
             if error_count >= 10:
                 content = f"update_wallet_status|Exception in {exchange_name}'s update_wallet_status! Error: {e}, {traceback.format_exc()}"
                 logger.error(content)
-                register_monitor_msg.register(admin_id, node, 'error', f"Error in {exchange_name} update_wallet_status", content=content, code=None, sent_switch=0, send_counts=1, remark=None)
+                acw_api.create_message_thread(admin_id, f"Error in {exchange_name} update_wallet_status", content=content)
             time.sleep(loop_time_secs)
