@@ -1,4 +1,16 @@
 #!/bin/bash
+# Start Redis server in the background
+echo "Starting local Redis server..."
+redis-server --daemonize yes
+ 
+# Verify that Redis started
+redis-cli ping
+if [ $? -eq 0 ]; then
+    echo "Local Redis server started successfully."
+else
+    echo "Failed to start local Redis server."
+    exit 1
+fi
 
 # Set log directory
 LOG_DIR="/home/info_core/info_core/loggers/logs"
