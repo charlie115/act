@@ -3,6 +3,8 @@ from logging.handlers import TimedRotatingFileHandler
 import time
 from datetime import datetime, timedelta
 import os
+import fcntl
+import multiprocessing
 
 class MonthlyRotatingFileHandler(TimedRotatingFileHandler):
     def __init__(self, filename, backupCount=0, encoding=None, delay=False, utc=False):
@@ -51,34 +53,51 @@ class MonthlyRotatingFileHandler(TimedRotatingFileHandler):
         return result
 
 class InfoCoreLogger:
+    _mp_lock = multiprocessing.Lock()
+    
     def __init__(self, logger_name, logging_dir=''):
-        self.logger_name = logger_name
-        logging.Formatter(
-            fmt = None,
-            datefmt = None,
-            style = '%'
-        )
-        # Formatter
-        formatter = logging.Formatter(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        
-        # Stream handler for console output
-        stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(logging.DEBUG)
-        stream_handler.setFormatter(formatter)
-        
-        # Timed rotating file handler for monthly log rotation
-        file_handler = MonthlyRotatingFileHandler(
-        filename=f'{logging_dir}{self.logger_name}.log',
-        backupCount=6,     # Keep last 6 months of logs
-        encoding='utf-8'
-)
-        file_handler.setLevel(logging.INFO)
-        file_handler.setFormatter(formatter)
-
-        # Logger setup
-        logger = logging.getLogger(self.logger_name)
-        logger.setLevel(logging.DEBUG)
-        logger.addHandler(stream_handler)
-        logger.addHandler(file_handler)
-
-        self.logger = logger
+        self.logger_name = logger_name  # Remove PID from name
+        self.logging_dir = logging_dir
+        self.logger = self._get_logger()
+    
+    def _get_logger(self):
+        with InfoCoreLogger._mp_lock:
+            logger = logging.getLogger(self.logger_name)
+            
+            if logger.handlers:
+                return logger
+                
+            logger.setLevel(logging.INFO)
+            
+            # Keep PID in log format
+            formatter = logging.Formatter(
+                fmt="%(asctime)s - %(name)s - [PID:%(process)d] - %(levelname)s - %(message)s"
+            )
+            
+            # Console handler
+            stream_handler = logging.StreamHandler()
+            stream_handler.setFormatter(formatter)
+            logger.addHandler(stream_handler)
+            
+            # File handler with locking
+            log_file = f'{self.logging_dir}{self.logger_name}.log'
+            file_handler = MonthlyRotatingFileHandler(
+                filename=log_file,
+                backupCount=6,
+                encoding='utf-8'
+            )
+            file_handler.setFormatter(formatter)
+            
+            # Add file locking
+            original_emit = file_handler.emit
+            def emit_with_lock(record):
+                with open(log_file, 'a') as f:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                    try:
+                        original_emit(record)
+                    finally:
+                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            file_handler.emit = emit_with_lock
+            
+            logger.addHandler(file_handler)
+            return logger

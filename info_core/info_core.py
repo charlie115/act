@@ -431,6 +431,20 @@ class InitCore:
             return proc_status, print_text
         return proc_status
     
+    def check_kline_status(self, print_result=False, include_text=False):
+        kline_generator_proc_dict = self.kline_generator.kline_proc_dict
+        print_text = ""
+        for key, value in kline_generator_proc_dict.items():
+            if not value.is_alive():
+                print_text += f"{key} is dead\n"
+            else:
+                print_text += f"{key} is alive\n"
+        if print_result:
+            print(print_text)
+        if include_text:
+            return all([x.is_alive() for x in kline_generator_proc_dict.values()]), print_text
+        return all([x.is_alive() for x in kline_generator_proc_dict.values()])
+    
     def convert_asset_rate(self, origin_market, origin_quote_asset, target_market, target_quote_asset):
         if origin_quote_asset == "USD":
             origin_quote_asset = "USDT"

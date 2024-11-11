@@ -318,6 +318,26 @@ class BinanceWebsocket:
         self.terminate_websocket()
         time.sleep(1)
         self.stop_restart_websocket = False
+        
+    def check_status(self, print_result=False, include_text=False):
+        if len(self.websocket_proc_dict) == 0:
+            proc_status = False
+            print_text = f"[BINANCE {self.market_type}]websocket proc is not running."
+            if print_result:
+                print(print_text)
+            if include_text:
+                return (proc_status, print_text)
+            return proc_status
+        else:
+            proc_status = all([x.is_alive() for x in self.websocket_proc_dict.values()])
+            print_text = ""
+            for key, value in self.websocket_proc_dict.items():
+                print_text += f"[BINANCE {self.market_type}]{key} status: {value.is_alive()}\n"
+            if print_result:
+                print(print_text)
+            if include_text:
+                return (proc_status, print_text)
+            return proc_status
 
     def monitor_shared_symbol_change(self, loop_time_secs=60):
         self.websocket_logger.info(f"[BINANCE {self.market_type}]started monitor_shared_symbol_change..")

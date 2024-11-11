@@ -247,6 +247,8 @@ def ohlc_1T_generator(
                 new_ohlc_1T_kline = pd.concat([old_ohlc_1T_kline, ohlc_df], axis=0).tail(max_length * ohlc_df['base_asset'].nunique())
                 pickled_ohlc_df = pickle.dumps(new_ohlc_1T_kline)
                 local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
+                # TEST
+                logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Finalized {len(ohlc_df)} klines for {ohlc_df['base_asset'].nunique()} unique base_assets")
                 # Insert into the database
                 insert_db_thread = Thread(
                     target=insert_kline_to_db,
@@ -291,6 +293,8 @@ def generate_interval_kline(
     max_length
     ):
     try:
+        # TEST
+        logger.info(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Thread has started.")
         local_redis = RedisHelper()
         error_count = 0
         # wait until the last 1T kline is available
@@ -512,6 +516,8 @@ def ohlc_interval_generator(
             if (finalize_interval and
                 ohlc_1T_df_datetime_upto_minute == previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1)):
                 
+                # TEST
+                logger.info(f"ohlc_interval_generator|{target_market_code}:{origin_market_code}, {interval_label}, Finalizing the interval. Thread will be started.")
                 generate_interval_kline_thread = Thread(
                     target=generate_interval_kline,
                     args=(

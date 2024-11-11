@@ -47,7 +47,7 @@ class RegisterMonitorMsg:
                 response = requests.post(self.api_url, data=json.dumps(data), headers=headers)
                 if response.status_code != 201:
                     print(f"response: {response}")
-                    print(f"response.json: {response.json()}")
+                    print(f"response.json: {response.text}")
                     # raise Exception(f"data: {data}, response code: {response.status_code}, response: {response.json()}")
                     admin_data = {
                         "bot_token": self.bot_token,
@@ -56,7 +56,7 @@ class RegisterMonitorMsg:
                         "origin": "register_msg.register",
                         "type": "error",
                         "title": "Register Msg Error (kp_monitor_bot)",
-                        "content": f"data: {data}, response code: {response.status_code}, response: {response.json()}",
+                        "content": f"data: {data}, response code: {response.status_code}, response: {response.text}",
                         "code": None,
                         "sent_switch": 0,
                         "send_counts": 1,

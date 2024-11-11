@@ -104,7 +104,7 @@ class InitKlineCore:
                 self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"] = create_kline_process()
                 self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].start()
                 
-                time.sleep(0.25)
+                time.sleep(0.5)
                 
                 # Add monitoring thread
                 def monitor_kline_process():

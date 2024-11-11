@@ -44,6 +44,8 @@ class CommandHandler:
             command = row['content']
             if command == 'status':
                 self.status()
+            elif command == 'kline_status':
+                self.kline_status()
             elif command == 'start':
                 self.start()
             elif command == 'stop':
@@ -67,6 +69,18 @@ class CommandHandler:
         content = total_status_str + '\n' + status_str
         full_content = title + '\n' + content
         self.acw_api.create_message(self.admin_telegram_id, title, self.node, 'INFO', full_content)
+        
+    def kline_status(self):
+        total_status, status_str = self.core.check_kline_status(include_text=True)
+        if total_status is False:
+            total_status_str = '비정상'
+        else:
+            total_status_str = '정상'
+        title = f"{self.node} KLINE STATUS"
+        content = total_status_str + '\n' + status_str
+        full_content = title + '\n' + content
+        self.acw_api.create_message(self.admin_telegram_id, title, self.node, 'INFO', full_content)
+        
     def start(self):
         return
     
