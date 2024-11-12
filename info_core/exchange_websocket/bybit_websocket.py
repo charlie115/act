@@ -16,10 +16,15 @@ from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 
 # Standalone function for the ticker websocket
-def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir):
+def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
     # Initialize logger inside the function
-    websocket_logger = InfoCoreLogger(f"bybit_{market_type.lower()}_ticker_websocket", logging_dir).logger
+    logger = InfoCoreLogger(f"bybit_{market_type.lower()}_ticker_websocket", logging_dir).logger
+    logger.info(f"[BYBIT {market_type}] started for {symbol_list}...")
     local_redis = RedisHelper()
+    
+    # For monitoring the last message time
+    last_message_time = time.time()
+    ws = None  # Placeholder for the WebSocketApp instance
 
     def cut_list(lst):
         return [lst[i:i + 10] for i in range(0, len(lst), 10)]
@@ -39,6 +44,8 @@ def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir):
     )
 
     def handle_message(message):
+        nonlocal last_message_time # Declare nonlocal to modify the outer variable
+        last_message_time = time.time() # Update the time of the last received message
         if error_event.is_set():
             ws.exit()
             return
@@ -51,6 +58,7 @@ def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir):
                                                     f"BYBIT_{market_type.upper()}", 
                                                     message['data']['symbol'], 
                                                     {**message['data'], 'last_update_timestamp': int(datetime.datetime.utcnow().timestamp() * 1000000)})
+        
             
 
     try:
@@ -66,18 +74,40 @@ def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir):
                 symbol=symbol_list,
                 callback=handle_message
             )
+            
+        
+            # Monitoring function to check for inactivity
+        def check_inactivity():
+            logger.info(f"init_ticker_websocket|bybit_{market_type.lower()}_ticker_websocket started monitoring inactivity... for {symbol_list}...")
+            while True:
+                if time.time() - last_message_time > inactivity_time_secs:
+                    logger.error(f"init_ticker_websocket|bybit_{market_type.lower()}_ticker_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    acw_api.create_message_thread(admin_id, f"bybit_{market_type.lower()}_ticker_websocket Inactivity", f"bybit_{market_type.lower()}_ticker_websocket for {symbol_list} has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    ws.close()
+                    break
+                time.sleep(1) # Check every 1 second
+                
+        # Start the monitoring thread
+        monitor_thread = Thread(target=check_inactivity, daemon=True)
+        monitor_thread.start()
+            
         # Idle loop
         while not error_event.is_set():
             time.sleep(1)
     except Exception as e:
         content = f"init_ticker_websocket|{traceback.format_exc()}"
-        websocket_logger.error(content)
+        logger.error(content)
 
 # Standalone function for the orderbook websocket
-def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir):
+def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=10):
     # Initialize logger inside the function
-    websocket_logger = InfoCoreLogger(f"bybit_{market_type.lower()}_orderbook_websocket", logging_dir).logger
+    logger = InfoCoreLogger(f"bybit_{market_type.lower()}_orderbook_websocket", logging_dir).logger
+    logger.info(f"[BYBIT {market_type}] started for {symbol_list}...")
     local_redis = RedisHelper()
+    
+    # For monitoring the last message time
+    last_message_time = time.time()
+    ws = None  # Placeholder for the WebSocketApp instance
 
     def cut_list(lst):
         return [lst[i:i + 10] for i in range(0, len(lst), 10)]
@@ -97,6 +127,8 @@ def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir)
     )
 
     def handle_message(message):
+        nonlocal last_message_time # Declare nonlocal to modify the outer variable
+        last_message_time = time.time() # Update the time of the last received message
         if error_event.is_set():
             ws.exit()
             return
@@ -125,12 +157,28 @@ def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir)
                 symbol=symbol_list,
                 callback=handle_message
             )
+            
+        # Monitoring function to check for inactivity
+        def check_inactivity():
+            logger.info(f"init_orderbook_websocket|bybit_{market_type.lower()}_orderbook_websocket started monitoring inactivity... for {symbol_list}...")
+            while True:
+                if time.time() - last_message_time > inactivity_time_secs:
+                    logger.error(f"init_orderbook_websocket|bybit_{market_type.lower()}_orderbook_websocket has been inactive for {inactivity_time_secs} seconds for {symbol_list}. Closing websocket...")
+                    acw_api.create_message_thread(admin_id, f"bybit_{market_type.lower()}_orderbook_websocket Inactivity", f"bybit_{market_type.lower()}_orderbook_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    ws.close()
+                    break
+                time.sleep(1)
+                
+        # Start the monitoring thread
+        monitor_thread = Thread(target=check_inactivity, daemon=True)
+        monitor_thread.start()
+        
         # Idle loop
         while not error_event.is_set():
             time.sleep(1)
     except Exception as e:
         content = f"init_orderbook_websocket|{traceback.format_exc()}"
-        websocket_logger.error(content)
+        logger.error(content)
 
 class BybitWebsocket:
     def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, market_type, info_dict, logging_dir=None):
@@ -163,8 +211,6 @@ class BybitWebsocket:
                 break
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
-        self.monitor_websocket_last_update_thread = Thread(target=self.monitor_websocket_last_update, daemon=True)
-        self.monitor_websocket_last_update_thread.start()
     
     def _start_websocket(self):
         def handle_price_procs():
@@ -194,7 +240,9 @@ class BybitWebsocket:
                                         self.sliced_symbols_list[i],
                                         error_event,
                                         self.market_type,
-                                        self.logging_dir
+                                        self.logging_dir,
+                                        self.acw_api,
+                                        self.admin_id
                                     ),
                                     daemon=True
                                 )
@@ -204,6 +252,7 @@ class BybitWebsocket:
                                     content = f"[BYBIT {self.market_type}] restarted {i+1}th ticker websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_ticker_proc'].is_alive()}"
                                     self.websocket_logger.info(f"ticker_websocket|{content}")
                                     self.acw_api.create_message_thread(self.admin_id, f'BYBIT {self.market_type} ticker websocket restart', content)
+                                time.sleep(2)
                             time.sleep(0.5)
                             orderbook_start_proc = False
                             orderbook_restarted = False
@@ -227,7 +276,9 @@ class BybitWebsocket:
                                         self.sliced_symbols_list[i],
                                         error_event,
                                         self.market_type,
-                                        self.logging_dir
+                                        self.logging_dir,
+                                        self.acw_api,
+                                        self.admin_id
                                     ),
                                     daemon=True
                                 )
@@ -237,6 +288,7 @@ class BybitWebsocket:
                                     content = f"restarted {i+1}th orderbook websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_orderbook_proc'].is_alive()}"
                                     self.websocket_logger.info(f"orderbook_websocket|{content}")
                                     self.acw_api.create_message_thread(self.admin_id, f'BYBIT {self.market_type} orderbook websocket restart', content)
+                                time.sleep(2)
                             time.sleep(0.5)
                 except Exception as e:
                     content = f"handle_price_procs|{traceback.format_exc()}"
@@ -316,60 +368,6 @@ class BybitWebsocket:
                 content = f"monitor_shared_symbol_change|{traceback.format_exc()}"
                 self.websocket_logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, "monitor_shared_symbol_change", content)
-
-    def monitor_websocket_last_update(self, update_threshold_mins=10, loop_time_secs=15):
-        self.websocket_logger.info(f"[BYBIT {self.market_type}]started monitor_websocket_last_update..")
-        while True:
-            time.sleep(loop_time_secs)
-            try:
-                ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", f"BYBIT_{self.market_type.upper()}")).T.reset_index()
-                for i in range(self.proc_n):
-                    allocated_symbol_list = self.websocket_symbol_dict[f"{i+1}th_ticker_symbol"]
-                    # check ticker dict's last_update
-                    allocated_ticker_df = ticker_df[ticker_df['symbol'].isin(allocated_symbol_list)]
-                    if len(allocated_ticker_df) == 0:
-                        content = f"monitor_websocket_last_update|{i+1}th_ticker_proc has no ticker_dict data. Restarting websocket.."
-                        self.websocket_logger.info(content)
-                        self.acw_api.create_message_thread(self.admin_id, 'monitor_websocket_last_update', content)
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
-                        continue
-                    ticker_last_update = allocated_ticker_df['last_update_timestamp'].max()
-                    # check orderbook dict's last_update
-                    # If the last update is older than update_threshold_mins, restart websocket
-                    if (datetime.datetime.utcnow().timestamp() - ticker_last_update/1000000) > update_threshold_mins*60:
-                        slow_ticker_symbol = allocated_ticker_df[allocated_ticker_df['last_update_timestamp'] == ticker_last_update]['symbol'].values[0]
-                        content = f"monitor_websocket_last_update|{i+1}th_ticker_proc {slow_ticker_symbol} last_update is older than {update_threshold_mins} mins. Restarting websocket.."
-                        self.websocket_logger.info(content)
-                        self.acw_api.create_message_thread(self.admin_id, f'[BYBIT {self.market_type}] monitor_websocket_last_update', content)
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
-
-                orderbook_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("orderbook", f"BYBIT_{self.market_type.upper()}")).T.reset_index()
-                for i in range(self.proc_n):
-                    allocated_symbol_list = self.websocket_symbol_dict[f"{i+1}th_orderbook_symbol"]
-                    # check orderbook dict's last_update
-                    allocated_orderbook_df = orderbook_df[orderbook_df['s'].isin(allocated_symbol_list)]
-                    if len(allocated_orderbook_df) == 0:
-                        content = f"monitor_websocket_last_update|{i+1}th_orderbook_proc has no orderbook_dict data. Restarting websocket.."
-                        self.websocket_logger.info(content)
-                        self.acw_api.create_message_thread(self.admin_id, 'monitor_websocket_last_update', content)
-                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
-                        continue
-                    orderbook_last_update = allocated_orderbook_df['last_update_timestamp'].max()
-                    # If the last update is older than update_threshold_mins, restart websocket
-                    if (datetime.datetime.utcnow().timestamp() - orderbook_last_update/1000000) > update_threshold_mins*60:
-                        slow_orderbook_symbol = allocated_orderbook_df[allocated_orderbook_df['last_update_timestamp'] == orderbook_last_update]['s'].values[0]
-                        content = f"monitor_websocket_last_update|{i+1}th_orderbook_proc {slow_orderbook_symbol} last_update is older than {update_threshold_mins} mins. Restarting websocket.."
-                        self.websocket_logger.info(content)
-                        self.acw_api.create_message_thread(self.admin_id, f'[BYBIT {self.market_type}] monitor_websocket_last_update', content)
-                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
-            except Exception as e:
-                content = f"monitor_websocket_last_update|{traceback.format_exc()}"
-                self.websocket_logger.error(content)
-                self.acw_api.create_message_thread(self.admin_id, f"[BYBIT {self.market_type}] monitor_websocket_last_update", content)
 
     def get_price_df(self):
         ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", f"BYBIT_{self.market_type.upper()}")).T.reset_index()

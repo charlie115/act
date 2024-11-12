@@ -19,13 +19,19 @@ from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 
 # Move binance_websocket function outside the class
-def binance_websocket(stream_data_type, data, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, node):
+def binance_websocket(stream_data_type, data, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
     # Reinitialize the logger inside the function
     logger = InfoCoreLogger(f"binance_{market_type.lower()}_{stream_data_type}_websocket", logging_dir).logger
     logger.info(f"[BINANCE {market_type}] started for {data['params']}...")
     local_redis = RedisHelper()
+    
+    # For monitoring the last message time
+    last_message_time = time.time()
+    ws = None  # Placeholder for the WebSocketApp instance
 
     def on_message(ws, message):
+        nonlocal last_message_time # Declare nonlocal to modify the outer variable
+        last_message_time = time.time() # Update the time of the last received message
         if error_event.is_set():
             ws.close()
             raise Exception(f"binance_websocket|{proc_name} error_event is set. closing websocket..")
@@ -61,10 +67,26 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
         on_error=on_error,
         on_close=on_close
     )
+    
+    # Monitoring function to check for inactivity
+    def check_inactivity():
+        logger.info(f"binance_websocket|{proc_name} started monitoring inactivity... for {data['params']}...")
+        while True:
+            if time.time() - last_message_time > inactivity_time_secs:
+                logger.error(f"binance_websocket|{proc_name} has been inactive for {inactivity_time_secs} seconds for {data['params']}. Closing websocket...")
+                acw_api.create_message_thread(admin_id, f"binance_websocket|{proc_name} Inactivity", f"binance_websocket|{proc_name} has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                ws.close()
+                break
+            time.sleep(1) # Check every 1 second
+            
+    # Start the monitoring thread
+    monitor_thread = Thread(target=check_inactivity, daemon=True)
+    monitor_thread.start()
+    
     ws.run_forever(ping_interval=30)
 
 # Move liquidation_websocket function outside the class
-def liquidation_websocket(liquidation_list, error_event, market_type, logging_dir, acw_api, admin_id, node):
+def liquidation_websocket(liquidation_list, error_event, market_type, logging_dir, acw_api, admin_id):
     websocket_logger = InfoCoreLogger(f"binance_{market_type.lower()}_websocket", logging_dir).logger
     websocket_logger.info(f"started liquidation_websocket for {market_type}...")
 
@@ -104,13 +126,15 @@ class BinanceWebsocket:
         self.local_redis = RedisHelper()
         self.local_redis.delete_all_exchange_stream_data("ticker", f"BINANCE_{self.market_type.upper()}")
         self.local_redis.delete_all_exchange_stream_data("orderbook", f"BINANCE_{self.market_type.upper()}")
-        self.websocket_logger = InfoCoreLogger(f"binance_{self.market_type.lower()}_websocket", logging_dir).logger
+        self.logger = InfoCoreLogger(f"binance_{self.market_type.lower()}_websocket", logging_dir).logger
 
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
         self.proc_n = int(proc_n * 2)
         self.before_symbol_list = self.get_symbol_list()
+        self.logger.info(f"[BINANCE {self.market_type}] total symbol list: {self.before_symbol_list}")
         self.sliced_symbol_list = list_slice(self.get_symbol_list(), self.proc_n)
+        self.logger.info(f"[BINANCE {self.market_type}] Sliced symbol list: {self.sliced_symbol_list}")
         self.stop_restart_websocket = False
         self.price_proc_event_list = []
         manager = Manager()
@@ -120,15 +144,13 @@ class BinanceWebsocket:
         while True:
             if (not self.local_redis.get_all_exchange_stream_data("orderbook", f"BINANCE_{market_type.upper()}") or
                 not self.local_redis.get_all_exchange_stream_data("ticker", f"BINANCE_{market_type.upper()}")):
-                self.websocket_logger.info(f"[BINANCE {self.market_type}] Waiting for websocket data to be loaded...")
+                self.logger.info(f"[BINANCE {self.market_type}] Waiting for websocket data to be loaded...")
                 time.sleep(2)
             else:
                 break
 
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
-        self.monitor_websocket_last_update_thread = Thread(target=self.monitor_websocket_last_update, daemon=True)
-        self.monitor_websocket_last_update_thread.start()
     
     def __del__(self):
         self.terminate_websocket()
@@ -150,20 +172,21 @@ class BinanceWebsocket:
                                 and not self.websocket_proc_dict[bookticker_proc_name].is_alive()
                             ):
                                 content = f"handle_price_procs|[BINANCE {self.market_type}]{index}th_bookticker_proc has died. Terminating and restarting..."
-                                self.websocket_logger.error(content)
+                                self.logger.error(content)
                                 self.acw_api.create_message_thread(self.admin_id, "handle_price_procs", content)
                                 self.websocket_proc_dict[bookticker_proc_name].terminate()
                                 self.websocket_proc_dict[bookticker_proc_name].join()
                                 start_proc = True
                                 restarted = True
                             elif bookticker_proc_name not in self.websocket_proc_dict:
-                                self.websocket_logger.info(f"[BINANCE {self.market_type}]{index}th_bookticker_proc is not in self.websocket_proc_dict. Starting...")
+                                self.logger.info(f"[BINANCE {self.market_type}]{index}th_bookticker_proc is not in self.websocket_proc_dict. Starting...")
                                 start_proc = True
 
                             if start_proc:
                                 error_event = Event()
                                 self.price_proc_event_list.append(error_event)
                                 symbol_list = self.sliced_symbol_list[i]
+                                self.logger.info(f"[BINANCE {self.market_type}] {index}th_bookticker_proc symbol list: {symbol_list}")
                                 bookticker_data = {
                                     "method": "SUBSCRIBE",
                                     "params": [x.lower() + "@bookTicker" for x in symbol_list],
@@ -180,18 +203,17 @@ class BinanceWebsocket:
                                         self.logging_dir,
                                         self.acw_api,
                                         self.admin_id,
-                                        self.node
                                     ),
                                     daemon=True
                                 )
                                 self.websocket_proc_dict[bookticker_proc_name] = upbit_bookticker_proc
                                 self.websocket_symbol_dict[f"{index}th_bookticker_symbol"] = symbol_list
                                 upbit_bookticker_proc.start()
-                                self.websocket_logger.info(f"[BINANCE {self.market_type}] Started {bookticker_proc_name} websocket process.")
+                                self.logger.info(f"[BINANCE {self.market_type}] Started {bookticker_proc_name} websocket process.")
                                 if restarted:
                                     content = f"handle_price_procs|[BINANCE {self.market_type}]{bookticker_proc_name} has been restarted. Alive status: {upbit_bookticker_proc.is_alive()}"
                                     self.acw_api.create_message_thread(self.admin_id, "handle_price_procs", content)
-                                time.sleep(0.5)
+                                time.sleep(2)
 
                         # Handle ticker process
                         ticker_proc_name = "ticker_proc"
@@ -203,20 +225,21 @@ class BinanceWebsocket:
                             and not self.websocket_proc_dict[ticker_proc_name].is_alive()
                         ):
                             content = f"handle_price_procs|[BINANCE {self.market_type}] {ticker_proc_name} has died. Terminating and restarting..."
-                            self.websocket_logger.error(content)
+                            self.logger.error(content)
                             self.acw_api.create_message_thread(self.admin_id, "handle_price_procs", content)
                             self.websocket_proc_dict[ticker_proc_name].terminate()
                             self.websocket_proc_dict[ticker_proc_name].join()
                             start_proc = True
                             restarted = True
                         elif ticker_proc_name not in self.websocket_proc_dict:
-                            self.websocket_logger.info(f"[BINANCE {self.market_type}] {ticker_proc_name} is not in self.websocket_proc_dict. Starting...")
+                            self.logger.info(f"[BINANCE {self.market_type}] {ticker_proc_name} is not in self.websocket_proc_dict. Starting...")
                             start_proc = True
 
                         if start_proc:
                             error_event = Event()
                             self.price_proc_event_list.append(error_event)
                             symbol_list = self.before_symbol_list
+                            self.logger.info(f"[BINANCE {self.market_type}] {ticker_proc_name} symbol list: {symbol_list}")
                             ticker_data = {
                                 "method": "SUBSCRIBE",
                                 "params": [x.lower() + "@ticker" for x in symbol_list],
@@ -233,17 +256,17 @@ class BinanceWebsocket:
                                     self.logging_dir,
                                     self.acw_api,
                                     self.admin_id,
-                                    self.node
                                 ),
                                 daemon=True
                             )
                             self.websocket_proc_dict[ticker_proc_name] = upbit_ticker_proc
                             self.websocket_symbol_dict["ticker_symbol"] = symbol_list
                             upbit_ticker_proc.start()
-                            self.websocket_logger.info(f"[BINANCE {self.market_type}] Started {ticker_proc_name} websocket process.")
+                            self.logger.info(f"[BINANCE {self.market_type}] Started {ticker_proc_name} websocket process.")
                             if restarted:
                                 content = f"handle_price_procs|[BINANCE {self.market_type}] {ticker_proc_name} has been restarted. Alive status: {upbit_ticker_proc.is_alive()}"
                                 self.acw_api.create_message_thread(self.admin_id, "handle_price_procs", content)
+                            time.sleep(2)
 
                         # Handle liquidation process for futures markets
                         if self.market_type != "SPOT":
@@ -253,7 +276,7 @@ class BinanceWebsocket:
                                 and not self.websocket_proc_dict[liquidation_proc_name].is_alive()
                             ):
                                 content = f"handle_price_procs|[BINANCE {self.market_type}] {liquidation_proc_name} has died. Terminating and restarting..."
-                                self.websocket_logger.error(content)
+                                self.logger.error(content)
                                 self.acw_api.create_message_thread(self.admin_id, "handle_price_procs", content)
                                 self.websocket_proc_dict[liquidation_proc_name].terminate()
                                 self.websocket_proc_dict[liquidation_proc_name].join()
@@ -267,16 +290,15 @@ class BinanceWebsocket:
                                         self.logging_dir,
                                         self.acw_api,
                                         self.admin_id,
-                                        self.node
                                     ),
                                     daemon=True
                                 )
                                 self.websocket_proc_dict[liquidation_proc_name].start()
                                 content = f"handle_price_procs|{liquidation_proc_name} has been restarted. Alive status: {self.websocket_proc_dict[liquidation_proc_name].is_alive()}"
-                                self.websocket_logger.info(f"[BINANCE {self.market_type}] Restarted {liquidation_proc_name} websocket. Alive status: {self.websocket_proc_dict[liquidation_proc_name].is_alive()}")
+                                self.logger.info(f"[BINANCE {self.market_type}] Restarted {liquidation_proc_name} websocket. Alive status: {self.websocket_proc_dict[liquidation_proc_name].is_alive()}")
                                 self.acw_api.create_message_thread(self.admin_id, "handle_price_procs", content)
                             elif liquidation_proc_name not in self.websocket_proc_dict:
-                                self.websocket_logger.info(f"[BINANCE {self.market_type}] {liquidation_proc_name} is not in self.websocket_proc_dict. Starting...")
+                                self.logger.info(f"[BINANCE {self.market_type}] {liquidation_proc_name} is not in self.websocket_proc_dict. Starting...")
                                 error_event = Event()
                                 self.websocket_proc_dict[liquidation_proc_name] = Process(
                                     target=liquidation_websocket,
@@ -287,17 +309,16 @@ class BinanceWebsocket:
                                         self.logging_dir,
                                         self.acw_api,
                                         self.admin_id,
-                                        self.node
                                     ),
                                     daemon=True
                                 )
                                 self.websocket_proc_dict[liquidation_proc_name].start()
-                                self.websocket_logger.info(f"[BINANCE {self.market_type}] Started {liquidation_proc_name} websocket process.")
+                                self.logger.info(f"[BINANCE {self.market_type}] Started {liquidation_proc_name} websocket process.")
 
                     else:
                         time.sleep(1)
                 except Exception as e:
-                    self.websocket_logger.error(f"handle_price_procs|{traceback.format_exc()}")
+                    self.logger.error(f"handle_price_procs|{traceback.format_exc()}")
                     self.acw_api.create_message_thread(self.admin_id, f"Binance {self.market_type} Websocket|handle_price_procs", str(e))
                     time.sleep(2)
                 time.sleep(0.25)
@@ -312,7 +333,7 @@ class BinanceWebsocket:
         time.sleep(0.5)
         for each_event in self.price_proc_event_list:
             each_event.set()
-        self.websocket_logger.info(f"[BINANCE {self.market_type}] All websockets' events have been set.")
+        self.logger.info(f"[BINANCE {self.market_type}] All websockets' events have been set.")
         self.price_proc_event_list = []
         
     def restart_websocket(self):
@@ -341,7 +362,7 @@ class BinanceWebsocket:
             return proc_status
 
     def monitor_shared_symbol_change(self, loop_time_secs=60):
-        self.websocket_logger.info(f"[BINANCE {self.market_type}]started monitor_shared_symbol_change..")
+        self.logger.info(f"[BINANCE {self.market_type}]started monitor_shared_symbol_change..")
         monitor_shared_symbol_change_count = 0
         while True:
             time.sleep(loop_time_secs)
@@ -354,7 +375,7 @@ class BinanceWebsocket:
                         deleted_symbols = [x for x in self.before_symbol_list if x not in new_symbol_list]
                         added_symbols = [x for x in new_symbol_list if x not in self.before_symbol_list]
                         content = f"monitor_shared_symbol_change|[BINANCE {self.market_type}]{self.market_type} shared symbol changed. deleted: {deleted_symbols}, added: {added_symbols}"
-                        self.websocket_logger.info(content)
+                        self.logger.info(content)
                         self.acw_api.create_message_thread(self.admin_id, "monitor_shared_symbol_change", content)
 
                         # Set the newer values to before values
@@ -366,83 +387,21 @@ class BinanceWebsocket:
                         for each_symbol in deleted_symbols:
                             # remove deleted symbol from redis ticker hash and redis orderbook hash
                             try:
-                                self.websocket_logger.info(f"monitor_shared_symbol_change|Deleting {each_symbol} from redis..")
+                                self.logger.info(f"monitor_shared_symbol_change|Deleting {each_symbol} from redis..")
                                 self.local_redis.delete_exchange_stream_data("ticker", f"BINANCE_{self.market_type.upper()}", each_symbol)
                             except Exception:
-                                self.websocket_logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")
+                                self.logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")
                             try:
-                                self.websocket_logger.info(f"monitor_shared_symbol_change|Deleting {each_symbol} from redis..")
+                                self.logger.info(f"monitor_shared_symbol_change|Deleting {each_symbol} from redis..")
                                 self.local_redis.delete_exchange_stream_data("orderbook", f"BINANCE_{self.market_type.upper()}", each_symbol)
                             except Exception:
-                                self.websocket_logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")
+                                self.logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")
                 else:
                     monitor_shared_symbol_change_count = 0
             except Exception as e:
                 content = f"monitor_shared_symbol_change|{traceback.format_exc()}"
-                self.websocket_logger.error(content)
+                self.logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, f"[BINANCE {self.market_type}] monitor_shared_symbol_change", content)
-
-    def monitor_websocket_last_update(self, update_threshold_mins=10, loop_time_secs=15):
-        self.websocket_logger.info(f"started monitor_websocket_last_update..")
-        while True:
-            try:
-                time.sleep(loop_time_secs)
-                ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", f"BINANCE_{self.market_type.upper()}")).T.reset_index(drop=True)
-                bookticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("orderbook", f"BINANCE_{self.market_type.upper()}")).T.reset_index(drop=True)
-                ticker_terminate_flag = False
-                allocated_ticker_df = ticker_df[ticker_df['s'].isin(self.before_symbol_list)]
-                ticker_last_update = allocated_ticker_df['last_update_timestamp'].max()
-                if len(allocated_ticker_df) == 0:
-                    content = f"monitor_websocket_last_update|[BINANCE {self.market_type}]ticker_proc has no ticker_dict data. Restarting Websocket.."
-                    self.websocket_logger.info(content)
-                    self.acw_api.create_message_thread(self.admin_id, "monitor_websocket_last_update", content)
-                    self.websocket_proc_dict[f"ticker_proc"].terminate()
-                    self.websocket_proc_dict[f"ticker_proc"].join()
-                    continue
-                if (datetime.datetime.utcnow().timestamp() - ticker_last_update/1000000) > update_threshold_mins*60:
-                    ticker_terminate_flag = True
-                    slow_ticker_symbol = allocated_ticker_df[allocated_ticker_df['last_update_timestamp'] == ticker_last_update]['s'].values[0]
-                    content = f"monitor_websocket_last_update|ticker_proc ticker_dict's {slow_ticker_symbol} last update is older than {update_threshold_mins} mins."
-                    self.websocket_logger.error(content)
-                    self.acw_api.create_message_thread(self.admin_id, f"[BINANCE {self.market_type}]monitor_websocket_last_update", content)
-                if ticker_terminate_flag is True:
-                    content = f"monitor_websocket_last_update|Restarting Websocket.. ticker_proc will be terminated."
-                    self.websocket_logger.error(content)
-                    self.acw_api.create_message_thread(self.admin_id, "monitor_websocket_last_update", content)
-                    self.websocket_proc_dict["ticker_proc"].terminate()
-                    self.websocket_proc_dict["ticker_proc"].join()
-
-                for i in range(self.proc_n):
-                    bookticker_terminate_flag = False
-                    allocated_symbol_list = self.sliced_symbol_list[i]
-                    # check ticker dict's last update
-                    allocated_bookticker_df = bookticker_df[bookticker_df['s'].isin(allocated_symbol_list)]
-                    if len(allocated_bookticker_df) == 0:
-                        content = f"monitor_websocket_last_update|[BINANCE {self.market_type}]{i+1}th_bookticker_proc has no bookticker_dict data. Restarting Websocket.."
-                        self.websocket_logger.info(content)
-                        self.acw_api.create_message_thread(self.admin_id, "monitor_websocket_last_update", content)
-                        self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].join()
-                        continue
-                    bookticker_last_update = allocated_bookticker_df['last_update_timestamp'].max()
-                    # If the last update is older than update_threshold_mins, restart websocket
-
-                    if (datetime.datetime.utcnow().timestamp() - bookticker_last_update/1000000) > update_threshold_mins*60:
-                        bookticker_terminate_flag = True
-                        slow_bookticker_symbol = allocated_bookticker_df[allocated_bookticker_df['last_update_timestamp'] == bookticker_last_update]['s'].values[0]
-                        content = f"monitor_websocket_last_update|{i+1}th_bookticker_proc bookticker_dict's {slow_bookticker_symbol} last update is older than {update_threshold_mins} mins."
-                        self.websocket_logger.error(content)
-                        self.acw_api.create_message_thread(self.admin_id, f"[BINANCE {self.market_type}]monitor_websocket_last_update", content)
-                    if bookticker_terminate_flag is True:
-                        content = f"monitor_websocket_last_update|Restarting Websocket.. {i+1}th_bookticker_proc will be terminated."
-                        self.websocket_logger.error(content)
-                        self.acw_api.create_message_thread(self.admin_id, "monitor_websocket_last_update", content)
-                        self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_bookticker_proc"].join()
-            except Exception as e:
-                content = f"monitor_websocket_last_update|[BINANCE {self.market_type}]{traceback.format_exc()}"
-                self.websocket_logger.error(content)
-                self.acw_api.create_message_thread(self.admin_id, "monitor_websocket_last_update", content)
 
     def get_price_df(self):
         binance_ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", f"BINANCE_{self.market_type.upper()}")).T.reset_index(drop=True)[['s','P','c','v','q']]

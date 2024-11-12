@@ -17,13 +17,19 @@ from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 
 # Move the bithumb_websocket function outside the class
-def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir):
+def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
     # Initialize logger inside the function
     logger = InfoCoreLogger(f"bithumb_websocket", logging_dir).logger
     logger.info(f"[BITHUMB {stream_data_type}]bithumb_websocket started for {data['symbols']}...")
     local_redis = RedisHelper()
+    
+    # For monitoring the last message time
+    last_message_time = time.time()
+    ws = None  # Placeholder for the WebSocketApp instance
 
     def on_message(ws, message):
+        nonlocal last_message_time # Declare nonlocal to modify the outer variable
+        last_message_time = time.time() # Update the time of the last received message
         if error_event.is_set():
             ws.close()
             raise Exception("bithumb_websocket|error_event is set. closing websocket..")
@@ -52,6 +58,22 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir):
         on_error=on_error,
         on_close=on_close
     )
+    
+    # Monitoring function to check for inactivity
+    def check_inactivity():
+        logger.info(f"[BITHUMB {stream_data_type}]bithumb_websocket started monitoring inactivity... for {data['symbols']}...")
+        while True:
+            if time.time() - last_message_time > inactivity_time_secs:
+                logger.error(f"[BITHUMB {stream_data_type}]bithumb_websocket has been inactive for {inactivity_time_secs} seconds for {data['symbols']}. Closing websocket...")
+                acw_api.create_message_thread(admin_id, f"[BITHUMB {stream_data_type}]bithumb_websocket Inactivity", f"[BITHUMB {stream_data_type}]bithumb_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                ws.close()
+                break
+            time.sleep(1) # Check every 1 second
+            
+    # Start the monitoring thread
+    monitor_thread = Thread(target=check_inactivity, daemon=True)
+    monitor_thread.start()
+    
     ws.run_forever(ping_interval=30)
 
 class BithumbWebsocket:
@@ -84,8 +106,6 @@ class BithumbWebsocket:
                 break
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
-        self.monitor_websocket_last_update_thread = Thread(target=self.monitor_websocket_last_update, daemon=True)
-        self.monitor_websocket_last_update_thread.start()
 
     def __del__(self):
         self.terminate_websocket()
@@ -120,7 +140,9 @@ class BithumbWebsocket:
                                         self.url,
                                         ticker_data,
                                         error_event,
-                                        self.logging_dir
+                                        self.logging_dir,
+                                        self.acw_api,
+                                        self.admin_id
                                         ),
                                     daemon=True
                                 )
@@ -130,7 +152,7 @@ class BithumbWebsocket:
                                     content = f"restarted {i+1}th Bithumb ticker websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_ticker_proc'].is_alive()}"
                                     self.websocket_logger.info(f"bithumb_orderbook_ticker_websocket|{content}")
                                     self.acw_api.create_message_thread(self.admin_id, 'bithumb ticker websocket restart', content)
-
+                                time.sleep(2)
                             time.sleep(0.5)
                             orderbook_start_proc = False
                             orderbook_restarted = False
@@ -156,7 +178,9 @@ class BithumbWebsocket:
                                         self.url,
                                         orderbook_data,
                                         error_event,
-                                        self.logging_dir
+                                        self.logging_dir,
+                                        self.acw_api,
+                                        self.admin_id
                                         ),
                                     daemon=True
                                 )
@@ -166,6 +190,7 @@ class BithumbWebsocket:
                                     content = f"restarted {i+1}th bithumb orderbook websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_orderbook_proc'].is_alive()}"
                                     self.websocket_logger.info(f"bithumb_orderbook_ticker_websocket|{content}")
                                     self.acw_api.create_message_thread(self.admin_id, 'bithumb orderbook websocket restart', content)
+                                time.sleep(2)
                             time.sleep(0.5)
                 except Exception as e:
                     content = f"handle_price_procs|{traceback.format_exc()}"
@@ -245,56 +270,6 @@ class BithumbWebsocket:
                 content = f"monitor_shared_symbol_change|{traceback.format_exc()}"
                 self.websocket_logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, 'monitor_shared_symbol_change', content)
-
-    def monitor_websocket_last_update(self, update_threshold_mins=10, loop_time_secs=15):
-        time.sleep(10)
-        self.websocket_logger.info(f"[BITHUMB SPOT]started monitor_websocket_last_update..")
-        while True:
-            time.sleep(loop_time_secs)
-            try:
-                ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", "BITHUMB_SPOT")).T.reset_index()
-                orderbook_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("orderbook", "BITHUMB_SPOT")).T.reset_index()
-                for i in range(self.proc_n):
-                    allocated_symbol_list = self.websocket_symbol_dict[f"{i+1}th_ticker_symbol"]
-                    # check ticker dict's last_update
-                    allocated_ticker_df = ticker_df[ticker_df['symbol'].isin(allocated_symbol_list)]
-                    if len(allocated_ticker_df) == 0:
-                        content = f"monitor_websocket_last_update|{i+1}th_ticker_proc has no ticker_dict data. Restarting websocket.."
-                        self.websocket_logger.info(content)
-                        self.acw_api.create_message_thread(self.admin_id, 'monitor_websocket_last_update', content)
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
-                        continue
-                    ticker_last_update = allocated_ticker_df['last_update_timestamp'].max()
-                    # check orderbook dict's last_update
-                    allocated_orderbook_df = orderbook_df[orderbook_df['symbol'].isin(allocated_symbol_list)]
-                    if len(allocated_orderbook_df) == 0:
-                        content = f"monitor_websocket_last_update|{i+1}th_orderbook_proc has no orderbook_dict data. Restarting websocket.."
-                        self.websocket_logger.info(content)
-                        self.acw_api.create_message_thread(self.admin_id, 'monitor_websocket_last_update', content)
-                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
-                        continue
-                    orderbook_last_update = allocated_orderbook_df['last_update_timestamp'].max()
-                    # If the last update is older than update_threshold_mins, restart websocket
-                    if (datetime.datetime.utcnow().timestamp() - ticker_last_update/1000000) > update_threshold_mins*60:
-                        slow_ticker_symbol = allocated_ticker_df[allocated_ticker_df['last_update_timestamp'] == ticker_last_update]['symbol'].values[0]
-                        content = f"monitor_websocket_last_update|{i+1}th_ticker_proc {slow_ticker_symbol} last_update is older than {update_threshold_mins} mins. Restarting websocket.."
-                        self.websocket_logger.info(content)
-                        self.acw_api.create_message_thread(self.admin_id, 'monitor_websocket_last_update', content)
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
-                    if (datetime.datetime.utcnow().timestamp() - orderbook_last_update/1000000) > update_threshold_mins*60:
-                        slow_orderbook_symbol = allocated_orderbook_df[allocated_orderbook_df['last_update_timestamp'] == orderbook_last_update]['symbol'].values[0]
-                        content = f"monitor_websocket_last_update|{i+1}th_orderbook_proc {slow_orderbook_symbol} last_update is older than {update_threshold_mins} mins. Restarting websocket.."
-                        self.websocket_logger.info(content)
-                        self.acw_api.create_message_thread(self.admin_id, 'monitor_websocket_last_update', content)
-                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
-            except Exception as e:
-                content = f"monitor_websocket_last_update|{traceback.format_exc()}"
-                self.websocket_logger.error(content)
-                self.acw_api.create_message_thread(self.admin_id, 'monitor_websocket_last_update', content)
 
     def get_price_df(self):
         orderbook_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("orderbook", "BITHUMB_SPOT")).T.reset_index()

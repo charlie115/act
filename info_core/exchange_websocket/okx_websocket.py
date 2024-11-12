@@ -16,13 +16,19 @@ from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 
 # Standalone function for the websocket
-def init_websocket(stream_data_type, url, data, error_event, market_type, logging_dir):
+def init_websocket(stream_data_type, url, data, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
     # Initialize logger inside the function
     logger = InfoCoreLogger(f"okx_{market_type.lower()}_websocket", logging_dir).logger
     logger.info(f"[OKX {market_type}]init_websocket started for {data['args']}...")
     local_redis = RedisHelper()
+    
+    # For monitoring the last message time
+    last_message_time = time.time()
+    ws = None  # Placeholder for the WebSocketApp instance
 
     def on_message(ws, message):
+        nonlocal last_message_time # Declare nonlocal to modify the outer variable
+        last_message_time = time.time() # Update the time of the last received message
         if error_event.is_set():
             ws.close()
             raise Exception("okx_websocket|error_event is set. closing websocket..")
@@ -52,7 +58,7 @@ def init_websocket(stream_data_type, url, data, error_event, market_type, loggin
 
     def on_open(ws):
         logger.info(f"okx_websocket|okx_websocket started")
-        ws.send(json.dumps(data))
+        ws.send(json.dumps(data))        
 
     try:
         websocket.enableTrace(False)
@@ -63,6 +69,22 @@ def init_websocket(stream_data_type, url, data, error_event, market_type, loggin
             on_error=on_error,
             on_close=on_close
         )
+        
+        # Monitoring function to check for inactivity
+        def check_inactivity():
+            logger.info(f"okx_{market_type.lower()}_websocket started monitoring inactivity... for {data['args']}...")
+            while True:
+                if time.time() - last_message_time > inactivity_time_secs:
+                    logger.error(f"okx_{market_type.lower()}_websocket has been inactive for {inactivity_time_secs} seconds for {data['args']}. Closing websocket...")
+                    acw_api.create_message_thread(admin_id, f"okx_{market_type.lower()}_websocket", f"okx_{market_type.lower()}_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    ws.close()
+                    break
+                time.sleep(1) # Check every 1 second
+                
+        # Start the monitoring thread
+        monitor_thread = Thread(target=check_inactivity, daemon=True)
+        monitor_thread.start()
+        
         ws.run_forever(ping_interval=15)
     except Exception:
         logger.error(f"okx_websocket|{traceback.format_exc()}")
@@ -97,8 +119,6 @@ class OkxWebsocket:
                 break
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
-        self.monitor_websocket_last_update_thread = Thread(target=self.monitor_websocket_last_update, daemon=True)
-        self.monitor_websocket_last_update_thread.start()
     
     def _start_websocket(self):
         def handle_price_procs():
@@ -135,7 +155,9 @@ class OkxWebsocket:
                                           ticker_data,
                                           error_event,
                                           self.market_type,
-                                          self.logging_dir
+                                          self.logging_dir,
+                                          self.acw_api,
+                                          self.admin_id
                                         ),
                                     daemon=True
                                 )
@@ -219,38 +241,6 @@ class OkxWebsocket:
                 content = f"monitor_shared_symbol_change|{traceback.format_exc()}"
                 self.websocket_logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, "monitor_shared_symbol_change", content)
-
-    def monitor_websocket_last_update(self, update_threshold_mins=10, loop_time_secs=15):
-        self.websocket_logger.info(f"[OKX {self.market_type}]started monitor_websocket_last_update..")
-        while True:
-            time.sleep(loop_time_secs)
-            try:
-                ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", f"OKX_{self.market_type.upper()}")).T.reset_index()
-                for i in range(self.proc_n):
-                    allocated_symbol_list = self.websocket_symbol_dict[f"{i+1}th_ticker_symbol"]
-                    # check ticker dict's last_update
-                    allocated_ticker_df = ticker_df[ticker_df['instId'].isin(allocated_symbol_list)]
-                    if len(allocated_ticker_df) == 0:
-                        content = f"monitor_websocket_last_update|{i+1}th_ticker_proc has no ticker_dict data. Restarting websocket.."
-                        self.websocket_logger.info(content)
-                        self.acw_api.create_message_thread(self.admin_id, f"monitor_websocket_last_update", content)
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
-                        continue
-                    ticker_last_update = allocated_ticker_df['last_update_timestamp'].max()
-                    # check orderbook dict's last_update
-                    # If the last update is older than update_threshold_mins, restart websocket
-                    if (datetime.datetime.utcnow().timestamp() - ticker_last_update/1000000) > update_threshold_mins*60:
-                        slow_ticker_symbol = allocated_ticker_df[allocated_ticker_df['last_update_timestamp'] == ticker_last_update]['instId'].values[0]
-                        content = f"monitor_websocket_last_update|{i+1}th_ticker_proc {slow_ticker_symbol} last_update is older than {update_threshold_mins} mins. Restarting websocket.."
-                        self.websocket_logger.info(content)
-                        self.acw_api.create_message_thread(self.admin_id, f'[OKX {self.market_type}] monitor_websocket_last_update', content)
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
-                        self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
-            except Exception as e:
-                content = f"monitor_websocket_last_update|{traceback.format_exc()}"
-                self.websocket_logger.error(content)
-                self.acw_api.create_message_thread(self.admin_id, f"[OKX {self.market_type}] monitor_websocket_last_update", content)
 
     def get_price_df(self):
         try:
