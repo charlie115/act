@@ -21,7 +21,8 @@ from etc.redis_connector.redis_helper import RedisHelper
 # Move binance_websocket function outside the class
 def binance_websocket(stream_data_type, data, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, node):
     # Reinitialize the logger inside the function
-    websocket_logger = InfoCoreLogger(f"binance_{market_type.lower()}_websocket", logging_dir).logger
+    logger = InfoCoreLogger(f"binance_{market_type.lower()}_{stream_data_type}_websocket", logging_dir).logger
+    logger.info(f"[BINANCE {market_type}] started for {data['params']}...")
     local_redis = RedisHelper()
 
     def on_message(ws, message):
@@ -33,12 +34,12 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
             local_redis.update_exchange_stream_data(stream_data_type, f"BINANCE_{market_type.upper()}", msg['s'], {**msg, "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1_000_000)})
 
     def on_error(ws, error):
-        websocket_logger.error(f'binance_websocket|{proc_name} on_error executed!\n Error: {error}, traceback: {traceback.format_exc()}')
+        logger.error(f'binance_websocket|{proc_name} on_error executed!\n Error: {error}, traceback: {traceback.format_exc()}')
         # Optionally, you can register the error with monitor_msg if needed
         acw_api.create_message_thread(admin_id, f'binance_websocket_on_error_{proc_name}', str(error))
 
     def on_close(ws, close_status_code, close_msg):
-        websocket_logger.info(f"binance_websocket|{proc_name} ### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
+        logger.info(f"binance_websocket|{proc_name} ### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
 
     def on_open(ws):
         ws.send(json.dumps(data))

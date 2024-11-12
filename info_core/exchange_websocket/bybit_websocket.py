@@ -201,7 +201,7 @@ class BybitWebsocket:
                                 self.websocket_proc_dict[f"{i+1}th_ticker_proc"] = ticker_proc
                                 ticker_proc.start()
                                 if ticker_restarted:
-                                    content = f"restarted {i+1}th ticker websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_ticker_proc'].is_alive()}"
+                                    content = f"[BYBIT {self.market_type}] restarted {i+1}th ticker websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_ticker_proc'].is_alive()}"
                                     self.websocket_logger.info(f"ticker_websocket|{content}")
                                     self.acw_api.create_message_thread(self.admin_id, f'BYBIT {self.market_type} ticker websocket restart', content)
                             time.sleep(0.5)

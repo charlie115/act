@@ -20,6 +20,7 @@ from etc.redis_connector.redis_helper import RedisHelper
 def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir):
     # Initialize logger inside the function
     logger = InfoCoreLogger(f"bithumb_websocket", logging_dir).logger
+    logger.info(f"[BITHUMB {stream_data_type}]bithumb_websocket started for {data['symbols']}...")
     local_redis = RedisHelper()
 
     def on_message(ws, message):

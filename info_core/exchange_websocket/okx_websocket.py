@@ -18,7 +18,8 @@ from etc.redis_connector.redis_helper import RedisHelper
 # Standalone function for the websocket
 def init_websocket(stream_data_type, url, data, error_event, market_type, logging_dir):
     # Initialize logger inside the function
-    websocket_logger = InfoCoreLogger(f"okx_{market_type.lower()}_websocket", logging_dir).logger
+    logger = InfoCoreLogger(f"okx_{market_type.lower()}_websocket", logging_dir).logger
+    logger.info(f"[OKX {market_type}]init_websocket started for {data['args']}...")
     local_redis = RedisHelper()
 
     def on_message(ws, message):
@@ -30,11 +31,11 @@ def init_websocket(stream_data_type, url, data, error_event, market_type, loggin
             message_data_dict = message_dict['data'][0]
             try:
                 if '' in message_data_dict.values():
-                    websocket_logger.error(f"okx_websocket|Empty string detected.\n{message_data_dict}")
+                    logger.error(f"okx_websocket|Empty string detected.\n{message_data_dict}")
                     return
             except Exception:
-                websocket_logger.error(f"okx_websocket|message_data_dict.values(): {message_data_dict.values()}")
-                websocket_logger.error(f"okx_websocket|{traceback.format_exc()}")
+                logger.error(f"okx_websocket|message_data_dict.values(): {message_data_dict.values()}")
+                logger.error(f"okx_websocket|{traceback.format_exc()}")
                 return
             local_redis.update_exchange_stream_data(stream_data_type, f"OKX_{market_type.upper()}", message_data_dict['instId'], {
                 **message_data_dict,
@@ -42,15 +43,15 @@ def init_websocket(stream_data_type, url, data, error_event, market_type, loggin
             })
 
     def on_error(ws, error):
-        websocket_logger.error(f"okx_websocket|on_error executed!\nError: {error}, traceback: {traceback.format_exc()}")
+        logger.error(f"okx_websocket|on_error executed!\nError: {error}, traceback: {traceback.format_exc()}")
 
     def on_close(ws, close_status_code, close_msg):
-        websocket_logger.info(
+        logger.info(
             f"okx_websocket|\n\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}"
         )
 
     def on_open(ws):
-        websocket_logger.info(f"okx_websocket|okx_websocket started")
+        logger.info(f"okx_websocket|okx_websocket started")
         ws.send(json.dumps(data))
 
     try:
@@ -64,7 +65,7 @@ def init_websocket(stream_data_type, url, data, error_event, market_type, loggin
         )
         ws.run_forever(ping_interval=15)
     except Exception:
-        websocket_logger.error(f"okx_websocket|{traceback.format_exc()}")
+        logger.error(f"okx_websocket|{traceback.format_exc()}")
         raise
 
 class OkxWebsocket:
@@ -141,7 +142,7 @@ class OkxWebsocket:
                                 self.websocket_proc_dict[f"{i+1}th_ticker_proc"] = ticker_proc
                                 ticker_proc.start()
                                 if ticker_restarted:
-                                    content = f"restarted {i+1}th ticker websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_ticker_proc'].is_alive()}"
+                                    content = f"[OKX {self.market_type}]restarted {i+1}th ticker websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_ticker_proc'].is_alive()}"
                                     self.websocket_logger.info(f"ticker_websocket|{content}")
                                     self.acw_api.create_message_thread(self.admin_id, f'OKX {self.market_type} ticker websocket restart', content)
                             time.sleep(0.5)

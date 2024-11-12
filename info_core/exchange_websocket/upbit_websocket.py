@@ -19,6 +19,7 @@ from etc.redis_connector.redis_helper import RedisHelper
 def upbit_websocket(stream_data_type, url, data, error_event, logging_dir, acw_api, admin_id, node):
     # Reinitialize the logger inside the function
     logger = InfoCoreLogger("upbit_websocket", logging_dir).logger
+    logger.info(f"[UPBIT] {stream_data_type} websocket started for {data[1]['codes']}")
     local_redis = RedisHelper()
 
     def on_message(ws, message):
