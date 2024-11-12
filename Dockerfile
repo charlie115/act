@@ -7,6 +7,9 @@ RUN apt-get update
 # Install Redis
 RUN apt-get install -y redis-server
 
+# Install Apache HTTP server utilities for rotating logs
+RUN apt-get install apache2-utils
+
 # Start Redis server --> This will be handled by start-env-service.sh
 CMD redis-server
 
