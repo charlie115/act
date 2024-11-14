@@ -78,7 +78,7 @@ def init_websocket(stream_data_type, url, data, error_event, market_type, loggin
                     logger.error(f"okx_{market_type.lower()}_websocket has been inactive for {inactivity_time_secs} seconds for {data['args']}. Closing websocket...")
                     acw_api.create_message_thread(admin_id, f"okx_{market_type.lower()}_websocket", f"okx_{market_type.lower()}_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                     ws.close()
-                    break
+                    raise Exception(f"okx_{market_type.lower()}_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                 time.sleep(1) # Check every 1 second
                 
         # Start the monitoring thread

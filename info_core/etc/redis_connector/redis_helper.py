@@ -1,6 +1,5 @@
 import redis
 import json
-import pandas as pd
 import threading
 
 class RedisHelper:

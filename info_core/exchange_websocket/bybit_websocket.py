@@ -84,7 +84,7 @@ def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir, ac
                     logger.error(f"init_ticker_websocket|bybit_{market_type.lower()}_ticker_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                     acw_api.create_message_thread(admin_id, f"bybit_{market_type.lower()}_ticker_websocket Inactivity", f"bybit_{market_type.lower()}_ticker_websocket for {symbol_list} has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                     ws.close()
-                    break
+                    raise Exception(f"init_ticker_websocket|bybit_{market_type.lower()}_ticker_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                 time.sleep(1) # Check every 1 second
                 
         # Start the monitoring thread
@@ -166,7 +166,7 @@ def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir,
                     logger.error(f"init_orderbook_websocket|bybit_{market_type.lower()}_orderbook_websocket has been inactive for {inactivity_time_secs} seconds for {symbol_list}. Closing websocket...")
                     acw_api.create_message_thread(admin_id, f"bybit_{market_type.lower()}_orderbook_websocket Inactivity", f"bybit_{market_type.lower()}_orderbook_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                     ws.close()
-                    break
+                    raise Exception(f"init_orderbook_websocket|bybit_{market_type.lower()}_orderbook_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                 time.sleep(1)
                 
         # Start the monitoring thread

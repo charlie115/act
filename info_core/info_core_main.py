@@ -1,5 +1,4 @@
 import os
-import json
 import sys
 import argparse
 import time
@@ -10,14 +9,6 @@ from info_core import InitCore
 from etc.command_handler import CommandHandler
 from etc.acw_api import AcwApi
 from dotenv import load_dotenv
-
-class Dummy:
-    def __init__(self):
-        pass
-    def kline_fetcher_proc_status(self):
-        integrity_flag = True
-        status_str = 'This is not a Master node. So, there is no kline_fetcher_proc_status.'
-        return integrity_flag, status_str
 
 def get_arguments():
     """
@@ -57,15 +48,9 @@ if __name__ == '__main__':
     REDIS_HOST = os.getenv('REDIS_HOST')
     REDIS_PORT = int(os.getenv('REDIS_PORT', '6379'))
     REDIS_PASS = os.getenv('REDIS_PASS')
-    POSTGRES_HOST = os.getenv('POSTGRES_HOST')
-    POSTGRES_PORT = int(os.getenv('POSTGRES_PORT', '5432'))
-    POSTGRES_USER = os.getenv('POSTGRES_USER')
-    POSTGRES_PASS = os.getenv('POSTGRES_PASS')
     ADMIN_TELEGRAM_ID = int(os.getenv('ADMIN_TELEGRAM_ID'))
     STAFF_TELEGRAM_ID_LIST = [int(x.strip()) for x in os.getenv('STAFF_TELEGRAM_ID_LIST').split(',') if x != ""]
     TOTAL_ADMIN_TELEGRAM_ID_LIST = [ADMIN_TELEGRAM_ID] + STAFF_TELEGRAM_ID_LIST
-    MONITOR_BOT_TOKEN = os.getenv('MONITOR_BOT_TOKEN')
-    MONITOR_BOT_API_URL = os.getenv('MONITOR_BOT_API_URL')
     ACW_API_URL = os.getenv('ACW_API_URL')
     BINANCE_ACCESS_KEY = os.getenv('BINANCE_ACCESS_KEY')
     BINANCE_SECRET_KEY = os.getenv('BINANCE_SECRET_KEY')
@@ -119,13 +104,6 @@ if __name__ == '__main__':
         "host": REDIS_HOST,
         "port": REDIS_PORT,
         "passwd": REDIS_PASS
-    }
-
-    postgres_db_dict = {
-        "host": POSTGRES_HOST,
-        "port": POSTGRES_PORT,
-        "user": POSTGRES_USER,
-        "passwd": POSTGRES_PASS
     }
     
     # Starting message

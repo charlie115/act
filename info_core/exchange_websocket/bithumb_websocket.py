@@ -67,7 +67,7 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw
                 logger.error(f"[BITHUMB {stream_data_type}]bithumb_websocket has been inactive for {inactivity_time_secs} seconds for {data['symbols']}. Closing websocket...")
                 acw_api.create_message_thread(admin_id, f"[BITHUMB {stream_data_type}]bithumb_websocket Inactivity", f"[BITHUMB {stream_data_type}]bithumb_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                 ws.close()
-                break
+                raise Exception(f"[BITHUMB {stream_data_type}]bithumb_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
             time.sleep(1) # Check every 1 second
             
     # Start the monitoring thread

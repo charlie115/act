@@ -67,7 +67,7 @@ def upbit_websocket(stream_data_type, url, data, error_event, logging_dir, acw_a
                 logger.error(f"[UPBIT] {stream_data_type} websocket has been inactive for {inactivity_time_secs} seconds for {data[1]['codes']}. Closing websocket...")
                 acw_api.create_message_thread(admin_id, f"[UPBIT] {stream_data_type} websocket Inactivity", f"[UPBIT] {stream_data_type} websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                 ws.close()
-                break
+                raise Exception(f"[UPBIT] {stream_data_type} websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
             time.sleep(1) # Check every 1 second
             
     # Start the monitoring thread

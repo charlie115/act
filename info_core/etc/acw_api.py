@@ -51,7 +51,7 @@ class AcwApi:
             "title": title,
             "origin": self.node,
             "type": type.upper(),
-            "content": content,
+            "content": f"[{self.node}]{content}",
             "remark": remark,
             "code": code,
             "sent": sent,

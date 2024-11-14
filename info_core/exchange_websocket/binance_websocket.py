@@ -76,7 +76,7 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
                 logger.error(f"binance_websocket|{proc_name} has been inactive for {inactivity_time_secs} seconds for {data['params']}. Closing websocket...")
                 acw_api.create_message_thread(admin_id, f"binance_websocket|{proc_name} Inactivity", f"binance_websocket|{proc_name} has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                 ws.close()
-                break
+                raise Exception(f"binance_websocket|{proc_name} has been inactive for {inactivity_time_secs} seconds. Raising error in websocket...")
             time.sleep(1) # Check every 1 second
             
     # Start the monitoring thread

@@ -25,7 +25,6 @@ import os
 import traceback
 from functools import partial
 from standalone_func.wallet_funding_updater import start_wallet_funding_update
-from standalone_func.premium_data_generator import get_premium_df
 from standalone_func.get_dollar_dict import get_dollar_dict
 
 current_file_dir = os.path.realpath(__file__)
@@ -344,15 +343,15 @@ class InitCore:
             integrity_flag = False
         return integrity_flag, dollar_update_status_str
     
-    def reinitiate_dollar_update_thread(self):
-        before_reinitiate = "Before reinit:  " + self.dollar_update_thread_status()[1]
-        self.update_dollar_thread = Thread(target=self.fetch_dollar_loop, args=(self.update_dollar_return_dict, self.update_dollar_logger), daemon=True)
-        self.update_dollar_thread.start()
-        time.sleep(1)
-        after_reinitiate = "After reinit: " + self.dollar_update_thread_status()[1]
-        self.logger.info(f"reinitiate_dollar_update_thread|{before_reinitiate} -> {after_reinitiate}")
-        self.logger.info("reinitiate_dollar_update_thread|dollar_update_thread has been reinitiated.")
-        return before_reinitiate + "\n" + after_reinitiate
+    # def reinitiate_dollar_update_thread(self):
+    #     before_reinitiate = "Before reinit:  " + self.dollar_update_thread_status()[1]
+    #     self.update_dollar_thread = Thread(target=self.fetch_dollar_loop, args=(self.update_dollar_return_dict, self.update_dollar_logger), daemon=True)
+    #     self.update_dollar_thread.start()
+    #     time.sleep(1)
+    #     after_reinitiate = "After reinit: " + self.dollar_update_thread_status()[1]
+    #     self.logger.info(f"reinitiate_dollar_update_thread|{before_reinitiate} -> {after_reinitiate}")
+    #     self.logger.info("reinitiate_dollar_update_thread|dollar_update_thread has been reinitiated.")
+    #     return before_reinitiate + "\n" + after_reinitiate
 
     def get_symbol_list(self, target_market): # E.g) UPBIT_SPOT, BINANCE_SPOT, BINANCE_USD_M, BINANCE_COIN_M
         target_exchange = target_market.split('_')[0]
