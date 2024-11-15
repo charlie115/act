@@ -25,7 +25,7 @@ services:
 
   trade-core-api:
     image: trade-core-api:test
-    container_name: test-trade_core
+    container_name: test-trade-core-api
     # ports: # ports are not needed as we are using nginx as a reverse proxy
     #   - "20081:20081" 
     expose:
@@ -41,7 +41,7 @@ services:
 
   trade-core:
     image: trade-core:test
-    container_name: test-trade_core
+    container_name: test-trade-core
     volumes:
       - $HOME/test-trade-core/logs:/home/trade_core/trade_core/loggers/logs
     depends_on:
