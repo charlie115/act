@@ -1,6 +1,6 @@
 version: '3'
 services:
-  postgres:
+  trade-postgres:
     image: postgres:16rc1-alpine
     container_name: test-trade-postgres
     environment:
@@ -39,19 +39,19 @@ services:
       - test-trade-network
     restart: always
 
-  # trade-core:
-  #   image: trade-core:test
-  #   container_name: test-trade_core
-  #   volumes:
-  #     - $HOME/test-trade-core/logs:/home/trade_core/trade_core/loggers/logs
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   networks:
-  #     - test-trade-network
-  #   restart: always
+  trade-core:
+    image: trade-core:test
+    container_name: test-trade_core
+    volumes:
+      - $HOME/test-trade-core/logs:/home/trade_core/trade_core/loggers/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - test-trade-network
+    restart: always
 
-  nginx:
+  trade-nginx:
     image: nginx:alpine
     container_name: nginx
     ports:
