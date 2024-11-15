@@ -76,9 +76,13 @@ def init_websocket(stream_data_type, url, data, error_event, market_type, loggin
             while True:
                 if time.time() - last_message_time > inactivity_time_secs:
                     logger.error(f"okx_{market_type.lower()}_websocket has been inactive for {inactivity_time_secs} seconds for {data['args']}. Closing websocket...")
-                    acw_api.create_message_thread(admin_id, f"okx_{market_type.lower()}_websocket", f"okx_{market_type.lower()}_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    try:
+                        acw_api.create_message_thread(admin_id, f"okx_{market_type.lower()}_websocket", f"okx_{market_type.lower()}_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    except Exception as e:
+                        logger.error(f"okx_{market_type.lower()}_websocket|{traceback.format_exc()}")
+                    error_event.set()
                     ws.close()
-                    raise Exception(f"okx_{market_type.lower()}_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    break
                 time.sleep(1) # Check every 1 second
                 
         # Start the monitoring thread
@@ -86,6 +90,9 @@ def init_websocket(stream_data_type, url, data, error_event, market_type, loggin
         monitor_thread.start()
         
         ws.run_forever(ping_interval=15)
+        
+        if error_event.is_set():
+            raise Exception("okx_websocket|error_event is set. closing websocket..")
     except Exception:
         logger.error(f"okx_websocket|{traceback.format_exc()}")
         raise

@@ -64,10 +64,14 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw
         logger.info(f"[BITHUMB {stream_data_type}]bithumb_websocket started monitoring inactivity... for {data['symbols']}...")
         while True:
             if time.time() - last_message_time > inactivity_time_secs:
-                logger.error(f"[BITHUMB {stream_data_type}]bithumb_websocket has been inactive for {inactivity_time_secs} seconds for {data['symbols']}. Closing websocket...")
-                acw_api.create_message_thread(admin_id, f"[BITHUMB {stream_data_type}]bithumb_websocket Inactivity", f"[BITHUMB {stream_data_type}]bithumb_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                logger.error(f"[BITHUMB {stream_data_type}]bithumb_websocket has been inactive for {inactivity_time_secs} seconds for {data['symbols']}. Closing websocket... and set error_event..")
+                try:
+                    acw_api.create_message_thread(admin_id, f"[BITHUMB {stream_data_type}]bithumb_websocket Inactivity", f"[BITHUMB {stream_data_type}]bithumb_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                except Exception as e:
+                    logger.error(f"[BITHUMB {stream_data_type}]bithumb_websocket|{traceback.format_exc()}")
+                error_event.set()
                 ws.close()
-                raise Exception(f"[BITHUMB {stream_data_type}]bithumb_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                break
             time.sleep(1) # Check every 1 second
             
     # Start the monitoring thread
@@ -75,7 +79,9 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw
     monitor_thread.start()
     
     ws.run_forever(ping_interval=30)
-
+    
+    if error_event.is_set():
+        raise Exception("bithumb_websocket|error_event is set. closing websocket..")
 class BithumbWebsocket:
     def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, logging_dir):
         self.admin_id = admin_id

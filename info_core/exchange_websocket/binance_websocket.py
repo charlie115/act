@@ -73,10 +73,14 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
         logger.info(f"binance_websocket|{proc_name} started monitoring inactivity... for {data['params']}...")
         while True:
             if time.time() - last_message_time > inactivity_time_secs:
-                logger.error(f"binance_websocket|{proc_name} has been inactive for {inactivity_time_secs} seconds for {data['params']}. Closing websocket...")
-                acw_api.create_message_thread(admin_id, f"binance_websocket|{proc_name} Inactivity", f"binance_websocket|{proc_name} has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                logger.error(f"binance_websocket|{proc_name} has been inactive for {inactivity_time_secs} seconds for {data['params']}. Closing websocket... and set error_event..")
+                try:
+                    acw_api.create_message_thread(admin_id, f"binance_websocket|{proc_name} Inactivity", f"binance_websocket|{proc_name} has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                except Exception as e:
+                    logger.error(f"binance_websocket|{proc_name} check_inactivity|{traceback.format_exc()}")
+                error_event.set()
                 ws.close()
-                raise Exception(f"binance_websocket|{proc_name} has been inactive for {inactivity_time_secs} seconds. Raising error in websocket...")
+                break
             time.sleep(1) # Check every 1 second
             
     # Start the monitoring thread
@@ -84,6 +88,10 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
     monitor_thread.start()
     
     ws.run_forever(ping_interval=30)
+    
+    if error_event.is_set():
+        ws.close()
+        raise Exception(f"binance_websocket|{proc_name} error_event is set. closing websocket..")
 
 # Move liquidation_websocket function outside the class
 def liquidation_websocket(liquidation_list, error_event, market_type, logging_dir, acw_api, admin_id):

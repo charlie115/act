@@ -76,15 +76,19 @@ def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir, ac
             )
             
         
-            # Monitoring function to check for inactivity
+        # Monitoring function to check for inactivity
         def check_inactivity():
             logger.info(f"init_ticker_websocket|bybit_{market_type.lower()}_ticker_websocket started monitoring inactivity... for {symbol_list}...")
             while True:
                 if time.time() - last_message_time > inactivity_time_secs:
                     logger.error(f"init_ticker_websocket|bybit_{market_type.lower()}_ticker_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
-                    acw_api.create_message_thread(admin_id, f"bybit_{market_type.lower()}_ticker_websocket Inactivity", f"bybit_{market_type.lower()}_ticker_websocket for {symbol_list} has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    try:
+                        acw_api.create_message_thread(admin_id, f"bybit_{market_type.lower()}_ticker_websocket Inactivity", f"bybit_{market_type.lower()}_ticker_websocket for {symbol_list} has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    except Exception as e:
+                        logger.error(f"init_ticker_websocket|{traceback.format_exc()}")
+                    error_event.set()
                     ws.close()
-                    raise Exception(f"init_ticker_websocket|bybit_{market_type.lower()}_ticker_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    break
                 time.sleep(1) # Check every 1 second
                 
         # Start the monitoring thread
@@ -92,8 +96,10 @@ def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir, ac
         monitor_thread.start()
             
         # Idle loop
-        while not error_event.is_set():
+        while True:
             time.sleep(1)
+            if error_event.is_set():
+                raise Exception(f"init_ticker_websocket|bybit_{market_type.lower()}_ticker_websocket error_event is set. closing websocket..")
     except Exception as e:
         content = f"init_ticker_websocket|{traceback.format_exc()}"
         logger.error(content)
@@ -164,9 +170,13 @@ def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir,
             while True:
                 if time.time() - last_message_time > inactivity_time_secs:
                     logger.error(f"init_orderbook_websocket|bybit_{market_type.lower()}_orderbook_websocket has been inactive for {inactivity_time_secs} seconds for {symbol_list}. Closing websocket...")
-                    acw_api.create_message_thread(admin_id, f"bybit_{market_type.lower()}_orderbook_websocket Inactivity", f"bybit_{market_type.lower()}_orderbook_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    try:
+                        acw_api.create_message_thread(admin_id, f"bybit_{market_type.lower()}_orderbook_websocket Inactivity", f"bybit_{market_type.lower()}_orderbook_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    except Exception as e:
+                        logger.error(f"init_orderbook_websocket|{traceback.format_exc()}")
+                    error_event.set()
                     ws.close()
-                    raise Exception(f"init_orderbook_websocket|bybit_{market_type.lower()}_orderbook_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
+                    break
                 time.sleep(1)
                 
         # Start the monitoring thread
@@ -174,8 +184,10 @@ def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir,
         monitor_thread.start()
         
         # Idle loop
-        while not error_event.is_set():
+        while True:
             time.sleep(1)
+            if error_event.is_set():
+                raise Exception(f"init_orderbook_websocket|bybit_{market_type.lower()}_orderbook_websocket error_event is set. closing websocket..")
     except Exception as e:
         content = f"init_orderbook_websocket|{traceback.format_exc()}"
         logger.error(content)
