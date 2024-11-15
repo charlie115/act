@@ -3,11 +3,11 @@ from acw_api import AcwApi
 import pandas as pd
 import os
 import traceback
-from loggers.logger import InfoCoreLogger
+from loggers.logger import TradeCoreLogger
 
 class CommandHandler:
     def __init__(self, acw_url, node, prod, admin_telegram_id, core, logging_dir):
-        self.logger = InfoCoreLogger("command_handler", logging_dir).logger
+        self.logger = TradeCoreLogger("command_handler", logging_dir).logger
         self.acw_api = AcwApi(acw_url, node, prod)
         self.node = node
         self.admin_telegram_id = admin_telegram_id
