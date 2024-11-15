@@ -33,7 +33,7 @@ services:
     volumes:
       - $HOME/test-trade-core/logs:/home/trade_core/trade_core/loggers/logs
     depends_on:
-      postgres:
+      trade-postgres:
         condition: service_healthy
     networks:
       - test-trade-network
@@ -45,7 +45,7 @@ services:
     volumes:
       - $HOME/test-trade-core/logs:/home/trade_core/trade_core/loggers/logs
     depends_on:
-      postgres:
+      trade-postgres:
         condition: service_healthy
     networks:
       - test-trade-network
