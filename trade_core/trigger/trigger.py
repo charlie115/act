@@ -89,7 +89,7 @@ class InitTrigger:
                 target=start_trigger_loop,
                 args=(
                     market_code_combination_name,
-                    trade_support,
+                    False,
                     postgres_db_dict,
                     self.mongo_db_dict,
                     admin_id,
