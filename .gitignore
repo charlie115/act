@@ -64,3 +64,6 @@ static/
 
 # Database files
 *db.sqlite*
+
+# VSCode workspace files
+*.code-workspace

@@ -25,7 +25,7 @@ class KlineConsumer(AsyncWebsocketConsumer):
         # # Authentication
         # if type(self.scope["user"]) != User:
         #     await self.close()
-
+        
         query_params = dict(parse_qsl(self.scope["query_string"].decode()))
         target_market_code = query_params.get("target_market_code", None)
         origin_market_code = query_params.get("origin_market_code", None)

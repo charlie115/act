@@ -28,7 +28,7 @@ RUN mkdir -p /opt/community_drf/static
 #############
 # DEV IMAGE #
 #############
-FROM base as dev
+FROM base AS dev
 
 COPY ./.env.dev .env
 COPY ./requirements/dev.txt requirements/dev.txt
@@ -43,7 +43,7 @@ CMD ["start-dev-server.sh"]
 ##############
 # TEST IMAGE #
 ##############
-FROM dev as test
+FROM dev AS test
 
 COPY ./.env.test .env
 COPY ./requirements/test.txt requirements/test.txt
@@ -58,7 +58,7 @@ CMD ["start-test-server.sh"]
 ####################
 # PRODUCTION IMAGE #
 ####################
-FROM base as prod
+FROM base AS prod
 
 COPY ./.env.prod .env
 COPY ./requirements/prod.txt requirements/prod.txt

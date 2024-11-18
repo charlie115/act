@@ -584,7 +584,7 @@ class TradeHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     base_asset = serializers.CharField()
     target_order_id = serializers.CharField()  # uuid or string?
     origin_order_id = serializers.CharField()  # string?
-    target_premium_value = serializers.IntegerField()  # integer?
+    target_premium_value = serializers.FloatField()
     executed_premium_value = serializers.FloatField()
     slippage_p = serializers.FloatField()
     dollar = serializers.FloatField()
