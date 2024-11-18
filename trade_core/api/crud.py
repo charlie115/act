@@ -631,6 +631,7 @@ async def fetch_deposit_address(db: AsyncSession):
         output_dict = user_exchange_adaptor.get_deposit_address(exchange, access_key, secret_key, passphrase)
         return output_dict
     except Exception as e:
+        print(traceback.format_exc())
         return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
     
 async def fetch_deposit_amount(txid: str, db: AsyncSession):

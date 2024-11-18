@@ -196,8 +196,8 @@ class UserUpbitAdaptor:
             self.user_api_key_df = pd.DataFrame(columns=column_names)
             return self.user_api_key_df
         else:
-            user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].applymap(lambda x: x.tobytes() if isinstance(x, memoryview) else x)
-            user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].applymap(lambda x: decrypt_data(x).decode('utf-8') if x is not None else None)
+            user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].map(lambda x: x.tobytes() if isinstance(x, memoryview) else x)
+            user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].map(lambda x: decrypt_data(x).decode('utf-8') if x is not None else None)
             self.user_api_key_df = user_api_key_df
             return user_api_key_df
         

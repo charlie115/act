@@ -26,6 +26,8 @@ class InitTrigger:
     def __init__(self,
                  admin_id,
                  server_check_status_list,
+                 info_dict,
+                 convert_rate_dict,
                  enabled_market_code_combinations,
                  acw_api,
                  remote_redis_client,
@@ -35,6 +37,8 @@ class InitTrigger:
         self.admin_id = admin_id
         self.acw_api = acw_api
         self.server_check_status_list = server_check_status_list
+        self.info_dict = info_dict
+        self.convert_rate_dict = convert_rate_dict
         self.enabled_market_code_combinations = enabled_market_code_combinations
         self.remote_redis_client = remote_redis_client
         self.postgres_db_dict = postgres_db_dict
@@ -72,6 +76,8 @@ class InitTrigger:
                 self.trade_proc_dict[f"trade|{market_code_combination_name}"] = Process(
                     target=start_trigger_loop,
                     args=(
+                        self.info_dict,
+                        self.convert_rate_dict,
                         market_code_combination_name,
                         trade_support,
                         postgres_db_dict,
@@ -88,6 +94,8 @@ class InitTrigger:
             self.trade_proc_dict[f"alarm|{market_code_combination_name}"] = Process(
                 target=start_trigger_loop,
                 args=(
+                    self.info_dict,
+                    self.convert_rate_dict,
                     market_code_combination_name,
                     False,
                     postgres_db_dict,

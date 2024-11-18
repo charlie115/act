@@ -48,7 +48,7 @@ def fetch_users_with_negative_balance_loop(admin_id,
 def load_trade_config(postgres_client, admin_id, acw_api, logger, ex, table_name='trade_config'):
     try:
         conn = postgres_client.pool.getconn()
-        curr = conn.cursor(cursor_factory=extras.DictCursor)
+        curr = conn.cursor(cursor_factory=extras.RealDictCursor)
         # First check whether the table is empty
         if postgres_client.is_table_empty(table_name):
             # # Get the column names
@@ -168,6 +168,8 @@ def load_trade_df(curr,
         return
 
 def start_trigger_loop(
+    info_dict,
+    convert_rate_dict,
     market_code_combination,
     trade_support,
     postgres_db_dict,
@@ -200,7 +202,7 @@ def start_trigger_loop(
         # Start handle_repeat_trade_loop in a separate thread
         handle_repeat_trade_loop_thread = Thread(
             target=handle_repeat_trade_loop,
-            args=(postgres_db_dict, mongo_db_dict, market_code_combination, admin_id, acw_api, logging_dir),
+            args=(postgres_db_dict, mongo_db_dict, info_dict, convert_rate_dict, market_code_combination, admin_id, acw_api, logging_dir),
             daemon=True
         )
         handle_repeat_trade_loop_thread.start()
@@ -218,8 +220,9 @@ def start_trigger_loop(
             if trade_df is None or trade_df.empty:
                 time.sleep(loop_interval_secs)
                 continue
-
-            premium_df = get_premium_df(*market_code_combination.split(':'))
+            
+            target_market_code, origin_market_code = market_code_combination.split(':')
+            premium_df = get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logger)
             merged_df = trade_df.merge(premium_df, on='base_asset')
             merged_df['SL_premium_value'] = merged_df.apply(
                 lambda x: x['SL_premium'] if not x['usdt_conversion'] else (1 + x['SL_premium'] / 100) * x['dollar'], axis=1)
@@ -281,7 +284,7 @@ def start_trigger_loop(
                 conn.commit()
                 if curr.rowcount == 0:
                     logger.error(f"No row has been updated for low_break_trade_df even though there are {len(low_break_trade_df)} rows")
-                low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support)
+                low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, logger)
 
             time.sleep(loop_interval_secs)
         except Exception as e:
@@ -351,7 +354,7 @@ def low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination
                     current_price = row['tp']
                 msg_content += f"현재가격: {current_price}({round(row['scr'],2)}%)"
                 msg_full = f"{msg_title}\n{msg_content}"
-                acw_api.create_message_thread_thread(row['telegram_id'], msg_title, msg_full, 'INFO', send_times=row['send_times'], send_term=row['send_term'])
+                acw_api.create_message_thread(row['telegram_id'], msg_title, msg_full, 'INFO', send_times=row['send_times'], send_term=row['send_term'])
             except Exception as e:
                 title = f"Error in low_break"
                 full_content = f"{title}: {e}\n{traceback.format_exc()}"
@@ -402,7 +405,7 @@ def load_merged_repeat_df(postgres_client,
         postgres_client.pool.putconn(conn, close=True)
         acw_api.create_message_thread(admin_id, title, full_content)
         
-def handle_repeat_trade_loop(postgres_db_dict, mongo_db_dict, market_code_combination, admin_id, acw_api, logging_dir, loop_interval_secs=1):
+def handle_repeat_trade_loop(postgres_db_dict, mongo_db_dict, info_dict, convert_rate_dict, market_code_combination, admin_id, acw_api, logging_dir, loop_interval_secs=1):
     logger = TradeCoreLogger("handle_repeat_trade", logging_dir).logger
     logger.info(f"handle_repeat_trade_loop started for {market_code_combination}")
     postgres_client = InitPostgresDBClient(**{**postgres_db_dict, 'database': 'trade_core'})
@@ -421,7 +424,8 @@ def handle_repeat_trade_loop(postgres_db_dict, mongo_db_dict, market_code_combin
                                                      table_name='repeat_trade')
             if len(merged_repeat_df) == 0:
                 continue
-            premium_df = get_premium_df(*market_code_combination.split(':'))
+            target_market_code, origin_market_code = market_code_combination.split(':')
+            premium_df = get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logger)
             if len(premium_df) == 0:
                 time.sleep(loop_interval_secs)
                 continue

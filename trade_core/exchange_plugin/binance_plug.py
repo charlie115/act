@@ -312,8 +312,8 @@ class UserBinanceAdaptor:
             self.user_api_key_df = pd.DataFrame(columns=column_names)
             return self.user_api_key_df
         else:
-            user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].applymap(lambda x: x.tobytes() if isinstance(x, memoryview) else x)
-            user_api_key_df.loc[:, ['access_key','secret_key']] = user_api_key_df[['access_key','secret_key']].applymap(lambda x: decrypt_data(x).decode('utf-8') if x is not None else None)
+            user_api_key_df[['access_key', 'secret_key']] = user_api_key_df[['access_key', 'secret_key']].map(lambda x: x.tobytes() if isinstance(x, memoryview) else x)
+            user_api_key_df[['access_key', 'secret_key']] = user_api_key_df[['access_key', 'secret_key']].map(lambda x: decrypt_data(x).decode('utf-8') if x is not None else None)
             self.user_api_key_df = user_api_key_df
             return user_api_key_df
 
@@ -632,8 +632,33 @@ class UserBinanceAdaptor:
         if market_type == "USD_M":
             res = client.futures_position_information()
             position_df = pd.DataFrame(res)
-            position_df.loc[:, 'positionAmt':'maxNotionalValue'] = position_df.loc[:,'positionAmt':'maxNotionalValue'].astype(float)
+            columns_to_convert = [
+                "positionAmt",
+                "entryPrice",
+                "breakEvenPrice",
+                "markPrice",
+                "unRealizedProfit",
+                "liquidationPrice",
+                "isolatedMargin",
+                "notional",
+                "isolatedWallet",
+                "initialMargin",
+                "maintMargin",
+                "positionInitialMargin",
+                "openOrderInitialMargin",
+                "adl",
+            ]
+            # Convert columns to numeric, coercing errors to NaN
+            position_df[columns_to_convert] = position_df[columns_to_convert].apply(pd.to_numeric, errors='coerce')
+
+            # Perform the leverage calculation
+            position_df['leverage'] = (
+                abs(position_df['notional'] / position_df['positionInitialMargin'])
+            ).round(0).astype(int)
             position_df = position_df[position_df['positionAmt']!=0].reset_index(drop=True)
+            
+            # Add marginType info
+            position_df['marginType'] = position_df['isolatedMargin'].apply(lambda x: 'crossed' if x == 0 else 'isolated')
         elif market_type == "COIN_M":
             # raise error for not supported yet
             raise Exception(f"market_type: {market_type} is not supported yet.")

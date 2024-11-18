@@ -184,6 +184,8 @@ class InitCore:
         # Start trigger engine
         self.trigger = InitTrigger(self.admin_id,
                                    self.server_check_status_list,
+                                   self.info_dict,
+                                   self.convert_rate_dict,
                                    self.enabled_market_code_combinations, 
                                    acw_api,
                                    self.remote_redis,

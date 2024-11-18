@@ -51,7 +51,7 @@ class AcwApi:
             "title": title,
             "origin": self.node,
             "type": type.upper(),
-            "content": f"[{self.node}]{content}",
+            "content": f"[{self.node}]\n{content}" if type in ["MONITOR", "monitor", "DEBUG", "debug"] else content,
             "remark": remark,
             "code": code,
             "sent": sent,

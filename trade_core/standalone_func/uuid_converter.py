@@ -11,9 +11,9 @@ local_redis = RedisHelper()
 
 def trade_uuid_to_display_id(market_code_combination, trade_uuid, logger):
     # load trade_df from redis
-    trade_df_pickled = local_redis.get(f"trade|trade|{market_code_combination}")
+    trade_df_pickled = local_redis.get_data(f"trade|trade|{market_code_combination}")
     # load alarm_df from redis
-    alarm_df_pickled = local_redis.get(f"trade|alarm|{market_code_combination}")
+    alarm_df_pickled = local_redis.get_data(f"trade|alarm|{market_code_combination}")
     # load
     if trade_df_pickled is None:
         logger.error(f"trade_uuid_to_display_id|trade_df is None")
@@ -41,9 +41,9 @@ def trade_uuid_to_display_id(market_code_combination, trade_uuid, logger):
 
 def display_id_to_trade_uuid(market_code_combination, user_trade_config_uuid, display_id, logger):
     # load trade_df from redis
-    trade_df_pickled = local_redis.get(f"trade|trade|{market_code_combination}")
+    trade_df_pickled = local_redis.get_data(f"trade|trade|{market_code_combination}")
     # load alarm_df from redis
-    alarm_df_pickled = local_redis.get(f"trade|alarm|{market_code_combination}")
+    alarm_df_pickled = local_redis.get_data(f"trade|alarm|{market_code_combination}")
     # load
     if trade_df_pickled is None:
         logger.error(f"display_id_to_trade_uuid|trade_df is None")
