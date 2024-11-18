@@ -907,9 +907,10 @@ class UserExchangeAdaptor:
             self.postgres_client.pool.putconn(conn)
             self.logger.error(f"generate_pnl_history|{e}")
             self.logger.error(traceback.format_exc())
-            # send message to the admin
             title = "PnL 계산 오류"
             body = f"거래UUID: {trade_info_dict['trade_uuid']}의 PnL 계산 중 오류가 발생하였습니다. 관리자에게 문의하시기 바랍니다."
             full_body = title + '\n' + body
+            self.acw_api.create_message_thread(trade_info_dict['telegram_id'], title, full_body, 'ERROR', send_times=1, send_term=1)
+            # send message to the admin
             self.acw_api.create_message_thread(self.admin_id, title, full_body, 'MONITOR', send_times=1, send_term=1)
             raise e

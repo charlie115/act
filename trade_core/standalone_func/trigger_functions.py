@@ -548,7 +548,7 @@ def handle_repeat_trade(postgres_client,
                         full_content = title
                         full_content += f"\n{row['base_asset']}/{row['quote_asset']} 진입값과 탈출값이 업데이트되었습니다."
                         full_content += f"\n진입값: {low_to_apply}, 탈출값: {high_to_apply}"
-                        acw_api.create_message_thread(row['telegram_id'], title, full_content)
+                        acw_api.create_message_thread(row['telegram_id'], title, full_content, 'INFO')
                 
             elif row['trade_switch'] == 1: # 탈출완료
                 if pd.isnull(row['pauto_num']):
@@ -569,7 +569,8 @@ def handle_repeat_trade(postgres_client,
                     curr.execute(sql, val)
                     conn.commit()
                 else:
-                    output_dict = get_pboundary(market_code_combination,
+                    output_dict = get_pboundary(mongo_db_dict,
+                                                market_code_combination,
                                                 row['base_asset'],
                                                 row['usdt_conversion'],
                                                 row['kline_interval'],
@@ -588,7 +589,7 @@ def handle_repeat_trade(postgres_client,
                 title = f"거래ID:{trade_uuid_to_display_id(market_code_combination, row['uuid_x'], logger)} 자동거래 재등록"
                 full_content = title
                 full_content += f"\n{row['base_asset']}/{row['quote_asset']} 자동거래가 탈출완료되어 자동거래를 재등록합니다."
-                acw_api.create_message_thread(row['telegram_id'], title, full_content)
+                acw_api.create_message_thread(row['telegram_id'], title, full_content, 'INFO')
         postgres_client.pool.putconn(conn, close=True)
     except Exception as e:
         logger.error(f"Error in handle_repeat_trade: {e}\n{traceback.format_exc()}")

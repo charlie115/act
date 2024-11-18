@@ -55,7 +55,7 @@ FROM base AS test
 
 COPY ./trade_core/docker/start-test-service.sh /usr/local/bin/start-test-service.sh
 COPY ./.env.test .env
-# CMD ["start-test-service.sh"]
+CMD ["start-test-service.sh"]
 
 # For trade_core_api
 FROM base AS api_test
