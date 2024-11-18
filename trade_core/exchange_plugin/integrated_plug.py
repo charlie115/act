@@ -24,7 +24,7 @@ from api.utils import MyException
 from standalone_func.premium_data_generator import get_premium_df
 
 class UserExchangeAdaptor:
-    def __init__(self, admin_id, acw_api, postgres_db_dict=None, market_code_combination=None, logging_dir=None):
+    def __init__(self, admin_id, acw_api, redis_db_dict, postgres_db_dict=None, market_code_combination=None, logging_dir=None):
         self.exchange_adaptor_dict = {}
         self.admin_id = admin_id
         self.postgres_db_dict = postgres_db_dict
@@ -33,7 +33,10 @@ class UserExchangeAdaptor:
         else:
             self.postgres_client = None
         # redis connection to read info_dict
-        self.local_redis = RedisHelper()
+        if redis_db_dict is not None:
+            self.remote_redis = RedisHelper(**redis_db_dict)
+        else:
+            self.remote_redis = None
         self.market_code_combination = market_code_combination
         self.acw_api = acw_api
         self.available_exchange_adaptor_dict = {
@@ -234,7 +237,7 @@ class UserExchangeAdaptor:
             position_df = exchange_adaptor.all_position_information(access_key, secret_key, market_type)
             if position_df.empty:
                 return position_df
-            info_df = pickle.loads(self.local_redis.get_data(f'{exchange.lower()}_{market_type.lower()}_info_df'))
+            info_df = pickle.loads(self.remote_redis.get_data(f'{exchange.lower()}_{market_type.lower()}_info_df'))
             position_df = position_df.merge(info_df[['symbol','base_asset']], how='left', on='symbol')
             position_df = position_df.rename(columns={"positionAmt":"qty", "marginType":"margin_type", "entryPrice":"entry_price", "liquidationPrice":"liquidation_price"})
             if len(position_df) == 0:
@@ -254,7 +257,7 @@ class UserExchangeAdaptor:
         if exchange == "UPBIT":
             currency = 'KRW'
             position_df = exchange_adaptor.get_balance(access_key, secret_key, market_type)
-            ticker_df = pickle.loads(self.local_redis.get_data(f"{exchange.lower()}_{market_type.lower()}_ticker_df"))
+            ticker_df = pickle.loads(self.remote_redis.get_data(f"{exchange.lower()}_{market_type.lower()}_ticker_df"))
             position_df['symbol'] = position_df['unit_currency']+'-'+position_df['asset']
             merged_df = position_df.merge(ticker_df[['symbol','lastPrice']], how='left', on='symbol')
             merged_df.loc[merged_df['asset']==currency, 'lastPrice'] = 1

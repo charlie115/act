@@ -188,7 +188,7 @@ class InitCore:
                                    self.convert_rate_dict,
                                    self.enabled_market_code_combinations, 
                                    acw_api,
-                                   self.remote_redis,
+                                   self.redis_dict,
                                    self.postgres_db_dict,
                                    self.mogno_db_dict,
                                    self.logging_dir)
@@ -311,7 +311,7 @@ class InitCore:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name} is not valid.")
                     self.acw_api.create_message_thread(self.admin_id, f"update_exchange_info_as_df|name:{data_name} is not valid.", f"update_exchange_info_as_df|name:{data_name} is not valid.")
                     break
-                self.local_redis.set_data(f'{data_name}', pickle.dumps(self.info_dict[data_name]))
+                self.remote_redis.set_data(f'{data_name}', pickle.dumps(self.info_dict[data_name]))
                 time.sleep(loop_time_secs)
                 error_count = 0
             except Exception as e:

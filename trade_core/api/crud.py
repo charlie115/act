@@ -22,13 +22,13 @@ from standalone_func.data_process import get_pboundary
 from etc.db_handler.mongodb_client import InitDBClient
 from etc.acw_api import AcwApi
 from dotenv import load_dotenv
-from config import logging_dir, PROD, NODE, ADMIN_TELEGRAM_ID, USER_UUID_FOR_WALLET, ACW_API_URL, mongo_db_dict
+from config import logging_dir, PROD, NODE, ADMIN_TELEGRAM_ID, USER_UUID_FOR_WALLET, ACW_API_URL, mongo_db_dict, redis_dict
 
 
 acw_api = AcwApi(ACW_API_URL, NODE, PROD)
 
 # initialize exchange adaptors
-user_exchange_adaptor = UserExchangeAdaptor(admin_id=ADMIN_TELEGRAM_ID, acw_api=acw_api, logging_dir=logging_dir)
+user_exchange_adaptor = UserExchangeAdaptor(admin_id=ADMIN_TELEGRAM_ID, acw_api=acw_api, redis_db_dict=redis_dict, logging_dir=logging_dir)
 
 # Dependency to get the async database session
 async def get_db():

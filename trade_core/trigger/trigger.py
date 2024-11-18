@@ -30,7 +30,7 @@ class InitTrigger:
                  convert_rate_dict,
                  enabled_market_code_combinations,
                  acw_api,
-                 remote_redis_client,
+                 redis_dict,
                  postgres_db_dict,
                  mongo_db_dict,
                  logging_dir):
@@ -40,7 +40,7 @@ class InitTrigger:
         self.info_dict = info_dict
         self.convert_rate_dict = convert_rate_dict
         self.enabled_market_code_combinations = enabled_market_code_combinations
-        self.remote_redis_client = remote_redis_client
+        self.redis_dict = redis_dict
         self.postgres_db_dict = postgres_db_dict
         self.mongo_db_dict = mongo_db_dict
         self.postgres_client = InitPostgresDBClient(**{**postgres_db_dict, 'database': 'trade_core'})

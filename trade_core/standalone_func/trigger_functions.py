@@ -195,6 +195,7 @@ def start_trigger_loop(
         user_exchange_adaptor = UserExchangeAdaptor(
             admin_id=admin_id,
             acw_api=acw_api,
+            redis_db_dict=None,
             postgres_db_dict=postgres_db_dict,
             market_code_combination=market_code_combination,
             logging_dir=logging_dir
