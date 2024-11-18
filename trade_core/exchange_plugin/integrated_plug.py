@@ -595,7 +595,7 @@ class UserExchangeAdaptor:
                     trade_info_dict['slippage_p'] = round((trade_info_dict['target_premium_value'] - trade_info_dict['executed_premium_value']) / trade_info_dict['executed_premium_value'] * 100, 2)
                 # Reflect slippage to high value
                 if trade_info_dict['target_premium_value'] < trade_info_dict['executed_premium_value']: # Original
-                    slippage_to_add = trade_info_dict['executed_premium_value'] - trade_info_dict['target_premium_value'] # Original
+                    slippage_to_add = round(trade_info_dict['executed_premium_value'] - trade_info_dict['target_premium_value'], 3) # Original
                     trade_df = get_trade_df(self.market_code_combination, trade_support=True)
                     original_high = trade_df[trade_df['uuid']==trade_info_dict['trade_uuid']]['high'].values[0]
                     new_high_to_apply = original_high + Decimal(str(slippage_to_add))
@@ -901,7 +901,7 @@ class UserExchangeAdaptor:
                 self.acw_api.create_message_thread(trade_info_dict['telegram_id'], title, full_body, 'INFO', send_times=trade_info_dict['send_times'], send_term=trade_info_dict['send_term'])
                 # apply to the user deposit if a user had profit
                 if total_pnl_after_fee > 0:
-                    self.acw_api.get_referral_commission(trade_info_dict['user'], trade_info_dict['trade_config_uuid'], total_pnl_after_fee, self.target_market_code, self.origin_market_code, apply_to_deposit=True)
+                    self.acw_api.get_referral_commission(trade_info_dict['user'], trade_info_dict['trade_config_uuid'], round(total_pnl_after_fee, total_round_n), self.target_market_code, self.origin_market_code, apply_to_deposit=True)
             self.postgres_client.pool.putconn(conn)
         except Exception as e:
             self.postgres_client.pool.putconn(conn)
