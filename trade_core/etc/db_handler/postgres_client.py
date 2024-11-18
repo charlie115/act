@@ -324,7 +324,7 @@ class InitDBClient:
                 FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE,
-                FOREIGN KEY (trade_uuid) REFERENCES trade_log(uuid)
+                FOREIGN KEY (trade_uuid) REFERENCES trade_log(trade_uuid)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE
             )"""
@@ -367,7 +367,7 @@ class InitDBClient:
                 FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE,
-                FOREIGN KEY (trade_uuid) REFERENCES trade_log(uuid)
+                FOREIGN KEY (trade_uuid) REFERENCES trade_log(trade_uuid)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE,
                 FOREIGN KEY (target_order_id) REFERENCES order_history(order_id)
@@ -424,7 +424,7 @@ class InitDBClient:
                 FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE,
-                FOREIGN KEY (trade_uuid) REFERENCES trade_log(uuid)
+                FOREIGN KEY (trade_uuid) REFERENCES trade_log(trade_uuid)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE,
                 FOREIGN KEY (enter_trade_history_uuid) REFERENCES trade_history(uuid)
