@@ -232,6 +232,8 @@ class UserExchangeAdaptor:
             position_df = exchange_adaptor.all_position_information(access_key, secret_key, market_type)
         elif exchange == "BINANCE":
             position_df = exchange_adaptor.all_position_information(access_key, secret_key, market_type)
+            if position_df.empty:
+                return position_df
             info_df = pickle.loads(self.local_redis.get_data(f'{exchange.lower()}_{market_type.lower()}_info_df'))
             position_df = position_df.merge(info_df[['symbol','base_asset']], how='left', on='symbol')
             position_df = position_df.rename(columns={"positionAmt":"qty", "marginType":"margin_type", "entryPrice":"entry_price", "liquidationPrice":"liquidation_price"})

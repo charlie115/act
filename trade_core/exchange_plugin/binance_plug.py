@@ -632,6 +632,8 @@ class UserBinanceAdaptor:
         if market_type == "USD_M":
             res = client.futures_position_information()
             position_df = pd.DataFrame(res)
+            if position_df.empty:
+                return position_df
             columns_to_convert = [
                 "positionAmt",
                 "entryPrice",

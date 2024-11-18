@@ -584,6 +584,8 @@ async def fetch_futures_position(user: UUID, market_code: str, db: AsyncSession)
     access_key, secret_key, passphrase = await find_api_keys(user, exchange, False, True, db)
     try:
         position_df = user_exchange_adaptor.get_position(exchange, access_key, secret_key, market_type, passphrase=passphrase)
+        if position_df.empty:
+            return Response(status_code=status.HTTP_404_NOT_FOUND, content="No positions found")
     except Exception as e:
         print(traceback.format_exc())
         return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
