@@ -545,7 +545,7 @@ class OrderHistoryViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     quote_asset = serializers.CharField()
     side = serializers.CharField()
     price = serializers.FloatField()
-    qty = serializers.IntegerField()
+    qty = serializers.FloatField()
     fee = serializers.FloatField()
     remark = serializers.CharField(required=False)
 
