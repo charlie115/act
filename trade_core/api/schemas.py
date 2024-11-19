@@ -24,8 +24,7 @@ class TradeConfigBase(BaseModel):
     origin_market_leverage: Optional[int] = None
     target_market_margin_call: Optional[int] = None
     origin_market_margin_call: Optional[int] = None
-    target_market_safe_reverse: Optional[bool] = None
-    origin_market_safe_reverse: Optional[bool] = None
+    safe_reverse: Optional[bool] = None
     target_market_risk_threshold_p: Optional[Decimal] = None
     origin_market_risk_threshold_p: Optional[Decimal] = None
     repeat_limit_p: Optional[Decimal] = None
