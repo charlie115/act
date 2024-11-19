@@ -117,8 +117,10 @@ services:
     restart: always
   
   info-core:
-    image: info-core
+    image: info-core:test
     container_name: test-info-core
+    volumes:
+      - $HOME/test-info-core/logs:/home/info_core/info_core/loggers/logs
     networks:
       - test-community-network
     restart: always
