@@ -105,7 +105,7 @@ def load_trade_df(curr,
             trade_config.send_times, trade_config.send_term,
             trade_config.target_market_cross, trade_config.target_market_leverage, trade_config.origin_market_cross,
             trade_config.origin_market_leverage, trade_config.target_market_margin_call, trade_config.origin_market_margin_call,
-            trade_config.safe_reverse
+            trade_config.safe_reverse,
             trade_config.target_market_risk_threshold_p, trade_config.origin_market_risk_threshold_p, trade_config.repeat_limit_p,
             trade_config.repeat_limit_direction, trade_config.repeat_num_limit
             FROM trade

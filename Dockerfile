@@ -10,8 +10,8 @@ RUN apt-get install -y redis-server
 # Install Apache HTTP server utilities for rotating logs
 RUN apt-get install apache2-utils
 
-# Start Redis server --> This will be handled by start-env-service.sh
-CMD redis-server
+# # Start Redis server --> This will be handled by start-env-service.sh
+# CMD redis-server
 
 # Set WORKDIR
 WORKDIR /home/trade_core/
@@ -36,7 +36,6 @@ WORKDIR /home/trade_core/trade_core/
 #############
 # For trade_core
 FROM base AS dev
-
 COPY ./trade_core/docker/start-dev-service.sh /usr/local/bin/start-dev-service.sh
 COPY ./.env.dev .env
 CMD ["start-dev-service.sh"]
@@ -52,7 +51,6 @@ CMD ["start-api-dev-service.sh"]
 #############
 # For trade_core
 FROM base AS test
-
 COPY ./trade_core/docker/start-test-service.sh /usr/local/bin/start-test-service.sh
 COPY ./.env.test .env
 CMD ["start-test-service.sh"]
@@ -68,7 +66,6 @@ CMD ["start-api-test-service.sh"]
 ##############
 # For trade_core
 FROM base AS prod
-
 COPY ./trade_core/docker/start-prod-service.sh /usr/local/bin/start-prod-service.sh
 COPY ./.env.prod .env
 CMD ["start-prod-service.sh"]
