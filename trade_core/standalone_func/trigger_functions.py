@@ -252,17 +252,25 @@ def start_trigger_loop(
                 high_break_params = tuple(high_break_trigger_uuid_list)
                 # UPDATE database
                 if trade_support: # trade triggers only
-                    # sql = f"UPDATE {table_name} SET trigger_switch = 1, trade_switch = 3 WHERE uuid IN ({high_break_placeholders}) AND trade_switch = -1"
+                    # sql = f"""
+                    #         UPDATE {table_name}
+                    #         SET trigger_switch = 1,
+                    #             trade_switch = CASE
+                    #                 WHEN trade_switch = -1 THEN 3
+                    #                 WHEN trade_switch = 0 THEN trade_switch
+                    #                 ELSE trade_switch
+                    #             END
+                    #         WHERE uuid IN ({high_break_placeholders})
+                    #         AND (trade_switch = -1 OR trade_switch = 0);
+                    #         """
                     sql = f"""
                             UPDATE {table_name}
                             SET trigger_switch = 1,
                                 trade_switch = CASE
                                     WHEN trade_switch = -1 THEN 3
-                                    WHEN trade_switch = 0 THEN trade_switch
                                     ELSE trade_switch
                                 END
-                            WHERE uuid IN ({high_break_placeholders})
-                            AND (trade_switch = -1 OR trade_switch = 0);
+                            WHERE uuid IN ({high_break_placeholders});
                             """
                 else:
                     sql = f"UPDATE {table_name} SET trigger_switch = 1 WHERE uuid IN ({high_break_placeholders})"
@@ -278,7 +286,25 @@ def start_trigger_loop(
                 low_break_params = tuple(low_break_trigger_uuid_list)
                 # UPDATE database
                 if trade_support:
-                    sql = f"UPDATE {table_name} SET trigger_switch = 0, trade_switch = 3 WHERE uuid IN ({low_break_placeholders}) AND trade_switch = 0"
+                    # sql = f"""
+                    #         UPDATE {table_name}
+                    #         SET trigger_switch = 0,
+                    #             trade_switch = CASE
+                    #                 WHEN trade_switch = 0 THEN 3
+                    #                 ELSE trade_switch
+                    #             END
+                    #         WHERE uuid IN ({low_break_placeholders})
+                    #         AND (trade_switch = 1 OR trade_switch = 0);
+                    #         """
+                    sql = f"""
+                            UPDATE {table_name}
+                            SET trigger_switch = 0,
+                                trade_switch = CASE
+                                    WHEN trade_switch = 0 THEN 3
+                                    ELSE trade_switch
+                                END
+                            WHERE uuid IN ({low_break_placeholders});
+                            """
                 else:
                     sql = f"UPDATE {table_name} SET trigger_switch = 0 WHERE uuid IN ({low_break_placeholders})"
                 curr.execute(sql, low_break_params)

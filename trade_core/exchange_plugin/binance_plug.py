@@ -961,10 +961,22 @@ class UserBinanceAdaptor:
                         trade_df = get_trade_df(self.market_code_combination, trade_support=True)
                         if trade_df is None or len(trade_df) == 0:
                             continue
-                        unique_trade_df = trade_df.drop_duplicates(subset=['trade_config_uuid'])
-                        # temporary df
-                        unique_trade_df['api_keys'] = unique_trade_df['trade_config_uuid'].apply(lambda x: self.get_api_key_tup(x, futures=(False if market_type.upper()=='SPOT' else True), raise_error=False))
-                        unique_trade_df[['access_key','secret_key']] = pd.DataFrame(unique_trade_df['api_keys'].tolist(), index=unique_trade_df.index)
+                        # Make a copy to avoid SettingWithCopyWarning
+                        unique_trade_df = trade_df.drop_duplicates(subset=['trade_config_uuid']).copy()
+
+                        # Temporary DataFrame
+                        unique_trade_df['api_keys'] = unique_trade_df['trade_config_uuid'].apply(
+                            lambda x: self.get_api_key_tup(
+                                x,
+                                futures=(False if market_type.upper() == 'SPOT' else True),
+                                raise_error=False
+                            )
+                        )
+
+                        unique_trade_df[['access_key', 'secret_key']] = pd.DataFrame(
+                            unique_trade_df['api_keys'].tolist(),
+                            index=unique_trade_df.index
+                        )
                         # delete temporary df
                         unique_trade_df.drop(columns=['api_keys'], inplace=True)
                         # Drop if there's no api key
