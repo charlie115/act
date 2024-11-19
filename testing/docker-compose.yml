@@ -1,6 +1,15 @@
 version: '3'
 services:
 
+  # # Certification initialization
+  # certbot_init:
+  #   image: certbot/certbot
+  #   container_name: certbot_init
+  #   volumes:
+  #     - $HOME/certbot/conf:/etc/letsencrypt
+  #     - $HOME/certbot/www:/var/www/certbot
+  #   entrypoint: "/bin/sh -c 'trap exit TERM; certbot certonly --webroot -w /var/www/certbot -d domainname --email ckddjs116@gmail.com --agree-tos --no-eff-email --force-renewal'"
+
   certbot:
     image: certbot/certbot
     container_name: certbot
@@ -58,7 +67,7 @@ services:
       - $HOME/test-community-redis/data/:/data/
       - $HOME/test-community-redis/conf/redis.conf:/etc/redis/redis.conf
     ports:
-      - "6379:6379"
+      - "6378:6379"
     networks:
       - test-community-network
     restart: always
@@ -116,12 +125,12 @@ services:
       - test-community-network
     restart: always
   
-  info-core:
-    image: info-core
-    container_name: test-info-core
-    networks:
-      - test-community-network
-    restart: always
+  # info-core:
+  #   image: info-core
+  #   container_name: test-info-core
+  #   networks:
+  #     - test-community-network
+  #   restart: always
   
 networks:
   test-community-network:
