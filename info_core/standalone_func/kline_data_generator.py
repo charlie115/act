@@ -130,7 +130,7 @@ def ohlc_1T_generator(
             datetime_before = datetime_now.replace(second=0, microsecond=0)
             # datetime_now = datetime.datetime.utcnow()
             datetime_now = datetime.datetime.utcnow().replace(second=0, microsecond=0)
-            premium_df = get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logging_dir=logging_dir)
+            premium_df = get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logger=logger)
             premium_df['datetime_now'] = datetime_now
 
             # Extract necessary columns and set 'base_asset' as the index

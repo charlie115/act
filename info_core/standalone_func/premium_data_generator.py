@@ -6,8 +6,7 @@ from loggers.logger import InfoCoreLogger
 from standalone_func.get_dollar_dict import get_dollar_dict
 from standalone_func.price_df_generator import get_price_df
 
-def get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logging_dir):
-    logger = InfoCoreLogger("premium_data_generator", logging_dir).logger
+def get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logger):
     try:
         # POSSIBLE quote_assets: USDT, BUSD, BTC, KRW
         origin_market = origin_market_code.split('/')[0]

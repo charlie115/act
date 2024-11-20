@@ -67,7 +67,6 @@ def upbit_ticker_convert(UPBIT_TICKER_DICT):
     #     'msfi':'market_state_for_ios',
     #     'its':'is_trading_suspended',
     #     'dd':'delisting_date',
-    #     'mw':'market_warning',
     #     'tms':'timestamp',
     #     'st':'stream_type'
     # }
@@ -120,13 +119,12 @@ def get_kimp_df(OKX_TICKER_DICT, UPBIT_TICKER_DICT, UPBIT_ORDERBOOK_DICT, curren
         'scr': 'signed_change_rate',
         'ms': 'upbit_market_state',
         'dd': 'upbit_delisting_date',
-        'mw': 'upbit_market_warning',
         'its': 'upbit_is_trading_suspended',
         'tms_x': 'upbit_timestamp',
         'ts': 'okx_timestamp',
         'last': 'okx_last_price'
     })
     kimp_df = (merged_allticker_df[['symbol', 'acc_trade_price_24h', 'trade_price', 'okx_bid_price', 'okx_ask_price', 'okx_last_price', 'signed_change_rate',
-                                    'upbit_market_state', 'upbit_delisting_date', 'upbit_market_warning', 'upbit_is_trading_suspended',
+                                    'upbit_market_state', 'upbit_delisting_date', 'upbit_is_trading_suspended',
                                     'upbit_timestamp', 'okx_timestamp', 'enter_kimp', 'exit_kimp', 'tp_kimp', 'enter_usdt', 'exit_usdt', 'tp_usdt']])
     return kimp_df

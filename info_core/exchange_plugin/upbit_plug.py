@@ -80,7 +80,6 @@ class InitUpbitAdaptor:
         info_df = info_df[~info_df['market'].isin(self.symbols_to_exclude)] # Exclude Ton from Upbit since it doesn't match with Binance Ton
         info_df['base_asset'] = info_df['market'].apply(lambda x: x.split('-')[1])
         info_df['quote_asset'] = info_df['market'].apply(lambda x: x.split('-')[0])
-        info_df.loc[:, 'market_warning'] = info_df['market_warning'].apply(lambda x: False if x == "NONE" else True)
         info_df.rename(columns={"market": "symbol"}, inplace=True)
         return info_df
 
