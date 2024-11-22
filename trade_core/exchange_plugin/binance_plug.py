@@ -530,7 +530,7 @@ class UserBinanceAdaptor:
                 time.sleep(3)
             time.sleep(0.05)
 
-    def market_long(self, access_key, secret_key, symbol, qty, market_type, return_dict=None):
+    def market_long(self, access_key, secret_key, symbol, qty, market_type, reduce_only=False, return_dict=None):
         client = self.load_user_client(access_key, secret_key)
 
         retry_count = 0
@@ -545,7 +545,8 @@ class UserBinanceAdaptor:
                         side='BUY',
                         type='MARKET',
                         quantity=qty,
-                        recvWindow=self.recvWindow
+                        recvWindow=self.recvWindow,
+                        reduceOnly='true' if reduce_only else 'false'
                     )
                     if return_dict is not None:
                         return_dict['res'] = res
@@ -563,7 +564,7 @@ class UserBinanceAdaptor:
                         return
             retry_count += 1
 
-    def market_short(self, access_key, secret_key, symbol, qty, market_type, return_dict=None):
+    def market_short(self, access_key, secret_key, symbol, qty, market_type, reduce_only=False, return_dict=None):
         client = self.load_user_client(access_key, secret_key)
 
         retry_count = 0
@@ -578,7 +579,8 @@ class UserBinanceAdaptor:
                     side='SELL',
                     type='MARKET',
                     quantity=qty,
-                    recvWindow=self.recvWindow
+                    recvWindow=self.recvWindow,
+                    reduceOnly='true' if reduce_only else 'false'
                     )
                     if return_dict is not None:
                         return_dict['res'] = res
@@ -726,6 +728,7 @@ class UserBinanceAdaptor:
 
                     trade_df = get_trade_df(self.market_code_combination, trade_support=True)
                     waiting_df = trade_df[(trade_df['trade_config_uuid']==trade_config_uuid)&(trade_df['base_asset']==base_asset)&(trade_df['trade_switch']==-1)]
+                    self.logger.info(f"청산자동정리 실행|trade_config_uuid: {trade_config_uuid}, symbol: {base_asset}, symbol: {base_asset}") # test
                     if len(waiting_df) == 0:
                         body = f"{base_asset}USDT는 차익거래에 진입되어있는 상태가 아닙니다.\n"
                         body += f"포지션 자동정리를 취소합니다."
@@ -845,6 +848,7 @@ class UserBinanceAdaptor:
                     self.acw_api.create_message_thread(telegram_id, "청산 자동정리", body, 'INFO')
                     trade_df = get_trade_df(self.market_code_combination, trade_support=True)
                     waiting_df = trade_df[(trade_df['trade_config_uuid']==trade_config_uuid)&(trade_df['base_asset']==symbol)&(trade_df['trade_switch']==-1)]
+                    self.logger.info(f"청산자동정리 실행|trade_config_uuid: {trade_config_uuid}, symbol: {symbol}, symbol: {symbol}") # test
                     if len(waiting_df) == 0:
                         body = f"{symbol}USDT는 차익거래에 진입되어있는 상태가 아닙니다.\n"
                         body += f"포지션 자동정리를 취소합니다."

@@ -3,7 +3,6 @@ import json
 import traceback
 import datetime
 import pandas as pd
-from standalone_func.premium_data_generator import get_premium_df
 from etc.redis_connector.redis_helper import RedisHelper
 import _pickle as pickle
 

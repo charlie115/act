@@ -197,6 +197,8 @@ def start_trigger_loop(
             acw_api=acw_api,
             redis_db_dict=None,
             postgres_db_dict=postgres_db_dict,
+            info_dict=info_dict,
+            convert_rate_dict=convert_rate_dict,
             market_code_combination=market_code_combination,
             logging_dir=logging_dir
         )
