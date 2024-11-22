@@ -35,8 +35,6 @@ services:
     depends_on:
       trade-postgres:
         condition: service_healthy
-      trade-core:
-        condition: service_healthy
     networks:
       - test-trade-network
     restart: always
