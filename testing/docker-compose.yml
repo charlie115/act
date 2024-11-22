@@ -44,6 +44,8 @@ services:
   trade-core:
     image: trade-core:test
     container_name: test-trade-core
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     expose: # Exposing redis port to the trade-core-api service
       - "6379"
     volumes:
@@ -51,11 +53,6 @@ services:
     depends_on:
       trade-postgres:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6379/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
     networks:
       - test-trade-network
     restart: always
