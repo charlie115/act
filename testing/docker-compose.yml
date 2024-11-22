@@ -31,9 +31,11 @@ services:
     expose:
       - "8000"
     volumes:
-      - $HOME/test-trade-core/logs:/home/trade_core/trade_core/loggers/logs
+      - $HOME/test-trade-core-api/logs:/home/trade_core/trade_core/loggers/logs
     depends_on:
       trade-postgres:
+        condition: service_healthy
+      trade-core:
         condition: service_healthy
     networks:
       - test-trade-network
@@ -42,11 +44,18 @@ services:
   trade-core:
     image: trade-core:test
     container_name: test-trade-core
+    expose: # Exposing redis port to the trade-core-api service
+      - "6379"
     volumes:
       - $HOME/test-trade-core/logs:/home/trade_core/trade_core/loggers/logs
     depends_on:
       trade-postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6379/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - test-trade-network
     restart: always
