@@ -29,9 +29,8 @@ class UserExchangeAdaptor:
                  acw_api,
                  redis_db_dict,
                  postgres_db_dict=None,
-                 info_dict={},
-                 convert_rate_dict={},
                  market_code_combination=None,
+                 api_server=False,
                  logging_dir=None):
         self.exchange_adaptor_dict = {}
         self.admin_id = admin_id
@@ -41,20 +40,17 @@ class UserExchangeAdaptor:
         else:
             self.postgres_client = None
         # redis connection to read info_dict
-        if redis_db_dict is not None:
-            self.remote_redis = RedisHelper(**redis_db_dict)
+        if api_server:
+            self.redis = RedisHelper(**redis_db_dict)
         else:
-            self.remote_redis = None
+            self.redis = RedisHelper()
         self.market_code_combination = market_code_combination
         self.acw_api = acw_api
         self.available_exchange_adaptor_dict = {
             "UPBIT": UserUpbitAdaptor,
             "BINANCE": UserBinanceAdaptor
         }
-        self.info_dict = info_dict
-        self.convert_rate_dict = convert_rate_dict
-        self.available_market_code_combination_list = ["UPBIT_SPOT/KRW:BINANCE_USD_M/USDT"]
-        if self.market_code_combination is None: # If market_code_combination is not given, initialize all exchange adaptors since it will be used for curd.py in api
+        if self.market_code_combination is None: # If market_code_combination is not given, initialize all exchange adaptors since it will be used for crud.py in api
             self.logger = TradeCoreLogger("integrated_plug", logging_dir=logging_dir).logger
             self.logger.info('integrated_plug_logger init')
             self.exchange_adaptor_dict = {}
@@ -88,10 +84,11 @@ class UserExchangeAdaptor:
             self.trade_info_dict_queue = Queue()
             self.trade_info_dict_queue_thread = Thread(target=self.handle_trade_info_queue_loop, daemon=True)
             self.trade_info_dict_queue_thread.start()
-            # queue for handling margin call trades of short_long and long_short
-            self.margin_liquidation_call_trade_queue = Queue()
-            self.margin_liquidation_call_trade_queue_thread = Thread(target=self.handle_margin_liquidation_call_trade_queue_loop, daemon=True)
-            self.margin_liquidation_call_trade_queue_thread.start()
+            if not api_server:
+                # queue for handling margin call trades of short_long and long_short
+                self.margin_liquidation_call_trade_queue = Queue()
+                self.margin_liquidation_call_trade_queue_thread = Thread(target=self.handle_margin_liquidation_call_trade_queue_loop, daemon=True)
+                self.margin_liquidation_call_trade_queue_thread.start()
             if target_exchange_adaptor_func is None:
                 raise Exception(f'exchange {self.target_exchange} not supported')
             else:
@@ -99,7 +96,7 @@ class UserExchangeAdaptor:
                                                                                                 acw_api=self.acw_api,
                                                                                                 postgres_db_dict=self.postgres_db_dict,
                                                                                                 market_code_combination=self.market_code_combination,
-                                                                                                margin_liquidation_call_trade_queue=self.margin_liquidation_call_trade_queue,
+                                                                                                margin_liquidation_call_trade_queue=self.margin_liquidation_call_trade_queue if not api_server else None,
                                                                                                 logging_dir=logging_dir)
                 self.target_exchange_adaptor = self.exchange_adaptor_dict[self.target_exchange]
             origin_exchange_adaptor_func = self.available_exchange_adaptor_dict.get(self.origin_exchange)
@@ -110,7 +107,7 @@ class UserExchangeAdaptor:
                                                                                                 acw_api=self.acw_api,
                                                                                                 postgres_db_dict=self.postgres_db_dict,
                                                                                                 market_code_combination=self.market_code_combination,
-                                                                                                margin_liquidation_call_trade_queue=self.margin_liquidation_call_trade_queue,
+                                                                                                margin_liquidation_call_trade_queue=self.margin_liquidation_call_trade_queue if not api_server else None,
                                                                                                 logging_dir=logging_dir)
                 self.origin_exchange_adaptor = self.exchange_adaptor_dict[self.origin_exchange]
             # # Initialize functions
@@ -125,16 +122,6 @@ class UserExchangeAdaptor:
             self.trade_history_df_thread.start()
             while self.order_history_df is None or self.trade_history_df is None:
                 time.sleep(1)
-        
-    # def initialize_tools(self, market_code_combination):
-    #     if market_code_combination not in self.available_market_code_combination_list:
-    #         raise Exception(f'market_code_combination {market_code_combination} not supported yet.')
-    #     if market_code_combination == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT":
-    #         # self.calculate_enter_qty = partial(self.target_exchange_adaptor.calculate_enter_qty, market_type=self.target_market_type, capital_currency='KRW')
-    #         self.target_symbol_converter = lambda x: 'KRW-'+x
-    #         self.origin_symbol_converter = lambda x: x+'USDT'
-    #     else:
-    #         raise Exception(f'market_code_combination {market_code_combination} not supported yet.')
         
     def symbol_converter(self, market_code, base_asset):
         if market_code == "UPBIT_SPOT/KRW":
@@ -234,6 +221,12 @@ class UserExchangeAdaptor:
         """SPOT position columns: ['asset', 'free', 'locked']
         USD_M position columns: ["symbol", "base_asset", "qty", "margin_type", "entry_price", "liquidation_price", "leverage"]
         """
+        # Load info_dict
+        fetched_info_dict = self.redis.get_data('info_dict')
+        if fetched_info_dict is None:
+            raise Exception("info_dict is not loaded.")
+        fetched_info_dict = pickle.loads(fetched_info_dict)
+        
         exchange = exchange.upper()
         if exchange not in self.exchange_adaptor_dict:
             raise Exception(f'exchange {exchange} not supported')
@@ -244,7 +237,7 @@ class UserExchangeAdaptor:
             position_df = exchange_adaptor.all_position_information(access_key, secret_key, market_type)
             if position_df.empty:
                 return position_df
-            info_df = pickle.loads(self.remote_redis.get_data(f'{exchange.lower()}_{market_type.lower()}_info_df'))
+            info_df = fetched_info_dict[f'{exchange.lower()}_{market_type.lower()}_info_df']
             position_df = position_df.merge(info_df[['symbol','base_asset']], how='left', on='symbol')
             position_df = position_df.rename(columns={"positionAmt":"qty", "marginType":"margin_type", "entryPrice":"entry_price", "liquidationPrice":"liquidation_price"})
             if len(position_df) == 0:
@@ -257,6 +250,12 @@ class UserExchangeAdaptor:
         return position_df
     
     def get_capital(self, exchange, access_key, secret_key, market_type, passphrase=None):
+        # Load info_dict
+        fetched_info_dict = self.redis.get_data('info_dict')
+        if fetched_info_dict is None:
+            raise Exception("info_dict is not loaded.")
+        fetched_info_dict = pickle.loads(fetched_info_dict)
+        
         exchange = exchange.upper()
         if exchange not in self.exchange_adaptor_dict:
             raise Exception(f'exchange {exchange} not supported')
@@ -264,7 +263,7 @@ class UserExchangeAdaptor:
         if exchange == "UPBIT":
             currency = 'KRW'
             position_df = exchange_adaptor.get_balance(access_key, secret_key, market_type)
-            ticker_df = pickle.loads(self.remote_redis.get_data(f"{exchange.lower()}_{market_type.lower()}_ticker_df"))
+            ticker_df = fetched_info_dict[f"{exchange.lower()}_{market_type.lower()}_ticker_df"]
             position_df['symbol'] = position_df['unit_currency']+'-'+position_df['asset']
             merged_df = position_df.merge(ticker_df[['symbol','lastPrice']], how='left', on='symbol')
             merged_df.loc[merged_df['asset']==currency, 'lastPrice'] = 1
@@ -817,13 +816,24 @@ class UserExchangeAdaptor:
                 
     def handle_margin_liquidation_call_trade(self):
         try:
+            # Load info_dict
+            fetched_info_dict = self.redis.get_data("info_dict")
+            if fetched_info_dict is None:
+                raise Exception("info_dict is None.")
+            fetched_info_dict = pickle.loads(fetched_info_dict)
+            
+            # Load convert_rate_dict
+            fetched_convert_rate_dict = self.redis.hgetall_dict("convert_rate_dict")
+            # Convert all the values to float
+            fetched_convert_rate_dict = {k.decode('utf-8'): float(v) for k, v in fetched_convert_rate_dict.items()}
+    
             margin_liquidation_call_trade_dict = self.margin_liquidation_call_trade_queue.get()
             trade_type = margin_liquidation_call_trade_dict.get('trade_type')
             trade_df = margin_liquidation_call_trade_dict.get('trade_df')
             order_type = margin_liquidation_call_trade_dict.get('order_type')
-            
+                        
             target_market_code, origin_market_code = self.market_code_combination.split(':')
-            premium_df = get_premium_df(self.info_dict, self.convert_rate_dict, target_market_code, origin_market_code, self.logger)
+            premium_df = get_premium_df(fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, self.logger)
             merged_df = trade_df.merge(premium_df, on='base_asset')
             merged_df['SL_premium_value'] = merged_df.apply(lambda x: x['SL_premium'] if x['usdt_conversion'] == False else (1+x['SL_premium']/100)*x['dollar'], axis=1)
             merged_df['LS_premium_value'] = merged_df.apply(lambda x: x['LS_premium'] if x['usdt_conversion'] == False else (1+x['LS_premium']/100)*x['dollar'], axis=1)

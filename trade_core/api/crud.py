@@ -22,13 +22,38 @@ from standalone_func.data_process import get_pboundary
 from etc.db_handler.mongodb_client import InitDBClient
 from etc.acw_api import AcwApi
 from dotenv import load_dotenv
-from config import logging_dir, PROD, NODE, ADMIN_TELEGRAM_ID, USER_UUID_FOR_WALLET, ACW_API_URL, mongo_db_dict, redis_dict
+from config import logging_dir, PROD, NODE, ADMIN_TELEGRAM_ID, USER_UUID_FOR_WALLET, ACW_API_URL, mongo_db_dict, redis_dict, acw_api, postgres_db_dict
+
+all_node_df = acw_api.get_node()
+node_df = all_node_df[all_node_df['name']==NODE.replace('_api', '')]
+if len(node_df) != 1:
+    acw_api.create_message_thread(ADMIN_TELEGRAM_ID, f"[API] Node not found or not unique, len(node_df)={len(node_df)}", f"Node not found or not unique, len(node_df)={len(node_df)}")
+    raise Exception(f"Node not found or not unique, len(node_df)={len(node_df)}")
+enabled_market_code_combinations = node_df['market_code_combinations'].values[0] # The list of dicts
+
+trade_exchange_adaptor_dict = {}
+
+# initialize trade support adaptors
+for each_market_code_combination in enabled_market_code_combinations:
+    market_code_combination_name = each_market_code_combination['market_code_combination']
+    trade_support = each_market_code_combination['trade_support']
+    if trade_support:
+        trade_exchange_adaptor_dict[market_code_combination_name] = (
+            UserExchangeAdaptor(
+                admin_id=ADMIN_TELEGRAM_ID,
+                acw_api=acw_api,
+                redis_db_dict=redis_dict,
+                postgres_db_dict=postgres_db_dict,
+                market_code_combination=market_code_combination_name,
+                api_server=True,
+                logging_dir=logging_dir
+            )
+        )
+# initialize exchange adaptors for common info
+user_exchange_adaptor = UserExchangeAdaptor(admin_id=ADMIN_TELEGRAM_ID, acw_api=acw_api, redis_db_dict=redis_dict, api_server=True, logging_dir=logging_dir)
 
 
-acw_api = AcwApi(ACW_API_URL, NODE, PROD)
 
-# initialize exchange adaptors
-user_exchange_adaptor = UserExchangeAdaptor(admin_id=ADMIN_TELEGRAM_ID, acw_api=acw_api, redis_db_dict=redis_dict, logging_dir=logging_dir)
 
 # Dependency to get the async database session
 async def get_db():
@@ -645,3 +670,15 @@ async def fetch_deposit_amount(txid: str, db: AsyncSession):
     except Exception as e:
         return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
     
+#################### API for EXIT trades ####################################
+    
+async def exit_trade(trade_uuid: UUID, db: AsyncSession):
+    result = await db.execute(select(models.Trade).filter(
+        models.Trade.uuid == trade_uuid
+    ))
+    trade = result.scalar_one_or_none()
+    if trade is None:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    trade.status = 'EXIT'
+    await db.commit()
+    return trade

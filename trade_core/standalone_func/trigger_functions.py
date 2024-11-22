@@ -168,8 +168,6 @@ def load_trade_df(curr,
         return
 
 def start_trigger_loop(
-    info_dict,
-    convert_rate_dict,
     market_code_combination,
     trade_support,
     postgres_db_dict,
@@ -197,18 +195,28 @@ def start_trigger_loop(
             acw_api=acw_api,
             redis_db_dict=None,
             postgres_db_dict=postgres_db_dict,
-            info_dict=info_dict,
-            convert_rate_dict=convert_rate_dict,
             market_code_combination=market_code_combination,
+            api_server=False,
             logging_dir=logging_dir
         )
         # Start handle_repeat_trade_loop in a separate thread
         handle_repeat_trade_loop_thread = Thread(
             target=handle_repeat_trade_loop,
-            args=(postgres_db_dict, mongo_db_dict, info_dict, convert_rate_dict, market_code_combination, admin_id, acw_api, logging_dir),
+            args=(postgres_db_dict, mongo_db_dict, market_code_combination, admin_id, acw_api, logging_dir),
             daemon=True
         )
         handle_repeat_trade_loop_thread.start()
+        
+    # Initialize info_dict and convert_rate_dict
+    while True:
+        fetched_info_dict = local_redis.get_data('info_dict')
+        fetched_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
+        if fetched_info_dict and fetched_convert_rate_dict:
+            fetched_info_dict = pickle.loads(fetched_info_dict)
+            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
+            break
+        logger.info("info_dict and convert_rate_dict are not ready yet. Waiting for 1 second...")
+        time.sleep(1)
     
     while True:
         try:
@@ -225,7 +233,7 @@ def start_trigger_loop(
                 continue
             
             target_market_code, origin_market_code = market_code_combination.split(':')
-            premium_df = get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logger)
+            premium_df = get_premium_df(fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
             merged_df = trade_df.merge(premium_df, on='base_asset')
             merged_df['SL_premium_value'] = merged_df.apply(
                 lambda x: x['SL_premium'] if not x['usdt_conversion'] else (1 + x['SL_premium'] / 100) * x['dollar'], axis=1)
@@ -314,7 +322,9 @@ def start_trigger_loop(
                 if curr.rowcount == 0:
                     logger.error(f"No row has been updated for low_break_trade_df even though there are {len(low_break_trade_df)} rows")
                 low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, logger)
-
+            # Reload the info_dict and convert_rate_dict
+            fetched_info_dict = pickle.loads(local_redis.get_data('info_dict'))
+            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in local_redis.hgetall_dict('convert_rate_dict').items()}
             time.sleep(loop_interval_secs)
         except Exception as e:
             title = f"Error in start_trigger_loop"
@@ -434,10 +444,21 @@ def load_merged_repeat_df(postgres_client,
         postgres_client.pool.putconn(conn, close=True)
         acw_api.create_message_thread(admin_id, title, full_content)
         
-def handle_repeat_trade_loop(postgres_db_dict, mongo_db_dict, info_dict, convert_rate_dict, market_code_combination, admin_id, acw_api, logging_dir, loop_interval_secs=1):
+def handle_repeat_trade_loop(postgres_db_dict, mongo_db_dict, market_code_combination, admin_id, acw_api, logging_dir, loop_interval_secs=1):
     logger = TradeCoreLogger("handle_repeat_trade", logging_dir).logger
     logger.info(f"handle_repeat_trade_loop started for {market_code_combination}")
     postgres_client = InitPostgresDBClient(**{**postgres_db_dict, 'database': 'trade_core'})
+    
+    # Initialize info_dict and convert_rate_dict
+    while True:
+        fetched_info_dict = local_redis.get_data('info_dict')
+        fetched_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
+        if fetched_info_dict and fetched_convert_rate_dict:
+            fetched_info_dict = pickle.loads(fetched_info_dict)
+            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
+            break
+        logger.info("info_dict and convert_rate_dict are not ready yet. Waiting for 1 second...")
+        time.sleep(1)
     
     while True:
         try:
@@ -454,7 +475,7 @@ def handle_repeat_trade_loop(postgres_db_dict, mongo_db_dict, info_dict, convert
             if len(merged_repeat_df) == 0:
                 continue
             target_market_code, origin_market_code = market_code_combination.split(':')
-            premium_df = get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logger)
+            premium_df = get_premium_df(fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
             if len(premium_df) == 0:
                 time.sleep(loop_interval_secs)
                 continue
@@ -471,6 +492,9 @@ def handle_repeat_trade_loop(postgres_db_dict, mongo_db_dict, info_dict, convert
                                 simple_premium_df,
                                 logger,
                                 logging_dir)
+            # Reload the info_dict and convert_rate_dict
+            fetched_info_dict = pickle.loads(local_redis.get_data('info_dict'))
+            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in local_redis.hgetall_dict('convert_rate_dict').items()}
             time.sleep(loop_interval_secs)
         except Exception as e:
             title = f"Error in handle_repeat_trade_loop"

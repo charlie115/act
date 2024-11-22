@@ -344,3 +344,16 @@ class DepositHistory(BaseModel):
     status: str
     deposited: bool
     amount: Decimal
+    
+# schemas for executing EXIT trades
+class ExitTrade(BaseModel):
+    trade_uuid: UUID
+    trade_config_uuid: UUID
+    base_asset: str
+    usdt_conversion: bool
+    low: Decimal
+    high: Decimal
+    trade_capital: Decimal
+    last_trade_history_uuid: UUID
+    status: str
+    remark: Optional[str] = None

@@ -5,6 +5,7 @@ import traceback
 from loggers.logger import TradeCoreLogger
 from standalone_func.get_dollar_dict import get_dollar_dict
 from standalone_func.price_df_generator import get_price_df
+from etc.redis_connector.redis_helper import RedisHelper
 
 def get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logger):
     try:

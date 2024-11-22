@@ -123,13 +123,12 @@ def liquidation_websocket(liquidation_list, error_event, market_type, logging_di
     twm.stop()
 
 class BinanceWebsocket:
-    def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, market_type, info_dict, logging_dir):
+    def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, market_type, logging_dir):
         self.market_type = market_type
         self.admin_id = admin_id
         self.node = node
         self.acw_api = acw_api
         self.get_symbol_list = get_symbol_list
-        self.info_dict = info_dict
         self.logging_dir = logging_dir  # Store logging_dir for child processes
         self.local_redis = RedisHelper()
         self.local_redis.delete_all_exchange_stream_data("ticker", f"BINANCE_{self.market_type.upper()}")
@@ -411,26 +410,14 @@ class BinanceWebsocket:
                 self.logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, f"[BINANCE {self.market_type}] monitor_shared_symbol_change", content)
 
-    # def get_price_df(self):
-    #     binance_ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", f"BINANCE_{self.market_type.upper()}")).T.reset_index(drop=True)[['s','P','c','v','q']]
-    #     binance_ticker_df.rename(columns={"q": "atp24h", 'P': 'scr', 'c': 'tp'}, inplace=True)
-    #     binance_bookticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("orderbook", f"BINANCE_{self.market_type.upper()}")).T.reset_index(drop=True)[['s','b','a']]
-    #     binance_bookticker_df.rename(columns={"b": "bp", "a": "ap"}, inplace=True)
-    #     binance_merged_df = pd.merge(binance_ticker_df, binance_bookticker_df, on='s', how='inner')
-    #     binance_merged_df.loc[:, ['scr','tp','atp24h','ap','bp']] = binance_merged_df[['scr','tp','atp24h','ap','bp']].astype(float)
-    #     binance_merged_df = binance_merged_df.merge(self.info_dict[f'binance_{self.market_type.lower()}_info_df'][['symbol','base_asset','quote_asset']], left_on='s', right_on='symbol', how='inner')
-    #     binance_merged_df.drop(['symbol', 's'], axis=1, inplace=True)
-    #     return binance_merged_df
-
-
 ##############################################################################################################################
 
 class BinanceUSDMWebsocket(BinanceWebsocket):
-    def __init__(self, admin_id, node, proc_n, get_binance_usdm_symbol_list, acw_api, market_type, info_dict, logging_dir):
-        super().__init__(admin_id, node, proc_n, get_binance_usdm_symbol_list, acw_api, market_type, info_dict, logging_dir)
+    def __init__(self, admin_id, node, proc_n, get_binance_usdm_symbol_list, acw_api, market_type, logging_dir):
+        super().__init__(admin_id, node, proc_n, get_binance_usdm_symbol_list, acw_api, market_type, logging_dir)
 
 ##############################################################################################################################
 
 class BinanceCOINMWebsocket(BinanceWebsocket):
-    def __init__(self, admin_id, node, proc_n, get_binance_coinm_symbol_list, acw_api, market_type, info_dict, logging_dir):
-        super().__init__(admin_id, node, proc_n/2, get_binance_coinm_symbol_list, acw_api, market_type, info_dict, logging_dir)
+    def __init__(self, admin_id, node, proc_n, get_binance_coinm_symbol_list, acw_api, market_type, logging_dir):
+        super().__init__(admin_id, node, proc_n/2, get_binance_coinm_symbol_list, acw_api, market_type, logging_dir)

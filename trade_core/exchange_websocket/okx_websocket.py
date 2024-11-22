@@ -249,27 +249,6 @@ class OkxWebsocket:
                 self.websocket_logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, "monitor_shared_symbol_change", content)
 
-    # def get_price_df(self):
-    #     try:
-    #         ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", f"OKX_{self.market_type.upper()}")).T
-    #         ticker_df['base_asset'] = ticker_df['instId'].apply(lambda x: x.split('-')[0])
-    #         ticker_df['quote_asset'] = ticker_df['instId'].apply(lambda x: x.split('-')[1])
-    #         ticker_df = ticker_df.rename(columns={"last": "tp", "askPx": "ap", "bidPx":"bp", "volCcy24h":"atp24h"})
-    #         ticker_df.loc[:, ['tp', 'ap', 'bp', 'open24h', 'atp24h']] = ticker_df.loc[:, ['tp', 'ap', 'bp', 'open24h', 'atp24h']].astype(float)
-    #         ticker_df['atp24h'] = ticker_df.apply(lambda x: x['tp']*x['atp24h'] if x['instType'] != "SPOT" else x['atp24h'], axis=1)
-    #         ticker_df['scr'] = (ticker_df['tp'] - ticker_df['open24h'])/ticker_df['open24h'] * 100
-    #         ticker_df = ticker_df[['instId', 'base_asset', 'quote_asset', 'tp', 'ap', 'bp', 'scr', 'atp24h']]
-    #         return ticker_df
-    #     except Exception as e:
-    #         content = f"get_price_df|{traceback.format_exc()}"
-    #         self.websocket_logger.error(content)
-    #         empty_string_rows = ticker_df[ticker_df[['tp', 'ap', 'bp', 'open24h', 'atp24h']].eq('').any(axis=1)]
-    #         self.websocket_logger.error(f"get_price_df|empty_string_rows: {empty_string_rows[['instId','tp', 'ap', 'bp', 'open24h', 'atp24h']]}")
-    #         self.websocket_logger.error(f"{empty_string_rows[['instId','tp', 'ap', 'bp', 'open24h', 'atp24h']].to_dict()}")
-    #         # Find where the cell in dataframe is empty string
-
-    #         raise e
-
 class OkxUSDMWebsocket(OkxWebsocket):
     def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, market_type, logging_dir):
         super().__init__(admin_id, node, proc_n, get_symbol_list, acw_api, market_type, logging_dir)

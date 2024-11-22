@@ -15,9 +15,11 @@ upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from api import schemas
 from api import crud
+from config import acw_api, NODE, ADMIN_TELEGRAM_ID
 
 app = FastAPI()
 
+acw_api.create_message(ADMIN_TELEGRAM_ID, f"{NODE} started", f"{NODE} started")
 
 @app.post("/trade-config/", response_model=schemas.TradeConfig, status_code=status.HTTP_201_CREATED)
 async def create_trade_config(trade_config: schemas.TradeConfigCreate, db: AsyncSession = Depends(crud.get_db)):
@@ -167,3 +169,8 @@ async def fetch_deposit_address(db: AsyncSession = Depends(crud.get_db)):
 @app.get("/deposit-amount/", response_model=schemas.DepositHistory)
 async def fetch_deposit_amount(txid: str, db: AsyncSession = Depends(crud.get_db)):
     return await crud.fetch_deposit_amount(txid, db)
+
+############ API endpoints for executing EXIT trades ####################################
+@app.get("/exit-trade/", response_model=schemas.ExitTrade)
+async def fetch_exit_trade(db: AsyncSession = Depends(crud.get_db)):
+    return await crud.exit_trade(db)
