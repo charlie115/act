@@ -67,7 +67,7 @@ services:
       - $HOME/test-community-redis/data/:/data/
       - $HOME/test-community-redis/conf/redis.conf:/etc/redis/redis.conf
     ports:
-      - "6378:6379"
+      - "6379:6379"
     networks:
       - test-community-network
     restart: always
