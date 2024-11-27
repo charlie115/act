@@ -5,10 +5,10 @@ if ! [ -x "$(command -v docker compose)" ]; then
   exit 1
 fi
 
-domains=(acw-test.orbitholdings.org)
+domains=(my-test.orbitholdings.org)
 rsa_key_size=4096
 data_path="$HOME/certbot"
-email="dev@halo-soft.net" # Adding a valid address is strongly recommended
+email="ckddjs116@gmail.com" # Adding a valid address is strongly recommended
 staging=1 # Set to 1 if you're testing your setup to avoid hitting request limits
 
 if [ -d "$data_path" ]; then
@@ -18,13 +18,38 @@ if [ -d "$data_path" ]; then
   fi
 fi
 
+# Debug: Print the value of data_path
+echo "Data Path: $data_path"
 
+# Check if the files exist or not
 if [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] || [ ! -e "$data_path/conf/ssl-dhparams.pem" ]; then
-  echo "### Downloading recommended TLS parameters ..."
+  echo "### Files missing or not found."
+  echo "Checking existence:"
+  [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] && echo "Missing: $data_path/conf/options-ssl-nginx.conf"
+  [ ! -e "$data_path/conf/ssl-dhparams.pem" ] && echo "Missing: $data_path/conf/ssl-dhparams.pem"
+
+  # Debug: Create directory if it doesn't exist
+  echo "### Creating directory: $data_path/conf"
   mkdir -p "$data_path/conf"
+
+  # Download files
+  echo "### Downloading options-ssl-nginx.conf..."
   curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf > "$data_path/conf/options-ssl-nginx.conf"
+
+  echo "### Downloading ssl-dhparams.pem..."
   curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot/certbot/ssl-dhparams.pem > "$data_path/conf/ssl-dhparams.pem"
-  echo
+
+  echo "### Download completed."
+else
+  echo "### All files are present."
+fi
+
+# Debug: Verify files after the operation
+if [ -e "$data_path/conf/options-ssl-nginx.conf" ]; then
+  echo "File exists: $data_path/conf/options-ssl-nginx.conf"
+fi
+if [ -e "$data_path/conf/ssl-dhparams.pem" ]; then
+  echo "File exists: $data_path/conf/ssl-dhparams.pem"
 fi
 
 echo "### Creating dummy certificate for $domains ..."

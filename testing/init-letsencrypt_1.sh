@@ -5,10 +5,10 @@ if ! [ -x "$(command -v docker compose)" ]; then
   exit 1
 fi
 
-domains=(acw-test.orbitholdings.org)
+domains=(my-test.orbitholdings.org)
 rsa_key_size=4096
 data_path="$HOME/certbot"
-email="dev@halo-soft.net" # Adding a valid address is strongly recommended
+email="ckddjs116@gmail.com" # Adding a valid address is strongly recommended
 staging=1 # Set to 1 if you're testing your setup to avoid hitting request limits
 
 if [ -d "$data_path" ]; then
