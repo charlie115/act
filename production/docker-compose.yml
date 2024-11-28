@@ -2,12 +2,14 @@ version: '3'
 services:
   
   certbot:
-    image: certbot/certbot
+    build:
+      context: ./certbot
     container_name: certbot
     volumes:
       - $HOME/certbot/conf:/etc/letsencrypt
       - $HOME/certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --force-renewal; sleep 12h & wait $${!}; done;'"
+    networks:
+      - prod-community-network
 
   nginx:
     image: community-nginx
@@ -39,6 +41,8 @@ services:
       - PGDATA=/var/lib/postgresql/data/
     volumes:
       - $HOME/prod-community-postgres/data/:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
     expose:
       - "5432"
     networks:
@@ -123,6 +127,8 @@ services:
   info-core:
     image: info-core
     container_name: prod-info-core
+    volumes:
+      - $HOME/prod-info-core/logs:/home/info_core/info_core/loggers/logs
     networks:
       - prod-community-network
     restart: always
