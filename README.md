@@ -1,5 +1,9 @@
 # Arbitrage Community #
 
+Certbot has been added to the docker compose.
+To initialize certificates and configuration,
+You need to first start nginx without 443 ssl part and run certbot images and then restart nginx with 443 ssl part.
+
 Setups the full arbitrage community system:
 
 * Nginx and Certbot
