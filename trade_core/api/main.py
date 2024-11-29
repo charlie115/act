@@ -1,6 +1,6 @@
 import random
 from fastapi import FastAPI
-from fastapi import status
+from fastapi import status, Body
 from fastapi.responses import Response
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -171,6 +171,9 @@ async def fetch_deposit_amount(txid: str, db: AsyncSession = Depends(crud.get_db
     return await crud.fetch_deposit_amount(txid, db)
 
 ############ API endpoints for executing EXIT trades ####################################
-@app.get("/exit-trade/", response_model=schemas.Trade)
-async def fetch_exit_trade(trade_uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
+# @app.get("/exit-trade/", response_model=schemas.Trade)
+# async def fetch_exit_trade(trade_uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
+#     return await crud.exit_trade(trade_uuid, db)
+@app.post("/exit-trade/", response_model=schemas.Trade)
+async def fetch_exit_trade(trade_uuid: UUID = Body(...), db: AsyncSession = Depends(crud.get_db)):
     return await crud.exit_trade(trade_uuid, db)

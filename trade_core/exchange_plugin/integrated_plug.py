@@ -338,7 +338,7 @@ class UserExchangeAdaptor:
                 # first calculate the qty based on the KRW capital
                 qty = self.origin_exchange_adaptor.calculate_enter_qty(merged_row['base_asset'], merged_row['dollar'], merged_row['bp'], merged_row['LS_premium'], merged_row['SL_premium'], merged_row['trade_capital'], self.origin_market_type)
                 if qty == 0:
-                    body = f"투입금액이 {merged_row['base_asset']}USDT 1개의 가격보다 낮습니다. \n주문을 취소합니다."
+                    body = f"투입금액이 {merged_row['base_asset']}USDT 1개의 최소주문가능수량보다 낮습니다. \n주문을 취소합니다."
                     # self.acw_api.create_message(merged_row['telegram_id'], "주문취소", self.node, 'WARNING', body)
                     raise Exception(body)
                 modified_input_usd = qty * merged_row['bp']/merged_row['dollar'] # Binance USD_M bid price in USDT
