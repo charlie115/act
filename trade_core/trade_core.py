@@ -468,11 +468,11 @@ class InitCore:
         if convert_rate is None: # not between coins
             # print("1st convert_rate is None, Not between coins")
             if target_quote_asset == "KRW" and origin_quote_asset == "USDT":
-                convert_rate = get_dollar_dict()['price']
+                convert_rate = get_dollar_dict(self.local_redis)['price']
             elif target_quote_asset == "USDT" and origin_quote_asset == "KRW":
-                convert_rate = 1 / get_dollar_dict()['price']
+                convert_rate = 1 / get_dollar_dict(self.local_redis)['price']
             elif target_quote_asset == "KRW":
-                convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, "USDT") * get_dollar_dict()['price']
+                convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, "USDT") * get_dollar_dict(self.local_redis)['price']
             elif origin_quote_asset == "KRW":
                 temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset)
                 if temp_convert_rate is not None:

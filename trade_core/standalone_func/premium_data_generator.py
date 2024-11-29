@@ -35,9 +35,7 @@ def get_premium_df(redis_client, info_dict, convert_rate_dict, target_market_cod
         premium_df[['converted_tp','converted_ap','converted_bp']] = origin_market_df[['converted_tp','converted_ap', 'converted_bp']]
         premium_df.loc[:, ['tp_premium','LS_premium','SL_premium','LS_SL_spread']] = premium_df[['tp_premium','LS_premium','SL_premium','LS_SL_spread']] * 100
         premium_df = premium_df.sort_values('atp24h', ascending=False).reset_index(drop=True)
-        # TEST
-        premium_df['dollar'] = get_dollar_dict()['price']
-        # TEST
+        premium_df['dollar'] = get_dollar_dict(redis_client)['price']
     except Exception as e:
         logger.error(f"get_premium_df|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
         # raise original exception
