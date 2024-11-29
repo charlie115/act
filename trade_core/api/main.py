@@ -175,5 +175,5 @@ async def fetch_deposit_amount(txid: str, db: AsyncSession = Depends(crud.get_db
 # async def fetch_exit_trade(trade_uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
 #     return await crud.exit_trade(trade_uuid, db)
 @app.post("/exit-trade/", response_model=schemas.Trade)
-async def fetch_exit_trade(trade_uuid: schemas.TradeUUIDRequest = Body(...), db: AsyncSession = Depends(crud.get_db)):
-    return await crud.exit_trade(trade_uuid, db)
+async def fetch_exit_trade(request: schemas.TradeUUIDRequest = Body(...), db: AsyncSession = Depends(crud.get_db)):
+    return await crud.exit_trade(request.trade_uuid, db)
