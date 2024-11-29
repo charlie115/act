@@ -1264,18 +1264,20 @@ class DepositAmountViewSet(
         tags=["ExitTrade"],
     ),
 )
+
 class ExitTradeView(TradeCoreMixin, views.APIView):
-    http_method_names = ["get"]
-    # permission_classes = [IsAdmin | IsInternal | IsManager | IsUser]
+    http_method_names = ["post"]
+    permission_classes = [IsAdmin | IsInternal | IsManager | IsUser]
     tradecore_api_endpoint = "exit-trade/"
 
-    def get(self, request):
-        query_params = ExitTradeQueryParamsSerializer(
+    def post(self, request):
+        # Use request.data to get data from the POST body
+        serializer = ExitTradeQueryParamsSerializer(
             context={"view": self, "request": request},
-            data=request.query_params,
+            data=request.data,
         )
-        query_params.is_valid(raise_exception=True)
-        query = query_params.validated_data
+        serializer.is_valid(raise_exception=True)
+        query = serializer.validated_data
 
         data = self.get_data(query)
 
@@ -1289,10 +1291,11 @@ class ExitTradeView(TradeCoreMixin, views.APIView):
         )
         node = trade_config_allocation.node
 
-        api_response = self.tradecore_list_api(
+        # Adjust the method to use 'post' and send data in the body
+        api_response = self.tradecore_create_api(
             url=node.url,
             endpoint=self.tradecore_api_endpoint,
-            query_params=query,
+            data=query,
         )
 
         if api_response.status_code == HTTP_200_OK:
