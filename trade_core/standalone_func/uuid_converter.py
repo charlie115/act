@@ -6,13 +6,11 @@ import pandas as pd
 from etc.redis_connector.redis_helper import RedisHelper
 import _pickle as pickle
 
-local_redis = RedisHelper()
-
-def trade_uuid_to_display_id(market_code_combination, trade_uuid, logger):
+def trade_uuid_to_display_id(redis_client, market_code_combination, trade_uuid, logger):
     # Load trade_df from Redis
-    trade_df_pickled = local_redis.get_data(f"trade|trade|{market_code_combination}")
+    trade_df_pickled = redis_client.get_data(f"trade|trade|{market_code_combination}")
     # Load alarm_df from Redis
-    alarm_df_pickled = local_redis.get_data(f"trade|alarm|{market_code_combination}")
+    alarm_df_pickled = redis_client.get_data(f"trade|alarm|{market_code_combination}")
     
     # Unpickle data
     trade_df = pickle.loads(trade_df_pickled) if trade_df_pickled else None
@@ -45,11 +43,11 @@ def trade_uuid_to_display_id(market_code_combination, trade_uuid, logger):
     converted_display_id = int(user_trade_df[user_trade_df['uuid'] == trade_uuid].index[0]) + 1
     return converted_display_id
 
-def display_id_to_trade_uuid(market_code_combination, user_trade_config_uuid, display_id, logger):
+def display_id_to_trade_uuid(redis_client, market_code_combination, user_trade_config_uuid, display_id, logger):
     # Load trade_df from Redis
-    trade_df_pickled = local_redis.get_data(f"trade|trade|{market_code_combination}")
+    trade_df_pickled = redis_client.get_data(f"trade|trade|{market_code_combination}")
     # Load alarm_df from Redis
-    alarm_df_pickled = local_redis.get_data(f"trade|alarm|{market_code_combination}")
+    alarm_df_pickled = redis_client.get_data(f"trade|alarm|{market_code_combination}")
     
     # Unpickle data
     trade_df = pickle.loads(trade_df_pickled) if trade_df_pickled else None

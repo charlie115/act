@@ -3,8 +3,6 @@ from etc.redis_connector.redis_helper import RedisHelper
 import numpy as np
 import traceback
 
-# local_redis = RedisHelper()
-
 def get_binance_price_df(redis_client, info_dict, market_type):
     binance_ticker_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("ticker", f"BINANCE_{market_type}")).T.reset_index(drop=True)[['s','P','c','v','q']]
     binance_ticker_df.rename(columns={"q": "atp24h", 'P': 'scr', 'c': 'tp'}, inplace=True)

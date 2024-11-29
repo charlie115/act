@@ -351,7 +351,7 @@ def high_break(high_break_trade_df, user_exchange_adaptor, market_code_combinati
                 if trade_support: # trade triggers only
                     user_exchange_adaptor.short_long_trade(row)
 
-                msg_title = f"거래ID: {trade_uuid_to_display_id(market_code_combination, row['uuid'], logger)}({row['base_asset']}/{row['quote_asset']}) 프리미엄 상향돌파"
+                msg_title = f"거래ID: {trade_uuid_to_display_id(local_redis, market_code_combination, row['uuid'], logger)}({row['base_asset']}/{row['quote_asset']}) 프리미엄 상향돌파"
                 msg_content = f"{row['target_market_code']}:{row['origin_market_code']}\n"
                 msg_content += f"현재 SL:{round(row['SL_premium_value'], 3)}, 설정된 탈출값: {row['high']}\n"
                 if pd.isnull(row['tp']):
@@ -384,7 +384,7 @@ def low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination
                 if trade_support: # trade triggers only
                     user_exchange_adaptor.long_short_trade(row)
                 
-                msg_title = f"거래ID: {trade_uuid_to_display_id(market_code_combination, row['uuid'], logger)}({row['base_asset']}/{row['quote_asset']}) 프리미엄 하향돌파"
+                msg_title = f"거래ID: {trade_uuid_to_display_id(local_redis, market_code_combination, row['uuid'], logger)}({row['base_asset']}/{row['quote_asset']}) 프리미엄 하향돌파"
                 msg_content = f"{row['target_market_code']}:{row['origin_market_code']}\n"
                 msg_content += f"현재 LS:{round(row['LS_premium_value'], 3)}, 설정된 진입값: {row['low']}\n"
                 if pd.isnull(row['tp']):
@@ -596,7 +596,7 @@ def handle_repeat_trade(postgres_client,
                     conn.commit()
                     
                     if print_update:
-                        title = f"거래ID:{trade_uuid_to_display_id(market_code_combination, row['uuid_x'], logger)} 진입값 탈출값 업데이트"
+                        title = f"거래ID:{trade_uuid_to_display_id(local_redis, market_code_combination, row['uuid_x'], logger)} 진입값 탈출값 업데이트"
                         full_content = title
                         full_content += f"\n{row['base_asset']}/{row['quote_asset']} 진입값과 탈출값이 업데이트되었습니다."
                         full_content += f"\n진입값: {low_to_apply}, 탈출값: {high_to_apply}"
@@ -638,7 +638,7 @@ def handle_repeat_trade(postgres_client,
                     curr.execute(sql, val)
                     conn.commit()
                 
-                title = f"거래ID:{trade_uuid_to_display_id(market_code_combination, row['uuid_x'], logger)} 자동거래 재등록"
+                title = f"거래ID:{trade_uuid_to_display_id(local_redis, market_code_combination, row['uuid_x'], logger)} 자동거래 재등록"
                 full_content = title
                 full_content += f"\n{row['base_asset']}/{row['quote_asset']} 자동거래가 탈출완료되어 자동거래를 재등록합니다."
                 acw_api.create_message_thread(row['telegram_id'], title, full_content, 'INFO')
