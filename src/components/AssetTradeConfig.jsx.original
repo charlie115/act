@@ -29,8 +29,6 @@ import TradesTable from 'components/tables/trigger/TradesTable';
 
 import { TRIGGER_LIST } from 'constants/lists';
 
-import TelegramLoginButton from './TelegramLoginButton';
-
 const CONFIGURATION_TAB = { alarm: 0, autoTrade: 1, all: 2 };
 
 const TABS = sortBy(
@@ -38,6 +36,7 @@ const TABS = sortBy(
   'tabId'
 ).map((trigger) => ({
   ...trigger,
+  // disabled: trigger.value !== 'alarms',
 }));
 
 function AssetTradeConfig({
@@ -62,7 +61,7 @@ function AssetTradeConfig({
 
   const { data: nodes } = useGetNodesQuery(
     {
-      market_code_combinations: `${marketCodes?.targetMarketCode}:${marketCodes?.originMarketCode}`,
+      marketCodeServices: `${marketCodes?.targetMarketCode}:${marketCodes?.originMarketCode}`,
     },
     { skip: !marketCodes }
   );
@@ -79,13 +78,29 @@ function AssetTradeConfig({
     [marketCodes, user?.trade_config_allocations]
   );
 
-  const tradeSupport = useMemo(() => {
-    if (!nodes?.results?.[0]?.market_code_combinations) return false;
-    const combination = nodes.results[0].market_code_combinations.find(
-      (combo) => combo.market_code_combination === `${marketCodes?.targetMarketCode}:${marketCodes?.originMarketCode}`
-    );
-    return combination?.trade_support ?? false;
-  }, [nodes, marketCodes]);
+  const dataOnAuth = (telegramUser) => {
+    loginTelegram({ user: user?.uuid, ...telegramUser });
+  };
+
+  useEffect(() => {
+    window.TelegramWidget = { dataOnAuth };
+  }, []);
+
+  useScript(
+    telegramBot && user && !user?.telegram_chat_id && nodes?.results.length > 0
+      ? 'https://telegram.org/js/telegram-widget.js?22'
+      : null,
+    {
+      nodeId: 'telegram-trade-config-button',
+      attributes: {
+        'data-onauth': 'TelegramWidget.dataOnAuth(user)',
+        'data-request-access': 'write',
+        'data-telegram-login': telegramBot,
+        'data-size': 'medium',
+      },
+    },
+    []
+  );
 
   if (nodes?.results.length > 0)
     return (
@@ -101,8 +116,8 @@ function AssetTradeConfig({
               orientation={isMobile ? 'horizontal' : 'vertical'}
               variant={isMobile ? 'scrollable' : 'standard'}
               onChange={async (e, newValue) => {
-                if (newValue === CONFIGURATION_TAB.autoTrade && !tradeSupport) {
-                  return;
+                if (newValue === 1) {
+                  // await getExchangeApiKey()
                 }
                 setCurrentTab(newValue);
               }}
@@ -119,7 +134,7 @@ function AssetTradeConfig({
                   iconPosition="start"
                   label={tab.getLabel()}
                   value={tab.tabId}
-                  disabled={tab.tabId === CONFIGURATION_TAB.autoTrade ? !tradeSupport : tab.disabled}
+                  disabled={tab.disabled}
                   sx={{ minHeight: 45, justifyContent: 'flex-start' }}
                   {...a11yProps(tab)}
                 />
@@ -167,7 +182,7 @@ function AssetTradeConfig({
                 <Typography sx={{ color: 'error.main' }}>
                   {t('Connect to Telegram to enable this setting')}
                 </Typography>
-                <TelegramLoginButton buttonId="telegram-trade-config-button" />
+                <Box id="telegram-trade-config-button" />
               </Stack>
             )}
           </Box>

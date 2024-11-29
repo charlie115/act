@@ -82,8 +82,9 @@ const api = drfApi.injectEndpoints({
       },
     }),
     getAllTrades: builder.query({
-      keepUnusedDataFor: 1,
+      keepUnusedDataFor: 0,
       providesTags: ['AllTrades'],
+      refetchOnMountOrArgChange: true,
       queryFn: async ({ tradeConfigUuids, params }, queryApi, extraOptions) => {
         try {
           const promises = tradeConfigUuids.map((tradeConfigUuid) =>
@@ -218,6 +219,32 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    exitMultipleTrades: builder.mutation({
+      queryFn: async (items, queryApi, extraOptions) => {
+        try {
+          const promises = items.map((item) =>
+            baseQueryWithReAuth(
+              {
+                url: `/tradecore/exit-trade/`,
+                method: 'POST',
+                body: item.params,
+              },
+              queryApi,
+              extraOptions
+            )
+          );
+          const results = await Promise.allSettled(promises);
+          return {
+            data: results.map((result) => result.value.data),
+            meta: results.map((result) => result.value.meta),
+          };
+        } catch (error) {
+          // Catch any errors and return them as an object with an `error` field
+          return { error };
+        }
+      },
+      invalidatesTags: ['AllTrades', 'TradesByTradeConfig'],
+    }),
     postDepositAmount: builder.mutation({
       query: (body) => ({
         url: '/tradecore/deposit-amount/',
@@ -312,6 +339,7 @@ export const {
   useLazyGetPBoundaryQuery,
   useLazyGetRepeatTradesByTradeConfigQuery,
   useLazyGetTradeConfigQuery,
+  useExitMultipleTradesMutation,
   usePostDepositAmountMutation,
   usePostExchangeApiKeyMutation,
   usePostRepeatTradeMutation,

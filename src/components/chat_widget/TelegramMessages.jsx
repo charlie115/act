@@ -30,6 +30,8 @@ import useScript from 'hooks/useScript';
 
 import { RIGHT_SIDEBAR_WIDTH } from 'constants';
 
+import TelegramLoginButton from 'components/TelegramLoginButton';
+
 import ChatMessage from './ChatMessage';
 import TelegramMessageTypeFilterMenu from './TelegramMessageTypeFilterMenu';
 
@@ -181,25 +183,25 @@ export default function TelegramMessages({ display, isOpen, onNewMessages }) {
     }
   }, [display, y, height]);
 
-  useEffect(() => {
-    setIsAutoScroll(display);
-  }, [display]);
+  // useEffect(() => {
+  //   setIsAutoScroll(display);
+  // }, [display]);
 
-  useScript(
-    telegramBot && user && !user?.telegram_chat_id
-      ? 'https://telegram.org/js/telegram-widget.js?22'
-      : null,
-    {
-      nodeId: 'telegram-messages-button',
-      attributes: {
-        'data-onauth': 'TelegramWidget.dataOnAuth(user)',
-        'data-request-access': 'write',
-        'data-telegram-login': telegramBot,
-        'data-size': 'medium',
-      },
-    },
-    []
-  );
+  // useScript(
+  //   telegramBot && user && !user?.telegram_chat_id
+  //     ? 'https://telegram.org/js/telegram-widget.js?22'
+  //     : null,
+  //   {
+  //     nodeId: 'telegram-messages-button',
+  //     attributes: {
+  //       'data-onauth': 'TelegramWidget.dataOnAuth(user)',
+  //       'data-request-access': 'write',
+  //       'data-telegram-login': telegramBot,
+  //       'data-size': 'medium',
+  //     },
+  //   },
+  //   []
+  // );
 
   return (
     <Box
@@ -295,7 +297,8 @@ export default function TelegramMessages({ display, isOpen, onNewMessages }) {
               </Button>
             )}
             {display && loggedin && !telegramBot && (
-              <Box id="telegram-messages-button" />
+              // <Box id="telegram-messages-button" />
+              <TelegramLoginButton buttonId="telegram-messages-button" />
             )}
           </>
         )}

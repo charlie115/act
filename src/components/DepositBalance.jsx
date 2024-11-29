@@ -47,9 +47,9 @@ export default function DepositBalance() {
         '...'
       ) : (
         <Typography
-          sx={{ fontSize: { xs: '0.75em', md: '1.15em' }, fontWeight: 700 }}
+          sx={{ fontSize: { xs: '0.75em', md: '1.1em' }, fontWeight: 500 }}
         >
-          {balance ? formatIntlNumber(parseFloat(balance), 2, 2) : 0}
+          {balance ? `${formatIntlNumber(parseFloat(balance), 2, 2)} USDT` : 0}
         </Typography>
       )}
     </Stack>

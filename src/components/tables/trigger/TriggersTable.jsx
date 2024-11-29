@@ -20,6 +20,7 @@ import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -40,6 +41,7 @@ import {
   useGetAllRepeatTradesQuery,
   useGetAllTradesQuery,
   useGetTradeHistoryQuery,
+  useExitMultipleTradesMutation,
 } from 'redux/api/drf/tradecore';
 
 import { useSelector } from 'react-redux';
@@ -52,6 +54,7 @@ import AssetSearchInput from 'components/AssetSearchInput';
 import AssetTradeConfig from 'components/AssetTradeConfig';
 import AutoRepeatForm from 'components/AutoRepeatForm';
 import DeleteAlert from 'components/DeleteAlert';
+import ExitTradeAlert from 'components/ExitTradeAlert';
 import DropdownMenu from 'components/DropdownMenu';
 import PremiumDataChartViewer from 'components/PremiumDataChartViewer';
 import ReactTableUI from 'components/ReactTableUI';
@@ -105,6 +108,8 @@ export default function TriggersTable({
 
   const [deleteAlert, setDeleteAlert] = useState(false);
 
+  const [exitTradeAlert, setExitTradeAlert] = useState(false);
+
   const [triggerConfig, setTriggerConfig] = useState();
 
   const [triggerTypeList, setTriggerTypeList] = useState([]);
@@ -117,7 +122,7 @@ export default function TriggersTable({
 
   const { data, isFetching, isLoading, isSuccess } = useGetAllTradesQuery(
     { tradeConfigUuids },
-    { pollingInterval: 1000 * 60, skip: !!autoRepeatTrade }
+    { pollingInterval: 1000 * 1, skip: !!autoRepeatTrade }
   );
 
   const { data: repeatTrades } = useGetAllRepeatTradesQuery({
@@ -130,6 +135,11 @@ export default function TriggersTable({
     deleteMultipleTrades,
     { isLoading: isDeleteLoading, isSuccess: isDeleteSuccess },
   ] = useDeleteMultipleTradesMutation();
+
+  const [ 
+    exitMultipleTrades, 
+    { isLoading: isExitTradeLoading, isSuccess: isExitTradeSuccess }
+   ] = useExitMultipleTradesMutation();
 
   const { data: tradeHistoryData } = useGetTradeHistoryQuery(
     {
@@ -202,6 +212,13 @@ export default function TriggersTable({
       setDeleteAlert(false);
     }
   }, [isDeleteSuccess]);
+
+  useEffect(() => {
+    if (isExitTradeSuccess) {
+      tableRef.current?.toggleAllRowsSelected(false);
+      setExitTradeAlert(false);
+    }
+  }, [isExitTradeSuccess]);
 
   useEffect(() => {
     const triggers = TRIGGER_LIST.map((trigger) => ({
@@ -453,6 +470,7 @@ export default function TriggersTable({
     selectedTriggerType,
     tradeConfigAllocations,
     isDeleteLoading,
+    isExitTradeLoading,
     i18n.language,
   ]);
 
@@ -484,6 +502,8 @@ export default function TriggersTable({
   );
 
   const onAutoRepeatClick = useCallback(async (value, row) => {
+    console.log(value);
+    console.log(row);
     if (value) setAutoRepeatTrade(row);
     else {
       setAutoRepeatTrade();
@@ -651,6 +671,19 @@ export default function TriggersTable({
           >
             <DeleteIcon />
           </IconButton>
+          {Object.keys(rowSelection).some(rowId => {
+            const row = tableData.find(item => item.uuid === rowId);
+            return row?.status === -1;
+          }) && (
+            <IconButton
+              aria-label="Exit selected"
+              color={exitTradeAlert || isExitTradeLoading ? 'error' : 'secondary'}
+              onClick={() => setExitTradeAlert(true)}
+              sx={{ p: 0, ':hover': { color: 'error.main' } }}
+            >
+              <ExitToAppIcon />
+            </IconButton>
+          )}
         </Stack>
       )}
       <ReactTableUI
@@ -659,7 +692,7 @@ export default function TriggersTable({
         columns={columns}
         data={tableData}
         isLoading={isLoading}
-        showProgressBar={isFetching}
+        // showProgressBar={isFetching}
         options={{
           getRowId,
           enableRowSelection: true,
@@ -722,6 +755,29 @@ export default function TriggersTable({
               return {
                 uuid: row,
                 params: { tradeConfigUuid: details.trade_config_uuid },
+              };
+            })
+          )
+        }
+      />
+      <ExitTradeAlert
+        loading={isExitTradeLoading}
+        open={exitTradeAlert}
+        title={t(
+          'Are you sure you want to exit the selected trade?'
+        )}
+        onCancel={() => setExitTradeAlert(false)}
+        onClose={() => setExitTradeAlert(isExitTradeLoading)}
+        onExitTrade={() =>
+          exitMultipleTrades(
+            Object.keys(rowSelection).map((row) => {
+              const details = tableData.find((o) => o.uuid === row);
+              return {
+                uuid: row,
+                params: { 
+                  trade_config_uuid: details.trade_config_uuid,
+                  trade_uuid: details.uuid
+                 },
               };
             })
           )

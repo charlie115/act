@@ -41,19 +41,30 @@ export default function AutoRepeatForm({
 
   const { control, formState, handleSubmit, reset, setValue } = useForm({
     defaultValues: async () => {
-      const [data] = await getRepeatTrades({
-        trade_config_uuid: tradeConfigUuid,
-        trade_uuid: tradeUuid,
-      }).unwrap();
+      try {
+        const [data] = await getRepeatTrades({
+          trade_config_uuid: tradeConfigUuid,
+          trade_uuid: tradeUuid,
+        }).unwrap();
 
-      return {
-        isFixed: `${data?.pauto_num === null}`,
-        kline_num: data?.kline_num || 200,
-        pauto_num: data?.pauto_num || 1,
-        uuid: data?.uuid,
-        auto_repeat_num: data?.auto_repeat_num,
-        trade_uuid: tradeUuid,
-      };
+        return {
+          isFixed: `${data?.pauto_num === null}`,
+          kline_num: data?.kline_num || 200,
+          pauto_num: data?.pauto_num || 1,
+          uuid: data?.uuid,
+          auto_repeat_num: data?.auto_repeat_num,
+          trade_uuid: tradeUuid,
+        };
+      } catch (error) {
+        return {
+          isFixed: 'false',
+          kline_num: 200,
+          pauto_num: 1,
+          uuid: null,
+          auto_repeat_num: 0,
+          trade_uuid: tradeUuid,
+        };
+      }
     },
     mode: 'all',
   });

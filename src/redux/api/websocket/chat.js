@@ -9,6 +9,7 @@ import {
 } from 'redux/reducers/websocket';
 
 const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/api/chat/`);
+// const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/chat/`);
 let ws;
 
 const getConnection = async () => {

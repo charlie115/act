@@ -4,18 +4,33 @@ import Box from '@mui/material/Box';
 
 import i18n from 'configs/i18n';
 
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+
 export default function renderStatusCell({ cell, row: { original } }) {
-  if (original.trade_capital === null)
+  if (original.trade_capital === null) {
+    let color;
+    let text;
+
+    if (original.trigger_switch === 1) {
+      color = 'success.light';
+      text = i18n.t('Upward');
+    } else if (original.trigger_switch === 0) {
+      color = 'error.light';
+      text = i18n.t('Downward');
+    } else {
+      color = 'warning.light';
+      text = i18n.t('Wait');
+    }
+  
     return (
       <Box
         component="small"
-        sx={{
-          color: original.trigger_switch ? 'success.light' : 'error.light',
-        }}
+        sx={{ color }}
       >
-        {original.trigger_switch ? i18n.t('Upward') : i18n.t('Downward')}
+        {text}
       </Box>
     );
+  }
 
   if (cell.getValue() === null) return '-';
 
@@ -29,6 +44,7 @@ export default function renderStatusCell({ cell, row: { original } }) {
     return (
       <Box component="small" sx={{ color: 'warning.main' }}>
         {i18n.t('Waiting for Exit')}
+        <ExitToAppIcon sx={{ fontSize: 'inherit', marginLeft: 0.5, mt: 1 }} />
       </Box>
     );
   if (cell.getValue() === 0)

@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-
 import { useNavigate } from 'react-router-dom';
 
 import Avatar from '@mui/material/Avatar';
@@ -33,41 +32,41 @@ import useScript from 'hooks/useScript';
 
 import DepositBalance from 'components/DepositBalance';
 
+import TelegramLoginButton from 'components/TelegramLoginButton';
+
 export default function MyPage() {
   const { t } = useTranslation();
-
   const theme = useTheme();
-
   const navigate = useNavigate();
-
   const [loginTelegram] = useLoginTelegramMutation();
-
   const { telegramBot, user } = useSelector((state) => state.auth);
 
-  const dataOnAuth = (telegramUser) => {
-    loginTelegram({ user: user?.uuid, ...telegramUser });
-  };
+  // const dataOnAuth = (telegramUser) => {
+  //   loginTelegram({ user: user?.uuid, ...telegramUser });
+  // };
 
-  useEffect(() => {
-    window.TelegramWidget = { dataOnAuth };
-  }, []);
+  // useEffect(() => {
+  //   window.TelegramWidget = { dataOnAuth };
+  // }, []);
 
-  useScript(
-    telegramBot && user && !user?.telegram_chat_id
-      ? 'https://telegram.org/js/telegram-widget.js?22'
-      : null,
-    {
-      nodeId: 'telegram-button',
-      attributes: {
-        'data-onauth': 'TelegramWidget.dataOnAuth(user)',
-        'data-request-access': 'write',
-        'data-telegram-login': telegramBot,
-        'data-size': 'medium',
-      },
-    },
-    []
-  );
+  // console.log('telegramBot', telegramBot);
 
+  // useScript(
+  //   telegramBot && user && !user?.telegram_chat_id
+  //     ? 'https://telegram.org/js/telegram-widget.js?22'
+  //     : null,
+  //   {
+  //     nodeId: 'telegram-button',
+  //     attributes: {
+  //       'data-onauth': 'TelegramWidget.dataOnAuth(user)',
+  //       'data-request-access': 'write',
+  //       'data-telegram-login': telegramBot,
+  //       'data-size': 'medium',
+  //     },
+  //   },
+  //   []
+  // );
+  
   return (
     <Box sx={{ m: 'auto', p: { xs: 2, sm: 0 } }}>
       <Typography variant="h4" sx={{ mb: 2 }}>
@@ -119,7 +118,8 @@ export default function MyPage() {
                 {t('Telegram Integration')}
               </TableCell>
               <TableCell>
-                <Box id="telegram-button" />
+                {/* <Box id="telegram-button" /> */}
+                <TelegramLoginButton buttonId="telegram-mypage-button" />
                 {!(telegramBot && !user?.telegram_chat_id) && (
                   <Box sx={{ fontSize: '1.15em' }}>
                     <Trans>

@@ -113,7 +113,7 @@ export default function PositionTable({ marketCodeCombination }) {
                 {
                   accessorKey: 'target_market_roi',
                   size: isMobile ? 40 : 90,
-                  header: t('ROI'),
+                  header: `${t('ROI')}(%)`,
                   cell: renderColoredSignedNumberCell,
                 },
                 {
@@ -157,7 +157,7 @@ export default function PositionTable({ marketCodeCombination }) {
                 {
                   accessorKey: 'origin_market_roi',
                   size: isMobile ? 40 : 90,
-                  header: t('ROI'),
+                  header: `${t('ROI')}(%)`,
                   cell: renderColoredSignedNumberCell,
                 },
                 {
@@ -207,20 +207,20 @@ export default function PositionTable({ marketCodeCombination }) {
         const data = {
           asset: key,
           icon: assetsData?.[key]?.icon,
-          target_market_pos: item[isTargetSpot ? 'free' : 'qty'] || 0,
-          target_market_roi: item.ROI || 0,
-          target_market_entry_price: item.entry_price || 0,
-          target_market_liquidation_price: item.liquidation_price || 0,
+          target_market_pos: Number(item[isTargetSpot ? 'free' : 'qty'] || 0),
+          target_market_roi: Number(item.ROI || 0),
+          target_market_entry_price: Number(item.entry_price || 0),
+          target_market_liquidation_price: Number(item.liquidation_price || 0),
           target_market_margin_type: item.margin_type,
-          origin_market_pos: item[isOriginSpot ? 'free' : 'qty'] || 0,
-          origin_market_roi: item.ROI || 0,
-          origin_market_entry_price: item.entry_price || 0,
-          origin_market_liquidation_price: item.liquidation_price || 0,
+          origin_market_pos: Number(item[isOriginSpot ? 'free' : 'qty'] || 0),
+          origin_market_roi: Number(item.ROI || 0),
+          origin_market_entry_price: Number(item.entry_price || 0),
+          origin_market_liquidation_price: Number(item.liquidation_price || 0),
           origin_market_margin_type: item.margin_type,
         };
-        const hedge = data.target_market_pos + data.origin_market_pos; // Math.abs(data.target_market_pos - data.origin_market_pos);
+        const hedge = Number(data.target_market_pos) + Number(data.origin_market_pos);
         return {
-          hedge_status: parseFloat(hedge.toFixed(5)) <= ERROR_RATE,
+          hedge_status: parseFloat((hedge || 0).toFixed(5)) <= ERROR_RATE,
           ...data,
         };
       });
