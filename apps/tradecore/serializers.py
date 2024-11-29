@@ -743,3 +743,18 @@ class DepositAmountViewSetSerializer(TradeCoreMixin, serializers.Serializer):
                 raise exceptions.ValidationError(deposit_amount)
 
         self.handle_exception_from_api(api_response)
+        
+class ExitTradeQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    trade_uuid = serializers.UUIDField()
+
+    def validate(self, attrs):
+        trade_config_allocation = self.get_trade_config_allocation(
+            attrs["trade_config_uuid"]
+        )
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
+
+        return super().validate(attrs)

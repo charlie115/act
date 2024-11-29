@@ -42,6 +42,7 @@ from tradecore.serializers import (
     PboundaryQueryParamsSerializer,
     DepositAddressQueryParamsSerializer,
     DepositAmountViewSetSerializer,
+    ExitTradeQueryParamsSerializer
 )
 
 
@@ -1254,3 +1255,48 @@ class DepositAmountViewSet(
         )
         self.check_object_permissions(self.request, trade_config_allocation)
         serializer.save()
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Manually Exit a trade trigger for a user",
+        description="Manually Exit a trade trigger for a user.",
+        tags=["ExitTrade"],
+    ),
+)
+class ExitTradeView(TradeCoreMixin, views.APIView):
+    http_method_names = ["get"]
+    # permission_classes = [IsAdmin | IsInternal | IsManager | IsUser]
+    tradecore_api_endpoint = "exit-trade/"
+
+    def get(self, request):
+        query_params = ExitTradeQueryParamsSerializer(
+            context={"view": self, "request": request},
+            data=request.query_params,
+        )
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        data = self.get_data(query)
+
+        return response.Response(data)
+
+    def get_data(self, query):
+        trade_config_uuid = query.pop("trade_config_uuid", "")
+
+        trade_config_allocation = self.get_trade_config_allocation(
+            trade_config_uuid=trade_config_uuid
+        )
+        node = trade_config_allocation.node
+
+        api_response = self.tradecore_list_api(
+            url=node.url,
+            endpoint=self.tradecore_api_endpoint,
+            query_params=query,
+        )
+
+        if api_response.status_code == HTTP_200_OK:
+            obj = api_response.json()
+            return obj
+
+        self.handle_exception_from_api(api_response)
