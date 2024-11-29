@@ -344,3 +344,8 @@ class DepositHistory(BaseModel):
     status: str
     deposited: bool
     amount: Decimal
+    
+    
+# schema for exit trade
+class TradeUUIDRequest(BaseModel):
+    trade_uuid: UUID
