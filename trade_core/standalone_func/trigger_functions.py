@@ -233,7 +233,7 @@ def start_trigger_loop(
                 continue
             
             target_market_code, origin_market_code = market_code_combination.split(':')
-            premium_df = get_premium_df(fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
+            premium_df = get_premium_df(local_redis, fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
             merged_df = trade_df.merge(premium_df, on='base_asset')
             merged_df['SL_premium_value'] = merged_df.apply(
                 lambda x: x['SL_premium'] if not x['usdt_conversion'] else (1 + x['SL_premium'] / 100) * x['dollar'], axis=1)
@@ -475,7 +475,7 @@ def handle_repeat_trade_loop(postgres_db_dict, mongo_db_dict, market_code_combin
             if len(merged_repeat_df) == 0:
                 continue
             target_market_code, origin_market_code = market_code_combination.split(':')
-            premium_df = get_premium_df(fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
+            premium_df = get_premium_df(local_redis, fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
             if len(premium_df) == 0:
                 time.sleep(loop_interval_secs)
                 continue

@@ -17,12 +17,18 @@ from utils import encrypt_data, decrypt_data, find_api_keys
 from decorators import handle_db_exceptions
 from database import engine
 import datetime
+import _pickle as pickle
 from exchange_plugin.integrated_plug import UserExchangeAdaptor
 from standalone_func.data_process import get_pboundary
 from etc.db_handler.mongodb_client import InitDBClient
 from etc.acw_api import AcwApi
+from etc.redis_connector.redis_helper import RedisHelper
+from standalone_func.premium_data_generator import get_premium_df
+from loggers.logger import TradeCoreLogger
 from dotenv import load_dotenv
 from config import logging_dir, PROD, NODE, ADMIN_TELEGRAM_ID, USER_UUID_FOR_WALLET, ACW_API_URL, mongo_db_dict, redis_dict, acw_api, postgres_db_dict
+
+logger = TradeCoreLogger("api_crud", logging_dir).logger
 
 all_node_df = acw_api.get_node()
 node_df = all_node_df[all_node_df['name']==NODE.replace('_api', '')]
@@ -52,8 +58,7 @@ for each_market_code_combination in enabled_market_code_combinations:
 # initialize exchange adaptors for common info
 user_exchange_adaptor = UserExchangeAdaptor(admin_id=ADMIN_TELEGRAM_ID, acw_api=acw_api, redis_db_dict=redis_dict, api_server=True, logging_dir=logging_dir)
 
-
-
+remote_redis = RedisHelper(**redis_dict)
 
 # Dependency to get the async database session
 async def get_db():
@@ -679,6 +684,52 @@ async def exit_trade(trade_uuid: UUID, db: AsyncSession):
     trade = result.scalar_one_or_none()
     if trade is None:
         raise HTTPException(status_code=404, detail="Trade not found")
-    trade.status = 'EXIT'
-    await db.commit()
+    
+    # Read trade config data
+    result = await db.execute(select(models.TradeConfig).filter(
+        models.TradeConfig.uuid == trade.trade_config_uuid
+    ))
+    trade_config = result.scalar_one_or_none()
+    if trade_config is None:
+        raise HTTPException(status_code=404, detail="Trade config not found")
+    target_market_code = trade_config.target_market_code
+    origin_market_code = trade_config.origin_market_code
+    market_code_combination = target_market_code + ':' + origin_market_code
+    if market_code_combination not in ["UPBIT_SPOT/KRW:BINANCE_USD_M/USDT"]:
+        raise HTTPException(status_code=400, detail=f"Invalid market code({market_code_combination}) combination for the trade")
+    
+    # Fetch info_dict and convert_rate_dict
+    fetched_info_dict = remote_redis.get_data('info_dict')
+    if fetched_info_dict is None:
+        raise HTTPException(status_code=500, detail="info_dict not found in redis")
+    fetched_info_dict = pickle.loads(fetched_info_dict)
+    fetched_convert_rate_dict = remote_redis.hgetall_dict('convert_rate_dict')
+    if fetched_convert_rate_dict is None:
+        raise HTTPException(status_code=500, detail="convert_rate_dict not found in redis")
+    fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
+    
+    # Fetch trade_df from the remote redis
+    fetched_trade_df = remote_redis.get_data(f"trade|trade|{market_code_combination}")
+    if fetched_trade_df is None:
+        raise HTTPException(status_code=500, detail="trade_df not found in redis")
+    trade_df = pickle.loads(fetched_trade_df)
+    
+    premium_df = get_premium_df(remote_redis, fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
+    if premium_df.empty:
+        raise HTTPException(status_code=500, detail="premium_df is empty")
+    merged_df = trade_df.merge(premium_df, on='base_asset')
+    merged_df['SL_premium_value'] = merged_df.apply(
+        lambda x: x['SL_premium'] if not x['usdt_conversion'] else (1 + x['SL_premium'] / 100) * x['dollar'], axis=1)
+    merged_df['LS_premium_value'] = merged_df.apply(
+        lambda x: x['LS_premium'] if not x['usdt_conversion'] else (1 + x['LS_premium'] / 100) * x['dollar'], axis=1)
+    # Filter in only the row with the trade_uuid and convert it to pandas series
+    merged_row = merged_df[merged_df['uuid'] == str(trade_uuid)].iloc[0]
+    if market_code_combination == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT":    
+        trade_exchange_adaptor_dict[market_code_combination].short_long_trade(merged_row)
+
+    # Re fetch trade from the database
+    result = await db.execute(select(models.Trade).filter(
+        models.Trade.uuid == trade_uuid
+    ))
+    trade = result.scalar_one_or_none()
     return trade

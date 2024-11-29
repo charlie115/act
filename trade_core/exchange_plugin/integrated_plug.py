@@ -4,6 +4,7 @@ import datetime
 import pandas as pd
 import time
 import traceback
+import numpy as np
 from psycopg2 import extras
 from functools import partial
 from threading import Thread
@@ -686,6 +687,8 @@ class UserExchangeAdaptor:
         try:
             # if self.market_code_combination == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT":
             trade_info_dict = self.trade_info_dict_queue.get()
+            # clean numpy type. Convert it to python native type
+            trade_info_dict = {k: v.item() if isinstance(v, np.generic) else v for k, v in trade_info_dict.items()}
 
             while target_order_history is None or origin_order_history is None:
                 # Check whether the target order history exists in the database
@@ -744,7 +747,7 @@ class UserExchangeAdaptor:
                     trade_info_dict['slippage_p'] = (trade_info_dict['executed_premium_value'] - trade_info_dict['target_premium_value']) / trade_info_dict['target_premium_value'] * 100
                 
             if trade_info_dict['slippage_p'] < 0:
-                slippage_str = f"슬리피지: {(trade_info_dict['slippage_p'])}%p"
+                slippage_str = f"슬리피지: {(round(trade_info_dict['slippage_p'], 3))}%p"
             else:
                 slippage_str = f"슬리피지 없음"
 
@@ -835,7 +838,7 @@ class UserExchangeAdaptor:
             order_type = margin_liquidation_call_trade_dict.get('order_type')
                         
             target_market_code, origin_market_code = self.market_code_combination.split(':')
-            premium_df = get_premium_df(fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, self.logger)
+            premium_df = get_premium_df(self.redis, fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, self.logger)
             merged_df = trade_df.merge(premium_df, on='base_asset')
             merged_df['SL_premium_value'] = merged_df.apply(lambda x: x['SL_premium'] if x['usdt_conversion'] == False else (1+x['SL_premium']/100)*x['dollar'], axis=1)
             merged_df['LS_premium_value'] = merged_df.apply(lambda x: x['LS_premium'] if x['usdt_conversion'] == False else (1+x['LS_premium']/100)*x['dollar'], axis=1)
