@@ -45,6 +45,7 @@ class TradeConfigAllocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = TradeConfigAllocation
         fields = (
+            "node",
             "target_market_code",
             "origin_market_code",
             "trade_config_uuid",

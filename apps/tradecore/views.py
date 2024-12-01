@@ -130,6 +130,7 @@ class NodeViewSet(BaseViewSet):
             permission_classes = []
 
         return [permission() for permission in permission_classes]
+    
 
 
 ###################
