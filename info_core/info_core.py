@@ -533,12 +533,6 @@ class InitCore:
             time.sleep(loop_time_secs)
         
     def fetch_dollar(self, update_dollar_logger, url='https://finance.naver.com/marketindex/exchangeDegreeCountQuote.naver?marketindexCd=FX_USDKRW', timedelta_hours=9):
-        # global DOLLAR_INFO_DICT
-        # return_dict = {
-        #     'price': None,
-        #     'change': None,
-        #     'last_updated_time': None
-        # }
         try:
             exchange_rate = pd.read_html(url, encoding='EUC-KR')[0]
             self.update_dollar_return_dict['price'] = exchange_rate.iloc[0,1]
@@ -551,6 +545,7 @@ class InitCore:
                 "last_updated_time": self.update_dollar_return_dict['last_updated_time'].strftime("%Y-%m-%d %H:%M:%S")
             }
             self.local_redis.set_dict('INFO_CORE|dollar', dict_for_redis)
+            self.remote_redis.set_dict('INFO_CORE|dollar', dict_for_redis) # For the ACW infocore API
             update_dollar_logger.info(f"fetch_dollar|Dollar price ({self.update_dollar_return_dict['price']} KRW) has been updated.")
         except Exception as e:
             self.acw_api.create_message_thread(self.admin_id, f"fetch_dollar|Exception occured! Error: {e}", f"fetch_dollar|Exception occured! Error: {e}")
