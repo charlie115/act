@@ -92,6 +92,10 @@ class InitCore:
         self.binance_adaptor = InitBinanceAdaptor(self.exchange_api_key_dict['binance_read_only']['api_key'], self.exchange_api_key_dict['binance_read_only']['secret_key'], self.info_dict, logging_dir=self.logging_dir)
         self.bithumb_adaptor = InitBithumbAdaptor(logging_dir=self.logging_dir)
         self.bybit_adaptor = InitBybitAdaptor(self.exchange_api_key_dict['bybit_read_only']['api_key'], self.exchange_api_key_dict['bybit_read_only']['secret_key'], self.info_dict, self.logging_dir)
+        
+        # Initiate Fetching USDT from Bithumb
+        self.update_usdt_thread = Thread(target=self.fetch_usdt, daemon=True)
+        self.update_usdt_thread.start()
 
         # UPBIT SPOT (KRW, BTC Market)
         # UPBIT wallet status
@@ -321,11 +325,6 @@ class InitCore:
                     self.acw_api.create_message_thread(self.admin_id, f"update_exchange_info_as_df|name:{data_name} failed.", f"update_exchange_info_as_df|name:{data_name} failed.")
                 time.sleep(loop_time_secs)
 
-    # Deprecated
-    # def get_dollar_dict(self):
-    #     dollar_dict = self.local_redis.get_dict('INFO_CORE|dollar')
-    #     return dollar_dict
-
     def get_market_code_list(self):
         market_code_list = []
         for exchange in self.exchange_websocket_dict.keys():
@@ -342,16 +341,6 @@ class InitCore:
             dollar_update_status_str = "dollar_update_thread is dead"
             integrity_flag = False
         return integrity_flag, dollar_update_status_str
-    
-    # def reinitiate_dollar_update_thread(self):
-    #     before_reinitiate = "Before reinit:  " + self.dollar_update_thread_status()[1]
-    #     self.update_dollar_thread = Thread(target=self.fetch_dollar_loop, args=(self.update_dollar_return_dict, self.update_dollar_logger), daemon=True)
-    #     self.update_dollar_thread.start()
-    #     time.sleep(1)
-    #     after_reinitiate = "After reinit: " + self.dollar_update_thread_status()[1]
-    #     self.logger.info(f"reinitiate_dollar_update_thread|{before_reinitiate} -> {after_reinitiate}")
-    #     self.logger.info("reinitiate_dollar_update_thread|dollar_update_thread has been reinitiated.")
-    #     return before_reinitiate + "\n" + after_reinitiate
 
     def get_symbol_list(self, target_market): # E.g) UPBIT_SPOT, BINANCE_SPOT, BINANCE_USD_M, BINANCE_COIN_M
         target_exchange = target_market.split('_')[0]
@@ -566,6 +555,36 @@ class InitCore:
             except Exception as e:
                 self.logger.error(f"fetch_dollar_loop|Exception occured! Error: {e}, {traceback.format_exc()}")
                 self.acw_api.create_message_thread(self.admin_id, f"fetch_dollar_loop|Exception occured! Error: {e}", f"fetch_dollar_loop|Exception occured! Error: {e}")
+            time.sleep(loop_time)
+            
+    def fetch_usdt(self):
+        try:
+            # Fetch usdt price from Bithumb
+            ticker_df = self.bithumb_adaptor.spot_all_tickers()
+            usdt_df = ticker_df[ticker_df['base_asset']=='USDT']
+            usdt_price = usdt_df['lastPrice'].iloc[0]
+            change = usdt_df['fluctate_24H'].iloc[0]
+            # UTC time in '%Y-%m-%d %H:%M:%S'
+            last_update_time = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+            dict_for_redis = {
+                'price': float(usdt_price),
+                'change': float(change),
+                'last_update_time': last_update_time
+            }
+            self.remote_redis.set_dict('INFO_CORE|usdt', dict_for_redis)
+        except Exception as e:
+            self.logger.error(f"fetch_usdt|Exception occured! Error: {e}, {traceback.format_exc()}")
+            self.acw_api.create_message_thread(self.admin_id, f"fetch_usdt|Exception occured! Error: {e}", f"fetch_usdt|Exception occured! Error: {e}")
+            
+    def fetch_usdt_loop(self, loop_time=30):
+        self.logger.info(f"fetch_usdt_loop|USDT update thread has started.")
+        while True:
+            try:
+                self.fetch_usdt()
+            except Exception as e:
+                self.logger.error(f"fetch_usdt_loop|Exception occured! Error: {e}, {traceback.format_exc()}")
+                self.acw_api.create_message_thread(self.admin_id, f"fetch_usdt_loop|Exception occured! Error: {e}", f"fetch_usdt_loop|Exception occured! Error: {e}")
             time.sleep(loop_time)
 
     # TESTTEST
