@@ -129,8 +129,32 @@ class DollarView(views.APIView):
             raise exceptions.APIException(detail=str(exception))
 
         return response.Response(data)
+    
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Get usdt info",
+        description="Returns usdt information",
+        tags=["USDT"],
+    ),
+)
+class USDTView(views.APIView):
+    http_method_names = ["get"]
+    permission_classes = []
 
+    def get(self, request):
+        redis_key = "INFO_CORE|usdt"
 
+        try:
+            data = REDIS_CLI.get(redis_key).decode()
+        except AttributeError:
+            raise exceptions.NotFound()
+
+        try:
+            data = json.loads(data)
+        except Exception as exception:
+            raise exceptions.APIException(detail=str(exception))
+
+        return response.Response(data)
 @extend_schema_view(
     get=extend_schema(
         operation_id="Get kline data",

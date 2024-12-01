@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 
 from infocore.views import (
     DollarView,
+    USDTView,
     MarketCodesView,
     KlineDataView,
     KlineVolatilityView,
@@ -57,6 +58,7 @@ urlpatterns = [
     path("", InfoCoreAPIListView.as_view(), name="infocore-root"),
     path("assets/", include("infocore.urls.assets"), name="assets"),
     path("dollar/", DollarView.as_view(), name="dollar-view"),
+    path("usdt/", USDTView.as_view(), name="usdt-view"),
     path(
         "funding-rate/",
         include("infocore.urls.funding_rate"),
