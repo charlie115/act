@@ -754,10 +754,10 @@ class CapitalView(TradeCoreMixin, views.APIView):
 
     def set_cached_capital_data(self, data):
         if data:
-            cache.set(self.get_redis_cache_key(), data, timeout=10)
+            cache.set(self.get_redis_cache_key(), data, timeout=5)
 
     def get_redis_cache_key(self):
-        return f"acw:tradecore:capital:{self.trade_config_uuid}"
+        return f"acw:tradecore:capital:{self.trade_config_uuid}:{self.market_code}"
 
 
 @extend_schema_view(
