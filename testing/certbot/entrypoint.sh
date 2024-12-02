@@ -1,7 +1,7 @@
 #!/bin/sh
 
 email=ckddjs116@gmail.com
-domain=my-test.orbitholdings.org
+domain=acw-test.orbitholdings.org
 
 # Check and generate options-ssl-nginx.conf
 if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
