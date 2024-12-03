@@ -82,9 +82,8 @@ class KlineVolatilityQueryParamsSerializer(serializers.Serializer):
 
 
 class KlineVolatilitySerializer(serializers.Serializer):
-    market_code_combination = serializers.CharField()
     base_asset = serializers.CharField()
-    volatility_index = FloatOrNoneField()
+    mean_diff = FloatOrNoneField()
     datetime_now = DateTimeWithTzField(
         format=DATE_TIME_TZ_FORMAT,
         default_timezone=TZ_UTC,

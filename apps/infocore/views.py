@@ -286,19 +286,15 @@ class KlineVolatilityView(views.APIView):
         base_assets,
         tz,
     ):
-        database = "kline_volatility_info"
-        collection = "180"
+        database = target_market_code.replace("/", "__") + '-' + origin_market_code.replace("/", "__")
+        collection = "volatility_info"
 
         # Get database and collection
         db = MONGODB_CLI.get_database(database)
         coll = db.get_collection(collection)
 
-        market_code_combination = f"{target_market_code}:{origin_market_code}"
-
         # Prepare parameters
-        query_filter = {
-            "market_code_combination": market_code_combination,
-        }
+        query_filter = {}
         if base_assets:
             query_filter["base_asset"] = {"$in": base_assets}
 
