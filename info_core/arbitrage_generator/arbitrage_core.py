@@ -12,7 +12,7 @@ import traceback
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from loggers.logger import InfoCoreLogger
-from standalone_func.arbitrage_data_updater import store_funding_diff_loop, store_average_funding_loop, remove_delisted_funding_rate_loop, store_kline_volatility_info_loop
+from standalone_func.arbitrage_data_updater import store_funding_diff_loop, store_average_funding_loop, remove_delisted_funding_rate_loop
 
 class InitAbitrageCore:
     def __init__(self, admin_id, node, info_dict, acw_api, enabled_arbitrage_markets, mongodb_dict, logging_dir):
@@ -36,7 +36,3 @@ class InitAbitrageCore:
                                                          args=(self.enabled_arbitrage_markets, self.mongodb_dict, logging_dir),
                                                          daemon=True)
         self.remove_delisted_funding_rate_proc.start()
-        self.store_kline_volatility_info_proc = Process(target=store_kline_volatility_info_loop,
-                                                        args=(self.enabled_arbitrage_markets, self.mongodb_dict, logging_dir),
-                                                        daemon=True)
-        self.store_kline_volatility_info_proc.start()

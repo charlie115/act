@@ -21,6 +21,7 @@ from standalone_func.kline_data_generator import (
                                                   insert_kline_to_db, 
                                                   ohlc_1T_generator,
                                                   ohlc_interval_generator,
+                                                  store_kline_volatility_info_loop,
                                                   )
 from standalone_func.price_df_generator import get_price_df
 
@@ -58,6 +59,12 @@ class InitKlineCore:
         # self.enaled_market_combination_list = []
         self.register_enabled_market_klines()
         self._start_generating_kline()
+        self.store_kline_volatility_info_proc = Process(
+            target=store_kline_volatility_info_loop,
+            args=(self.enabled_market_klines, self.mongodb_dict, self.logging_dir, 180),
+            daemon=True
+        )
+        self.store_kline_volatility_info_proc.start()
 
     def _start_generating_kline(self):
         # Start generating kline        

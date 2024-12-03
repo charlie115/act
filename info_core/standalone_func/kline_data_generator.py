@@ -12,6 +12,82 @@ import re
 from standalone_func.get_dollar_dict import get_dollar_dict
 from standalone_func.premium_data_generator import get_premium_df
 
+def store_kline_volatility_info(mongo_db_client, market_code_combination, logger, last_n=180):
+    try:
+        database = market_code_combination.replace('/', '__').replace(':', '-')
+        mongo_db_conn = mongo_db_client.get_conn()
+        db = mongo_db_conn[database]
+        # Get all collection names in the database
+        all_collections = db.list_collection_names()
+        # Filter collections that end with '_1T'
+        collections_1T = [name for name in all_collections if name.endswith('_1T')]
+        if not collections_1T:
+            logger.info(f"No 1T collections found in {database}.")
+            return
+
+        # Use the temporary collection in the target database
+        temp_collection = db['volatility_info_temp']
+
+        # List to store the data to be inserted into the temporary collection
+        data_list = []
+
+        for collection_name in collections_1T:
+            collection = db[collection_name]
+            
+            # Fetch the last n records sorted by 'datetime_now' in descending order
+            records_cursor = collection.find(
+                {},
+                {'_id': 0, 'base_asset': 1, 'LS_high': 1, 'LS_low': 1, 'datetime_now': 1}
+            ).sort('datetime_now', -1).limit(last_n)
+            
+            # Convert the cursor to a list of dictionaries
+            records = list(records_cursor)
+            records_df = pd.DataFrame(records)
+            
+            # Check if DataFrame is not empty
+            if not records_df.empty:
+                # Get difference between high and low
+                records_df['difference'] = records_df['LS_high'] - records_df['LS_low']
+                # Get the mean of the difference
+                mean_diff = float(records_df['difference'].mean())
+                # Prepare the data dictionary
+                data = {
+                    'base_asset': records_df['base_asset'].iloc[0],
+                    'mean_diff': mean_diff,
+                    'datetime_now': datetime.datetime.utcnow()
+                }
+                data_list.append(data)    
+
+        # Clear the temporary collection (optional, since we're overwriting)
+        temp_collection.delete_many({})
+
+        # Insert data into the temporary collection
+        if data_list:
+            temp_collection.insert_many(data_list)
+        else:
+            logger.info("No data to insert.")
+            
+        # Rename 'volatility_info_temp' to 'volatility_info', dropping the target if it exists
+        temp_collection.rename('volatility_info', dropTarget=True)
+        mongo_db_conn.close()
+    except Exception as e:
+        logger.error(f"An error occurred during storing volatility data: {e}\n{traceback.format_exc()}")
+        mongo_db_conn.close()
+        
+def store_kline_volatility_info_loop(enabled_market_klines, mongodb_dict, logging_dir, last_n, loop_time_secs=60):
+    logger = InfoCoreLogger("arbitrage_core", logging_dir).logger
+    logger.info(f"store_kline_volatility_info_loop started.")
+    mongo_db_client = InitDBClient(**mongodb_dict)
+    while True:
+        try:
+            start = time.time()
+            for market_code_combination in enabled_market_klines:
+                store_kline_volatility_info(mongo_db_client, market_code_combination, logger, last_n)
+            logger.info(f"store_kline_volatility_info took {time.time()-start} seconds. for {len(enabled_market_klines)} market_code_combinations.")
+        except Exception as e:
+            logger.error(f"Error in store_kline_volatility_info_loop: {e}\n{traceback.format_exc()}")
+        time.sleep(loop_time_secs)
+
 def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict, admin_id, node, logger):
     remote_redis = RedisHelper(**redis_dict)
     try:
