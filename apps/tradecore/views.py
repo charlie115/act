@@ -1265,7 +1265,6 @@ class DepositAmountViewSet(
         tags=["ExitTrade"],
     ),
 )
-
 class ExitTradeView(TradeCoreMixin, views.APIView):
     http_method_names = ["post"]
     permission_classes = [IsAdmin | IsInternal | IsManager | IsUser]

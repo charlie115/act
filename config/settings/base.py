@@ -103,6 +103,7 @@ LOCAL_APPS = (
     "messagecore",
     "newscore",
     "tradecore",
+    "wallet",
 )
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -366,3 +367,10 @@ CORE_IPS = env.list("CORE_IPS", default=[])
 COINMARKETCAP_API_KEY = env("COINMARKETCAP_API_KEY")
 COINMARKETCAP_API_URL = "https://pro-api.coinmarketcap.com/v2"
 COINMARKETCAP_CRYPTO_INFO_API = f"{COINMARKETCAP_API_URL}/cryptocurrency/info"
+
+# For communication with hd wallet service
+WALLET_SERVICE_URL = env("WALLET_SERVICE_URL", default="")
+WALLET_API_KEY_FILE = env("WALLET_API_KEY", default="")
+if WALLET_API_KEY_FILE != "":
+    with open(WALLET_API_KEY_FILE, "r") as f:
+        WALLET_API_KEY = f.read.strip()
