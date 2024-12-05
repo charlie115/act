@@ -94,7 +94,7 @@ services:
     volumes:
       - $HOME/test-community-drf/static:/opt/community_drf/static
       - $HOME/test-community-drf/media:/opt/community_drf/media
-      - api_key_volume:/api_key:ro
+      - $HOME/test-community-apikey:/api_key:ro
     expose:
       - "8000"
     networks:
@@ -143,7 +143,7 @@ services:
     secrets:
       - hdwallet_mnemonic
     volumes:
-      - api_key_volume:/api_key:ro  # Mount the same volume
+      - $HOME/test-community-apikey:/api_key:ro  # Mount the same volume
     networks:
       - test-community-network
     depends_on:
@@ -154,7 +154,7 @@ services:
     image: alpine:latest
     command: sh -c "mkdir -p /api_key && head -c 32 /dev/urandom | base64 > /api_key/wallet_api_key.txt"
     volumes:
-      - api_key_volume:/api_key
+      - $HOME/test-community-apikey:/api_key
     networks:
       - test-community-network
     deploy:
