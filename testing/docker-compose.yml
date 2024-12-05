@@ -87,7 +87,7 @@ services:
         condition: service_healthy
       hd-api-key-generator: {}
     environment:
-      - WALLET_SERVICE_URL=http://hdwallet_service:8000
+      - WALLET_SERVICE_URL=http://hdwallet-service:8000
       - WALLET_API_KEY_FILE=/api_key/wallet_api_key.txt
     container_name: test-community-drf
     volumes:
@@ -132,7 +132,7 @@ services:
       - test-community-network
     restart: always
 
-  hdwallet_service:
+  hdwallet-service:
     image: hdwallet-service
     container_name: hdwallet-service
     environment:
