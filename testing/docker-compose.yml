@@ -85,10 +85,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      hd-api-key-generator: {}
+    environment:
+      - WALLET_SERVICE_URL=http://hdwallet_service:8000
+      - WALLET_API_KEY_FILE=/api_key/wallet_api_key.txt
     container_name: test-community-drf
     volumes:
       - $HOME/test-community-drf/static:/opt/community_drf/static
       - $HOME/test-community-drf/media:/opt/community_drf/media
+      - api_key_volume:/api_key:ro
     expose:
       - "8000"
     networks:
@@ -126,6 +131,39 @@ services:
     networks:
       - test-community-network
     restart: always
+
+  hdwallet_service:
+    image: hdwallet-service
+    container_name: hdwallet-service
+    environment:
+      - MNEMONIC_FILE=/run/secrets/hdwallet_mnemonic
+      - API_KEY_FILE=/api_key/wallet_api_key.txt
+      - TRON_GRID_API_KEY=${TRON_GRID_API_KEY}
+    secrets:
+      - hdwallet_mnemonic
+    volumes:
+      - api_key_volume:/api_key:ro  # Mount the same volume
+    networks:
+      - test-community-network
+    depends_on:
+      - api_key_generator  # Ensure API key is generated before starting
+
+  hd-api-key-generator:
+    container_name: hd-api-key-generator
+    image: alpine:latest
+    command: sh -c "mkdir -p /api_key && head -c 32 /dev/urandom | base64 > /api_key/wallet_api_key.txt"
+    volumes:
+      - api_key_volume:/api_key
+    networks:
+      - test-community-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: none  # Run once and exit
+
+secrets:
+  hd_mnemonic:
+    file: $HOME/test-community-secrets/hd_mnemonic.txt
   
 networks:
   test-community-network:
