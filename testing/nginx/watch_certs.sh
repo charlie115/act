@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Variables
-domain="arbicrypto.net"
+domain="acw-test.orbitholdings.org"
 
 # Start the certificate watcher in the background
 (
