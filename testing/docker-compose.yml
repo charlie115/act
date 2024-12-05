@@ -85,7 +85,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      hd-api-key-generator: {}
+      hd-api-key-generator: 
+        condition: service_started
     environment:
       - WALLET_SERVICE_URL=http://hdwallet-service:8000
       - WALLET_API_KEY_FILE=/api_key/wallet_api_key.txt
