@@ -147,7 +147,7 @@ services:
     networks:
       - test-community-network
     depends_on:
-      - api_key_generator  # Ensure API key is generated before starting
+      - hd-api-key-generator  # Ensure API key is generated before starting
 
   hd-api-key-generator:
     container_name: hd-api-key-generator
