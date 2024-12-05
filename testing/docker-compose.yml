@@ -133,7 +133,7 @@ services:
     restart: always
 
   hdwallet-service:
-    image: hdwallet-service
+    image: hdwallet-service:test
     container_name: hdwallet-service
     environment:
       - MNEMONIC_FILE=/run/secrets/hdwallet_mnemonic
