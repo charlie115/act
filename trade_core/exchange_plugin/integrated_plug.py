@@ -740,6 +740,11 @@ class UserExchangeAdaptor:
                     # Update the low and high value
                     curr.execute(f"UPDATE trade SET low={trade_info_dict['executed_premium_value']}, high={new_high_to_apply} WHERE uuid='{trade_info_dict['trade_uuid']}'")
                     conn.commit()
+                else:
+                    # Update only the low value as executed_premium_value
+                    curr.execute(f"UPDATE trade SET low={trade_info_dict['executed_premium_value']} WHERE uuid='{trade_info_dict['trade_uuid']}'")
+                    conn.commit()
+                    # Do not update trade_log on purpose
             else:
                 if not usdt_conversion:
                     trade_info_dict['slippage_p'] = (trade_info_dict['executed_premium_value'] - trade_info_dict['target_premium_value'])

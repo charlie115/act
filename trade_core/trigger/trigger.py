@@ -75,6 +75,7 @@ class InitTrigger:
         self.load_trade_config_loop_thread.start()
 
         self.trade_proc_dict = {}
+        self.logger.info(f"Enabled Market Code Combinations: {self.enabled_market_code_combinations}")
         for each_market_code_combination in self.enabled_market_code_combinations:
             market_code_combination_name = each_market_code_combination['market_code_combination']
             trade_support = each_market_code_combination['trade_support']
