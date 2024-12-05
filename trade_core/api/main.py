@@ -171,9 +171,6 @@ async def fetch_deposit_amount(txid: str, db: AsyncSession = Depends(crud.get_db
     return await crud.fetch_deposit_amount(txid, db)
 
 ############ API endpoints for executing EXIT trades ####################################
-# @app.get("/exit-trade/", response_model=schemas.Trade)
-# async def fetch_exit_trade(trade_uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
-#     return await crud.exit_trade(trade_uuid, db)
 @app.post("/exit-trade/", response_model=schemas.Trade)
 async def fetch_exit_trade(request: schemas.TradeUUIDRequest = Body(...), db: AsyncSession = Depends(crud.get_db)):
-    return await crud.exit_trade(request.trade_uuid, db)
+    return await crud.exit_trade(str(request.trade_uuid), db)

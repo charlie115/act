@@ -595,6 +595,12 @@ def handle_repeat_trade(postgres_client,
                     curr.execute(sql, val)
                     conn.commit()
                     
+                    # apply it to the trade_log table
+                    sql = "UPDATE trade_log SET last_updated_datetime = %s, low = %s, high = %s WHERE trade_uuid = %s"
+                    val = (datetime.datetime.utcnow(), low_to_apply, high_to_apply, row['uuid_x'])
+                    curr.execute(sql, val)
+                    conn.commit()
+                    
                     if print_update:
                         title = f"거래ID:{trade_uuid_to_display_id(local_redis, market_code_combination, row['uuid_x'], logger)} 진입값 탈출값 업데이트"
                         full_content = title

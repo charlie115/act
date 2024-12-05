@@ -61,6 +61,18 @@ class InitTrigger:
                 ),
             daemon=True)
         self.users_with_negative_balance_thread.start()
+        
+        self.load_trade_config_loop_thread = Thread(
+            target=load_trade_config_loop,
+            args=(
+                self.postgres_db_dict,
+                self.admin_id,
+                self.acw_api,
+                self.logging_dir,
+                ),
+            daemon=True
+        )
+        self.load_trade_config_loop_thread.start()
 
         self.trade_proc_dict = {}
         for each_market_code_combination in self.enabled_market_code_combinations:

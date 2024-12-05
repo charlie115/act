@@ -737,9 +737,9 @@ class UserExchangeAdaptor:
                     body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, trade_info_dict['trade_uuid'], self.logger)}의 설정된 진입프리미엄값과 실제 체결된 진입프리미엄 값이 {slippage_to_add}만큼 차이나므로, 탈출프리미엄이 {new_high_to_apply}로 변경되었습니다."
                     full_body = title + '\n' + body
                     self.acw_api.create_message_thread(trade_info_dict['telegram_id'], title, full_body, 'INFO', send_times=trade_info_dict['send_times'], send_term=trade_info_dict['send_term'])
-                    # Update the high value
-                    curr.execute(f"UPDATE trade SET high={new_high_to_apply} WHERE uuid='{trade_info_dict['trade_uuid']}'")
-                    conn.commit()                    
+                    # Update the low and high value
+                    curr.execute(f"UPDATE trade SET low={trade_info_dict['executed_premium_value']}, high={new_high_to_apply} WHERE uuid='{trade_info_dict['trade_uuid']}'")
+                    conn.commit()
             else:
                 if not usdt_conversion:
                     trade_info_dict['slippage_p'] = (trade_info_dict['executed_premium_value'] - trade_info_dict['target_premium_value'])
