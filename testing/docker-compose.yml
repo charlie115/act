@@ -159,8 +159,6 @@ services:
       - test-community-network
     deploy:
       replicas: 1
-      restart_policy:
-        condition: none  # Run once and exit
 
 secrets:
   hd_mnemonic:
