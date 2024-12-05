@@ -12,6 +12,7 @@ class FeeRateAdmin(ModelAdmin):
         "rate",
         "total_paid_fee_required",
     ]
+    list_editable = ["rate", "total_paid_fee_required"]
     ordering = ("level",)
 
 
@@ -45,6 +46,7 @@ class UserFeeLevelAdmin(ModelAdmin):
         "last_updated_datetime",
     ]
     search_fields = ["user__email", "user__username", "total_paid_fee"]
+    list_editable = ["fee_level"]
     list_filter = ["fee_level"]
     inlines = [DepositHistoryInline]
 
@@ -52,7 +54,7 @@ class UserFeeLevelAdmin(ModelAdmin):
         return False
 
     def has_change_permission(self, request, obj=None):
-        return False
+        return True
 
     def has_delete_permission(self, request, obj=None):
         return False
