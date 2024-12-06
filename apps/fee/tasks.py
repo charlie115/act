@@ -56,6 +56,9 @@ def compute_user_monthly_fee_level():
 
         try:
             user_fee_level = UserFeeLevel.objects.get(user=user)
+            # Prevent updating fee level if the user's fee_level is -1(specified by admin) or higher than the calculated fee level
+            if user_fee_level.fee_level == -1 or user_fee_level.fee_level >= fee_rate.level:
+                continue
             user_fee_level.fee_level = fee_rate.level
             user_fee_level.total_paid_fee = total_paid_fee
             user_fee_level.last_updated_datetime = now()

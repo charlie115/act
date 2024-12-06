@@ -45,10 +45,10 @@ class UserWalletBalanceQueryParmasSerializer(serializers.Serializer):
         attrs['user_id'] = request.user.id
         return attrs
 
-class UserWalletDepositBodyParamsSerializer(serializers.Serializer):
+class UserWalletTransactionBodyParamsSerializer(serializers.Serializer):
     user = serializers.UUIDField(required=True)
-    asset = serializers.CharField(required=True)
-    deposit_only = serializers.BooleanField(default=True)
+    asset = serializers.CharField(default="USDT")
+    deposit_only = serializers.BooleanField(default=False)
     
     def validate(self, attrs):
         # If user_id provided, ensure it matches authenticated user

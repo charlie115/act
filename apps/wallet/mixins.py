@@ -18,6 +18,11 @@ class WalletMixin(object):
     def __init__(self):
         self.url = settings.WALLET_SERVICE_URL
         self.x_api_key = settings.WALLET_API_KEY
+        
+        # TEST
+        self.url = "http://localhost:8003"
+        self.x_api_key = "test"
+        # TEST
 
     def build_api_url(self, endpoint, path_param=None):
         api_url = urljoin(self.url, endpoint)        

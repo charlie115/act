@@ -45,6 +45,7 @@ urlpatterns = [
     path(mkpath("messagecore/"), include("messagecore.urls")),
     path(mkpath("newscore/"), include("newscore.urls")),
     path(mkpath("tradecore/"), include("tradecore.urls.urls")),
+    path(mkpath("wallet/"), include("wallet.urls.urls")),
     # redis queue
     path(mkpath("django-rq/"), include("django_rq.urls")),
     # docs

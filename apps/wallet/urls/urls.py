@@ -5,7 +5,7 @@ from lib.views import BaseAPIListView
 from wallet.views import (
     UserWalletAddressView,
     UserWalletBalanceView,
-    UserWalletDepositView,
+    UserWalletTransactionView,
 )
 
 
@@ -38,29 +38,19 @@ app_name = "wallet"
 
 urlpatterns = [
     path("", WalletAPIListView.as_view(), name="wallet-root"),
-    # path(
-    #     "user-wallet/",
-    #     include("wallet.urls.user_wallet"),
-    #     name="user-wallet",
-    # ),
-    # path(
-    #     "user-wallet-balance/",
-    #     include("tradecore.urls.trade_config"),
-    #     name="trade-config",
-    # ),
     path(
-        "user-wallet/<uuid:user>/",
+        "address/<uuid:user>/",
         UserWalletAddressView.as_view(),
-        name="user-wallet-view",
+        name="address-view",
     ),
     path(
-        "user-wallet-balance/<uuid:user>/",
+        "balance/<uuid:user>/",
         UserWalletBalanceView.as_view(),
-        name="user-wallet-balance-view",
+        name="balance-view",
     ),
     path(
-        "user-wallet-deposit/",
-        UserWalletDepositView.as_view(),
-        name="user-wallet-deposit-view",
+        "deposit/",
+        UserWalletTransactionView.as_view(),
+        name="deposit-view",
     ),
 ]

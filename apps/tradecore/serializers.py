@@ -672,78 +672,78 @@ class PboundaryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
 
         return market_code_combination
 
+# Deprecated
+# class DepositAddressQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+#     trade_config_uuid = serializers.UUIDField()
 
-class DepositAddressQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
-    trade_config_uuid = serializers.UUIDField()
+#     def validate(self, attrs):
+#         trade_config_allocation = self.get_trade_config_allocation(
+#             attrs["trade_config_uuid"]
+#         )
+#         self.context["view"].check_object_permissions(
+#             request=self.context["request"],
+#             obj=trade_config_allocation,
+#         )
 
-    def validate(self, attrs):
-        trade_config_allocation = self.get_trade_config_allocation(
-            attrs["trade_config_uuid"]
-        )
-        self.context["view"].check_object_permissions(
-            request=self.context["request"],
-            obj=trade_config_allocation,
-        )
-
-        return super().validate(attrs)
+#         return super().validate(attrs)
 
 
-class DepositAmountViewSetSerializer(TradeCoreMixin, serializers.Serializer):
-    trade_config_uuid = serializers.UUIDField(write_only=True)
-    txid = serializers.CharField(write_only=True)
-    status = serializers.CharField(read_only=True)
-    amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+# class DepositAmountViewSetSerializer(TradeCoreMixin, serializers.Serializer):
+#     trade_config_uuid = serializers.UUIDField(write_only=True)
+#     txid = serializers.CharField(write_only=True)
+#     status = serializers.CharField(read_only=True)
+#     amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
-    def validate(self, attrs):
-        trade_config_allocation = self.get_trade_config_allocation(
-            attrs["trade_config_uuid"]
-        )
-        self.context["view"].check_object_permissions(
-            request=self.context["request"],
-            obj=trade_config_allocation,
-        )
+#     def validate(self, attrs):
+#         trade_config_allocation = self.get_trade_config_allocation(
+#             attrs["trade_config_uuid"]
+#         )
+#         self.context["view"].check_object_permissions(
+#             request=self.context["request"],
+#             obj=trade_config_allocation,
+#         )
 
-        return super().validate(attrs)
+#         return super().validate(attrs)
 
-    def create(self, validated_data):
-        trade_config_allocation = self.get_trade_config_allocation(
-            trade_config_uuid=validated_data.pop("trade_config_uuid")
-        )
-        node = trade_config_allocation.node
+#     def create(self, validated_data):
+#         trade_config_allocation = self.get_trade_config_allocation(
+#             trade_config_uuid=validated_data.pop("trade_config_uuid")
+#         )
+#         node = trade_config_allocation.node
 
-        history_deposit = trade_config_allocation.user.deposit_history.filter(
-            txid=validated_data.get("txid")
-        )
-        if len(history_deposit) > 0:
-            raise exceptions.ValidationError(
-                {"txid": ["This TXID has already been deposited."]}
-            )
+#         history_deposit = trade_config_allocation.user.deposit_history.filter(
+#             txid=validated_data.get("txid")
+#         )
+#         if len(history_deposit) > 0:
+#             raise exceptions.ValidationError(
+#                 {"txid": ["This TXID has already been deposited."]}
+#             )
 
-        api_response = self.tradecore_list_api(
-            url=node.url,
-            endpoint=self.context["view"].tradecore_api_endpoint,
-            query_params=validated_data,
-        )
+#         api_response = self.tradecore_list_api(
+#             url=node.url,
+#             endpoint=self.context["view"].tradecore_api_endpoint,
+#             query_params=validated_data,
+#         )
 
-        if api_response.status_code == HTTP_200_OK:
-            deposit_amount = api_response.json()
-            deposited = deposit_amount.pop("deposited")
+#         if api_response.status_code == HTTP_200_OK:
+#             deposit_amount = api_response.json()
+#             deposited = deposit_amount.pop("deposited")
 
-            if deposited:
-                deposit_history = DepositHistory.objects.create(
-                    user=trade_config_allocation.user,
-                    change=Decimal(deposit_amount.get("amount")),
-                    txid=validated_data.get("txid"),
-                    type=DepositHistory.DEPOSIT,
-                )
-                return {
-                    "status": f"Deposit details for {validated_data.get('txid')} has been successfully received.",
-                    "amount": deposit_history.change,
-                }
-            else:
-                raise exceptions.ValidationError(deposit_amount)
+#             if deposited:
+#                 deposit_history = DepositHistory.objects.create(
+#                     user=trade_config_allocation.user,
+#                     change=Decimal(deposit_amount.get("amount")),
+#                     txid=validated_data.get("txid"),
+#                     type=DepositHistory.DEPOSIT,
+#                 )
+#                 return {
+#                     "status": f"Deposit details for {validated_data.get('txid')} has been successfully received.",
+#                     "amount": deposit_history.change,
+#                 }
+#             else:
+#                 raise exceptions.ValidationError(deposit_amount)
 
-        self.handle_exception_from_api(api_response)
+#         self.handle_exception_from_api(api_response)
         
 class ExitTradeQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
     trade_config_uuid = serializers.UUIDField()

@@ -9,7 +9,6 @@ from tradecore.views import (
     SpotPositionView,
     FuturesPositionView,
     PboundaryView,
-    DepositAddressView,
     ExitTradeView,
 )
 
@@ -109,18 +108,19 @@ urlpatterns = [
         name="pboundary-view",
     ),
     path(
-        "deposit-address/",
-        DepositAddressView.as_view(),
-        name="deposit-address-view",
-    ),
-    path(
         "exit-trade/",
         ExitTradeView.as_view(),
         name="exit-trade-view",
     ),
-    path(
-        "deposit-amount/",
-        include("tradecore.urls.deposit_amount"),
-        name="deposit-amount",
-    ),
+    # Derpecated
+    # path(
+    #     "deposit-address/",
+    #     DepositAddressView.as_view(),
+    #     name="deposit-address-view",
+    # ),
+    # path(
+    #     "deposit-amount/",
+    #     include("tradecore.urls.deposit_amount"),
+    #     name="deposit-amount",
+    # ),
 ]

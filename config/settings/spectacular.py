@@ -39,6 +39,14 @@ SPECTACULAR_SETTINGS = {
                 ],
             },
             {
+                "name": "WALLET",
+                "tags": [
+                    "UserWalletAddress",
+                    "UserWalletBalance",
+                    "UserWalletDeposit",
+                ],
+            },
+            {
                 "name": "TRADE CORE",
                 "tags": [
                     "Node",
