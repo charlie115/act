@@ -148,6 +148,7 @@ services:
       - test-community-network
     depends_on:
       - hd-api-key-generator  # Ensure API key is generated before starting
+      - drf
 
   hd-api-key-generator:
     container_name: hd-api-key-generator
