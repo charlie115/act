@@ -49,8 +49,8 @@ urlpatterns = [
         name="balance-view",
     ),
     path(
-        "deposit/",
+        "transaction/",
         UserWalletTransactionView.as_view(),
-        name="deposit-view",
+        name="transaction-view",
     ),
 ]
