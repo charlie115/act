@@ -373,6 +373,6 @@ WALLET_SERVICE_URL = env("WALLET_SERVICE_URL", default="")
 WALLET_API_KEY_FILE = env("WALLET_API_KEY_FILE", default="")
 if WALLET_API_KEY_FILE != "":
     with open(WALLET_API_KEY_FILE, "r") as f:
-        WALLET_API_KEY = f.read.strip()
+        WALLET_API_KEY = f.read().strip()
 else:
     WALLET_API_KEY = ""
