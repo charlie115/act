@@ -370,7 +370,7 @@ COINMARKETCAP_CRYPTO_INFO_API = f"{COINMARKETCAP_API_URL}/cryptocurrency/info"
 
 # For communication with hd wallet service
 WALLET_SERVICE_URL = env("WALLET_SERVICE_URL", default="")
-WALLET_API_KEY_FILE = env("WALLET_API_KEY", default="")
+WALLET_API_KEY_FILE = env("WALLET_API_KEY_FILE", default="")
 if WALLET_API_KEY_FILE != "":
     with open(WALLET_API_KEY_FILE, "r") as f:
         WALLET_API_KEY = f.read.strip()
