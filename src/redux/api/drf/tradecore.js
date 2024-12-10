@@ -117,12 +117,41 @@ const api = drfApi.injectEndpoints({
         }
       },
     }),
-    getDepositAddress: builder.query({
-      keepUnusedDataFor: 1,
-      query: (params) => ({
-        url: '/tradecore/deposit-address/',
-        params,
-      }),
+    getAllTradeLogs: builder.query({
+      keepUnusedDataFor: 0,
+      providesTags: ['AllTradeLogs'],
+      refetchOnMountOrArgChange: true,
+      queryFn: async ({ tradeConfigUuids, params }, queryApi, extraOptions) => {
+        try {
+          const promises = tradeConfigUuids.map((tradeConfigUuid) =>
+            baseQueryWithReAuth(
+              {
+                url: '/tradecore/trade-log/',
+                params: { tradeConfigUuid, ...params },
+              },
+              queryApi,
+              extraOptions
+            )
+          );
+          const results = await Promise.allSettled(promises);
+          const okResults = results.filter(
+            (result) => result.value?.meta?.response?.ok
+          );
+
+          const data = okResults.reduce(
+            (acc, result) => acc.concat(result.value.data),
+            []
+          );
+          const meta = okResults.reduce(
+            (acc, result) => acc.concat(result.value.meta),
+            []
+          );
+          return { data, meta };
+        } catch (error) {
+          // Catch any errors and return them as an object with an `error` field
+          return { error };
+        }
+      },
     }),
     getExchangeApiKey: builder.query({
       keepUnusedDataFor: 1,
@@ -189,6 +218,13 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    getTradeLogByUuid: builder.query({
+      keepUnusedDataFor: 1,
+      query: ({ uuid, ...params }) => ({
+        url: `/tradecore/trade-log/${uuid}/`,
+        params,
+      }),
+    }),
     getTradeConfig: builder.query({
       keepUnusedDataFor: 1,
       providesTags: ['TradeConfig'],
@@ -219,6 +255,14 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    getCapital: builder.query({
+      keepUnusedDataFor: 1,
+      providesTags: ['Capital'],
+      query: (params) => ({
+        url: '/tradecore/capital/',
+        params,
+      }),
+    }),
     exitMultipleTrades: builder.mutation({
       queryFn: async (items, queryApi, extraOptions) => {
         try {
@@ -244,13 +288,6 @@ const api = drfApi.injectEndpoints({
         }
       },
       invalidatesTags: ['AllTrades', 'TradesByTradeConfig'],
-    }),
-    postDepositAmount: builder.mutation({
-      query: (body) => ({
-        url: '/tradecore/deposit-amount/',
-        method: 'POST',
-        body,
-      }),
     }),
     postExchangeApiKey: builder.mutation({
       query: (body) => ({
@@ -320,7 +357,7 @@ export const {
   useDeleteRepeatTradeMutation,
   useGetAllRepeatTradesQuery,
   useGetAllTradesQuery,
-  useGetDepositAddressQuery,
+  useGetAllTradeLogsQuery,
   useGetExchangeApiKeyQuery,
   useGetFuturesPositionQuery,
   useGetNodesQuery,
@@ -330,6 +367,7 @@ export const {
   useGetRepeatTradesByTradeConfigQuery,
   useGetSpotPositionQuery,
   useGetTradeByUuidQuery,
+  useGetTradeLogByUuidQuery,
   useGetTradeConfigQuery,
   useGetTradeHistoryQuery,
   useGetTradeHistoryByUuidQuery,
@@ -339,8 +377,8 @@ export const {
   useLazyGetPBoundaryQuery,
   useLazyGetRepeatTradesByTradeConfigQuery,
   useLazyGetTradeConfigQuery,
+  useGetCapitalQuery,
   useExitMultipleTradesMutation,
-  usePostDepositAmountMutation,
   usePostExchangeApiKeyMutation,
   usePostRepeatTradeMutation,
   usePostTradeMutation,

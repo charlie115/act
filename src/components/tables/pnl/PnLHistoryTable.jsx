@@ -14,7 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { useGetAssetsQuery } from 'redux/api/drf/infocore';
 import {
   useGetPnlHistoryQuery,
-  useGetTradeByUuidQuery,
+  // useGetTradeByUuidQuery,
+  useGetTradeLogByUuidQuery,
 } from 'redux/api/drf/tradecore';
 
 import { DateTime } from 'luxon';
@@ -30,9 +31,10 @@ import renderColoredSignedNumberCell from 'components/tables/common/renderColore
 import renderDateCell from 'components/tables/common/renderDateCell';
 import renderExpandCell from 'components/tables/common/renderExpandCell';
 import renderUuidCell from 'components/tables/common/renderUuidCell';
+import renderCheckbox from 'components/tables/trigger/renderCheckbox';
 
 import renderMarketCodesCell from 'components/tables/trigger/renderMarketCodesCell';
-import renderStatusCell from 'components/tables/trigger/renderStatusCell';
+import renderTradeCapitalCell from 'components/tables/trigger/renderTransactionAmountCell';
 import renderValueCell from 'components/tables/trigger/renderValueCell';
 
 export default function PnLHistoryTable({
@@ -52,7 +54,7 @@ export default function PnLHistoryTable({
     tradeConfigUuid,
     tradeUuid,
   });
-  const { data: tradeData } = useGetTradeByUuidQuery(
+  const { data: tradeData } = useGetTradeLogByUuidQuery(
     {
       tradeConfigUuid,
       uuid: selectedUuid.trade_uuid,
@@ -186,10 +188,19 @@ export default function PnLHistoryTable({
         cell: renderValueCell,
       },
       {
-        accessorKey: 'status',
+        accessorKey: 'tradeCapital',
+        size: isMobile ? 25 : 120,
+        header: t('Trade Capital'),
+        cell: renderTradeCapitalCell,
+      },
+      {
+        accessorKey: 'deleted',
         size: isMobile ? 25 : 140,
-        header: t('Status'),
-        cell: renderStatusCell,
+        header: t('Deleted'),
+        cell: renderCheckbox,
+        props: {
+          sx: { textAlign: 'center' },
+        }
       },
       {
         accessorKey: 'created',
@@ -208,11 +219,12 @@ export default function PnLHistoryTable({
         name: tradeData.base_asset,
         entry: tradeData.low,
         exit: tradeData.high,
+        tradeCapital: tradeData.trade_capital,
         created: DateTime.fromISO(tradeData.registered_datetime).toLocaleString(
           DateTime.DATETIME_MED
         ),
         isTether: tradeData.usdt_conversion,
-        status: tradeData.trade_switch,
+        deleted: tradeData.deleted,
         marketCodes: {
           targetMarketCode: marketCodeCombination.target.value,
           originMarketCode: marketCodeCombination.origin.value,

@@ -128,6 +128,12 @@ export default function TradeHistoryTable({
         cell: renderColoredSignedNumberCell,
       },
       {
+        accessorKey: 'dollar',
+        enableSorting: false,
+        size: isMobile ? 25 : 60,
+        header: t('Dollar'),
+      },
+      {
         accessorKey: 'trade_side',
         enableSorting: false,
         size: isMobile ? 30 : 60,

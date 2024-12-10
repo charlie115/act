@@ -174,7 +174,10 @@ function PremiumTable({
 
   const { data: klineVolatilityData } = useGetKlineVolatilityQuery(
     { baseAsset: assetsParam, ...marketCodesParam },
-    { skip: !ready || !assetsParam || !marketCodesParam }
+    { 
+      pollingInterval: 1000 * 60,
+      skip: !ready || !assetsParam || !marketCodesParam
+    }
   );
 
   const [createFavoriteAsset, createFavoriteRes] =
@@ -354,9 +357,9 @@ function PremiumTable({
             ),
           };
 
-          const volatility = klineVolatilityData?.find(
-            (o) => o.base_asset === name
-          )?.volatility_index;
+          const volatility = parseFloat(
+            klineVolatilityData?.find((o) => o.base_asset === name)?.mean_diff || 0
+          ).toFixed(2);
 
           return {
             name,

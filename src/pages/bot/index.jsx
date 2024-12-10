@@ -46,12 +46,13 @@ import { MARKET_CODE_LIST } from 'constants/lists';
 const TAB = {
   triggers: '/bot/triggers',
   position: '/bot/position',
+  capital: '/bot/capital',
   pnlHistory: '/bot/pnl-history',
   botSettings: '/bot/settings',
   apiKey: '/bot/api-key',
   deposit: '/bot/deposit',
-  userGuide: 6,
-  supportCenter: 7,
+  userGuide: 7,
+  supportCenter: 8,
 };
 
 const TABS = [
@@ -64,6 +65,11 @@ const TABS = [
     id: TAB.position,
     name: '/bot/position',
     getLabel: () => i18n.t('Position'),
+  },
+  {
+    id: TAB.capital,
+    name: '/bot/capital',
+    getLabel: () => i18n.t('Capital'),
   },
   {
     id: TAB.pnlHistory,
@@ -101,8 +107,8 @@ const TABS = [
   },
 ];
 
-const MARKET_CODES_REQUIRED = [TAB.botSettings, TAB.deposit, TAB.position];
-const TRADE_SUPPORT_REQUIRED = [TAB.pnlHistory, TAB.apiKey];
+const MARKET_CODES_REQUIRED = [TAB.botSettings, TAB.position, TAB.capital];
+const TRADE_SUPPORT_REQUIRED = [TAB.position, TAB.capital, TAB.pnlHistory, TAB.apiKey];
 
 export default function Bot() {
   const marketCodeSelectorRef = useRef();
@@ -130,7 +136,9 @@ export default function Bot() {
         const origin = MARKET_CODE_LIST.find(
           (o) => o.value === tradeConfig.origin_market_code
         );
+        const node = tradeConfig?.node;
         return {
+          node,
           target,
           origin,
           uuid: tradeConfig.trade_config_uuid,

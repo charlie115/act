@@ -20,7 +20,7 @@ export const DEPOSIT_TYPE = {
     color: 'success.main',
   },
   DEPOSIT: {
-    getLabel: () => i18n.t('deposit-type.Deposit'),
+    getLabel: () => i18n.t('Deposit'),
     color: 'success.main',
   },
   FEE: {

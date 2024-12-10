@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -29,10 +30,11 @@ import { useTheme } from '@mui/material/styles';
 import Countdown from 'react-countdown';
 
 import { useLazyGetDepositBalanceQuery } from 'redux/api/drf/user';
+
 import {
-  useGetDepositAddressQuery,
-  usePostDepositAmountMutation,
-} from 'redux/api/drf/tradecore';
+  useGetWalletAddressQuery,
+  usePostWalletTransactionMutation,
+} from 'redux/api/drf/wallet';
 
 import QRCode from 'react-qr-code';
 
@@ -52,24 +54,24 @@ const STEPS = [
     key: 'walletAddress',
     getLabel: () => i18n.t('Send cryptocurrency to our wallet'),
   },
-  { key: 'transactionId', getLabel: () => i18n.t('Register Transaction ID') },
+  { key: 'CheckTransactions', getLabel: () => i18n.t('Check Transactions') },
   {
     key: 'balance',
     getLabel: () => i18n.t('Top-up complete!'),
   },
 ];
 
-const COUNTDOWN_IN_SECONDS = 15;
+const COUNTDOWN_IN_SECONDS = 5;
 
-export default function TopUpDeposit({ tradeConfigUuid }) {
+export default function TopUpDeposit() {
   const { t } = useTranslation();
-
+  const { user } = useSelector((state) => state.auth);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const { openSnackbar } = useGlobalSnackbar();
 
-  const { getCookie: getDepositAddress, setCookie: setDepositAddress } =
+  const { getCookie: getWalletAddress, setCookie: setWalletAddress } =
     useCookie('dpaddr');
 
   const { getCookie: getCountdown, setCookie: setCountdown } =
@@ -77,21 +79,19 @@ export default function TopUpDeposit({ tradeConfigUuid }) {
 
   const [activeStep, setActiveStep] = useState(0);
 
-  const [transactionId, setTransactionId] = useState('');
-
-  const [address, setAddress] = useState(getDepositAddress());
+  const [address, setAddress] = useState(getWalletAddress());
   const [amount, setAmount] = useState();
   const [balance, setBalance] = useState();
 
   const [message, setMessage] = useState();
   const [countdownDate, setCountdownDate] = useState();
 
-  const [postDepositAmount, depositAmount] = usePostDepositAmountMutation();
+  const [postDepositAmount, depositAmount] = usePostWalletTransactionMutation();
   const [getDepositBalance, depositBalance] = useLazyGetDepositBalanceQuery();
 
-  const { data: depositAddress } = useGetDepositAddressQuery(
-    { tradeConfigUuid },
-    { skip: activeStep !== 0 || !!address || !tradeConfigUuid }
+  const { data: depositAddress } = useGetWalletAddressQuery(
+    user.uuid,
+    { skip: activeStep !== 0 || !!address || !user?.uuid }
   );
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function TopUpDeposit({ tradeConfigUuid }) {
         .plus({ seconds: COUNTDOWN_IN_SECONDS })
         .toJSDate();
       cookieOptions.expires = expires;
-      setDepositAddress(depositAddress.address, cookieOptions);
+      setWalletAddress(depositAddress.address, cookieOptions);
       setAddress(depositAddress.address);
     }
   }, [depositAddress]);
@@ -146,9 +146,8 @@ export default function TopUpDeposit({ tradeConfigUuid }) {
               <Grid item xs={12} md={7}>
                 <Typography gutterBottom>
                   {t(
-                    'Copy our wallet address in your exchange and make a crypto deposit'
+                    'Copy our wallet address in your exchange and make a crypto deposit. You should transact via TRC-20(TRX)!'
                   )}
-                  :
                 </Typography>
                 <OutlinedInput
                   fullWidth
@@ -207,17 +206,9 @@ export default function TopUpDeposit({ tradeConfigUuid }) {
           <Box>
             <Typography sx={{ mb: 2 }}>
               {t(
-                'Copy and paste the Transaction ID from your exchange and click Complete.'
+                'Please click the button below to confirm your deposit after sending the cryptocurrency to our wallet'
               )}
             </Typography>
-            <TextField
-              autoFocus
-              fullWidth
-              autoComplete="off"
-              label={t('Transaction ID')}
-              value={transactionId}
-              onChange={(e) => setTransactionId(e.target.value || '')}
-            />
             {message && (
               <Typography sx={{ color: 'error.main', mt: 2 }}>
                 {message}
@@ -246,7 +237,7 @@ export default function TopUpDeposit({ tradeConfigUuid }) {
                   textAlign: 'center',
                 }}
               >
-                {transactionId}
+                {/* {transactionId} */}
               </Typography>
               <Table
                 sx={{
@@ -290,7 +281,8 @@ export default function TopUpDeposit({ tradeConfigUuid }) {
             disabled={
               (activeStep === 0 && !address) ||
               (activeStep === 1 &&
-                (!transactionId || depositAmount.isLoading)) ||
+                // (!transactionId || depositAmount.isLoading)) ||
+                (depositAmount.isLoading)) ||
               (activeStep > 0 && !!countdownDate)
             }
             size="large"
@@ -310,14 +302,19 @@ export default function TopUpDeposit({ tradeConfigUuid }) {
                 cookieOptions.expires = expires;
                 try {
                   const result = await postDepositAmount({
-                    txid: transactionId,
-                    trade_config_uuid: tradeConfigUuid,
+                    user: user.uuid,
+                    asset: "USDT",
                   }).unwrap();
-                  if (result?.amount) {
-                    setAmount(result.amount);
-                    getDepositBalance();
+                  if (result?.result) {
+                    if (result.result.total_deposit_amount !== 0) {
+                      setAmount(result.result.total_deposit_amount);
+                      getDepositBalance();
+                      setActiveStep(2);
+                    }
+                    else {
+                      setMessage(t('The deposit has not yet been confirmed. Please check back later.'));
+                    }
                   }
-                  setActiveStep(2);
 
                   setCountdown(countdownDateTime.toMillis(), cookieOptions);
                   setCountdownDate(countdownDateTime.toJSDate());
@@ -340,7 +337,6 @@ export default function TopUpDeposit({ tradeConfigUuid }) {
               }
               if (activeStep === 2) {
                 setActiveStep(0);
-                setTransactionId('');
                 setMessage();
 
                 setAmount();
@@ -356,13 +352,13 @@ export default function TopUpDeposit({ tradeConfigUuid }) {
                   intervalDelay={1000}
                   renderer={({ seconds }) =>
                     `${
-                      activeStep === 2 ? t('New') : t('Complete')
+                      activeStep === 2 ? t('New Deposit') : t('Check Deposit')
                     } (${seconds})`
                   }
                   onComplete={() => setCountdownDate()}
                 />
               ) : (
-                [activeStep === 2 ? t('New') : t('Complete')]
+                [activeStep === 2 ? t('New Deposit') : t('Check Deposit')]
               ))}
           </Button>
         </Stack>

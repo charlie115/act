@@ -19,11 +19,13 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import Alert from '@mui/material/Alert';
 
 import {
   useDeleteExchangeApiKeyMutation,
   useGetExchangeApiKeyQuery,
   usePostExchangeApiKeyMutation,
+  useGetNodesQuery,
 } from 'redux/api/drf/tradecore';
 
 import { useTranslation } from 'react-i18next';
@@ -40,7 +42,7 @@ import ReactTableUI from 'components/ReactTableUI';
 import renderActionIconCell from 'components/tables/common/renderActionIconCell';
 
 export default function APIKey() {
-  const { marketCodeCombination } = useOutletContext();
+  const { marketCodeCombination, tradeConfigAllocations } = useOutletContext();
 
   const { i18n, t } = useTranslation();
 
@@ -48,12 +50,31 @@ export default function APIKey() {
   const [marketCodeForm, setMarketCodeForm] = useState(null);
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [showSecretKey, setShowSecretKey] = useState(false);
+  // Add new state for error handling
+  const [submitError, setSubmitError] = useState(null);
 
-  const handleCloseDialog = () => setMarketCodeForm(null);
+  const handleCloseDialog = () => {
+    setMarketCodeForm(null);
+    setSubmitError(null); // Reset submit error
+  };
 
   const { data: exchangeApiKeys } = useGetExchangeApiKeyQuery({
     tradeConfigUuid: marketCodeCombination.tradeConfigUuid,
   });
+
+  const { data: nodes } = useGetNodesQuery();
+
+  // Get the node ID from the trade config allocations
+  const allocatedNodeId = tradeConfigAllocations?.find(
+    (item) => item.uuid === marketCodeCombination.tradeConfigUuid
+  )?.node;
+
+  // Get the node URL from the nodes data
+  const allocatedNodeUrl = nodes?.results.find((item) => item.id === allocatedNodeId)?.url;
+
+  // Get the node IP address from the node URL
+  const allocatedNodeIp = allocatedNodeUrl?.split('://')[1].split(':')[0];
+
   const [createExchangeApiKey, createResults] = usePostExchangeApiKeyMutation();
   const [deleteExchangeApiKey, deleteResults] =
     useDeleteExchangeApiKeyMutation();
@@ -66,6 +87,7 @@ export default function APIKey() {
   const { errors, isValid } = formState;
 
   const onSubmit = (data) => {
+    setSubmitError(null);
     createExchangeApiKey({
       trade_config_uuid: marketCodeCombination.tradeConfigUuid,
       market_code: marketCodeForm.value,
@@ -150,6 +172,9 @@ export default function APIKey() {
       setShowPassphrase(false);
       setShowSecretKey(false);
       setMarketCodeForm(null);
+      setSubmitError(null);
+    } else if (createResults.isError) {
+      setSubmitError(createResults.error);
     }
   }, [createResults]);
 
@@ -242,8 +267,15 @@ export default function APIKey() {
         <DialogContent>
           <DialogContentText>
             {t(
-              'To receive trade notifications, please enter your {{marketCode}} API Key',
+              'To activate trade features, please register your {{marketCode}} API Key',
               { marketCode: marketCodeForm?.getLabel() || '' }
+            )}
+            .
+          </DialogContentText>
+          <DialogContentText>
+            {t(
+              'When issuing an API key, please allow {{allocatedNodeIp}} for the access',
+              { allocatedNodeIp: allocatedNodeIp || '' }
             )}
             .
           </DialogContentText>
@@ -312,6 +344,23 @@ export default function APIKey() {
               }}
               {...register('passphrase', { required: true })}
             />
+          )}
+          {submitError && (
+            <Alert severity="error" sx={{ my: 2 }}>
+              {(() => {
+                if (submitError.status && submitError.data) {
+                  if (submitError.status === 409) {
+                    return t('API Key already exists');
+                  }
+                  if (typeof submitError.data?.detail === 'string') {
+                    const message = t('API key is not valid or IP permission is not set. Please check the API key and IP permission. error: {{error}}', { error: submitError.data.detail });
+                    return message
+                  }
+                  return 'An error occurred during submission.';
+                }
+                return t('Unknown error occurred. Contact the administrator');
+              })()}
+            </Alert>
           )}
         </DialogContent>
         <DialogActions>

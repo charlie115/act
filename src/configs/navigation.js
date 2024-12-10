@@ -18,6 +18,7 @@ const APIKey = lazy(() => import('pages/bot/APIKey'));
 const Bot = lazy(() => import('pages/bot'));
 const Deposit = lazy(() => import('pages/bot/Deposit'));
 const Position = lazy(() => import('pages/bot/Position'));
+const Capital = lazy(() => import('pages/bot/Capital'));
 const PnLHistory = lazy(() => import('pages/bot/PnLHistory'));
 const Settings = lazy(() => import('pages/bot/Settings'));
 const Triggers = lazy(() => import('pages/bot/Triggers'));
@@ -135,6 +136,11 @@ const main = [
         name: 'bot/position',
         path: '/bot/position',
         element: Position,
+      },
+      {
+        name: 'bot/capital',
+        path: '/bot/capital',
+        element: Capital,
       },
       {
         name: 'bot/settings',
