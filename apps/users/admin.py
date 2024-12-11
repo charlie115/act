@@ -32,7 +32,7 @@ from users.models import (
     DepositHistory,
     WithdrawalRequest,
 )
-from users.utils import get_user_withdrawable_balance
+from users.utils import get_user_withdrawable_balance, get_user_withdrawable_commission
 
 from wallet.mixins import WalletMixin
 from lib.status import HTTP_200_OK, HTTP_201_CREATED
@@ -331,7 +331,7 @@ class WithdrawalRequestAdmin(ModelAdmin):
     search_fields = ('user__email', 'address', 'txid')
     
     # Make some fields read-only if desired. For example:
-    readonly_fields = ('requested_datetime', 'user_address', 'address', 'get_withdrawable_balance', 'get_actual_usdt_balance', 'get_actual_trx_balance', 'amount', 'type', 'txid', 'authorized_by', 'approved_datetime', 'completed_datetime')
+    readonly_fields = ('requested_datetime', 'user_address', 'address', 'get_withdrawable_balance', 'get_actual_usdt_balance', 'get_actual_trx_balance', 'get_withdrawable_commission', 'amount', 'type', 'txid', 'authorized_by', 'approved_datetime', 'completed_datetime')
 
     actions = ['approve_withdrawal', 'reject_withdrawal', 'mark_completed']
 
@@ -421,6 +421,12 @@ class WithdrawalRequestAdmin(ModelAdmin):
             return get_user_withdrawable_balance(obj.user)
         return "-"
     
+    def get_withdrawable_commission(self, obj):
+        # Return the user's withdrawable commission balance
+        if obj.user:
+            return get_user_withdrawable_commission(obj.user)
+        return "-"
+    
     def get_actual_usdt_balance(self, obj):
         # Return the user's actual USDT balance in HDwallet
         # This would be a call to the hdwallet-service API
@@ -459,6 +465,7 @@ class WithdrawalRequestAdmin(ModelAdmin):
     
     user_address.short_description = "User Address"
     get_withdrawable_balance.short_description = "Withdrawable Balance"
+    get_withdrawable_commission.short_description = "Withdrawable Commission"
     get_actual_usdt_balance.short_description = "Actual USDT Balance"
     get_actual_trx_balance.short_description = "Actual TRX Balance"
     approve_withdrawal.short_description = "Approve selected withdrawal requests"

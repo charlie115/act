@@ -4,7 +4,7 @@ from rest_framework import serializers
 from lib.datetime import DATE_TIME_FORMAT
 from tradecore.serializers import TradeConfigAllocationSerializer
 from users.mixins import UserFavoriteAssetsValidatorMixin, UserUUIDSerializerMixin
-from users.utils import get_user_withdrawable_balance
+from users.utils import get_user_withdrawable_balance, get_user_withdrawable_commission
 from users.models import (
     User,
     UserBlocklist,
@@ -139,10 +139,10 @@ class UserBlocklistSerializer(serializers.ModelSerializer):
 class DepositBalanceSerializer(serializers.ModelSerializer):
     user = serializers.SlugRelatedField(queryset=User.objects.all(), slug_field="uuid")
     withdrawable_balance = serializers.SerializerMethodField()
-
+    withdrawable_commission = serializers.SerializerMethodField()
     class Meta:
         model = DepositBalance
-        fields = ("id", "user", "balance", "last_update", "withdrawable_balance")
+        fields = ("id", "user", "balance", "last_update", "withdrawable_balance", "withdrawable_commission")
         extra_kwargs = {
             "last_update": {"read_only": True},
         }
@@ -150,6 +150,10 @@ class DepositBalanceSerializer(serializers.ModelSerializer):
     def get_withdrawable_balance(self, obj):
         # Call the utility function to get withdrawable balance for this user
         return get_user_withdrawable_balance(obj.user)
+    
+    def get_withdrawable_commission(self, obj):
+        # Call the utility function to get withdrawable commission for this user
+        return get_user_withdrawable_commission(obj.user)
 
 class DepositHistorySerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
     user = serializers.SlugRelatedField(queryset=User.objects.all(), slug_field="uuid")
