@@ -163,7 +163,6 @@ class DepositHistorySerializer(UserUUIDSerializerMixin, serializers.ModelSeriali
         )
 
 class WithdrawalRequestSerializer(serializers.ModelSerializer):
-    user = serializers.SlugRelatedField(queryset=User.objects.all(), slug_field="uuid")
     type = serializers.ChoiceField(choices=WithdrawalRequest.TYPES)
     class Meta:
         model = WithdrawalRequest
