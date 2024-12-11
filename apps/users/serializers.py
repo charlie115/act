@@ -174,6 +174,8 @@ class WithdrawalRequestSerializer(serializers.ModelSerializer):
         withdrawable = get_user_withdrawable_balance(user)
         if attrs['amount'] > withdrawable:
             raise serializers.ValidationError("Requested amount exceeds your withdrawable balance.")
+        withdrawal_address = attrs['address']
+        
 
         return attrs
 

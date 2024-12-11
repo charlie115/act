@@ -301,7 +301,7 @@ class DepositHistoryViewSet(UserOwnedViewSet):
     ),
     retrieve=extend_schema(
         operation_id="Retrieve a withdrawal request",
-        description="Retrieves the details of an existing `deposit history`.",
+        description="Retrieves the details of an existing `withdrawal requests`.",
     ),
     create=extend_schema(
         operation_id="Create a withdrawal request",

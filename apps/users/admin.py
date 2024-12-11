@@ -323,14 +323,15 @@ class DepositHistoryAdmin(ModelAdmin):
         return False
     
 class WithdrawalRequestAdmin(ModelAdmin):
+    hdwallet_address_endpoint = "user_wallet/address/"
     hdwallet_balance_endpoint = "user_wallet/balance/"
-    transfer_endpoint = "user_wallet/transfer/"
+    hdwallet_transfer_endpoint = "user_wallet/transfer/"
     list_display = ('user', 'get_withdrawable_balance', 'get_actual_usdt_balance', 'get_actual_trx_balance', 'amount', 'type', 'status', 'requested_datetime', 'approved_datetime', 'completed_datetime', 'authorized_by')
     list_filter = ('status', 'type', 'amount')
     search_fields = ('user__email', 'address', 'txid')
     
     # Make some fields read-only if desired. For example:
-    readonly_fields = ('requested_datetime', 'amount', 'type', 'txid', 'authorized_by', 'approved_datetime', 'completed_datetime', 'get_withdrawable_balance')
+    readonly_fields = ('requested_datetime', 'user_address', 'address', 'get_withdrawable_balance', 'get_actual_usdt_balance', 'get_actual_trx_balance', 'amount', 'type', 'txid', 'authorized_by', 'approved_datetime', 'completed_datetime')
 
     actions = ['approve_withdrawal', 'reject_withdrawal', 'mark_completed']
 
@@ -353,7 +354,7 @@ class WithdrawalRequestAdmin(ModelAdmin):
             # Here you would call hdwallet-service API to execute the withdrawal
             wallet = WalletMixin()
             api_response = wallet.hdwallet_service_create_api(
-                endpoint=self.transfer_endpoint,
+                endpoint=self.hdwallet_transfer_endpoint,
                 data={
                     "user_id": wr.user.id,
                     "asset": "USDT",
@@ -398,6 +399,22 @@ class WithdrawalRequestAdmin(ModelAdmin):
             return False
         return super().has_change_permission(request, obj)
     
+    def user_address(self, obj):
+        # Return the user's address from hdwallet-service API
+        if obj.user:
+            wallet = WalletMixin()
+            api_response = wallet.hdwallet_service_retrieve_api(
+            endpoint=self.hdwallet_address_endpoint,
+            path_param=obj.user.id,
+            )
+            if api_response.status_code == HTTP_200_OK:
+                obj = api_response.json()
+                return obj["address"]
+            else:
+                return "-"
+        else:
+            return "-"
+
     def get_withdrawable_balance(self, obj):
         # Return the user's withdrawable balance
         if obj.user:
@@ -440,6 +457,7 @@ class WithdrawalRequestAdmin(ModelAdmin):
         else:
             return "-"
     
+    user_address.short_description = "User Address"
     get_withdrawable_balance.short_description = "Withdrawable Balance"
     get_actual_usdt_balance.short_description = "Actual USDT Balance"
     get_actual_trx_balance.short_description = "Actual TRX Balance"
