@@ -20,7 +20,7 @@ def get_user_withdrawable_balance(user):
     # If fee entries are positive changes representing a deduction, do:
     # net = deposit_sum - fee_sum
     # For now, let's assume fee entries are negative amounts, so just sum them together:
-    net = user.deposit_history.filter(type__in=['DEPOSIT', 'FEE']).aggregate(total=Sum('change'))['total'] or Decimal('0')
+    net = user.deposit_history.filter(type__in=['DEPOSIT', 'FEE', 'WITHDRAW']).aggregate(total=Sum('change'))['total'] or Decimal('0')
     # If coupons or commissions are credited to user but not withdrawable, do not include them in net calculation.
     # If they are in deposit balance but should not be withdrawable, you must exclude them from net.
 
