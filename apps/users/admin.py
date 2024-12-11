@@ -323,7 +323,7 @@ class DepositHistoryAdmin(ModelAdmin):
         return False
     
 class WithdrawalRequestAdmin(ModelAdmin):
-    hdwallet_address_endpoint = "user_wallet/address/"
+    hdwallet_address_endpoint = "user_wallet/"
     hdwallet_balance_endpoint = "user_wallet/balance/"
     hdwallet_transfer_endpoint = "user_wallet/transfer/"
     list_display = ('user', 'get_withdrawable_balance', 'get_actual_usdt_balance', 'get_actual_trx_balance', 'amount', 'type', 'status', 'requested_datetime', 'approved_datetime', 'completed_datetime', 'authorized_by')
