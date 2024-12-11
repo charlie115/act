@@ -372,10 +372,10 @@ class WithdrawalRequestAdmin(ModelAdmin):
             # Suppose we get a txid back:
             txid = api_response.json().get("txid")
             wr.txid = txid
-            wr.status = WithdrawalRequest.COMPLETED
-            # Check whether it was PENDING state, if so also update the approved_datetime
-            if wr.status == WithdrawalRequest.PENDING:
+            # Check whether it wasn't APPROVED state, if so also update the approved_datetime
+            if wr.status != WithdrawalRequest.APPROVED:
                 wr.approved_datetime = now()
+            wr.status = WithdrawalRequest.COMPLETED
             wr.completed_datetime = now()
             wr.authorized_by = request.user
             wr.save()

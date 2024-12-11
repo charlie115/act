@@ -150,7 +150,6 @@ class DepositBalanceSerializer(serializers.ModelSerializer):
 class DepositHistorySerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
     user = serializers.SlugRelatedField(queryset=User.objects.all(), slug_field="uuid")
     balance = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-
     class Meta:
         model = DepositHistory
         fields = (
@@ -164,6 +163,8 @@ class DepositHistorySerializer(UserUUIDSerializerMixin, serializers.ModelSeriali
         )
 
 class WithdrawalRequestSerializer(serializers.ModelSerializer):
+    user = serializers.SlugRelatedField(queryset=User.objects.all(), slug_field="uuid")
+    type = serializers.ChoiceField(choices=WithdrawalRequest.TYPES)
     class Meta:
         model = WithdrawalRequest
         fields = ['id', 'user', 'amount', 'address', 'type', 'status', 'requested_datetime', 'approved_datetime', 'completed_datetime', 'txid', 'remark']
@@ -173,9 +174,7 @@ class WithdrawalRequestSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         withdrawable = get_user_withdrawable_balance(user)
         if attrs['amount'] > withdrawable:
-            raise serializers.ValidationError("Requested amount exceeds your withdrawable balance.")
-        withdrawal_address = attrs['address']
-        
+            raise serializers.ValidationError("Requested amount exceeds your withdrawable balance.")        
 
         return attrs
 
