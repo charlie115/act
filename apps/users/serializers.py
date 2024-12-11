@@ -138,14 +138,18 @@ class UserBlocklistSerializer(serializers.ModelSerializer):
 
 class DepositBalanceSerializer(serializers.ModelSerializer):
     user = serializers.SlugRelatedField(queryset=User.objects.all(), slug_field="uuid")
+    withdrawable_balance = serializers.SerializerMethodField()
 
     class Meta:
         model = DepositBalance
-        fields = ("id", "user", "balance", "last_update")
+        fields = ("id", "user", "balance", "last_update", "withdrawable_balance")
         extra_kwargs = {
             "last_update": {"read_only": True},
         }
-
+        
+    def get_withdrawable_balance(self, obj):
+        # Call the utility function to get withdrawable balance for this user
+        return get_user_withdrawable_balance(obj.user)
 
 class DepositHistorySerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
     user = serializers.SlugRelatedField(queryset=User.objects.all(), slug_field="uuid")
