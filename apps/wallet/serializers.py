@@ -25,6 +25,7 @@ class UserWalletQueryParamsSerializer(serializers.Serializer):
     
 class UserWalletBalanceQueryParmasSerializer(serializers.Serializer):
     user = serializers.UUIDField(required=True)
+    asset = serializers.CharField(required=True)
     
     def validate(self, attrs):
         # If user_id provided, ensure it matches authenticated user

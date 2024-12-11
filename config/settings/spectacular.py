@@ -36,6 +36,7 @@ SPECTACULAR_SETTINGS = {
                     "UserFavoriteAssets",
                     "DepositBalance",
                     "DepositHistory",
+                    "WithdrawalRequest",
                 ],
             },
             {

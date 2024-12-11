@@ -8,6 +8,7 @@ from users.views import (
     UserProfileViewSet,
     DepositBalanceViewSet,
     DepositHistoryViewSet,
+    WithdrawalRequestViewSet,
 )
 
 
@@ -33,5 +34,6 @@ router.register(r"favorite-assets", UserFavoriteAssetsViewSet)
 router.register(r"profiles", UserProfileViewSet)
 router.register(r"deposit-balance", DepositBalanceViewSet)
 router.register(r"deposit-history", DepositHistoryViewSet)
+router.register(r"withdrawal-request", WithdrawalRequestViewSet)
 
 urlpatterns = router.urls

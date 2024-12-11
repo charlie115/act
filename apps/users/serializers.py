@@ -4,6 +4,7 @@ from rest_framework import serializers
 from lib.datetime import DATE_TIME_FORMAT
 from tradecore.serializers import TradeConfigAllocationSerializer
 from users.mixins import UserFavoriteAssetsValidatorMixin, UserUUIDSerializerMixin
+from users.utils import get_user_withdrawable_balance
 from users.models import (
     User,
     UserBlocklist,
@@ -12,6 +13,7 @@ from users.models import (
     UserSocialApps,
     DepositBalance,
     DepositHistory,
+    WithdrawalRequest,
 )
 from socialaccounts.models import ProxySocialApp
 from socialaccounts.serializers import ProxySocialAppSerializer
@@ -160,3 +162,27 @@ class DepositHistorySerializer(UserUUIDSerializerMixin, serializers.ModelSeriali
             "pending",
             "registered_datetime",
         )
+
+class WithdrawalRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WithdrawalRequest
+        fields = ['id', 'user', 'amount', 'address', 'type', 'status', 'requested_datetime', 'approved_datetime', 'completed_datetime', 'txid', 'remark']
+        read_only_fields = ['type', 'status', 'authorized_by', 'requested_datetime', 'approved_datetime', 'completed_datetime', 'txid', 'remark', 'user']
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        withdrawable = get_user_withdrawable_balance(user)
+        if attrs['amount'] > withdrawable:
+            raise serializers.ValidationError("Requested amount exceeds your withdrawable balance.")
+
+        return attrs
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        return WithdrawalRequest.objects.create(user=user, **validated_data)
+    
+    def update(self, instance, validated_data):
+        # For updates, also set authorized_by to the request user
+        user = self.context['request'].user
+        validated_data['authorized_by'] = user
+        return super().update(instance, validated_data)

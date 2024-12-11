@@ -2,9 +2,11 @@ import json
 
 from django import forms
 from django.contrib import admin
+from django.utils.timezone import now
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
+import datetime
 
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
@@ -28,7 +30,12 @@ from users.models import (
     UserSocialApps,
     DepositBalance,
     DepositHistory,
+    WithdrawalRequest,
 )
+from users.utils import get_user_withdrawable_balance
+
+from wallet.mixins import WalletMixin
+from lib.status import HTTP_200_OK, HTTP_201_CREATED
 
 
 class UserRoleAdmin(ModelAdmin):
@@ -314,6 +321,131 @@ class DepositHistoryAdmin(ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+    
+class WithdrawalRequestAdmin(ModelAdmin):
+    hdwallet_balance_endpoint = "user_wallet/balance/"
+    transfer_endpoint = "user_wallet/transfer/"
+    list_display = ('user', 'get_withdrawable_balance', 'get_actual_usdt_balance', 'get_actual_trx_balance', 'amount', 'type', 'status', 'requested_datetime', 'approved_datetime', 'completed_datetime', 'authorized_by')
+    list_filter = ('status', 'type', 'amount')
+    search_fields = ('user__email', 'address', 'txid')
+    
+    # Make some fields read-only if desired. For example:
+    readonly_fields = ('requested_datetime', 'amount', 'type', 'txid', 'authorized_by', 'approved_datetime', 'completed_datetime', 'get_withdrawable_balance')
+
+    actions = ['approve_withdrawal', 'reject_withdrawal', 'mark_completed']
+
+    def approve_withdrawal(self, request, queryset):
+        for wr in queryset.filter(status=WithdrawalRequest.PENDING):
+            wr.status = WithdrawalRequest.APPROVED
+            wr.approved_datetime = now()
+            wr.authorized_by = request.user
+            wr.save()
+
+    def reject_withdrawal(self, request, queryset):
+        for wr in queryset.filter(status=WithdrawalRequest.PENDING):
+            wr.status = WithdrawalRequest.REJECTED
+            wr.authorized_by = request.user
+            wr.save()
+
+    def mark_completed(self, request, queryset):
+        # filter in both APPROVED and PENDING status
+        for wr in queryset.filter(status__in=[WithdrawalRequest.APPROVED, WithdrawalRequest.PENDING]):
+            # Here you would call hdwallet-service API to execute the withdrawal
+            wallet = WalletMixin()
+            api_response = wallet.hdwallet_service_create_api(
+                endpoint=self.transfer_endpoint,
+                data={
+                    "user_id": wr.user.id,
+                    "asset": "USDT",
+                    "amount": wr.amount,
+                    "to_address": wr.address,
+                }
+            )
+            if api_response.status_code != HTTP_201_CREATED and api_response.status_code != HTTP_200_OK:
+                # Handle the error
+                wr.status = WithdrawalRequest.REJECTED
+                wr.remark = f"Failed to execute withdrawal, {api_response.json()}"
+                wr.authorized_by = request.user
+                wr.save()
+                continue
+            # Suppose we get a txid back:
+            txid = api_response.json().get("txid")
+            wr.txid = txid
+            wr.status = WithdrawalRequest.COMPLETED
+            # Check whether it was PENDING state, if so also update the approved_datetime
+            if wr.status == WithdrawalRequest.PENDING:
+                wr.approved_datetime = now()
+            wr.completed_datetime = now()
+            wr.authorized_by = request.user
+            wr.save()
+            
+            # Update deposit history to reflect the withdrawal
+            DepositHistory.objects.create(
+                user=wr.user,
+                change=-wr.amount,
+                type=DepositHistory.WITHDRAW,
+                txid=txid,
+                description=f"Withdrawal executed to {wr.address}"
+            )
+            
+    def has_add_permission(self, request):
+        # Disallow adding new WithdrawalRequests from the admin
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        # Allow viewing the changelist but not detail pages
+        if obj is not None:
+            return False
+        return super().has_change_permission(request, obj)
+    
+    def get_withdrawable_balance(self, obj):
+        # Return the user's withdrawable balance
+        if obj.user:
+            return get_user_withdrawable_balance(obj.user)
+        return "-"
+    
+    def get_actual_usdt_balance(self, obj):
+        # Return the user's actual USDT balance in HDwallet
+        # This would be a call to the hdwallet-service API
+        if obj.user:
+            wallet = WalletMixin()
+            api_response = wallet.hdwallet_service_retrieve_api(
+            endpoint=self.hdwallet_balance_endpoint,
+            path_param=obj.user.id,
+            query_params={"asset": "USDT"},
+            )
+            if api_response.status_code == HTTP_200_OK:
+                obj = api_response.json()
+                return obj["balance"]
+            else:
+                return "-"
+        else:
+            return "-"
+        
+    def get_actual_trx_balance(self, obj):
+        # Return the user's actual TRX balance in HDwallet
+        # This would be a call to the hdwallet-service API
+        if obj.user:
+            wallet = WalletMixin()
+            api_response = wallet.hdwallet_service_retrieve_api(
+            endpoint=self.hdwallet_balance_endpoint,
+            path_param=obj.user.id,
+            query_params={"asset": "TRX"},
+            )
+            if api_response.status_code == HTTP_200_OK:
+                obj = api_response.json()
+                return obj["balance"]
+            else:
+                return "-"
+        else:
+            return "-"
+    
+    get_withdrawable_balance.short_description = "Withdrawable Balance"
+    get_actual_usdt_balance.short_description = "Actual USDT Balance"
+    get_actual_trx_balance.short_description = "Actual TRX Balance"
+    approve_withdrawal.short_description = "Approve selected withdrawal requests"
+    reject_withdrawal.short_description = "Reject selected withdrawal requests"
+    mark_completed.short_description = "Mark selected requests as completed and execute withdrawal"
 
 
 admin.site.register(UserBlocklist, UserBlocklistAdmin)
@@ -324,3 +456,4 @@ admin.site.register(UserSocialApps, UserSocialAppsAdmin)
 admin.site.register(User, UserAdmin)
 admin.site.register(DepositBalance, DepositBalanceAdmin)
 admin.site.register(DepositHistory, DepositHistoryAdmin)
+admin.site.register(WithdrawalRequest, WithdrawalRequestAdmin)

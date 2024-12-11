@@ -60,9 +60,13 @@ class UserWalletBalanceView(WalletMixin, views.APIView):
     hdwallet_api_endpoint = "user_wallet/balance/"
 
     def get(self, request, user):
+        asset = request.query_params.get("asset")
         query_params = (UserWalletBalanceQueryParmasSerializer(
             context={"view": self, "request": request},
-            data={"user": user}, # user uuid
+            data={
+                    "user": user,
+                    "asset": asset
+                },
         ))
         query_params.is_valid(raise_exception=True)
         validated_data = query_params.validated_data
@@ -72,9 +76,12 @@ class UserWalletBalanceView(WalletMixin, views.APIView):
         return response.Response(data)
 
     def get_data(self, validated_data):
+        query_params = {}
+        query_params["asset"] = validated_data.get("asset")
         api_response = self.hdwallet_service_retrieve_api(
             endpoint=self.hdwallet_api_endpoint,
             path_param=validated_data.get("user_id"),
+            query_params=query_params,
         )
 
         if api_response.status_code == HTTP_200_OK:
@@ -124,14 +131,15 @@ class UserWalletTransactionView(WalletMixin, views.APIView):
                         )
                 type = DepositHistory.DEPOSIT
                 total_deposit_amount += change
-            # Check whether it's outgoing transaction(withdraw)
+            # Check whether it's outgoing transaction(withdraw) -> 회사로 돈 뺄때는 어떻게 처리? -> 처리하지 말자. 이건 나중에 유저 withdrawl 에서 처리하기로.
             else:
-                change = (Decimal(transaction.get('amount')) * Decimal('-1')).quantize(
-                            Decimal('0.01'),
-                            rounding=ROUND_HALF_UP
-                        )
-                type = DepositHistory.WITHDRAW
-                total_withdraw_amount += change * Decimal('-1')         
+                # change = (Decimal(transaction.get('amount')) * Decimal('-1')).quantize(
+                #             Decimal('0.01'),
+                #             rounding=ROUND_HALF_UP
+                #         )
+                # type = DepositHistory.WITHDRAW
+                # total_withdraw_amount += change * Decimal('-1')
+                continue
                 
             # Save the transaction to the deposit history
             DepositHistory.objects.create(

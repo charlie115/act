@@ -36,6 +36,11 @@ UNFOLD = {
                         "link": reverse_lazy("admin:users_depositbalance_changelist"),
                     },
                     {
+                        "title": _("Withdrawal Requests"),
+                        "icon": "money_off",
+                        "link": reverse_lazy("admin:users_withdrawalrequest_changelist"),
+                    },
+                    {
                         "title": _("Fee Levels"),
                         "icon": "money",
                         "link": reverse_lazy("admin:fee_userfeelevel_changelist"),

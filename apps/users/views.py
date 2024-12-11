@@ -17,6 +17,7 @@ from users.models import (
     UserProfile,
     DepositBalance,
     DepositHistory,
+    WithdrawalRequest,
 )
 from users.serializers import (
     UserSerializer,
@@ -25,6 +26,7 @@ from users.serializers import (
     UserBlocklistSerializer,
     DepositBalanceSerializer,
     DepositHistorySerializer,
+    WithdrawalRequestSerializer,
 )
 
 
@@ -290,3 +292,28 @@ class DepositHistoryViewSet(UserOwnedViewSet):
             permission_classes = []
 
         return [permission() for permission in permission_classes]
+    
+@extend_schema(tags=["WithdrawalRequest"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List withdrawal requests",
+        description="Returns a list of all `withdrawal requests`.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve a withdrawal request",
+        description="Retrieves the details of an existing `deposit history`.",
+    ),
+    create=extend_schema(
+        operation_id="Create a withdrawal request",
+        description="Creates a new `withdrawal request`.",
+    ),
+)
+class WithdrawalRequestViewSet(UserOwnedViewSet):
+    queryset = WithdrawalRequest.objects.all()
+    serializer_class = WithdrawalRequestSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ['user', 'type', 'status', 'type']
+    ordering_fields = ['id', 'user', 'amount', 'type', 'status', 'requested_datetime', 'approved_datetime', 'completed_datetime',]
+    ordering = ['id']
+    http_method_names = ['get', 'post']
+    

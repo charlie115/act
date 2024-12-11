@@ -268,6 +268,13 @@ class DepositHistory(models.Model):
         on_delete=models.CASCADE,
         related_name="deposit_history",
     )
+    commission_from = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="deposit_history_from",
+        blank=True,
+        null=True,
+    ) # For commission
     change = models.DecimalField(max_digits=10, decimal_places=2)
     balance = models.DecimalField(max_digits=10, decimal_places=2)
     txid = models.TextField(blank=True, null=True)
@@ -291,3 +298,53 @@ class DepositHistory(models.Model):
     class Meta:
         verbose_name = "Deposit History"
         verbose_name_plural = "Deposit History"
+
+class WithdrawalRequest(models.Model):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    COMPLETED = "COMPLETED"
+    
+    DEPOSIT = "DEPOSIT"
+    COMMISSION = "COMMISSION"
+    
+    STATUSES = (
+        (PENDING, PENDING),
+        (APPROVED, APPROVED),
+        (REJECTED, REJECTED),
+        (COMPLETED, COMPLETED),
+    )
+    
+    TYPES = (
+        (DEPOSIT, DEPOSIT),
+        (COMMISSION, COMMISSION),
+    )
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='withdrawal_requests'
+    )
+    authorized_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='authorized_withdrawal_requests',
+        blank=True,
+        null=True
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    address = models.CharField(max_length=255)  # USDT TRC20 Address
+    type = models.CharField(choices=TYPES, max_length=20)
+    status = models.CharField(choices=STATUSES, default=PENDING, max_length=20)
+    requested_datetime = models.DateTimeField(default=now)
+    approved_datetime = models.DateTimeField(blank=True, null=True)
+    completed_datetime = models.DateTimeField(blank=True, null=True)
+    txid = models.CharField(max_length=255, blank=True, null=True)  # Transaction ID once executed
+    remark = models.TextField(blank=True, null=True)  # For admin notes or user notes
+    
+    def __str__(self):
+        return f"WithdrawalRequest({self.user.email}, {self.amount}, {self.status})"
+    
+    class Meta:
+        verbose_name = "Withdrawal Request"
+        verbose_name_plural = "Withdrawal Requests"
