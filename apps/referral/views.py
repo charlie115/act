@@ -1,128 +1,117 @@
+from lib.views import BaseViewSet
+from users.models import User, DepositHistory
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import exceptions, response, views
+from rest_framework import viewsets, mixins, exceptions, response, status
 from rest_framework.filters import OrderingFilter
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.views import APIView
 
-from fee.models import FeeRate
-from lib.views import BaseViewSet
 from referral.constants import (
     PROFIT_TYPE_FEE,
     PROFIT_TYPE_NET_PROFIT_FROM_TRADE,
     PROFIT_TYPE_COMMISSION,
 )
-from referral.models import Referral, ReferralCode
-from referral.serializers import (
-    ReferralSerializer,
+from fee.models import FeeRate
+
+from .models import AffiliateTier, Affiliate, ReferralCode, Referral
+from .serializers import (
+    AffiliateTierSerializer,
+    AffiliateSerializer,
     ReferralCodeSerializer,
+    ReferralSerializer,
     ReferralCommissionQueryParamsSerializer,
 )
-from users.models import User, DepositHistory
+from .utils import calculate_commission_for_trade
 
+### ViewSets ###
 
-@extend_schema(tags=["Referral"])
+@extend_schema(tags=["AffiliateTier"])
 @extend_schema_view(
-    list=extend_schema(
-        operation_id="List referrals",
-        description="Returns a list of all `referrals`.",
-    ),
-    create=extend_schema(
-        operation_id="Create a referral",
-        description="Creates a new `referral`.",
-    ),
-    retrieve=extend_schema(
-        operation_id="Retrieve a referral",
-        description="Retrieves the details of an existing `referral`.",
-    ),
-    update=extend_schema(
-        operation_id="Fully update a referral",
-        description="Fully updates an existing `referral`.<br>"
-        "*All the previous values of the `referral` will be replaced with the new values provided. "
-        "Any parameters not provided will be unset.*",
-    ),
-    partial_update=extend_schema(
-        operation_id="Update a referral",
-        description="Updates an existing `referral`.<br>"
-        "*Only the parameters specified will be updated while the rest will be left unchanged.*",
-    ),
-    destroy=extend_schema(
-        operation_id="Delete a referral",
-        description="Deletes an existing `referral`.",
-    ),
+    list=extend_schema(description="List all affiliate tiers"),
+    retrieve=extend_schema(description="Retrieve a specific affiliate tier"),
+    # create=extend_schema(description="Create a new affiliate tier"),
+    # update=extend_schema(description="Update an affiliate tier"),
+    # partial_update=extend_schema(description="Partially update an affiliate tier"),
+    # destroy=extend_schema(description="Delete an affiliate tier"),
 )
-class ReferralViewSet(BaseViewSet):
-    queryset = Referral.objects.all()
-    serializer_class = ReferralSerializer
+class AffiliateTierViewSet(BaseViewSet):
+    queryset = AffiliateTier.objects.all()
+    serializer_class = AffiliateTierSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = (
-        "referred_user",
-        "referral_code",
-        "registered_datetime",
-    )
-    ordering_fields = ["id", "referral_code", "registered_datetime"]
+    filterset_fields = ["name"]
+    ordering_fields = ["id", "name"]
     ordering = ["id"]
-    http_method_names = ["get", "post", "put", "patch", "delete"]
-    pagination_class = PageNumberPagination
-
+    # Allow only get
+    http_method_names = ["get"]
+@extend_schema(tags=["Affiliate"])
+@extend_schema_view(
+    list=extend_schema(description="List all affiliates"),
+    retrieve=extend_schema(description="Retrieve a specific affiliate"),
+    # create=extend_schema(description="Create a new affiliate"),
+    # update=extend_schema(description="Update an affiliate"),
+    # partial_update=extend_schema(description="Partially update an affiliate"),
+    # destroy=extend_schema(description="Delete an affiliate"),
+)
+class AffiliateViewSet(BaseViewSet):
+    queryset = Affiliate.objects.select_related('user', 'tier', 'parent_affiliate')
+    serializer_class = AffiliateSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ["parent_affiliate", "tier"]
+    ordering_fields = ["id", "created_at"]
+    ordering = ["id"]
+    # allow only get
+    http_method_names = ["get"]
 
 @extend_schema(tags=["ReferralCode"])
 @extend_schema_view(
-    list=extend_schema(
-        operation_id="List referral codes",
-        description="Returns a list of all `referral codes`.",
-    ),
-    create=extend_schema(
-        operation_id="Create a referral code",
-        description="Creates a new `referral code`.",
-    ),
-    retrieve=extend_schema(
-        operation_id="Retrieve a referral code",
-        description="Retrieves the details of an existing `referral code`.",
-    ),
-    update=extend_schema(
-        operation_id="Fully update a referral code",
-        description="Fully updates an existing `referral code`.<br>"
-        "*All the previous values of the `referral code` will be replaced with the new values provided. "
-        "Any parameters not provided will be unset.*",
-    ),
-    partial_update=extend_schema(
-        operation_id="Update a referral code",
-        description="Updates an existing `referral code`.<br>"
-        "*Only the parameters specified will be updated while the rest will be left unchanged.*",
-    ),
-    destroy=extend_schema(
-        operation_id="Delete a referral code",
-        description="Deletes an existing `referral code`.",
-    ),
+    list=extend_schema(description="List all referral codes"),
+    retrieve=extend_schema(description="Retrieve a specific referral code"),
+    create=extend_schema(description="Create a new referral code"),
+    # update=extend_schema(description="Update a referral code"),
+    # partial_update=extend_schema(description="Partially update a referral code"),
+    destroy=extend_schema(description="Delete a referral code"),
 )
 class ReferralCodeViewSet(BaseViewSet):
-    queryset = ReferralCode.objects.all()
+    queryset = ReferralCode.objects.select_related('affiliate', 'affiliate__tier', 'affiliate__user')
     serializer_class = ReferralCodeSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = (
-        "user",
-        "referral_group",
-        "code",
-        "target_market_code",
-        "origin_market_code",
-        "max_depth",
-        "contact",
-    )
+    filterset_fields = ["affiliate", "code", "created_at"]
     ordering_fields = ["id", "code"]
     ordering = ["id"]
-    http_method_names = ["get"]
-    pagination_class = PageNumberPagination
+    # allow only get, post, delete
+    http_method_names = ["get", "post", "delete"]
 
+@extend_schema(tags=["Referral"])
+@extend_schema_view(
+    list=extend_schema(description="List all referrals"),
+    retrieve=extend_schema(description="Retrieve a specific referral"),
+    create=extend_schema(description="Create a new referral"),
+    # update=extend_schema(description="Update a referral"),
+    # partial_update=extend_schema(description="Partially update a referral"),
+    # destroy=extend_schema(description="Delete a referral"),
+)
+class ReferralViewSet(BaseViewSet):
+    queryset = Referral.objects.select_related('referral_code', 'referral_code__affiliate', 'referred_user')
+    serializer_class = ReferralSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ["referred_user", "referral_code"]
+    ordering_fields = ["id", "created_at"]
+    ordering = ["id"]
+    # allow only get, post
+    http_method_names = ["get", "post"]
+
+### Commission Calculation View ###
 
 @extend_schema_view(
     get=extend_schema(
         operation_id="Calculate profit and commissions in a trade",
-        description="Returns the user's profit from their trade, as well as all the commissions from the referrals",
+        description="Returns the user's profit from their trade and all commissions earned by affiliates. Query parameters should include necessary info.",
         parameters=[ReferralCommissionQueryParamsSerializer],
-        tags=["ReferralCommission"],
+        tags=["ReferralCommission"]
     ),
 )
-class ReferralCommissionView(views.APIView):
+class ReferralCommissionView(APIView):
     http_method_names = ["get"]
     permission_classes = []
 
@@ -131,130 +120,46 @@ class ReferralCommissionView(views.APIView):
             data=request.query_params
         )
         query_params.is_valid(raise_exception=True)
-        query = query_params.validated_data
+        validated = query_params.validated_data
 
-        self.target_market_code = query.get("target_market_code")
-        self.origin_market_code = query.get("origin_market_code")
+        user_uuid = validated.get("user")
+        user = User.objects.filter(uuid=user_uuid).first()
+        initial_profit = validated.get("initial_profit")  # assuming initial_profit is the profit from user
+        # Calculate the user fee from from the profit using user's fee rate
+        apply_to_deposit = validated.get("apply_to_deposit", False)
+        trade_uuid = validated.get("trade_uuid")
 
-        changes_data = self.get_changes_data(
-            user=query.get("user"),
-            initial_profit=query.get("initial_profit"),
-        )
+        # The `calculate_commission_for_trade` function should be defined in utils.py
+        # It should:
+        #  - Fetch the referral code used by the user (if any).
+        #  - Apply the affiliate tier logic.
+        #  - Compute the discount for user, parent's share if sub-affiliate, etc.
+        #  - Return a structured dictionary with changes.
 
-        if query.get("apply_to_deposit"):
-            for change_data in changes_data:
-                if change_data.get("type") != PROFIT_TYPE_NET_PROFIT_FROM_TRADE:
-                    description = (
-                        f"Referral commission from {change_data.get('commission_from')}"
-                        if change_data.get("commission_from")
-                        else None
-                    )
-
-                    try:
-                        user = User.objects.get(uuid=change_data.get("user"))
-                        DepositHistory.objects.create(
-                            user=user,
-                            change=change_data.get("change"),
-                            type=change_data.get("type"),
-                            description=description,
-                        )
-                    except User.DoesNotExist as err:
-                        print(err)
-
-        data = {
-            "trade_uuid": query.get("trade_uuid"),
-            "changes": changes_data,
-        }
-
-        return response.Response(data)
-
-    def get_changes_data(self, user, initial_profit):
         try:
-            user = User.objects.get(uuid=user)
+            result = calculate_commission_for_trade(user_uuid, initial_profit)
         except User.DoesNotExist:
             raise exceptions.ValidationError({"user": ["User not found."]})
-
-        fee_rate = FeeRate.objects.get(level=user.fee_level.fee_level)
-
-        # User
-        user_fee = initial_profit * fee_rate.rate
-        user_change = initial_profit - user_fee
-
-        data = [
-            {
-                "user": user.uuid,
-                "change": user_change,
-                "type": PROFIT_TYPE_NET_PROFIT_FROM_TRADE,
-            },
-            {
-                "user": user.uuid,
-                "change": user_fee * -1,
-                "type": PROFIT_TYPE_FEE,
-            },
-        ]
-
-        # Referrers
-        try:
-            used_referral = user.used_referrals.get(
-                referral_code__target_market_code=self.target_market_code,
-                referral_code__origin_market_code=self.origin_market_code,
-            )
-            used_referral_code = used_referral.referral_code
-
-            referrer_profit_data = self.compute_commission(
-                referred_user=user,
-                referral_code=used_referral_code,
-                profit=(
-                    user_fee * used_referral_code.referral_group.commission_rate
-                ),  # User's direct referrer
-            )
-            data.extend(referrer_profit_data)
-
         except Referral.DoesNotExist:
+            # User might not have come from a referral, so result could just be user fees without commissions
+            result = {
+                "user_pays": ,
+                "user_discount": 0,
+                "parent_affiliate_earning": 0,
+                "affiliate_earning": 0,
+            }
+
+        # If apply_to_deposit is True, record the payouts in DepositHistory or similar model.
+        # For simplicity, you can integrate that logic in utils or here.
+        # Example:
+        if apply_to_deposit:
+            # from users.models import DepositHistory
+            # Create deposit entries based on 'result'
+            # For example, if affiliate_earning > 0, deposit that to the affiliate's account.
             pass
 
-        return data
-
-    def compute_commission(self, referred_user, referral_code, profit, depth=1):
-        data = []
-
-        user_profit_data = {
-            "user": referral_code.user.uuid,
-            "change": profit,
-            "type": PROFIT_TYPE_COMMISSION,
-            "commission_from": referred_user.uuid,
+        data = {
+            "trade_uuid": trade_uuid,
+            "result": result,
         }
-        try:
-            used_referral = referral_code.user.used_referrals.get(
-                referral_code__target_market_code=self.target_market_code,
-                referral_code__origin_market_code=self.origin_market_code,
-            )
-        except Referral.DoesNotExist:
-            used_referral = None
-
-        if used_referral and referral_code.referral_group.upper_share_rate != 0:
-            # Users who are not direct referrer can't get any profit
-            # And we pass the potention profit instead to the upper referrer in case max_depth > 1
-            if depth > 1 and referral_code.max_depth == 1:
-                user_profit_data["change"] = 0
-                upper_referrer_profit = profit
-            else:
-                upper_referrer_profit = (
-                    profit * referral_code.referral_group.upper_share_rate
-                )
-                user_profit_data["change"] = profit - upper_referrer_profit
-
-            data.append(user_profit_data)
-
-            # Repeat steps to compute for (upper) referrer profit
-            referrer_profit_data = self.compute_commission(
-                referred_user=referral_code.user,
-                referral_code=used_referral.referral_code,
-                profit=upper_referrer_profit,
-                depth=depth + 1,
-            )
-            data.extend(referrer_profit_data)
-        else:
-            data.append(user_profit_data)
-
-        return data
+        return response.Response(data, status=status.HTTP_200_OK)

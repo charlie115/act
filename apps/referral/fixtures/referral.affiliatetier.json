@@ -1,0 +1,72 @@
+[
+  {
+    "model": "referral.affiliatetier",
+    "pk": 1,
+    "fields": {
+        "name": "Iron",
+        "base_commission_rate": "0.10",
+        "parent_commission_rate": "0.00",
+        "required_total_commission": "0"
+    }
+  },
+  {
+    "model": "referral.affiliatetier",
+    "pk": 2,
+    "fields": {
+        "name": "Bronze",
+        "base_commission_rate": "0.15",
+        "parent_commission_rate": "0.01",
+        "required_total_commission": "1000"
+    }
+  },
+  {
+    "model": "referral.affiliatetier",
+    "pk": 3,
+    "fields": {
+        "name": "Silver",
+        "base_commission_rate": "0.20",
+        "parent_commission_rate": "0.02",
+        "required_total_commission": "3000"
+    }
+  },
+  {
+    "model": "referral.affiliatetier",
+    "pk": 3,
+    "fields": {
+        "name": "Gold",
+        "base_commission_rate": "0.25",
+        "parent_commission_rate": "0.04",
+        "required_total_commission": "5000"
+    }
+  },
+  {
+    "model": "referral.affiliatetier",
+    "pk": 4,
+    "fields": {
+        "name": "Platinum",
+        "base_commission_rate": "0.30",
+        "parent_commission_rate": "0.06",
+        "required_total_commission": "10000"
+    }
+  },
+  {
+    "model": "referral.affiliatetier",
+    "pk": 5,
+    "fields": {
+        "name": "Emerald",
+        "base_commission_rate": "0.40",
+        "parent_commission_rate": "0.075",
+        "required_total_commission": "20000"
+    }
+  },
+  {
+    "model": "referral.affiliatetier",
+    "pk": 6,
+    "fields": {
+        "name": "Diamond",
+        "base_commission_rate": "0.50",
+        "parent_commission_rate": "0.10",
+        "required_total_commission": "100000"
+    }
+  }
+]
