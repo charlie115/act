@@ -277,6 +277,7 @@ class DepositHistory(models.Model):
     ) # For commission
     change = models.DecimalField(max_digits=10, decimal_places=2)
     balance = models.DecimalField(max_digits=10, decimal_places=2)
+    trade_uuid = models.UUIDField(blank=True, null=True)
     txid = models.TextField(blank=True, null=True)
     type = models.CharField(choices=DepositTypes)
     pending = models.BooleanField(default=False)

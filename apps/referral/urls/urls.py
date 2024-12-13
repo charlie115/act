@@ -5,7 +5,6 @@ from rest_framework import response
 from lib.views import BaseAPIListView
 from referral.views import ReferralCommissionView
 
-
 class ReferralAPIListView(BaseAPIListView):
     """
     Referral API endpoints
@@ -50,5 +49,10 @@ urlpatterns = [
         "referral-commission/",
         ReferralCommissionView.as_view(),
         name="referral-commission-view",
+    ),
+    path(
+        "affiliate-request/",
+        include("referral.urls.affiliate-request"),
+        name="affiliate-request",
     ),
 ]

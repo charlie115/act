@@ -9,20 +9,20 @@ from rest_framework.views import APIView
 
 from referral.constants import (
     PROFIT_TYPE_FEE,
-    PROFIT_TYPE_NET_PROFIT_FROM_TRADE,
     PROFIT_TYPE_COMMISSION,
 )
 from fee.models import FeeRate
 
-from .models import AffiliateTier, Affiliate, ReferralCode, Referral
+from .models import AffiliateTier, Affiliate, ReferralCode, Referral, AffiliateRequest
 from .serializers import (
     AffiliateTierSerializer,
     AffiliateSerializer,
     ReferralCodeSerializer,
     ReferralSerializer,
     ReferralCommissionQueryParamsSerializer,
+    AffiliateRequestSerializer,
 )
-from .utils import calculate_commission_for_trade
+from .utils import calculate_fee_and_commission_for_trade
 
 ### ViewSets ###
 
@@ -123,43 +123,78 @@ class ReferralCommissionView(APIView):
         validated = query_params.validated_data
 
         user_uuid = validated.get("user")
-        user = User.objects.filter(uuid=user_uuid).first()
-        initial_profit = validated.get("initial_profit")  # assuming initial_profit is the profit from user
-        # Calculate the user fee from from the profit using user's fee rate
-        apply_to_deposit = validated.get("apply_to_deposit", False)
-        trade_uuid = validated.get("trade_uuid")
-
-        # The `calculate_commission_for_trade` function should be defined in utils.py
-        # It should:
-        #  - Fetch the referral code used by the user (if any).
-        #  - Apply the affiliate tier logic.
-        #  - Compute the discount for user, parent's share if sub-affiliate, etc.
-        #  - Return a structured dictionary with changes.
-
         try:
-            result = calculate_commission_for_trade(user_uuid, initial_profit)
+            user = User.objects.get(uuid=user_uuid)
         except User.DoesNotExist:
             raise exceptions.ValidationError({"user": ["User not found."]})
+        # Check whether the user has a referral
+        try:
+            referral = user.referral
         except Referral.DoesNotExist:
-            # User might not have come from a referral, so result could just be user fees without commissions
+            referral = None
+        initial_profit = validated.get("initial_profit")  # assuming initial_profit is the profit from user
+        # Calculate the user fee from from the profit using user's fee rate
+        user_fee_rate = FeeRate.objects.get(level=user.fee_level.fee_level)
+        print(f"user_fee_rate: {user_fee_rate}")
+        user_fee = initial_profit * user_fee_rate.rate
+        apply_to_deposit = validated.get("apply_to_deposit")
+        trade_uuid = validated.get("trade_uuid")
+        
+        if not referral:
             result = {
-                "user_pays": ,
-                "user_discount": 0,
-                "parent_affiliate_earning": 0,
-                "affiliate_earning": 0,
+                "trade_uuid": trade_uuid,
+                "records": [
+                    {
+                        "user": user,
+                        "commission_from": None,
+                        "change": user_fee * -1,
+                        "type": PROFIT_TYPE_FEE,
+                        "trade_uuid": trade_uuid,
+                    }
+                ]
             }
 
-        # If apply_to_deposit is True, record the payouts in DepositHistory or similar model.
+        else:
+            result = calculate_fee_and_commission_for_trade(user, user_fee, referral, trade_uuid)
+
+        # If apply_to_deposit is True, record the payouts in DepositHistory.
         # For simplicity, you can integrate that logic in utils or here.
         # Example:
         if apply_to_deposit:
-            # from users.models import DepositHistory
-            # Create deposit entries based on 'result'
-            # For example, if affiliate_earning > 0, deposit that to the affiliate's account.
-            pass
+            for record in result["records"]:
+                DepositHistory.objects.create(
+                    user=record["user"],
+                    commission_from=record["commission_from"],
+                    amount=record["change"],
+                    type=record["type"],
+                    trade_uuid=trade_uuid,
+                    description=record.get("description")
+                )
+                
+        # change user model to user uuid
+        for record in result["records"]:
+            record["user"] = record["user"].uuid
+            if record["commission_from"]:
+                record["commission_from"] = record["commission_from"].uuid
+        
+        return response.Response(result, status=status.HTTP_200_OK)
+    
+class AffiliateRequestViewSet(BaseViewSet):
+    """
+    A viewset for authenticated users to:
+    - Create a new AffiliateRequest (status will be PENDING by default).
+    - List their own requests (if not admin, they only see their own).
+    - Retrieve details of a single request.
 
-        data = {
-            "trade_uuid": trade_uuid,
-            "result": result,
-        }
-        return response.Response(data, status=status.HTTP_200_OK)
+    Admins or users with special permissions (as defined in BaseViewSet) can see all requests or manage them.
+    """
+    queryset = AffiliateRequest.objects.all()
+    serializer_class = AffiliateRequestSerializer
+    # allow get, post
+    http_method_names = ["get", "post"]
+
+    def get_queryset(self):
+        # BaseViewSet logic applies ownership filtering. 
+        # If Admin/Internal/Manager, may return more than just user's own requests.
+        queryset = super().get_queryset()
+        return queryset

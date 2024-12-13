@@ -1,10 +1,10 @@
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
-from django.utils.timezone import now
+from django.utils import timezone
 from decimal import Decimal
 from django.core.exceptions import ValidationError
-
 from users.models import User
+import uuid
 
 class AffiliateTier(models.Model):
     """
@@ -16,12 +16,12 @@ class AffiliateTier(models.Model):
     base_commission_rate = models.DecimalField(
         max_digits=5, decimal_places=4,
         validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text="% of discounted fee the affiliate can earn as commission."
+        help_text="rate of discounted fee the affiliate can earn as commission."
     )
     parent_commission_rate = models.DecimalField(
         max_digits=5, decimal_places=4, default=0,
         validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text="If sub-affiliate, % of affiliate's commission to pass to parent."
+        help_text="If sub-affiliate, rate of affiliate's commission to pass to parent."
     )
     
     required_total_commission = models.DecimalField(
@@ -41,9 +41,9 @@ class Affiliate(models.Model):
     """
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='affiliate')
     parent_affiliate = models.ForeignKey('self', null=True, blank=True, related_name='sub_affiliates', on_delete=models.SET_NULL)
-    affiliate_code = models.CharField(max_length=50, unique=True)
+    affiliate_code = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     tier = models.ForeignKey(AffiliateTier, on_delete=models.CASCADE, related_name='affiliates')
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         if self.is_root:
@@ -82,7 +82,7 @@ class ReferralCode(models.Model):
         validators=[MinValueValidator(0), MaxValueValidator(1)],
         help_text="Out of the allowed affiliate commission, what rate affiliate keeps."
     )
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now)
     
     def clean(self):
         # Automatically set self_commission_rate based on user_discount_rate
@@ -113,7 +113,28 @@ class Referral(models.Model):
         User, on_delete=models.CASCADE, related_name='referral'
     )
     referral_code = models.ForeignKey(ReferralCode, on_delete=models.CASCADE, related_name='referrals')
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return f"{self.referred_user.username} referred by {self.referral_code.code}"
+    
+class AffiliateRequest(models.Model):
+    STATUS_PENDING = 'PENDING'
+    STATUS_APPROVED = 'APPROVED'
+    STATUS_REJECTED = 'REJECTED'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'PENDING'),
+        (STATUS_APPROVED, 'APPROVED'),
+        (STATUS_REJECTED, 'REJECTED'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='affiliate_requests')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    authorized_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='authorized_affiliate_requests')
+    requested_at = models.DateTimeField(default=timezone.now)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    admin_note = models.TextField(null=True, blank=True, help_text="Reason for approval/rejection")
+
+    def __str__(self):
+        return f"AffiliateRequest from {self.user} - Status: {self.status}"
+    

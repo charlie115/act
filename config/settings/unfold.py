@@ -173,11 +173,23 @@ UNFOLD = {
         },
         {
             "models": [
-                "referral.referralgroup",
+                "referral.affiliate",
+                "referral.affiliatetier",
                 "referral.referralcode",
                 "referral.referral",
+                "referral.affiliaterequest"
             ],
             "items": [
+                {
+                    "title": _("Affiliates"),
+                    "icon": "partner_exchange",
+                    "link": reverse_lazy("admin:referral_affiliate_changelist"),
+                },
+                {
+                    "title": _("Affiliate Tiers"),
+                    "icon": "partner_exchange",
+                    "link": reverse_lazy("admin:referral_affiliatetier_changelist"),
+                },
                 {
                     "title": _("Referrals"),
                     "icon": "partner_exchange",
@@ -189,9 +201,9 @@ UNFOLD = {
                     "link": reverse_lazy("admin:referral_referralcode_changelist"),
                 },
                 {
-                    "title": _("Referral Group"),
-                    "icon": "diversity_3",
-                    "link": reverse_lazy("admin:referral_referralgroup_changelist"),
+                    "title": _("Affiliate Requests"),
+                    "icon": "confirmation_number",
+                    "link": reverse_lazy("admin:referral_affiliaterequest_changelist"),
                 },
             ],
         },

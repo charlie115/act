@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from .models import AffiliateTier, Affiliate, ReferralCode, Referral
+from .models import AffiliateTier, Affiliate, ReferralCode, Referral, AffiliateRequest
 from users.models import User
 from decimal import Decimal
+from django.utils import timezone
 
 class AffiliateTierSerializer(serializers.ModelSerializer):
     class Meta:
@@ -86,3 +87,17 @@ class ReferralCommissionQueryParamsSerializer(serializers.Serializer):
     initial_profit = serializers.DecimalField(max_digits=20, decimal_places=8, required=True)
     apply_to_deposit = serializers.BooleanField(default=False)
     trade_uuid = serializers.UUIDField(required=False)
+    
+class AffiliateRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AffiliateRequest
+        fields = ['id', 'user', 'status', 'requested_at', 'reviewed_at', 'admin_note']
+        read_only_fields = ['id', 'user', 'status', 'requested_at', 'reviewed_at', 'authorized_by', 'admin_note']
+
+    def create(self, validated_data):
+        # The authenticated user is retrieved from the request context
+        request_user = self.context['request'].user
+        validated_data['user'] = request_user
+        # When a user creates a request, it should always start with PENDING.
+        validated_data['status'] = AffiliateRequest.STATUS_PENDING
+        return super().create(validated_data)
