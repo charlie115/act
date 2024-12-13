@@ -180,7 +180,18 @@ class ReferralCommissionView(APIView):
                 record["commission_from"] = record["commission_from"].uuid
         
         return response.Response(result, status=status.HTTP_200_OK)
-    
+@extend_schema(tags=["AffiliateRequest"])
+@extend_schema_view(
+    list=extend_schema(
+        description="List all AffiliateRequests.",
+    ),
+    retrieve=extend_schema(
+        description="Retrieve a specific AffiliateRequest.",
+    ),
+    create=extend_schema(
+        description="Create a new AffiliateRequest.",
+    ),
+)    
 class AffiliateRequestViewSet(BaseViewSet):
     """
     A viewset for authenticated users to:

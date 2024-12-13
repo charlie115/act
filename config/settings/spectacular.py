@@ -25,7 +25,14 @@ SPECTACULAR_SETTINGS = {
             },
             {
                 "name": "REFERRAL",
-                "tags": ["Referral", "ReferralCode", "ReferralCommission"],
+                "tags": [
+                    "Referral",
+                    "ReferralCode",
+                    "ReferralCommission",
+                    "Affiliate",
+                    "AffiliateTier",
+                    "AffiliateRequest",
+                ],
             },
             {
                 "name": "USER",
@@ -45,6 +52,13 @@ SPECTACULAR_SETTINGS = {
                     "UserWalletAddress",
                     "UserWalletBalance",
                     "UserWalletDeposit",
+                ],
+            },
+            {
+                "name": "COUPON",
+                "tags": [
+                    "Coupon",
+                    "CouponRedemption",
                 ],
             },
             {

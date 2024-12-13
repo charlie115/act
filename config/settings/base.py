@@ -104,6 +104,7 @@ LOCAL_APPS = (
     "newscore",
     "tradecore",
     "wallet",
+    "coupon",
 )
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

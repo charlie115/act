@@ -10,6 +10,7 @@ python manage.py loaddata infocore.marketcode.json
 python manage.py loaddata fee.feerate.json
 python manage.py loaddata board.level.json
 python manage.py loaddata referral.affiliatetier.json
+python manage.py loaddata coupon.coupon.json
 
 echo "Running collectstatic..."
 python manage.py collectstatic --settings=config.settings.prod --noinput

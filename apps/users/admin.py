@@ -301,6 +301,7 @@ class DepositHistoryAdmin(ModelAdmin):
         "change",
         "balance",
         "type",
+        "coupon",
         "pending",
         "registered_datetime",
     ]

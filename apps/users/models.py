@@ -280,6 +280,13 @@ class DepositHistory(models.Model):
     trade_uuid = models.UUIDField(blank=True, null=True)
     txid = models.TextField(blank=True, null=True)
     type = models.CharField(choices=DepositTypes)
+    coupon = models.ForeignKey(
+        "coupon.Coupon",
+        on_delete=models.SET_NULL,
+        related_name="deposit_history",
+        blank=True,
+        null=True,
+    )
     pending = models.BooleanField(default=False)
     registered_datetime = models.DateTimeField(default=now)
     description = models.TextField(blank=True, null=True)

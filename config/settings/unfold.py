@@ -51,6 +51,16 @@ UNFOLD = {
                         "link": reverse_lazy("admin:referral_referral_changelist"),
                     },
                     {
+                        "title": _("Coupons"),
+                        "icon": "sell",
+                        "link": reverse_lazy("admin:coupon_coupon_changelist"),
+                    },
+                    {
+                        "title": _("Coupon Redemptions"),
+                        "icon": "fact_check",
+                        "link": reverse_lazy("admin:coupon_couponredemption_changelist"),
+                    },
+                    {
                         "title": _("Social Apps"),
                         "icon": "deployed_code_account",
                         "link": reverse_lazy(

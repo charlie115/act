@@ -55,4 +55,14 @@ urlpatterns = [
         include("referral.urls.affiliate-request"),
         name="affiliate-request",
     ),
+    path(
+        "affiliate/",
+        include("referral.urls.affiliate"),
+        name="affiliate",
+    ),
+    path(
+        "affiliate-tier/",
+        include("referral.urls.affiliate-tier"),
+        name="affiliate-tier",
+    )
 ]
