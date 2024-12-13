@@ -100,9 +100,9 @@ class AcwApi:
         else:
             raise Exception("Error: " + str(response.status_code) + "\n" + response.text)
         
-    def get_referral_commission(self, user, trade_uuid, initial_profit, target_market_code, origin_market_code, apply_to_deposit=False):
+    def process_referral_fee_and_commission(self, user, trade_uuid, initial_profit, apply_to_deposit=False):
         url = self.url + self.referral_commission_url
-        response = requests.get(url, params={"user": user, "trade_uuid": trade_uuid, "initial_profit": initial_profit, "target_market_code": target_market_code, "origin_market_code": origin_market_code}, verify=self.verify)
+        response = requests.get(url, params={"user": user, "trade_uuid": trade_uuid, "initial_profit": initial_profit}, verify=self.verify)
         if response.status_code == 200:
             return response.json()
         else:
