@@ -102,7 +102,7 @@ class AcwApi:
         
     def process_referral_fee_and_commission(self, user, trade_uuid, initial_profit, apply_to_deposit=False):
         url = self.url + self.referral_commission_url
-        response = requests.get(url, params={"user": user, "trade_uuid": trade_uuid, "initial_profit": initial_profit}, verify=self.verify)
+        response = requests.get(url, params={"user": user, "trade_uuid": trade_uuid, "initial_profit": initial_profit, "apply_to_deposit": apply_to_deposit}, verify=self.verify)
         if response.status_code == 200:
             return response.json()
         else:
