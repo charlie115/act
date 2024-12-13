@@ -133,6 +133,8 @@ class ReferralCommissionView(APIView):
         except Referral.DoesNotExist:
             referral = None
         initial_profit = validated.get("initial_profit")  # assuming initial_profit is the profit from user
+        if initial_profit < 0:
+            raise exceptions.ValidationError({"initial_profit": ["Profit cannot be negative."]})
         # Calculate the user fee from from the profit using user's fee rate
         user_fee_rate = FeeRate.objects.get(level=user.fee_level.fee_level)
         print(f"user_fee_rate: {user_fee_rate}")
@@ -165,7 +167,7 @@ class ReferralCommissionView(APIView):
                 DepositHistory.objects.create(
                     user=record["user"],
                     commission_from=record["commission_from"],
-                    amount=record["change"],
+                    change=record["change"],
                     type=record["type"],
                     trade_uuid=trade_uuid,
                     description=record.get("description")
