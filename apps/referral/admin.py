@@ -102,6 +102,8 @@ class ReferralAdmin(ModelAdmin):
 class AffiliateRequestAdmin(ModelAdmin):
     list_display = [
         "user",
+        "contact",
+        "url",
         "status",
         "requested_at",
         "reviewed_at",
@@ -115,7 +117,7 @@ class AffiliateRequestAdmin(ModelAdmin):
     ordering = ["requested_at"]
 
     # Make requested_at, reviewed_at, and authorized_by read-only
-    readonly_fields = ["requested_at", "reviewed_at", "authorized_by"]
+    readonly_fields = ["requested_at", "reviewed_at", "authorized_by", "contact", "url", "description",]
 
     actions = ['approve_requests', 'reject_requests']
 
