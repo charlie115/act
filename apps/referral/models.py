@@ -132,6 +132,7 @@ class AffiliateRequest(models.Model):
     contact = models.CharField(null=True, blank=True, max_length=100, help_text="Contact details of the user")
     url = models.URLField(null=True, blank=True, help_text="URL of the user's website or social media profile")
     description = models.TextField(null=True, blank=True, help_text="Description of the user's platform and how they plan to promote us")
+    parent_affiliate_code = models.CharField(null=True, blank=True, max_length=100, help_text="Code of the parent affiliate")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     authorized_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='authorized_affiliate_requests')
     requested_at = models.DateTimeField(default=timezone.now)

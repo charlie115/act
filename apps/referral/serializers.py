@@ -91,7 +91,7 @@ class ReferralCommissionQueryParamsSerializer(serializers.Serializer):
 class AffiliateRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = AffiliateRequest
-        fields = ['id', 'user', 'contact', 'url', 'description', 'status', 'requested_at', 'reviewed_at', 'admin_note']
+        fields = ['id', 'user', 'contact', 'url', 'description', 'parent_affiliate_code', 'status', 'requested_at', 'reviewed_at', 'admin_note']
         read_only_fields = ['id', 'user', 'status', 'requested_at', 'reviewed_at', 'authorized_by', 'admin_note']
         
     def validate(self, attrs):
@@ -101,6 +101,14 @@ class AffiliateRequestSerializer(serializers.ModelSerializer):
         # If you want to ensure the user has no requests at all:
         if existing_requests.exists():
             raise serializers.ValidationError({"error": "REQUEST_EXISTS", "message": "You already have a request reigstered."})
+        
+        # Check whether parent_affiliate_code in attrs is valid
+        parent_affiliate_code = attrs.get('parent_affiliate_code')
+        if parent_affiliate_code:
+            try:
+                Affiliate.objects.get(affiliate_code=parent_affiliate_code)
+            except Affiliate.DoesNotExist:
+                raise serializers.ValidationError({"error": "INVALID_PARENT_CODE", "message": "Invalid parent affiliate code."})
         
         return attrs
 

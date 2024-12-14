@@ -104,6 +104,7 @@ class AffiliateRequestAdmin(ModelAdmin):
         "user",
         "contact",
         "url",
+        "parent_affiliate_code",
         "status",
         "requested_at",
         "reviewed_at",
@@ -117,7 +118,7 @@ class AffiliateRequestAdmin(ModelAdmin):
     ordering = ["requested_at"]
 
     # Make requested_at, reviewed_at, and authorized_by read-only
-    readonly_fields = ["requested_at", "reviewed_at", "authorized_by", "contact", "url", "description",]
+    readonly_fields = ["requested_at", "reviewed_at", "authorized_by", "contact", "url", "description", "parent_affiliate_code"]
 
     actions = ['approve_requests', 'reject_requests']
 
@@ -144,6 +145,7 @@ class AffiliateRequestAdmin(ModelAdmin):
                     default_tier = AffiliateTier.objects.get(name="Iron")
                     Affiliate.objects.create(
                         user=user,
+                        parent_affiliate=Affiliate.objects.get(affiliate_code=ar.parent_affiliate_code),
                         tier=default_tier,
                     )
 
