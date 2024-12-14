@@ -25,19 +25,19 @@ class AffiliateSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     tier = serializers.PrimaryKeyRelatedField(queryset=AffiliateTier.objects.all())
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    # user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    user = serializers.UUIDField(source='user.uuid', read_only=True)
 
     class Meta:
         model = Affiliate
         fields = [
-            'id',
             'user',
             'parent_affiliate',
             'affiliate_code',
             'tier',
             'created_at'
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['created_at']
 
 
 class ReferralCodeSerializer(serializers.ModelSerializer):

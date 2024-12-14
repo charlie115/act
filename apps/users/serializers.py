@@ -17,6 +17,7 @@ from users.models import (
 )
 from socialaccounts.models import ProxySocialApp
 from socialaccounts.serializers import ProxySocialAppSerializer
+from referral.serializers import AffiliateSerializer
 
 
 class UserOwnedSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer):
@@ -57,6 +58,7 @@ class UserSerializer(serializers.ModelSerializer):
     trade_config_allocations = TradeConfigAllocationSerializer(
         many=True, read_only=True
     )
+    affiliate = AffiliateSerializer(read_only=True)
 
     def get_socialapps(self, instance):
         socialapps = [
@@ -115,8 +117,9 @@ class UserSerializer(serializers.ModelSerializer):
             "socialapps",
             "telegram_chat_id",
             "trade_config_allocations",
+            "affiliate",
         )
-        read_only_fields = ("role", "is_active")
+        read_only_fields = ("role", "is_active", "affiliate")
         extra_kwargs = {
             "email": {"style": {"input_type": "email", "placeholder": "Email"}},
             "password": {
