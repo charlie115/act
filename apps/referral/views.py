@@ -53,11 +53,12 @@ class AffiliateTierViewSet(BaseViewSet):
     # partial_update=extend_schema(description="Partially update an affiliate"),
     # destroy=extend_schema(description="Delete an affiliate"),
 )
-class AffiliateViewSet(BaseViewSet):
+# class AffiliateViewSet(BaseViewSet):
+class AffiliateViewSet(viewsets.ModelViewSet):
     queryset = Affiliate.objects.select_related('user', 'tier', 'parent_affiliate')
     serializer_class = AffiliateSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ["parent_affiliate", "tier"]
+    filterset_fields = ["parent_affiliate_id", "tier"]
     ordering_fields = ["id", "created_at"]
     ordering = ["id"]
     # allow only get

@@ -3,6 +3,7 @@ from .models import AffiliateTier, Affiliate, ReferralCode, Referral, AffiliateR
 from users.models import User
 from decimal import Decimal
 from django.utils import timezone
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class AffiliateTierSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,24 +26,27 @@ class AffiliateSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     tier = serializers.PrimaryKeyRelatedField(queryset=AffiliateTier.objects.all())
-    # user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     user = serializers.UUIDField(source='user.uuid', read_only=True)
 
     class Meta:
         model = Affiliate
         fields = [
+            'id',
             'user',
             'parent_affiliate',
             'affiliate_code',
             'tier',
             'created_at'
         ]
-        read_only_fields = ['created_at']
+        read_only_fields = ['created_at', 'id']
 
 
 class ReferralCodeSerializer(serializers.ModelSerializer):
-    affiliate = serializers.PrimaryKeyRelatedField(queryset=Affiliate.objects.all())
-
+    user_discount_rate = serializers.DecimalField(
+        max_digits=5, decimal_places=4,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text="Rate between 0 and 1"
+    )
     # The clean() method in the model ensures that user_discount_rate + self_commission_rate = 1
     # We will only allow user to set user_discount_rate and automatically computed inside model
     # If you want to show user the computed self_commission_rate, we can make it read-only.
@@ -60,7 +64,13 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
             'self_commission_rate',
             'created_at'
         ]
-        read_only_fields = ['id', 'created_at', 'self_commission_rate']
+        read_only_fields = ['id', 'created_at', 'affiliate']
+        
+    def create(self, validated_data):
+        # The authenticated user is retrieved from the request context
+        request_user = self.context['request'].user
+        validated_data['affiliate'] = request_user.affiliate
+        return super().create(validated_data)
 
 
 class ReferralSerializer(serializers.ModelSerializer):

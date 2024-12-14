@@ -145,7 +145,7 @@ class AffiliateRequestAdmin(ModelAdmin):
                     default_tier = AffiliateTier.objects.get(name="Iron")
                     Affiliate.objects.create(
                         user=user,
-                        parent_affiliate=Affiliate.objects.get(affiliate_code=ar.parent_affiliate_code),
+                        parent_affiliate=Affiliate.objects.get(affiliate_code=ar.parent_affiliate_code) if ar.parent_affiliate_code else None,
                         tier=default_tier,
                     )
 
