@@ -91,8 +91,18 @@ class ReferralCommissionQueryParamsSerializer(serializers.Serializer):
 class AffiliateRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = AffiliateRequest
-        fields = ['id', 'user', 'status', 'requested_at', 'reviewed_at', 'admin_note']
+        fields = ['id', 'user', 'contact', 'url', 'description', 'status', 'requested_at', 'reviewed_at', 'admin_note']
         read_only_fields = ['id', 'user', 'status', 'requested_at', 'reviewed_at', 'authorized_by', 'admin_note']
+        
+    def validate(self, attrs):
+        request_user = self.context['request'].user
+        existing_requests = AffiliateRequest.objects.filter(user=request_user)
+        
+        # If you want to ensure the user has no requests at all:
+        if existing_requests.exists():
+            raise serializers.ValidationError({"error": "REQUEST_EXISTS", "message": "You already have a request reigstered."})
+        
+        return attrs
 
     def create(self, validated_data):
         # The authenticated user is retrieved from the request context
