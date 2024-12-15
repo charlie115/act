@@ -30,6 +30,8 @@ class AffiliateSerializer(serializers.ModelSerializer):
     user = serializers.UUIDField(source='user.uuid', read_only=True)
     referral_count = serializers.SerializerMethodField()
     total_earned_commission = serializers.SerializerMethodField()
+    total_forwarded_commission = serializers.SerializerMethodField()
+    total_direct_commission = serializers.SerializerMethodField()
 
     class Meta:
         model = Affiliate
@@ -41,7 +43,9 @@ class AffiliateSerializer(serializers.ModelSerializer):
             'tier',
             'created_at',
             'referral_count',
-            'total_earned_commission'
+            'total_earned_commission',
+            'total_direct_commission',
+            'total_forwarded_commission',
         ]
         read_only_fields = ['created_at', 'id']
         
@@ -61,6 +65,24 @@ class AffiliateSerializer(serializers.ModelSerializer):
         if total is None:
             total = Decimal('0.00')
         return total
+    
+    def get_total_direct_commission(self, instance):
+        # Direct commissions: no child_affiliate involved
+        total = CommissionHistory.objects.filter(
+            affiliate=instance,
+            type=CommissionHistory.COMMISSION,
+            child_affiliate__isnull=True
+        ).aggregate(total=Sum('change'))['total'] or Decimal('0.00')
+        return total
+
+    def get_total_forwarded_commission(self, instance):
+        # Forwarded commissions: earned from sub-affiliates (child_affiliate is not null)
+        total = CommissionHistory.objects.filter(
+            affiliate=instance,
+            type=CommissionHistory.COMMISSION,
+            child_affiliate__isnull=False
+        ).aggregate(total=Sum('change'))['total'] or Decimal('0.00')
+        return total
 
 class SubAffiliateSerializer(serializers.ModelSerializer):
     # Only the fields you want for sub-affiliates
@@ -69,10 +91,20 @@ class SubAffiliateSerializer(serializers.ModelSerializer):
     tier = serializers.CharField(source='tier.name', read_only=True)
     referral_count = serializers.SerializerMethodField()
     total_earned_commission = serializers.SerializerMethodField()
+    total_forwarding_commission = serializers.SerializerMethodField()
 
     class Meta:
         model = Affiliate
-        fields = ['id', 'user', 'parent_affiliate', 'tier', 'created_at', 'referral_count', 'total_earned_commission']
+        fields = [
+                'id',
+                'user',
+                'parent_affiliate',
+                'tier',
+                'created_at',
+                'referral_count',
+                'total_earned_commission',
+                'total_forwarding_commission',
+            ]
         read_only_fields = ['id', 'created_at']
         
     def get_referral_count(self, instance):
@@ -91,6 +123,19 @@ class SubAffiliateSerializer(serializers.ModelSerializer):
         if total is None:
             total = Decimal('0.00')
         return total
+    
+    def get_total_forwarding_commission(self, instance):
+        # Ensure we are summing commissions forwarded to this sub-affiliate's parent
+        if not instance.parent_affiliate:
+            return Decimal('0.00')
+
+        total = CommissionHistory.objects.filter(
+            affiliate=instance.parent_affiliate,
+            child_affiliate=instance,
+            type=CommissionHistory.COMMISSION
+        ).aggregate(total=Sum('change'))['total'] or Decimal('0.00')
+        return total
+    
 class ReferralCodeSerializer(serializers.ModelSerializer):
     user_discount_rate = serializers.DecimalField(
         max_digits=5, decimal_places=4,
@@ -104,6 +149,7 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
         max_digits=5, decimal_places=4, read_only=True
     )
     referral_count = serializers.SerializerMethodField()
+    total_earned_commission = serializers.SerializerMethodField()
 
     class Meta:
         model = ReferralCode
@@ -114,7 +160,8 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
             'user_discount_rate',
             'self_commission_rate',
             'created_at',
-            'referral_count'
+            'referral_count',
+            'total_earned_commission'
         ]
         read_only_fields = ['id', 'created_at', 'affiliate']
         
@@ -127,6 +174,21 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
     def get_referral_count(self, instance):
         # Count how many referrals are associated with this referral code
         return instance.referrals.count()
+    
+    def get_total_earned_commission(self, obj):
+        # Get all referred users who registered using this referral code
+        referred_users = obj.referrals.values_list('referred_user', flat=True)
+
+        if not referred_users:
+            return Decimal('0.00')
+
+        # Sum all commission type earnings from these referred users
+        total = CommissionHistory.objects.filter(
+            user_who_paid__in=referred_users,
+            type=CommissionHistory.COMMISSION
+        ).aggregate(total=Sum('change'))['total']
+
+        return total if total is not None else Decimal('0.00')
     
 class ReferralSerializer(serializers.ModelSerializer):
     referral_code = serializers.PrimaryKeyRelatedField(queryset=ReferralCode.objects.all())
