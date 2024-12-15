@@ -58,7 +58,7 @@ class SubAffiliateSerializer(serializers.ModelSerializer):
     # Only the fields you want for sub-affiliates
     user = serializers.CharField(source='user.username', read_only=True)
     parent_affiliate = serializers.PrimaryKeyRelatedField(read_only=True)
-    tier = serializers.PrimaryKeyRelatedField(queryset=AffiliateTier.objects.all())
+    tier = serializers.CharField(source='tier.name', read_only=True)
     referral_count = serializers.SerializerMethodField()
     total_earned_commission = serializers.SerializerMethodField()
 
