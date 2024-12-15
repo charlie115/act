@@ -97,8 +97,13 @@ class SubAffiliateListView(ListAPIView):
     serializer_class = SubAffiliateSerializer
 
     def get_queryset(self):
-        parent_id = self.kwargs['parent_id']
-        return Affiliate.objects.filter(parent_affiliate=parent_id)
+        user = self.request.user
+        if not hasattr(user, 'affiliate'):
+            # User is not an affiliate, return empty queryset
+            return Affiliate.objects.none()
+        
+        affiliate = user.affiliate
+        return Affiliate.objects.filter(parent_affiliate=affiliate)
 
 @extend_schema(tags=["ReferralCode"])
 @extend_schema_view(
