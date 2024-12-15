@@ -187,7 +187,9 @@ UNFOLD = {
                 "referral.affiliatetier",
                 "referral.referralcode",
                 "referral.referral",
-                "referral.affiliaterequest"
+                "referral.affiliaterequest",
+                "referral.commissionhistory",
+                "referral.commissionbalance",
             ],
             "items": [
                 {
@@ -215,6 +217,17 @@ UNFOLD = {
                     "icon": "confirmation_number",
                     "link": reverse_lazy("admin:referral_affiliaterequest_changelist"),
                 },
+                {
+                    "title": _("Commission History"),
+                    "icon": "confirmation_number",
+                    "link": reverse_lazy("admin:referral_commissionhistory_changelist"),
+                },
+                {
+                    "title": _("Commission Balance"),
+                    "icon": "confirmation_number",
+                    "link": reverse_lazy("admin:referral_commissionbalance_changelist"),
+                },
+                
             ],
         },
         {

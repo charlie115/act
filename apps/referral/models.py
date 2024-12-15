@@ -142,3 +142,64 @@ class AffiliateRequest(models.Model):
     def __str__(self):
         return f"AffiliateRequest from {self.user} - Status: {self.status}"
     
+    
+class CommissionHistory(models.Model):
+    """
+    Records of commissions earned by affiliates.
+    """
+    SPOT_FUTURES = 'SPOT_FUTURES'
+    
+    service_type = [
+        (SPOT_FUTURES, SPOT_FUTURES)
+    ]
+    
+    COMMISSION = 'COMMISSION'
+    WITHDRAW = 'WITHDRAW'
+    TRANSFER = 'TRANSFER'
+    
+    history_type = [
+        (COMMISSION, COMMISSION),
+        (WITHDRAW, WITHDRAW),
+        (TRANSFER, TRANSFER)
+    ]
+
+    affiliate = models.ForeignKey(Affiliate, on_delete=models.CASCADE, related_name='commission_history')
+    child_affiliate = models.ForeignKey(Affiliate, on_delete=models.SET_NULL, null=True, blank=True, related_name='parent_commission_history')
+    user_who_paid = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='commission_history')
+    service_type = models.CharField(max_length=100, null=True, blank=True, help_text="Type of service for which commission is earned")
+    type = models.CharField(max_length=20, choices=history_type)
+    trade_uuid = models.UUIDField(null=True, blank=True, help_text="UUID of the trade for which commission is earned")
+    change = models.DecimalField(max_digits=20, decimal_places=8)
+    balance = models.DecimalField(max_digits=20, decimal_places=8)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"Commission of {self.change} from trade {self.trade_uuid} by {self.affiliate.user.username}"
+    
+    def save(self, *args, **kwargs):
+        # This assumes you have a CommissionBalance model with:
+        # user = OneToOneField(...) and balance = DecimalField(...)
+        commission_balance, created = CommissionBalance.objects.get_or_create(
+            affiliate=self.affiliate, defaults={'balance': Decimal('0.00')}
+        )
+        
+        self.balance = commission_balance.balance + self.change
+        super(CommissionHistory, self).save(*args, **kwargs)
+        
+        commission_balance.balance = self.balance
+        commission_balance.save()
+
+    class Meta:
+        verbose_name = "Commission History"
+        verbose_name_plural = "Commission History"
+    
+class CommissionBalance(models.Model):
+    """
+    Represents the balance of earned commissions for an affiliate.
+    """
+    affiliate = models.OneToOneField(Affiliate, on_delete=models.CASCADE, related_name='commission_balance')
+    balance = models.DecimalField(max_digits=20, decimal_places=8, default=0)
+    last_update = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"Commission balance of {self.affiliate.user.username}"

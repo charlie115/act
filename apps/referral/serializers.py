@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import AffiliateTier, Affiliate, ReferralCode, Referral, AffiliateRequest
+from .models import AffiliateTier, Affiliate, ReferralCode, Referral, AffiliateRequest, CommissionHistory, CommissionBalance
 from users.models import User
 from decimal import Decimal
 from django.utils import timezone
@@ -75,8 +75,7 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
 
 class ReferralSerializer(serializers.ModelSerializer):
     referral_code = serializers.PrimaryKeyRelatedField(queryset=ReferralCode.objects.all())
-    referred_user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-
+    
     class Meta:
         model = Referral
         fields = [
@@ -85,8 +84,18 @@ class ReferralSerializer(serializers.ModelSerializer):
             'referral_code',
             'created_at'
         ]
-        read_only_fields = ['id', 'created_at']
-
+        read_only_fields = ['id', 'created_at', 'referred_user']
+        
+    def validate(self, attrs):
+        referred_user = self.context['request'].user
+        referral_code = attrs.get('referral_code')
+        
+        # Check if related_user already has a referral
+        if Referral.objects.filter(referred_user=referred_user).exists():
+            raise serializers.ValidationError({"error": "REFERRAL_ALREADY_EXISTS", "message": "You have already been referred."})
+        # Check if the referral_code belongs to the same user as referred_user
+        if referral_code.affiliate.user == referred_user:
+            raise serializers.ValidationError({"error": "INVALID_REFERRAL_CODE", "message": "You cannot refer yourself."})
 
 class ReferralCommissionQueryParamsSerializer(serializers.Serializer):
     """
@@ -129,3 +138,15 @@ class AffiliateRequestSerializer(serializers.ModelSerializer):
         # When a user creates a request, it should always start with PENDING.
         validated_data['status'] = AffiliateRequest.STATUS_PENDING
         return super().create(validated_data)
+    
+class CommissionHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommissionHistory
+        fields = ['id', 'affiliate', 'service_type', 'type', 'trade_uuid', 'change', 'balance', 'created_at']
+        read_only_fields = ['id', 'affiliate', 'service_type', 'type', 'trade_uuid', 'change', 'balance', 'created_at']
+        
+class CommissionBalanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommissionBalance
+        fields = ['id', 'affiliate', 'balance', 'last_update']
+        read_only_fields = ['id', 'affiliate', 'balance', 'last_update']

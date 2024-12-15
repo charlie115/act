@@ -12,6 +12,8 @@ from .models import (
     ReferralCode,
     Referral,
     AffiliateRequest,
+    CommissionHistory,
+    CommissionBalance,
 )
 
 class ReferralCodeForm(forms.ModelForm):
@@ -72,6 +74,7 @@ class AffiliateTierAdmin(ModelAdmin):
 
 class AffiliateAdmin(ModelAdmin):
     list_display = [
+        "id",
         "user",
         "parent_affiliate",
         "affiliate_code",
@@ -159,10 +162,62 @@ class AffiliateRequestAdmin(ModelAdmin):
                 ar.save()
     approve_requests.short_description = "Approve selected requests"
     reject_requests.short_description = "Reject selected requests"
+    
 
+class CommissionHistoryAdmin(admin.ModelAdmin):
+    list_display = [
+        'id',
+        'affiliate',
+        'child_affiliate',
+        'user_who_paid',
+        'service_type',
+        'type',
+        'trade_uuid',
+        'change',
+        'balance',
+        'created_at'
+    ]
+    list_filter = [
+        'type',
+        'service_type',
+        'affiliate',
+        'child_affiliate',
+        'created_at'
+    ]
+    search_fields = [
+        'affiliate__user__username',
+        'child_affiliate__user__username',
+        'user_who_paid__username',
+        'trade_uuid'
+    ]
+    ordering = ['-created_at']
+    date_hierarchy = 'created_at'
+    
+class CommissionBalanceAdmin(admin.ModelAdmin):
+    list_display = [
+        'affiliate',
+        'balance',
+        'last_update'
+    ]
+    list_filter = [
+        'affiliate__tier__name',
+        'last_update'
+    ]
+    search_fields = [
+        'affiliate__user__username',
+        'affiliate__affiliate_code'
+    ]
+    ordering = ['-last_update']
+    date_hierarchy = 'last_update'
 
 admin.site.register(AffiliateTier, AffiliateTierAdmin)
 admin.site.register(Affiliate, AffiliateAdmin)
 admin.site.register(ReferralCode, ReferralCodeAdmin)
 admin.site.register(Referral, ReferralAdmin)
 admin.site.register(AffiliateRequest, AffiliateRequestAdmin)
+admin.site.register(CommissionHistory, CommissionHistoryAdmin)
+admin.site.register(CommissionBalance, CommissionBalanceAdmin)
+
++24.2575
+-0.0375
+-2.97

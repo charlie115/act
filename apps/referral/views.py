@@ -1,19 +1,21 @@
 from lib.views import BaseViewSet
 from users.models import User, DepositHistory
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets, mixins, exceptions, response, status
 from rest_framework.filters import OrderingFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
+from lib.authentication import NodeIPAuthentication
 
 from referral.constants import (
     PROFIT_TYPE_FEE,
-    PROFIT_TYPE_COMMISSION,
 )
 from fee.models import FeeRate
 
-from .models import AffiliateTier, Affiliate, ReferralCode, Referral, AffiliateRequest
+from .models import AffiliateTier, Affiliate, ReferralCode, Referral, AffiliateRequest, CommissionHistory, CommissionBalance
 from .serializers import (
     AffiliateTierSerializer,
     AffiliateSerializer,
@@ -21,8 +23,10 @@ from .serializers import (
     ReferralSerializer,
     ReferralCommissionQueryParamsSerializer,
     AffiliateRequestSerializer,
+    CommissionBalanceSerializer,
+    CommissionHistorySerializer,
 )
-from .utils import calculate_fee_and_commission_for_trade
+from .utils import calculate_fee_and_commission_for_trade, get_all_affiliate_ids
 
 ### ViewSets ###
 
@@ -35,7 +39,7 @@ from .utils import calculate_fee_and_commission_for_trade
     # partial_update=extend_schema(description="Partially update an affiliate tier"),
     # destroy=extend_schema(description="Delete an affiliate tier"),
 )
-class AffiliateTierViewSet(BaseViewSet):
+class AffiliateTierViewSet(viewsets.ModelViewSet):
     queryset = AffiliateTier.objects.all()
     serializer_class = AffiliateTierSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
@@ -53,7 +57,6 @@ class AffiliateTierViewSet(BaseViewSet):
     # partial_update=extend_schema(description="Partially update an affiliate"),
     # destroy=extend_schema(description="Delete an affiliate"),
 )
-# class AffiliateViewSet(BaseViewSet):
 class AffiliateViewSet(viewsets.ModelViewSet):
     queryset = Affiliate.objects.select_related('user', 'tier', 'parent_affiliate')
     serializer_class = AffiliateSerializer
@@ -63,6 +66,14 @@ class AffiliateViewSet(viewsets.ModelViewSet):
     ordering = ["id"]
     # allow only get
     http_method_names = ["get"]
+    
+    def get_queryset(self):
+        user = self.request.user
+        if not hasattr(user, 'affiliate'):
+            # User is not an affiliate, return empty queryset
+            return Affiliate.objects.none()
+        related_affiliate_ids = get_all_affiliate_ids(user.affiliate)
+        return Affiliate.objects.filter(id__in=related_affiliate_ids)
 
 @extend_schema(tags=["ReferralCode"])
 @extend_schema_view(
@@ -73,7 +84,7 @@ class AffiliateViewSet(viewsets.ModelViewSet):
     # partial_update=extend_schema(description="Partially update a referral code"),
     destroy=extend_schema(description="Delete a referral code"),
 )
-class ReferralCodeViewSet(BaseViewSet):
+class ReferralCodeViewSet(viewsets.ModelViewSet):
     queryset = ReferralCode.objects.select_related('affiliate', 'affiliate__tier', 'affiliate__user')
     serializer_class = ReferralCodeSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
@@ -82,7 +93,14 @@ class ReferralCodeViewSet(BaseViewSet):
     ordering = ["id"]
     # allow only get, post, delete
     http_method_names = ["get", "post", "delete"]
-
+    
+    def get_queryset(self):
+        user = self.request.user
+        if not hasattr(user, 'affiliate'):
+            # User is not an affiliate, return empty queryset
+            return ReferralCode.objects.none()
+        return ReferralCode.objects.filter(affiliate=user.affiliate)
+        
 @extend_schema(tags=["Referral"])
 @extend_schema_view(
     list=extend_schema(description="List all referrals"),
@@ -92,7 +110,7 @@ class ReferralCodeViewSet(BaseViewSet):
     # partial_update=extend_schema(description="Partially update a referral"),
     # destroy=extend_schema(description="Delete a referral"),
 )
-class ReferralViewSet(BaseViewSet):
+class ReferralViewSet(viewsets.ModelViewSet):
     queryset = Referral.objects.select_related('referral_code', 'referral_code__affiliate', 'referred_user')
     serializer_class = ReferralSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
@@ -101,6 +119,10 @@ class ReferralViewSet(BaseViewSet):
     ordering = ["id"]
     # allow only get, post
     http_method_names = ["get", "post"]
+    
+    def get_queryset(self):
+        user = self.request.user
+        return Referral.objects.filter(referred_user=user)
 
 ### Commission Calculation View ###
 
@@ -138,7 +160,6 @@ class ReferralCommissionView(APIView):
             raise exceptions.ValidationError({"initial_profit": ["Profit cannot be negative."]})
         # Calculate the user fee from from the profit using user's fee rate
         user_fee_rate = FeeRate.objects.get(level=user.fee_level.fee_level)
-        print(f"user_fee_rate: {user_fee_rate}")
         user_fee = initial_profit * user_fee_rate.rate
         apply_to_deposit = validated.get("apply_to_deposit")
         trade_uuid = validated.get("trade_uuid")
@@ -148,8 +169,8 @@ class ReferralCommissionView(APIView):
                 "trade_uuid": trade_uuid,
                 "records": [
                     {
+                        "data_type": "deposit_history",
                         "user": user,
-                        "commission_from": None,
                         "change": user_fee * -1,
                         "type": PROFIT_TYPE_FEE,
                         "trade_uuid": trade_uuid,
@@ -165,22 +186,53 @@ class ReferralCommissionView(APIView):
         # Example:
         if apply_to_deposit:
             for record in result["records"]:
-                DepositHistory.objects.create(
-                    user=record["user"],
-                    commission_from=record["commission_from"],
-                    change=record["change"],
-                    type=record["type"],
-                    trade_uuid=trade_uuid,
-                    description=record.get("description")
-                )
+                if record["data_type"] == "deposit_history":
+                    DepositHistory.objects.create(
+                        user=record["user"],
+                        change=record["change"],
+                        referral_discount=record.get("referral_discount"),
+                        type=record["type"],
+                        trade_uuid=trade_uuid,
+                        description=record.get("description")
+                    )
+                elif record["data_type"] == "commission_history":
+                    CommissionHistory.objects.create(
+                        affiliate=record["affiliate"],
+                        child_affiliate=record["child_affiliate"],
+                        user_who_paid=record["user_who_paid"],
+                        service_type=record["service_type"],
+                        type=record["type"],
+                        trade_uuid=record["trade_uuid"],
+                        change=record["change"],
+                    )
                 
         # change user model to user uuid
         for record in result["records"]:
-            record["user"] = record["user"].uuid
-            if record["commission_from"]:
-                record["commission_from"] = record["commission_from"].uuid
+            if record.get("user"):
+                record["user"] = record["user"].uuid
+            if record.get("affiliate"):
+                record["affiliate"] = record["affiliate"].id
+            if record.get("child_affiliate"):
+                record["child_affiliate"] = record["child_affiliate"].id
+            if record.get("user_who_paid"):
+                record["user_who_paid"] = record["user_who_paid"].uuid
         
         return response.Response(result, status=status.HTTP_200_OK)
+    
+    def get_authenticators(self):
+        authentication_classes = self.authentication_classes + [NodeIPAuthentication]
+        return [auth() for auth in authentication_classes]
+
+    def get_permissions(self):
+        permission_classes = self.permission_classes
+
+        if (
+            hasattr(self.request, "_authenticator")
+            and type(self.request._authenticator) is NodeIPAuthentication
+        ):
+            permission_classes = []
+
+        return [permission() for permission in permission_classes]
 @extend_schema(tags=["AffiliateRequest"])
 @extend_schema_view(
     list=extend_schema(
@@ -212,3 +264,49 @@ class AffiliateRequestViewSet(BaseViewSet):
         # If Admin/Internal/Manager, may return more than just user's own requests.
         queryset = super().get_queryset()
         return queryset
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="List Commission History",
+        description="List all commission history records for the user's affiliate and all its descendant affiliates.",
+        responses={200: CommissionHistorySerializer(many=True)},
+        tags=["CommissionHistory"]
+    )
+)
+class CommissionHistoryListView(ListAPIView):
+    serializer_class = CommissionHistorySerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if not hasattr(user, 'affiliate'):
+            # User is not an affiliate, return empty queryset
+            return CommissionHistory.objects.none()
+
+        affiliate = user.affiliate
+        affiliate_ids = get_all_affiliate_ids(affiliate)
+        # Filter by these affiliate ids either as main affiliate or child affiliate
+        # CommissionHistory can belong to affiliate and also has child_affiliate
+        # We assume we want records where either affiliate_id or child_affiliate_id is in affiliate_ids
+        return CommissionHistory.objects.filter(
+            Q(affiliate_id__in=affiliate_ids)
+        ).order_by('-created_at')
+        
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="List Commission Balances",
+        description="List commission balance records for the user's affiliate and all its descendant affiliates.",
+        responses={200: CommissionBalanceSerializer(many=True)},
+        tags=["CommissionBalance"]
+    )
+)
+class CommissionBalanceListView(ListAPIView):
+    serializer_class = CommissionBalanceSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if not hasattr(user, 'affiliate'):
+            return CommissionBalance.objects.none()
+
+        affiliate = user.affiliate
+        affiliate_ids = get_all_affiliate_ids(affiliate)
+        return CommissionBalance.objects.filter(affiliate_id__in=affiliate_ids)

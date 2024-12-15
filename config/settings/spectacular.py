@@ -32,6 +32,8 @@ SPECTACULAR_SETTINGS = {
                     "Affiliate",
                     "AffiliateTier",
                     "AffiliateRequest",
+                    "CommissionHistory",
+                    "CommissionBalance",
                 ],
             },
             {

@@ -97,7 +97,6 @@ class UserOwnedViewSet(BaseViewSet):
 
         return queryset
 
-
 class BaseAPIListView(routers.APIRootView):
     """
     View returning a list of available APIs per app

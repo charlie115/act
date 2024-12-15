@@ -15,7 +15,6 @@ from fee.models import UserFeeLevel
 from socialaccounts.models import ProxySocialApp
 from users.managers import UserManager
 
-
 class UserRole(models.Model):
     """This table stores User.Roles just for API permission purposes"""
 
@@ -250,14 +249,12 @@ class DepositBalance(models.Model):
 class DepositHistory(models.Model):
     WITHDRAW = "WITHDRAW"
     DEPOSIT = "DEPOSIT"
-    COMMISSION = "COMMISSION"
     FEE = "FEE"
     TRANSFER = "TRANSFER"
     COUPON = "COUPON"
     DepositTypes = (
         (WITHDRAW, WITHDRAW),
         (DEPOSIT, DEPOSIT),
-        (COMMISSION, COMMISSION),
         (FEE, FEE),
         (TRANSFER, TRANSFER),
         (COUPON, COUPON),
@@ -268,14 +265,8 @@ class DepositHistory(models.Model):
         on_delete=models.CASCADE,
         related_name="deposit_history",
     )
-    commission_from = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        related_name="deposit_history_from",
-        blank=True,
-        null=True,
-    ) # For commission
     change = models.DecimalField(max_digits=10, decimal_places=2)
+    referral_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0) # For Fee discount from referral system
     balance = models.DecimalField(max_digits=10, decimal_places=2)
     trade_uuid = models.UUIDField(blank=True, null=True)
     txid = models.TextField(blank=True, null=True)
