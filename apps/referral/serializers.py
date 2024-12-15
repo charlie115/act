@@ -28,6 +28,7 @@ class AffiliateSerializer(serializers.ModelSerializer):
     )
     tier = serializers.PrimaryKeyRelatedField(queryset=AffiliateTier.objects.all())
     user = serializers.UUIDField(source='user.uuid', read_only=True)
+    referral_count = serializers.SerializerMethodField()
     total_earned_commission = serializers.SerializerMethodField()
 
     class Meta:
@@ -39,9 +40,16 @@ class AffiliateSerializer(serializers.ModelSerializer):
             'affiliate_code',
             'tier',
             'created_at',
+            'referral_count',
             'total_earned_commission'
         ]
         read_only_fields = ['created_at', 'id']
+        
+    def get_referral_count(self, instance):
+        # Count how many referrals have used any of this affiliate's referral codes
+        # Since ReferralCode -> affiliate is a FK, we can filter Referral by referral_code__affiliate=instance
+        count = Referral.objects.filter(referral_code__affiliate=instance).count()
+        return count
         
     def get_total_earned_commission(self, instance):
         # Sum all COMMISSION type changes for this affiliate
