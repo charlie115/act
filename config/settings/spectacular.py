@@ -30,6 +30,7 @@ SPECTACULAR_SETTINGS = {
                     "ReferralCode",
                     "ReferralCommission",
                     "Affiliate",
+                    "SubAffiliate",
                     "AffiliateTier",
                     "AffiliateRequest",
                     "CommissionHistory",

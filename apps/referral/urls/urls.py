@@ -3,7 +3,12 @@ from django.urls import include, path
 from rest_framework import response
 
 from lib.views import BaseAPIListView
-from referral.views import ReferralCommissionView, CommissionHistoryListView, CommissionBalanceListView
+from referral.views import (
+    ReferralCommissionView,
+    CommissionHistoryListView,
+    CommissionBalanceListView,
+    SubAffiliateListView,
+)
 
 class ReferralAPIListView(BaseAPIListView):
     """
@@ -59,6 +64,11 @@ urlpatterns = [
         "affiliate/",
         include("referral.urls.affiliate"),
         name="affiliate",
+    ),
+    path(
+        "sub-affiliate/",
+        SubAffiliateListView.as_view(),
+        name="sub-affiliate",
     ),
     path(
         "affiliate-tier/",

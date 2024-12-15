@@ -25,6 +25,7 @@ from .serializers import (
     AffiliateRequestSerializer,
     CommissionBalanceSerializer,
     CommissionHistorySerializer,
+    SubAffiliateSerializer,
 )
 from .utils import calculate_fee_and_commission_for_trade, get_all_affiliate_ids
 
@@ -74,6 +75,30 @@ class AffiliateViewSet(viewsets.ModelViewSet):
             return Affiliate.objects.none()
         related_affiliate_ids = get_all_affiliate_ids(user.affiliate)
         return Affiliate.objects.filter(id__in=related_affiliate_ids)
+    
+@extend_schema(tags=["SubAffiliate"])
+@extend_schema_view(
+    list=extend_schema(description="List all sub-affiliates with hidden fields"),
+    retrieve=extend_schema(description="Retrieve a specific affiliate"),
+    # create=extend_schema(description="Create a new affiliate"),
+    # update=extend_schema(description="Update an affiliate"),
+    # partial_update=extend_schema(description="Partially update an affiliate"),
+    # destroy=extend_schema(description="Delete an affiliate"),
+)
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="List Sub Affiliates",
+        description="List all sub-affiliates of a parent affiliate without hidden fields.",
+        responses={200: SubAffiliateSerializer(many=True)},
+        tags=["SubAffiliate"]
+    )
+)
+class SubAffiliateListView(ListAPIView):
+    serializer_class = SubAffiliateSerializer
+
+    def get_queryset(self):
+        parent_id = self.kwargs['parent_id']
+        return Affiliate.objects.filter(parent_affiliate=parent_id)
 
 @extend_schema(tags=["ReferralCode"])
 @extend_schema_view(
