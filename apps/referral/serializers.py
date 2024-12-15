@@ -103,6 +103,7 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
     self_commission_rate = serializers.DecimalField(
         max_digits=5, decimal_places=4, read_only=True
     )
+    referral_count = serializers.SerializerMethodField()
 
     class Meta:
         model = ReferralCode
@@ -112,7 +113,8 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
             'code',
             'user_discount_rate',
             'self_commission_rate',
-            'created_at'
+            'created_at',
+            'referral_count'
         ]
         read_only_fields = ['id', 'created_at', 'affiliate']
         
@@ -121,8 +123,11 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
         request_user = self.context['request'].user
         validated_data['affiliate'] = request_user.affiliate
         return super().create(validated_data)
-
-
+    
+    def get_referral_count(self, instance):
+        # Count how many referrals are associated with this referral code
+        return instance.referrals.count()
+    
 class ReferralSerializer(serializers.ModelSerializer):
     referral_code = serializers.PrimaryKeyRelatedField(queryset=ReferralCode.objects.all())
     
