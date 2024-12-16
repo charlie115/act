@@ -220,7 +220,7 @@ class ReferralCommissionView(APIView):
                     DepositHistory.objects.create(
                         user=record["user"],
                         change=record["change"],
-                        referral_discount=record.get("referral_discount"),
+                        referral_discount=record.get("referral_discount", 0),
                         type=record["type"],
                         trade_uuid=trade_uuid,
                         description=record.get("description")
