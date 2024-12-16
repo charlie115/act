@@ -191,8 +191,11 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
         return total if total is not None else Decimal('0.00')
     
 class ReferralSerializer(serializers.ModelSerializer):
-    referral_code = serializers.PrimaryKeyRelatedField(queryset=ReferralCode.objects.all())
-    
+    # Use SlugRelatedField to accept referral_code as a string (the 'code' field)
+    referral_code = serializers.SlugRelatedField(
+        queryset=ReferralCode.objects.all(),
+        slug_field='code'
+    )
     class Meta:
         model = Referral
         fields = [
@@ -221,8 +224,8 @@ class ReferralSerializer(serializers.ModelSerializer):
         # Replace referred_user with user.uuid
         ret['referred_user'] = instance.referred_user.uuid
         
-        # Replace referral_code with referral_code.code
-        ret['referral_code'] = instance.referral_code.code
+        # referral_code is already a string because we used SlugRelatedField with slug_field='code'
+        # So no need to modify referral_code in representation.
         
         return ret
 
