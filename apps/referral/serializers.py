@@ -217,6 +217,8 @@ class ReferralSerializer(serializers.ModelSerializer):
         if referral_code.affiliate.user == referred_user:
             raise serializers.ValidationError({"error": "INVALID_REFERRAL_CODE", "message": "You cannot refer yourself."})
         
+        return attrs
+        
     def to_representation(self, instance):
         # Get the original representation
         ret = super().to_representation(instance)
