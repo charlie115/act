@@ -11,6 +11,8 @@ from rest_framework import serializers
 from .models import CouponRedemption
 
 class CouponRedemptionSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(source='user.uuid', read_only=True)
+    coupon = serializers.CharField(source='coupon.name', read_only=True)
     class Meta:
         model = CouponRedemption
         fields = ['id', 'user', 'coupon', 'redeemed_at']
