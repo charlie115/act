@@ -191,11 +191,11 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
         return total if total is not None else Decimal('0.00')
     
 class ReferralSerializer(serializers.ModelSerializer):
-    # Use SlugRelatedField to accept referral_code as a string (the 'code' field)
     referral_code = serializers.SlugRelatedField(
         queryset=ReferralCode.objects.all(),
         slug_field='code'
     )
+
     class Meta:
         model = Referral
         fields = [
@@ -205,30 +205,36 @@ class ReferralSerializer(serializers.ModelSerializer):
             'created_at'
         ]
         read_only_fields = ['id', 'created_at', 'referred_user']
-        
+
     def validate(self, attrs):
         referred_user = self.context['request'].user
         referral_code = attrs.get('referral_code')
-        
-        # Check if related_user already has a referral
+
+        # Check if user already has a referral
         if Referral.objects.filter(referred_user=referred_user).exists():
-            raise serializers.ValidationError({"error": "REFERRAL_ALREADY_EXISTS", "message": "You have already been referred."})
-        # Check if the referral_code belongs to the same user as referred_user
+            raise serializers.ValidationError({
+                "error": "REFERRAL_ALREADY_EXISTS",
+                "message": "You have already been referred."
+            })
+
+        # Check if referral code belongs to the same user
         if referral_code.affiliate.user == referred_user:
-            raise serializers.ValidationError({"error": "INVALID_REFERRAL_CODE", "message": "You cannot refer yourself."})
-        
+            raise serializers.ValidationError({
+                "error": "INVALID_REFERRAL_CODE",
+                "message": "You cannot refer yourself."
+            })
+
         return attrs
-        
+
+    def create(self, validated_data):
+        # Set referred_user explicitly
+        validated_data['referred_user'] = self.context['request'].user
+        return super().create(validated_data)
+
     def to_representation(self, instance):
-        # Get the original representation
         ret = super().to_representation(instance)
-        
-        # Replace referred_user with user.uuid
+        # referred_user is now a user, we show their uuid
         ret['referred_user'] = instance.referred_user.uuid
-        
-        # referral_code is already a string because we used SlugRelatedField with slug_field='code'
-        # So no need to modify referral_code in representation.
-        
         return ret
 
 class ReferralCommissionQueryParamsSerializer(serializers.Serializer):
