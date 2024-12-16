@@ -213,6 +213,18 @@ class ReferralSerializer(serializers.ModelSerializer):
         # Check if the referral_code belongs to the same user as referred_user
         if referral_code.affiliate.user == referred_user:
             raise serializers.ValidationError({"error": "INVALID_REFERRAL_CODE", "message": "You cannot refer yourself."})
+        
+    def to_representation(self, instance):
+        # Get the original representation
+        ret = super().to_representation(instance)
+        
+        # Replace referred_user with user.uuid
+        ret['referred_user'] = instance.referred_user.uuid
+        
+        # Replace referral_code with referral_code.code
+        ret['referral_code'] = instance.referral_code.code
+        
+        return ret
 
 class ReferralCommissionQueryParamsSerializer(serializers.Serializer):
     """
