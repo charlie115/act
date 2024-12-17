@@ -94,6 +94,12 @@ SPECTACULAR_SETTINGS = {
                 ],
             },
             {
+                "name": "EXCHANGE STATUS",
+                "tags": [
+                    "ExchangeServerStatus",
+                ]
+            },
+            {
                 "name": "MESSAGE CORE",
                 "tags": ["Message"],
             },

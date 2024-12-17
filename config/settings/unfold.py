@@ -79,6 +79,11 @@ UNFOLD = {
                 "separator": True,
                 "items": [
                     {
+                        "title": _("EXCHANGE STATUS"),
+                        "icon": "monitor_heart",
+                        "link": reverse_lazy("admin:exchangestatus_exchangeserverstatus_changelist"),  
+                    },
+                    {
                         "title": _("INFO"),
                         "icon": "sync_alt",
                         "link": reverse_lazy("admin:infocore_marketcode_changelist"),

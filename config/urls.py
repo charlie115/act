@@ -47,6 +47,7 @@ urlpatterns = [
     path(mkpath("tradecore/"), include("tradecore.urls.urls")),
     path(mkpath("wallet/"), include("wallet.urls.urls")),
     path(mkpath("coupon/"), include("coupon.urls")),
+    path(mkpath("exchange-status/"), include("exchangestatus.urls")),
     # redis queue
     path(mkpath("django-rq/"), include("django_rq.urls")),
     # docs
