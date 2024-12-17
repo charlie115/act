@@ -224,7 +224,7 @@ def start_trigger_loop(
     target_market_servercheck = False
     origin_market_servercheck = False
     def save_servercheck_status():
-        logger.info(f"start_trigger_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, save_servercheck_status thread has started.")
+        logger.info(f"start_trigger_loop|trade_support: {trade_support}|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, save_servercheck_status thread has started.")
         nonlocal target_market_servercheck, origin_market_servercheck
         while True:
             try:
@@ -232,7 +232,7 @@ def start_trigger_loop(
                 origin_market_servercheck = fetch_market_servercheck(origin_market_code)
                 time.sleep(1)
             except Exception as e:
-                logger.error(f"start_trigger_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in save_servercheck_status: {traceback.format_exc()}")
+                logger.error(f"start_trigger_loop|trade_support: {trade_support}|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in save_servercheck_status: {traceback.format_exc()}")
                 time.sleep(3)
     save_servercheck_status_thread = Thread(target=save_servercheck_status, daemon=True)
     save_servercheck_status_thread.start()
@@ -240,8 +240,8 @@ def start_trigger_loop(
     while True:
         try:
             if target_market_servercheck or origin_market_servercheck:
-                logger.info(f"start_trigger_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, has been skipped due to server check.")
-                time.sleep(1)
+                logger.info(f"start_trigger_loop|trade_support: {trade_support}|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, has been skipped due to server check.")
+                time.sleep(60)
                 continue
             trade_df = load_trade_df(curr,
                                     postgres_client,
