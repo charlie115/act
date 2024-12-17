@@ -227,7 +227,7 @@ def ohlc_1T_generator(
         try:
             # Check if one of the markets is in maintenance
             if target_market_servercheck or origin_market_servercheck:
-                logger.info(f"ohlc_1T_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, has been skipped due to server check.")
+                # logger.info(f"ohlc_1T_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, has been skipped due to server check.")
                 time.sleep(1)
                 continue
             time.sleep(loop_downtime_sec)
