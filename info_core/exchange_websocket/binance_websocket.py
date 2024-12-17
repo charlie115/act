@@ -177,7 +177,7 @@ class BinanceWebsocket:
                         else:
                             quote_asset = "USD"
                         if fetch_market_servercheck(f"BINANCE_{self.market_type}/{quote_asset}"):
-                            self.websocket_logger.info(f"[BINANCE_{self.market_type}] BINANCE_{self.market_type} is in maintenance. Skipping (re)starting websockets..")
+                            self.logger.info(f"[BINANCE_{self.market_type}] BINANCE_{self.market_type} is in maintenance. Skipping (re)starting websockets..")
                             time.sleep(1)
                             continue
                         for i in range(self.proc_n):
