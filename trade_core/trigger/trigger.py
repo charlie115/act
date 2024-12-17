@@ -25,7 +25,6 @@ from standalone_func.trigger_functions import (fetch_users_with_negative_balance
 class InitTrigger:
     def __init__(self,
                  admin_id,
-                 server_check_status_list,
                  enabled_market_code_combinations,
                  acw_api,
                  redis_dict,
@@ -34,7 +33,6 @@ class InitTrigger:
                  logging_dir):
         self.admin_id = admin_id
         self.acw_api = acw_api
-        self.server_check_status_list = server_check_status_list
         self.enabled_market_code_combinations = enabled_market_code_combinations
         self.redis_dict = redis_dict
         self.postgres_db_dict = postgres_db_dict

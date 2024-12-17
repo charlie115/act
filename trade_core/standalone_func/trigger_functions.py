@@ -12,6 +12,7 @@ from threading import Thread
 from standalone_func.premium_data_generator import get_premium_df
 from standalone_func.uuid_converter import trade_uuid_to_display_id
 from standalone_func.data_process import get_pboundary
+from standalone_func.store_exchange_status import fetch_market_servercheck
 from etc.redis_connector.redis_helper import RedisHelper
 import _pickle as pickle
 
@@ -207,6 +208,24 @@ def start_trigger_loop(
         )
         handle_repeat_trade_loop_thread.start()
         
+    # Loop Thread for saving servercheck status
+    target_market_code, origin_market_code = market_code_combination.split(':')
+    target_market_servercheck = False
+    origin_market_servercheck = False
+    def save_servercheck_status():
+        logger.info(f"start_trigger_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, save_servercheck_status thread has started.")
+        nonlocal target_market_servercheck, origin_market_servercheck
+        while True:
+            try:
+                target_market_servercheck = fetch_market_servercheck(target_market_code)
+                origin_market_servercheck = fetch_market_servercheck(origin_market_code)
+                time.sleep(1)
+            except Exception as e:
+                logger.error(f"start_trigger_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in save_servercheck_status: {traceback.format_exc()}")
+                time.sleep(3)
+    save_servercheck_status_thread = Thread(target=save_servercheck_status, daemon=True)
+    save_servercheck_status_thread.start()
+        
     # Initialize info_dict and convert_rate_dict
     while True:
         fetched_info_dict = local_redis.get_data('info_dict')
@@ -220,6 +239,10 @@ def start_trigger_loop(
     
     while True:
         try:
+            if target_market_servercheck and origin_market_servercheck:
+                logger.info(f"start_trigger_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, has been skipped due to server check.")
+                time.sleep(1)
+                continue
             trade_df = load_trade_df(curr,
                                     postgres_client,
                                     market_code_combination,
@@ -232,7 +255,7 @@ def start_trigger_loop(
                 time.sleep(loop_interval_secs)
                 continue
             
-            target_market_code, origin_market_code = market_code_combination.split(':')
+            # target_market_code, origin_market_code = market_code_combination.split(':')
             premium_df = get_premium_df(local_redis, fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
             merged_df = trade_df.merge(premium_df, on='base_asset')
             merged_df['SL_premium_value'] = merged_df.apply(
