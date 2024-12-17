@@ -4,7 +4,7 @@ from unfold.admin import ModelAdmin
 from fee.models import FeeRate, UserFeeLevel
 from lib.inlines import NonrelatedTabularInline
 from users.models import DepositHistory
-
+from users.utils import get_user_spent_fee
 
 class FeeRateAdmin(ModelAdmin):
     list_display = [
@@ -43,12 +43,19 @@ class UserFeeLevelAdmin(ModelAdmin):
         "user",
         "fee_level",
         "total_paid_fee",
+        "total_paid_fee_realtime",  # Add the new field to display
         "last_updated_datetime",
     ]
     search_fields = ["user__email", "user__username", "total_paid_fee"]
     list_editable = ["fee_level"]
     list_filter = ["fee_level"]
     inlines = [DepositHistoryInline]
+    
+    def total_paid_fee_realtime(self, obj):
+        # Call the utility function to get the real-time fee spent by the user
+        return get_user_spent_fee(obj.user)
+    total_paid_fee_realtime.short_description = "Total Paid Fee (Real-Time)"
+
 
     def has_add_permission(self, request, obj=None):
         return False
