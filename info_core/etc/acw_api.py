@@ -20,6 +20,8 @@ class AcwApi:
         self.referral_commission_url = "referral/referral-commission/"
         self.deposit_balance = "users/deposit-balance/"
         self.deposit_history = "users/deposit-history/"
+        self.exchange_status = "exchange-status/server-status/"
+        self.activated_market_codes = "infocore/market-codes/"
 
     def get_message(self, id=None, type=None):
         url = self.url + self.message_url
@@ -144,5 +146,21 @@ class AcwApi:
         response = requests.get(url, params=params, verify=self.verify)
         if response.status_code == 200:
             return pd.DataFrame(response.json()["results"])
+        else:
+            raise Exception("Error: " + str(response.status_code) + "\n" + response.text)
+        
+    def get_exchange_status(self):
+        url = self.url + self.exchange_status
+        response = requests.get(url, verify=self.verify)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception("Error: " + str(response.status_code) + "\n" + response.text)
+        
+    def get_activated_market_codes(self):
+        url = self.url + self.activated_market_codes
+        response = requests.get(url, verify=self.verify)
+        if response.status_code == 200:
+            return response.json()
         else:
             raise Exception("Error: " + str(response.status_code) + "\n" + response.text)

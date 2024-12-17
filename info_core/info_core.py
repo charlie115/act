@@ -26,6 +26,7 @@ import traceback
 from functools import partial
 from standalone_func.wallet_funding_updater import start_wallet_funding_update
 from standalone_func.get_dollar_dict import get_dollar_dict
+from standalone_func.store_exchange_status import store_markets_servercheck_loop, fetch_market_servercheck
 
 current_file_dir = os.path.realpath(__file__)
 current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
@@ -70,13 +71,8 @@ class InitCore:
         self.local_redis = RedisHelper()
 
         # Initiate server check info
-        self.server_check_status_list = None
-        self.server_check_status_initiated = False
-        update_server_check_status_thread = Thread(target=self.update_server_check_status, daemon=True)
+        update_server_check_status_thread = Thread(target=store_markets_servercheck_loop, args=(self.acw_api, self.logging_dir), daemon=True)
         update_server_check_status_thread.start()
-        while self.server_check_status_initiated is False:
-            time.sleep(0.2)
-        self.logger.info(f"InitCore|server_check_status_list has been initiated.")
 
         self.logger.info(f"InitCore|InitCore initiated with proc_n={proc_n}")
 
@@ -252,12 +248,13 @@ class InitCore:
             try:
                 # Check whether the market is in maintenance or not
                 server_check = False
-                for market_name in self.server_check_status_list:
-                    if market_name in data_name.upper():
-                        server_check = True
+                market_name = data_name.replace('_info_df', '').replace('_ticker_df', '').upper()
+                possible_market_codes = [f"{market_name}/{quote_asset}" for quote_asset in ['BTC', 'USDT', 'KRW', 'USD']]
+                for market_code in possible_market_codes:
+                    server_check = fetch_market_servercheck(market_code)
+                    if server_check:
                         break
                 if server_check is True:
-                    # TEST
                     self.logger.info(f"update_exchange_info_as_df|name:{data_name} has been skipped due to server check.")
                     time.sleep(loop_time_secs)
                     continue
@@ -559,6 +556,11 @@ class InitCore:
             
     def fetch_usdt(self):
         try:
+            # Check whether BITHUMB_SPOT/KRW is in maintenance or not
+            server_check = fetch_market_servercheck("BITHUMB_SPOT/KRW")
+            if server_check:
+                self.logger.info(f"fetch_usdt|BITHUMB_SPOT/KRW has been skipped due to server check.")
+                return
             # Fetch usdt price from Bithumb
             ticker_df = self.bithumb_adaptor.spot_all_tickers()
             usdt_df = ticker_df[ticker_df['base_asset']=='USDT']
@@ -603,35 +605,3 @@ class InitCore:
             self.binance_usd_m_symbols_to_exclude.remove(base_asset)
         else:
             raise Exception(f"market: {market} is not supported.")
-
-    def get_server_check_status(self):
-        # Check whether the market is in maintenance or not
-        registered_server_check_list = [x.decode('utf-8') for x in self.remote_redis.get_all_keys() if 'INFO_CORE|SERVER_CHECK' in x.decode('utf-8')]
-        if len(registered_server_check_list) == 0:
-            self.server_check_status_list = []
-        else:
-            temp_server_check_status_list = []
-            for each_market_server_check in registered_server_check_list:
-                market_name = each_market_server_check.replace('INFO_CORE|SERVER_CHECK|', '')
-                server_check_dict = self.remote_redis.get_dict(each_market_server_check)
-                server_check_start_timestamp_utc = server_check_dict['start']
-                server_check_end_timestamp_utc = server_check_dict['end']
-                now_timestamp_utc = datetime.datetime.utcnow().timestamp()
-                if server_check_start_timestamp_utc <= now_timestamp_utc <= server_check_end_timestamp_utc:
-                    temp_server_check_status_list.append(market_name)
-            self.server_check_status_list = temp_server_check_status_list
-        if self.server_check_status_initiated is False:
-            self.server_check_status_initiated = True
-
-    def update_server_check_status(self, loop_interval_secs=1):
-        while True:
-            try:
-                self.get_server_check_status()
-                time.sleep(loop_interval_secs)
-            except Exception as e:
-                self.logger.error(f"update_server_check_status|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
-                self.acw_api.create_message_thread(self.admin_id, f"update_server_check_status|Exception occured! Error: {e}", f"update_server_check_status|Exception occured! Error: {e}")
-                time.sleep(10)
-
-    # def get_server_check_status_list(self):
-    #     return self.server_check_status_list

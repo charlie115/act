@@ -14,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from loggers.logger import InfoCoreLogger
 from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
+from standalone_func.store_exchange_status import fetch_market_servercheck
 
 # Move the upbit_websocket function outside the class
 def upbit_websocket(stream_data_type, url, data, error_event, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
@@ -124,6 +125,11 @@ class UpbitWebsocket:
             while True:
                 try:
                     if not self.stop_restart_websocket:
+                        # Check whether UPBIT_SPOT/KRW is in maintenance
+                        if fetch_market_servercheck("UPBIT_SPOT/KRW"):
+                            self.websocket_logger.info("[UPBIT SPOT] UPBIT_SPOT is in maintenance. Skipping (re)starting websockets..")
+                            time.sleep(1)
+                            continue
                         for i in range(self.proc_n):
                             index = i + 1
                             # Handle ticker process

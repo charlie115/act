@@ -11,6 +11,7 @@ import numpy as np
 import re
 from standalone_func.get_dollar_dict import get_dollar_dict
 from standalone_func.premium_data_generator import get_premium_df
+from standalone_func.store_exchange_status import fetch_market_servercheck
 
 def store_kline_volatility_info(mongo_db_client, market_code_combination, logger, last_n=180):
     try:
@@ -82,6 +83,12 @@ def store_kline_volatility_info_loop(enabled_market_klines, mongodb_dict, loggin
         try:
             start = time.time()
             for market_code_combination in enabled_market_klines:
+                first_market_code, second_market_code = market_code_combination.split('_')
+                # Check if the one of the market_code is in maintenance
+                if fetch_market_servercheck(first_market_code) or fetch_market_servercheck(second_market_code):
+                    logger.info(f"store_kline_volatility_info_loop|{market_code_combination} has been skipped due to server check.")
+                    time.sleep(1)
+                    continue
                 store_kline_volatility_info(mongo_db_client, market_code_combination, logger, last_n)
             logger.info(f"store_kline_volatility_info took {time.time()-start} seconds. for {len(enabled_market_klines)} market_code_combinations.")
         except Exception as e:
@@ -197,10 +204,32 @@ def ohlc_1T_generator(
         per_minute_ohlc_df[col] = np.nan  # Initialize columns with NaN
 
     remote_redis.get_redis_client().xtrim(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', maxlen=max_length)
+    
+    # Loop Thread for saving servercheck status
+    target_market_servercheck = False
+    origin_market_servercheck = False
+    def save_servercheck_status():
+        logger.info(f"ohlc_1T_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, save_servercheck_status thread has started.")
+        nonlocal target_market_servercheck, origin_market_servercheck
+        while True:
+            try:
+                target_market_servercheck = fetch_market_servercheck(target_market_code)
+                origin_market_servercheck = fetch_market_servercheck(origin_market_code)
+                time.sleep(1)
+            except Exception as e:
+                logger.error(f"ohlc_1T_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in save_servercheck_status: {traceback.format_exc()}")
+                time.sleep(3)
+    save_servercheck_status_thread = Thread(target=save_servercheck_status, daemon=True)
+    save_servercheck_status_thread.start()
 
     loop_downtime_sec = 0.05
     while True:
         try:
+            # Check if one of the markets is in maintenance
+            if target_market_servercheck or origin_market_servercheck:
+                logger.info(f"ohlc_1T_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, has been skipped due to server check.")
+                time.sleep(1)
+                continue
             time.sleep(loop_downtime_sec)
             # datetime_before = datetime_now
             datetime_before = datetime_now.replace(second=0, microsecond=0)
@@ -502,10 +531,32 @@ def ohlc_interval_generator(
 
     initialize_open_prices = True  # Flag to indicate if we need to initialize open prices
     finalize_interval = False      # Flag to indicate when to finalize the interval
+    
+    # Loop Thread for saving servercheck status
+    target_market_servercheck = False
+    origin_market_servercheck = False
+    def save_servercheck_status():
+        logger.info(f"ohlc_interval_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, interval_label: {interval_label} save_servercheck_status thread has started.")
+        nonlocal target_market_servercheck, origin_market_servercheck
+        while True:
+            try:
+                target_market_servercheck = fetch_market_servercheck(target_market_code)
+                origin_market_servercheck = fetch_market_servercheck(origin_market_code)
+                time.sleep(1)
+            except Exception as e:
+                logger.error(f"ohlc_interval_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, interval_label: {interval_label} Error in save_servercheck_status: {traceback.format_exc()}")
+                time.sleep(3)
+    save_servercheck_status_thread = Thread(target=save_servercheck_status, daemon=True)
+    save_servercheck_status_thread.start()
 
     while True:
         time.sleep(loop_downtime_sec)
         try:
+            # Check if one of the markets is in maintenance
+            if target_market_servercheck or origin_market_servercheck:
+                logger.info(f"ohlc_interval_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, interval_label: {interval_label}, has been skipped due to server check.")
+                time.sleep(1)
+                continue
             datetime_now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
             # Fetch the latest 1T Now data from Redis

@@ -10,6 +10,7 @@ from threading import Thread
 from etc.db_handler.mongodb_client import InitDBClient
 import pandas as pd
 import traceback
+from standalone_func.store_exchange_status import fetch_market_servercheck
 
 def start_wallet_funding_update(admin_id, node, acw_api, logging_dir, db_dict, exchange_api_key_dict):
     # Reinitialize the logger inside the function
@@ -75,6 +76,15 @@ def update_fundingrate(admin_id, node, acw_api, logger, db_client, exchange_name
             start = time.time()
             mongo_db_conn = db_client.get_conn()
             for futures_type in ["USD_M", "COIN_M"]:
+                # Check whether {exchange_name}_FUTURES is in maintenance
+                if futures_type == "USD_M":
+                    quote_asset = "USDT"
+                else:
+                    quote_asset = "USD"
+                if fetch_market_servercheck(f"{exchange_name}_{futures_type}/{quote_asset}"):
+                    logger.info(f"{exchange_name}_{futures_type}/{quote_asset} is in maintenance. Skipping update_fundingrate.")
+                    time.sleep(1)
+                    continue
                 # Fetch from MongoDB
                 read_time_start = time.time()
                 mongo_db = mongo_db_conn[f"{exchange_name}_fundingrate"]
@@ -135,6 +145,15 @@ def update_wallet_status(admin_id, node, acw_api, logger, db_client, exchange_na
 
     while True:
         try:
+            # Check whether {exchange_name}_SPOT/{quote_asset} is in maintenance
+            if exchange_name in ["UPBIT", "BITHUMB"]:
+                quote_asset = "KRW"
+            else:
+                quote_asset = "USDT"
+            if fetch_market_servercheck(f"{exchange_name}_SPOT/{quote_asset}"):
+                logger.info(f"{exchange_name}_SPOT/{quote_asset} is in maintenance. Skipping update_wallet_status.")
+                time.sleep(loop_time_secs)
+                continue
             read_time = 0
             write_time = 0
             calculate_time = 0

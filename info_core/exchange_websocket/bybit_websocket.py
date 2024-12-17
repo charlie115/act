@@ -14,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from loggers.logger import InfoCoreLogger
 from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
+from standalone_func.store_exchange_status import fetch_market_servercheck
 
 # Standalone function for the ticker websocket
 def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
@@ -229,6 +230,17 @@ class BybitWebsocket:
             while True:
                 try:
                     if self.stop_restart_websocket is False:
+                        # Check whether BINANCE_{self.market_type}/{quote_asset} is in maintenance
+                        if self.market_type == "SPOT":
+                            quote_asset = "USDT"
+                        elif self.market_type == "USD_M":
+                            quote_asset = "USDT"
+                        else:
+                            quote_asset = "USD"
+                        if fetch_market_servercheck(f"BYBIT_{self.market_type}/{quote_asset}"):
+                            self.websocket_logger.info(f"[BYBIT_{self.market_type}] BYBIT_{self.market_type} is in maintenance. Skipping (re)starting websockets..")
+                            time.sleep(1)
+                            continue
                         for i in range(self.proc_n):
                             ticker_start_proc = False
                             ticker_restarted = False

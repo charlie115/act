@@ -4,6 +4,7 @@ import datetime
 from etc.db_handler.mongodb_client import InitDBClient
 from loggers.logger import InfoCoreLogger
 import traceback
+from standalone_func.store_exchange_status import fetch_market_servercheck
     
 def store_funding_diff(mongo_db_client, total_enabled_market_klines, head=None, same_exchange=False):
         total_df = pd.DataFrame()
@@ -12,6 +13,12 @@ def store_funding_diff(mongo_db_client, total_enabled_market_klines, head=None, 
         exchange_list = []
         for each_market_code_combi in total_enabled_market_klines:
             first_market_code, second_market_code = each_market_code_combi.split(":")
+            # Check whether first_market_code or second_market_code is in maintenance
+            if fetch_market_servercheck(first_market_code) or fetch_market_servercheck(second_market_code):
+                # TEST
+                print(f"store_funding_diff:{first_market_code} or {second_market_code} is in maintenance.")
+                time.sleep(1)
+                continue
             first_market, first_quote_asset = first_market_code.split('/')
             first_exchange = first_market.split('_')[0]
             first_market_type = first_market.replace(f'{first_exchange}_','')
@@ -128,6 +135,12 @@ def store_average_funding_rate(mongo_db_client, total_enabled_market_klines, log
         exchange_list = []
         for each_market_code_combi in total_enabled_market_klines:
             first_market_code, second_market_code = each_market_code_combi.split(":")
+            # Check whether first_market_code or second_market_code is in maintenance
+            if fetch_market_servercheck(first_market_code) or fetch_market_servercheck(second_market_code):
+                # TEST
+                print(f"store_average_funding_rate:{first_market_code} or {second_market_code} is in maintenance.")
+                time.sleep(1)
+                continue
             first_market, first_quote_asset = first_market_code.split('/')
             first_exchange = first_market.split('_')[0]
             first_market_type = first_market.replace(f'{first_exchange}_','')
