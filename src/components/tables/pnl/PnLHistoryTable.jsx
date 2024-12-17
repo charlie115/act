@@ -142,7 +142,7 @@ export default function PnLHistoryTable({
         data || [],
         (o) =>
           DateTime.fromISO(o.registered_datetime, {
-            zone: 'UTC',
+            zone: 'local',
           }).toMillis(),
         'desc'
       ).map((item) => ({

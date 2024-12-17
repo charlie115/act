@@ -37,6 +37,36 @@ export const DEPOSIT_TYPE = {
   },
 };
 
+export const WITHDRAWAL_STATUS_TYPE = {
+  PENDING: {
+    getLabel: () => i18n.t('Pending'),
+    color: 'error.main',
+  },
+  APPROVED: {
+    getLabel: () => i18n.t('Approved'),
+    color: 'success.main',
+  },
+  REJECTED: {
+    getLabel: () => i18n.t('Rejected'),
+    color: 'error.main',
+  },
+  COMPLETED: {
+    getLabel: () => i18n.t('Completed'),
+    color: 'success.main',
+  },
+};
+
+export const WITHDRAWAL_TYPE = {
+  DEPOSIT: {
+    getLabel: () => i18n.t('Deposit Balance'),
+    color: 'success.main',
+  },
+  COMMISSION: {
+    getLabel: () => i18n.t('Commission'),
+    color: 'success.main',
+  },
+};
+
 export const POST_REACTION_TYPE = {
   DISLIKE: {
     value: 'DISLIKE',

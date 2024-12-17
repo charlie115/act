@@ -4,19 +4,15 @@ const api = drfApi.injectEndpoints({
   endpoints: (builder) => ({
     getWalletAddress: builder.query({
       keepUnusedDataFor: 1,
-        // query: (params) => ({
-        //   url: '/wallet/address/',
-        //   params,
-        // }),
         query: (userUuid) => ({
             url: `/wallet/address/${userUuid}/`,
         })
       }),
     getWalletBalance: builder.query({
       keepUnusedDataFor: 1,
-      query: (params) => ({
-        url: '/wallet/balance/',
-        params,
+      query: ({ userUuid, asset }) => ({
+        url: `/wallet/balance/${userUuid}/`,
+        params: { asset },
       }),
     }),
     postWalletTransaction: builder.mutation({

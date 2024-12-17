@@ -1,93 +1,81 @@
-import React, { useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import Avatar from '@mui/material/Avatar';
-import Box from '@mui/material/Box';
-import Divider from '@mui/material/Divider';
-import Stack from '@mui/material/Stack';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableRow from '@mui/material/TableRow';
-import Typography from '@mui/material/Typography';
-
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
-import DomainVerificationIcon from '@mui/icons-material/DomainVerification';
-import GoogleIcon from '@mui/icons-material/Google';
-import PersonIcon from '@mui/icons-material/Person';
-import TelegramIcon from '@mui/icons-material/Telegram';
+import {
+  Avatar,
+  Box,
+  Card,
+  CardContent,
+  CardHeader,
+  Divider,
+  Grid,
+  Typography,
+  Button,
+  TextField,
+  Stack,
+  Container
+} from '@mui/material';
 
 import { useTheme } from '@mui/material/styles';
-
 import { useSelector } from 'react-redux';
-
-import { useLoginTelegramMutation } from 'redux/api/drf/auth';
-
+import { DateTime } from 'luxon';
 import { Trans, useTranslation } from 'react-i18next';
 
-import { DateTime } from 'luxon';
+import PersonIcon from '@mui/icons-material/Person';
+import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
+import GoogleIcon from '@mui/icons-material/Google';
+import DomainVerificationIcon from '@mui/icons-material/DomainVerification';
+import TelegramIcon from '@mui/icons-material/Telegram';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 
-import useScript from 'hooks/useScript';
-
-import DepositBalance from 'components/DepositBalance';
-
+import { useGetReferralsQuery, usePostReferralMutation } from 'redux/api/drf/referral';
 import TelegramLoginButton from 'components/TelegramLoginButton';
+import DepositBalance from 'components/DepositBalance';
+import useGlobalSnackbar from 'hooks/useGlobalSnackbar';
 
 export default function MyPage() {
   const { t } = useTranslation();
   const theme = useTheme();
   const navigate = useNavigate();
-  const [loginTelegram] = useLoginTelegramMutation();
-  const { telegramBot, user } = useSelector((state) => state.auth);
 
-  // const dataOnAuth = (telegramUser) => {
-  //   loginTelegram({ user: user?.uuid, ...telegramUser });
-  // };
+  const { user, telegramBot } = useSelector((state) => state.auth);
+  const { openSnackbar } = useGlobalSnackbar();
 
-  // useEffect(() => {
-  //   window.TelegramWidget = { dataOnAuth };
-  // }, []);
+  // Fetch the user's referral data
+  const { data: referrals = [], refetch: refetchReferrals } = useGetReferralsQuery();
+  const [postReferral, { isLoading: postingReferral }] = usePostReferralMutation();
 
-  // console.log('telegramBot', telegramBot);
+  const [referralCodeInput, setReferralCodeInput] = useState('');
 
-  // useScript(
-  //   telegramBot && user && !user?.telegram_chat_id
-  //     ? 'https://telegram.org/js/telegram-widget.js?22'
-  //     : null,
-  //   {
-  //     nodeId: 'telegram-button',
-  //     attributes: {
-  //       'data-onauth': 'TelegramWidget.dataOnAuth(user)',
-  //       'data-request-access': 'write',
-  //       'data-telegram-login': telegramBot,
-  //       'data-size': 'medium',
-  //     },
-  //   },
-  //   []
-  // );
-  
+  const handleReferralSubmit = async () => {
+    try {
+      await postReferral({ referral_code: referralCodeInput }).unwrap();
+      openSnackbar(t('Referral code registered successfully!'), { variant: 'success' });
+      setReferralCodeInput('');
+      refetchReferrals();
+    } catch (error) {
+      console.error('Failed to register referral code', error);
+      const errorMessage = error.data?.message || t('Failed to register referral code.');
+      openSnackbar(errorMessage, { variant: 'error' });
+    }
+  };
+
+  // Check if user already has a referral
+  const hasReferral = referrals.length > 0;
+  const referralInfo = hasReferral ? referrals[0] : null;
+
   return (
-    <Box sx={{ m: 'auto', p: { xs: 2, sm: 0 } }}>
-      <Typography variant="h4" sx={{ mb: 2 }}>
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Typography variant="h4" sx={{ mb: 4, textAlign: 'center' }}>
         {t('My Page')}
       </Typography>
-      <Divider sx={{ mb: 2 }} />
-      <Table
-        sx={{
-          borderCollapse: 'collapse',
-          minWidth: { xs: 320, sm: 400 },
-          td: { border: 0 },
-        }}
-      >
-        <TableBody>
-          <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-            <TableCell align="right" sx={{ p: 0, width: 16 }}>
-              <PersonIcon />
-            </TableCell>
-            <TableCell sx={{ fontSize: '1.15em' }}>{t('Name')}</TableCell>
-            <TableCell sx={{ fontSize: '1.15em' }}>
-              <Stack alignItems="center" direction="row" spacing={1}>
+
+      <Grid container spacing={4} justifyContent="center">
+        {/* Main Card containing all info */}
+        <Grid item xs={12} md={8}>
+          <Card elevation={3} sx={{ borderRadius: 2 }}>
+            <CardHeader
+              avatar={
                 <Avatar
                   src={user?.profile?.picture}
                   alt={t('userFullName', {
@@ -96,96 +84,134 @@ export default function MyPage() {
                   })}
                   sx={{
                     bgcolor: user ? 'primary.main' : null,
-                    width: 28,
-                    height: 28,
                   }}
                 />
-                <Box>
-                  {t('userFullName', {
-                    firstName: user?.first_name,
-                    lastName: user?.last_name,
-                  })}
-                </Box>
-              </Stack>
-            </TableCell>
-          </TableRow>
-          {telegramBot && (
-            <TableRow>
-              <TableCell align="right" sx={{ p: 0 }}>
-                <TelegramIcon />
-              </TableCell>
-              <TableCell sx={{ fontSize: '1.15em' }}>
-                {t('Telegram Integration')}
-              </TableCell>
-              <TableCell>
-                {/* <Box id="telegram-button" /> */}
-                <TelegramLoginButton buttonId="telegram-mypage-button" />
-                {!(telegramBot && !user?.telegram_chat_id) && (
-                  <Box sx={{ fontSize: '1.15em' }}>
-                    <Trans>
-                      Connected to{' '}
-                      <span
-                        style={{
-                          color: theme.palette.telegram.main,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {{ telegramBot }}
-                      </span>
-                    </Trans>
-                  </Box>
+              }
+              titleTypographyProps={{ variant: 'h6', fontWeight: 'bold' }}
+              title={t('userFullName', {
+                firstName: user?.first_name,
+                lastName: user?.last_name,
+              })}
+              subheader={t('Name')}
+            />
+            <Divider />
+            <CardContent>
+              {/* Register Referral Code Section */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  {t('Register Referral Code')}
+                </Typography>
+                {hasReferral ? (
+                  <Typography variant="body1">
+                    {t('You have been referred with code')}:{' '}
+                    <strong>{referralInfo.referral_code}</strong>
+                  </Typography>
+                ) : (
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">
+                    <TextField
+                      variant="outlined"
+                      size="small"
+                      fullWidth
+                      placeholder={t('Enter referral code')}
+                      value={referralCodeInput}
+                      onChange={(e) => setReferralCodeInput(e.target.value)}
+                    />
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      disabled={!referralCodeInput || postingReferral}
+                      onClick={handleReferralSubmit}
+                    >
+                      {t('Register')}
+                    </Button>
+                  </Stack>
                 )}
-              </TableCell>
-            </TableRow>
-          )}
-          <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-            <TableCell align="right" sx={{ p: 0 }}>
-              <AlternateEmailIcon />
-            </TableCell>
-            <TableCell sx={{ fontSize: '1.15em' }}>{t('Username')}</TableCell>
-            <TableCell sx={{ fontSize: '1.15em' }}>{user?.username}</TableCell>
-          </TableRow>
-          <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-            <TableCell align="right" sx={{ p: 0 }}>
-              <GoogleIcon />
-            </TableCell>
-            <TableCell sx={{ fontSize: '1.15em' }}>{t('E-mail')}</TableCell>
-            <TableCell sx={{ fontSize: '1.15em' }}>{user?.email}</TableCell>
-          </TableRow>
-          {user?.date_joined && (
-            <TableRow
-              sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-            >
-              <TableCell align="right" sx={{ p: 0 }}>
-                <DomainVerificationIcon />
-              </TableCell>
-              <TableCell sx={{ fontSize: '1.15em' }}>
-                {t('Registration Date')}
-              </TableCell>
-              <TableCell sx={{ fontSize: '1.15em' }}>
-                {DateTime.fromISO(user.date_joined).toFormat('DDDD')}
-              </TableCell>
-            </TableRow>
-          )}
-          <TableRow
-            onClick={() =>
-              navigate('/bot', { state: { defaultTab: 'deposit' } })
-            }
-            sx={{
-              cursor: 'pointer',
-              '&:last-child td, &:last-child th': { border: 0 },
-            }}
-          >
-            <TableCell align="right" sx={{ p: 0 }}>
-              <AccountBalanceWalletIcon />
-            </TableCell>
-            <TableCell sx={{ fontSize: '1.15em' }}>{t('Deposit')}</TableCell>
-            <TableCell sx={{ fontSize: '1.15em' }}>
-              <DepositBalance />
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </Box>
+              </Box>
+
+              {/* Username */}
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <PersonIcon sx={{ mr: 1 }} />
+                <Typography variant="body1" sx={{ mr: 1, fontWeight: 600 }}>
+                  {t('Username')}:
+                </Typography>
+                <Typography variant="body1">{user?.username}</Typography>
+              </Box>
+
+              {/* Email */}
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <GoogleIcon sx={{ mr: 1 }} />
+                <Typography variant="body1" sx={{ mr: 1, fontWeight: 600 }}>
+                  {t('E-mail')}:
+                </Typography>
+                <Typography variant="body1">{user?.email}</Typography>
+              </Box>
+
+              {/* Registration Date */}
+              {user?.date_joined && (
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <DomainVerificationIcon sx={{ mr: 1 }} />
+                  <Typography variant="body1" sx={{ mr: 1, fontWeight: 600 }}>
+                    {t('Registration Date')}:
+                  </Typography>
+                  <Typography variant="body1">
+                    {DateTime.fromISO(user.date_joined).toFormat('DDDD')}
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Deposit Balance */}
+              <Box
+                onClick={() => navigate('/bot/deposit')}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  mb: 2,
+                  cursor: 'pointer',
+                  ':hover': { textDecoration: 'underline' },
+                }}
+              >
+                <AccountBalanceWalletIcon sx={{ mr: 1 }} />
+                <Typography variant="body1" sx={{ mr: 1, fontWeight: 600 }}>
+                  {t('Deposit Balance')}:
+                </Typography>
+                <DepositBalance />
+              </Box>
+            </CardContent>
+
+            {telegramBot && (
+              <>
+                <Divider />
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <TelegramIcon sx={{ mr: 1, color: theme.palette.telegram.main }} />
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                      {t('Telegram Integration')}
+                    </Typography>
+                  </Box>
+                  <Stack spacing={2}>
+                    <TelegramLoginButton buttonId="telegram-mypage-button" />
+                    {!(telegramBot && !user?.telegram_chat_id) && (
+                      <Typography variant="body1">
+                        <Trans>
+                          Connected to{' '}
+                          <span
+                            style={{
+                              color: theme.palette.telegram.main,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {{ telegramBot }}
+                          </span>
+                        </Trans>
+                      </Typography>
+                    )}
+                  </Stack>
+                </CardContent>
+              </>
+            )}
+          </Card>
+        </Grid>
+      </Grid>
+    </Container>
   );
 }

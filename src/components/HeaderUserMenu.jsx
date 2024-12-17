@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
-
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Avatar from '@mui/material/Avatar';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
+import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
@@ -10,26 +12,27 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-
 import LogoutIcon from '@mui/icons-material/Logout';
+import Badge from '@mui/material/Badge';
 
 import { useSelector } from 'react-redux';
 import { useLogoutMutation } from 'redux/api/drf/auth';
+import { useGetCouponsQuery, useGetCouponRedemptionsQuery } from 'redux/api/drf/coupon';
 
 import { useTranslation } from 'react-i18next';
-
 import useGlobalSnackbar from 'hooks/useGlobalSnackbar';
 
 export default function HeaderUserMenu({ iconStyle }) {
   const navigate = useNavigate();
-
   const { t } = useTranslation();
-
   const { openSnackbar } = useGlobalSnackbar();
-
   const { loggedin, user } = useSelector((state) => state.auth);
 
   const [logout, { isLoading, isSuccess, reset }] = useLogoutMutation();
+
+  // Fetch coupons and redemptions
+  const { data: coupons = [], isLoading: couponsLoading } = useGetCouponsQuery();
+  const { data: redemptions = [], isLoading: redemptionsLoading } = useGetCouponRedemptionsQuery();
 
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -47,7 +50,17 @@ export default function HeaderUserMenu({ iconStyle }) {
       });
       handleClose();
     }
-  }, [isSuccess]);
+  }, [isSuccess, openSnackbar, reset, t]);
+
+  const hasAffiliate = !!user?.affiliate; // Checks if the user has affiliate data
+
+  // Compute unused coupons
+  // redeemedCouponNames: set of coupon names that are redeemed
+  const redeemedCouponNames = useMemo(() => new Set(redemptions.map(r => r.coupon)), [redemptions]);
+  const unusedCount = useMemo(() => {
+    if (!coupons.length) return 0;
+    return coupons.filter(coupon => !redeemedCouponNames.has(coupon.name)).length;
+  }, [coupons, redeemedCouponNames]);
 
   return (
     <>
@@ -109,21 +122,65 @@ export default function HeaderUserMenu({ iconStyle }) {
           <Avatar />
           {t('My Page')}
         </MenuItem>
-        {/* <MenuItem onClick={handleClose}>
-          <Avatar>
-            <SvgIcon>
-              <RobotSvg />
-            </SvgIcon>
-          </Avatar>
-          {t('Ar-Bot Settings')}
-        </MenuItem> */}
         <Divider />
-        {/* <MenuItem onClick={handleClose}>
+        <MenuItem
+          onClick={() => {
+            navigate('/coupon-dashboard');
+            handleClose();
+          }}
+        >
           <ListItemIcon>
-            <SettingsIcon />
+            {/* Display badge only if unusedCount > 0 */}
+            <Badge 
+              badgeContent={unusedCount} 
+              color="error" 
+              overlap="rectangular"
+              invisible={unusedCount === 0}
+              sx={{
+                '& .MuiBadge-badge': {
+                  fontSize: '0.75rem',
+                  height: '15px',
+                  minWidth: '15px',
+                  padding: '0 4px'
+                }
+              }}
+            >
+              <ConfirmationNumberIcon />
+            </Badge>
           </ListItemIcon>
-          {t('Settings')}
-        </MenuItem> */}
+          {t('Coupon Dashboard')}
+        </MenuItem>
+        <Divider />
+        {hasAffiliate ? (
+          <MenuItem
+            onClick={() => {
+              navigate('/affiliate');
+              handleClose();
+            }}
+          >
+            <ListItemIcon>
+              <DashboardIcon />
+            </ListItemIcon>
+            <ListItemText>
+              {t('Affiliate Dashboard')}
+            </ListItemText>
+          </MenuItem>
+        ) : (
+          <MenuItem
+            onClick={() => {
+              navigate('/request-affiliate');
+              handleClose();
+            }}
+          >
+            <ListItemIcon>
+              <AppRegistrationIcon />
+            </ListItemIcon>
+            <ListItemText>
+              {t('Apply for Affiliate Program')}
+            </ListItemText>
+          </MenuItem>
+        )}
+        <Divider />
         <MenuItem onClick={logout}>
           <ListItemIcon>
             <LogoutIcon />

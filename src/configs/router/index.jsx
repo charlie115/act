@@ -63,7 +63,7 @@ export default createBrowserRouter(
         ))}
       </Route>
       <Route element={<ProtectedLayout />}>
-        {navigation.protectedRoutes.map(({ element: Element, ...props }) => (
+        {navigation.protectedRoutes.map(({ element: Element, elementProps = {}, children, ...props }) => (
           <Route
             key={props.name}
             element={
@@ -72,7 +72,26 @@ export default createBrowserRouter(
               </React.Suspense>
             }
             {...props}
-          />
+          >
+            {children?.map(
+              ({
+                element: ChildElement,
+                elementProps: childElementProps = {},
+                ...child
+              }) => (
+                <Route
+                  key={child.name}
+                  index={child.index}
+                  path={child.path}
+                  element={
+                    <React.Suspense fallback={<FullScreenLoading />}>
+                      <ChildElement {...childElementProps} />
+                    </React.Suspense>
+                  }
+                />
+              )
+            )}
+          </Route>
         ))}
       </Route>
       {/* <Route path="*" element={<Navigate to="/" replace />} /> */}

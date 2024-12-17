@@ -18,14 +18,19 @@ export default function DepositHistory() {
 
   const tableData = useMemo(
     () =>
-      data?.results?.map((item) => ({
+      (data?.results?.map((item) => ({
         ...item,
         balance: parseFloat(item.balance || 0),
         change: parseFloat(item.change || 0),
         registered_datetime: DateTime.fromISO(item.registered_datetime, {
-          zone: 'UTC',
+          zone: 'local',
         }).toLocaleString(DateTime.DATETIME_MED),
-      })) || [],
+        // Keep original datetime for sorting
+        original_datetime: DateTime.fromISO(item.registered_datetime, {
+          zone: 'local',
+        }),
+      })) || [])
+      .sort((a, b) => b.original_datetime.toMillis() - a.original_datetime.toMillis()),
     [data, i18n]
   );
 

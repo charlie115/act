@@ -71,7 +71,7 @@ export default function PnLHistory() {
 
   const pnlDataByPeriod = useMemo(() => {
     const groupedData = groupBy(data, (o) =>
-      DateTime.fromISO(o.registered_datetime, { zone: 'UTC' })
+      DateTime.fromISO(o.registered_datetime, { zone: 'local' })
         .startOf(period)
         .toMillis()
     );

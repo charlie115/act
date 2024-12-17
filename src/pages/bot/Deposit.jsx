@@ -57,7 +57,7 @@ export default function Deposit() {
       value: comp.value,
       icon: <comp.icon />,
       component: comp.component,
-      disabled: comp.value === 'withdrawDeposit',
+      // disabled: comp.value === 'withdrawDeposit',
     }));
     setComponentList(components);
     if (!selectedComponent) setSelectedComponent(components[0]);

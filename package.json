@@ -65,6 +65,7 @@
     "redux-logger": "^3.0.6",
     "redux-persist": "^6.0.0",
     "redux-persist-transform-encrypt": "^5.0.0",
+    "tronweb": "^6.0.0",
     "uuid": "^9.0.1",
     "web-vitals": "^2.1.4"
   },

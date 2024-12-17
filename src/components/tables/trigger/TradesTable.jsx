@@ -158,7 +158,7 @@ export default function TradesTable({
         entry: trade.low,
         exit: trade.high,
         created: DateTime.fromISO(trade.registered_datetime, {
-          zone: 'UTC',
+          zone: 'local',
         })
           .toLocal()
           .toLocaleString(DateTime.DATETIME_MED),

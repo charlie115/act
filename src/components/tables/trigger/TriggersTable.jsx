@@ -423,7 +423,7 @@ export default function TriggersTable({
           exit: trade.high,
           tradeCapital: trade.trade_capital,
           created: DateTime.fromISO(trade.registered_datetime, {
-            zone: 'UTC',
+            zone: 'local',
           })
             .toLocal()
             .toLocaleString(DateTime.DATETIME_MED),
@@ -502,8 +502,6 @@ export default function TriggersTable({
   );
 
   const onAutoRepeatClick = useCallback(async (value, row) => {
-    console.log(value);
-    console.log(row);
     if (value) setAutoRepeatTrade(row);
     else {
       setAutoRepeatTrade();

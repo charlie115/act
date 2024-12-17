@@ -48,6 +48,25 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    getWithdrawalRequests: builder.query({
+      keepUnusedDataFor: 1,
+      query: (params) => ({
+        url: '/users/withdrawal-request/',
+        params,
+      }),
+    }),
+    postWithdrawalRequest: builder.mutation({
+      query: (args) => ({ 
+        url: '/users/withdrawal-request/',
+        method: 'POST',
+        body: {
+          amount: args.amount,
+          type: args.type,
+          address: args.address,
+        },
+     }),
+      invalidatesTags: ['WithdrawalRequests'],
+    }),
   }),
 });
 
@@ -59,4 +78,6 @@ export const {
   useGetDepositBalanceQuery,
   useGetDepositHistoryQuery,
   useLazyGetDepositBalanceQuery,
+  useGetWithdrawalRequestsQuery,
+  usePostWithdrawalRequestMutation,
 } = api;

@@ -24,9 +24,13 @@ const Settings = lazy(() => import('pages/bot/Settings'));
 const Triggers = lazy(() => import('pages/bot/Triggers'));
 
 const Home = lazy(() => import('pages/Home'));
-// const Investment = lazy(() => import('pages/Investment'));
 const Login = lazy(() => import('pages/Login'));
 const MyPage = lazy(() => import('pages/MyPage'));
+const Affiliate = lazy(() => import('pages/affiliate'));
+const AffiliateDashboard = lazy(() => import('pages/affiliate/Dashboard'));
+const AffiliateCommissionHistory = lazy(() => import('pages/affiliate/CommissionHistory'));
+const CouponDashboard = lazy(() => import('pages/CouponDashboard'));
+const RequestAffiliate = lazy(() => import('pages/RequestAffiliate'));
 const News = lazy(() => import('pages/News'));
 const Register = lazy(() => import('pages/Register'));
 
@@ -177,6 +181,51 @@ const protectedRoutes = [
     getTitle: () => i18n.t('My Page'),
     ref: createRef(),
   },
+  {
+    name: 'request-affiliate',
+    path: '/request-affiliate',
+    element: RequestAffiliate,
+    displayChat: true,
+    getTitle: () => i18n.t('Apply for Affiliate Program'),
+    ref: createRef(),
+  },
+  {
+    name: 'affiliate',
+    path: '/affiliate',
+    element: Affiliate,
+    displayChat: true,
+    displayInHeader: true,
+    icon: SmartToyIcon,
+    getTitle: () => i18n.t('Affiliate Dashboard'),
+    ref: createRef(),
+    children: [
+      {
+        name: 'affiliate-dashboard',
+        path: '/affiliate/dashboard',
+        element: AffiliateDashboard,
+      },
+      {
+        name: 'affiliate-commission-history',
+        path: '/affiliate/commission-history',
+        element: AffiliateCommissionHistory,
+      },
+      {
+        index: true,
+        name: '/affiliate',
+        path: '/affiliate',
+        element: Navigate,
+        elementProps: { replace: true, to: '/affiliate/dashboard' },
+      }
+    ]
+  },
+  {
+    name: 'coupon-dashboard',
+    path: '/coupon-dashboard',
+    element: CouponDashboard,
+    displayChat: true,
+    getTitle: () => i18n.t('Coupon Dashboard'),
+    ref: createRef(),
+  }
 ];
 
 const publicRoutes = [

@@ -89,7 +89,7 @@ const TABS = [
   {
     id: TAB.deposit,
     name: '/bot/deposit',
-    getLabel: () => i18n.t('Deposit'),
+    getLabel: () => i18n.t('Deposit/Withdrawal'),
   },
   {
     id: TAB.userGuide,

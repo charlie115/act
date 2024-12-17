@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
@@ -11,9 +11,14 @@ import renderCurrencyFormatCell from 'components/tables/common/renderCurrencyFor
 
 import renderDepositTypeCell from './renderDepositTypeCell';
 
+import renderTruncatedCell from '../common/renderTruncatedCell';
+
 export default function DepositHistoryTable({ isLoading, tableData }) {
   const { i18n, t } = useTranslation();
-
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 20,
+  });  
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -33,12 +38,13 @@ export default function DepositHistoryTable({ isLoading, tableData }) {
       },
       {
         accessorKey: 'txid',
-        size: isMobile ? 60 : 180,
+        size: isMobile ? 40 : 60,
         header: t('TXID'),
+        cell: renderTruncatedCell,
       },
       {
         accessorKey: 'type',
-        size: isMobile ? 40 : 80,
+        size: isMobile ? 40 : 60,
         header: t('Type'),
         cell: renderDepositTypeCell,
       },
@@ -56,6 +62,12 @@ export default function DepositHistoryTable({ isLoading, tableData }) {
     <ReactTableUI
       columns={columns}
       data={tableData}
+      enableTablePaginationUI
+      options={{
+        state: { pagination },
+        onPaginationChange: setPagination,
+        pageCount: Math.ceil(tableData.length / pagination.pageSize),
+      }}
       isLoading={isLoading}
       showProgressBar={isLoading}
       getCellProps={() => ({ sx: { textAlign: 'center', py: 1 } })}
