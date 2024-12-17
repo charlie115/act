@@ -208,6 +208,17 @@ def start_trigger_loop(
         )
         handle_repeat_trade_loop_thread.start()
         
+    # Initialize info_dict and convert_rate_dict
+    while True:
+        fetched_info_dict = local_redis.get_data('info_dict')
+        fetched_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
+        if fetched_info_dict and fetched_convert_rate_dict:
+            fetched_info_dict = pickle.loads(fetched_info_dict)
+            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
+            break
+        logger.info("info_dict and convert_rate_dict are not ready yet. Waiting for 1 second...")
+        time.sleep(1)
+        
     # Loop Thread for saving servercheck status
     target_market_code, origin_market_code = market_code_combination.split(':')
     target_market_servercheck = False
@@ -225,21 +236,10 @@ def start_trigger_loop(
                 time.sleep(3)
     save_servercheck_status_thread = Thread(target=save_servercheck_status, daemon=True)
     save_servercheck_status_thread.start()
-        
-    # Initialize info_dict and convert_rate_dict
-    while True:
-        fetched_info_dict = local_redis.get_data('info_dict')
-        fetched_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
-        if fetched_info_dict and fetched_convert_rate_dict:
-            fetched_info_dict = pickle.loads(fetched_info_dict)
-            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
-            break
-        logger.info("info_dict and convert_rate_dict are not ready yet. Waiting for 1 second...")
-        time.sleep(1)
     
     while True:
         try:
-            if target_market_servercheck and origin_market_servercheck:
+            if target_market_servercheck or origin_market_servercheck:
                 logger.info(f"start_trigger_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, has been skipped due to server check.")
                 time.sleep(1)
                 continue
