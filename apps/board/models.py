@@ -11,12 +11,14 @@ class Post(models.Model):
     QUESTION = "Question"
     INVESTMENT_STRATEGY = "Investment Strategy"
     INFORMATION = "Information"
+    USER_GUIDE = "User Guide"
     Categories = (
         (ANNOUNCEMENT, ANNOUNCEMENT),
         (FREEWRITING, FREEWRITING),
         (QUESTION, QUESTION),
         (INVESTMENT_STRATEGY, INVESTMENT_STRATEGY),
         (INFORMATION, INFORMATION),
+        (USER_GUIDE, USER_GUIDE),
     )
 
     user = models.ForeignKey(
