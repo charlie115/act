@@ -83,7 +83,7 @@ def store_kline_volatility_info_loop(enabled_market_klines, mongodb_dict, loggin
         try:
             start = time.time()
             for market_code_combination in enabled_market_klines:
-                first_market_code, second_market_code = market_code_combination.split('_')
+                first_market_code, second_market_code = market_code_combination.split(':')
                 # Check if the one of the market_code is in maintenance
                 if fetch_market_servercheck(first_market_code) or fetch_market_servercheck(second_market_code):
                     logger.info(f"store_kline_volatility_info_loop|{market_code_combination} has been skipped due to server check.")
