@@ -345,7 +345,7 @@ class UserExchangeAdaptor:
                 modified_input_krw = qty * merged_row['ap'] # UPBIT KRW ask price in KRW
 
                 # Get Binance API keys
-                origin_access_key, origin_secret_key = self.origin_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=False if 'SPOT' in self.origin_market_type else True)
+                key_uuid, origin_access_key, origin_secret_key = self.origin_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=False if 'SPOT' in self.origin_market_type else True)
                 # Binance USD_M Short
                 origin_return_dict = {}
                 origin_trade_thread = Thread(target=self.origin_exchange_adaptor.market_short, args=(origin_access_key, origin_secret_key,
@@ -353,7 +353,7 @@ class UserExchangeAdaptor:
                 origin_trade_thread.start()
 
                 # Get Upbit API keys
-                target_access_key, target_secret_key = self.target_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=False if 'SPOT' in self.target_market_type else True)
+                key_uuid, target_access_key, target_secret_key = self.target_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=False if 'SPOT' in self.target_market_type else True)
                 # Upbit trade + response validation
                 target_trade_error = False
                 try:
@@ -526,7 +526,7 @@ class UserExchangeAdaptor:
                 origin_qty = origin_order_history_series['qty'].values[0]
 
                 # Get Binance API keys
-                origin_access_key, origin_secret_key = self.origin_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=False if 'SPOT' in self.origin_market_type else True)
+                key_uuid, origin_access_key, origin_secret_key = self.origin_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=False if 'SPOT' in self.origin_market_type else True)
                 
                 # # Get remaining position
                 # origin_return_dict = {}
@@ -542,7 +542,7 @@ class UserExchangeAdaptor:
                     origin_trade_thread.start()
 
                 # Get Upbit API keys
-                target_access_key, target_secret_key = self.target_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=False if 'SPOT' in self.target_market_type else True)
+                key_uuid, target_access_key, target_secret_key = self.target_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=False if 'SPOT' in self.target_market_type else True)
                 # Upbit trade + response validation
                 target_trade_error = False
                 try:

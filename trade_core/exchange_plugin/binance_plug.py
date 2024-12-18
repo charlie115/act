@@ -340,12 +340,52 @@ class UserBinanceAdaptor:
         # Pick one randomly using .sample among the same trade_config_uuid and futures flag
         try:
             api_key_df = self.user_api_key_df[(self.user_api_key_df['trade_config_uuid']==trade_config_uuid) & (self.user_api_key_df['futures']==futures)].sample(1)
-            return (api_key_df['access_key'].values[0], api_key_df['secret_key'].values[0])
+            return (api_key_df['uuid'].values[0], api_key_df['access_key'].values[0], api_key_df['secret_key'].values[0])
         except ValueError:
             if raise_error:
                 raise MyException(f"No API Key found for trade_config_uuid: {trade_config_uuid}, futures: {futures}", error_code=1)
             else:
-                return (None, None)
+                return (None, None, None)
+            
+    def delete_user_api_key(self, uuid, table_name='exchange_api_key'):
+        """
+        Deletes a user's API key from the specified table using the unique uuid.
+
+        Parameters
+        ----------
+        uuid : str
+            The UUID of the API key entry that should be deleted.
+        table_name : str, optional
+            The name of the table storing user API keys (default is 'exchange_api_key').
+
+        Returns
+        -------
+        bool
+            True if the deletion was successful (at least one row affected), False otherwise.
+        """
+        # Obtain a connection from the pool
+        conn = self.postgres_client.pool.getconn()
+        curr = conn.cursor()
+
+        try:
+            # Execute the DELETE statement
+            sql = f"DELETE FROM {table_name} WHERE uuid = %s"
+            curr.execute(sql, (uuid,))
+            rows_deleted = curr.rowcount
+            conn.commit()
+
+            # Return True if at least one row was deleted, otherwise False
+            return rows_deleted > 0
+
+        except Exception as e:
+            # In case of any error, rollback changes
+            conn.rollback()
+            raise e
+
+        finally:
+            # Return the connection to the pool
+            self.postgres_client.pool.putconn(conn)
+        
 
     def load_user_client(self, access_key, secret_key):
         user_client = self.user_client_dict.get(access_key)
@@ -528,7 +568,7 @@ class UserBinanceAdaptor:
         while True:
             try:
                 order_info_dict = self.order_info_dict_queue.get()
-                access_key, secret_key = self.get_api_key_tup(order_info_dict['trade_config_uuid'], (False if order_info_dict['market_type'] == "SPOT" else True))
+                key_uuid, access_key, secret_key = self.get_api_key_tup(order_info_dict['trade_config_uuid'], (False if order_info_dict['market_type'] == "SPOT" else True))
                 # API call
                 fetched_order_info_res = self.fetch_order_info(access_key, secret_key, order_info_dict['symbol'], order_info_dict['order_id'], order_info_dict['market_type'])
                 # process res and save data to db
@@ -748,7 +788,6 @@ class UserBinanceAdaptor:
                     # There's waiting trade
                     for row_tup in waiting_df.iterrows():
                         # load api keys
-                        # access_key, secret_key = self.get_api_key_tup(trade_config_uuid, futures=True)
                         row = row_tup[1]
                         trade_uuid = row['uuid']
                         base_asset = row['base_asset']
@@ -986,7 +1025,7 @@ class UserBinanceAdaptor:
                             )
                         )
 
-                        unique_trade_df[['access_key', 'secret_key']] = pd.DataFrame(
+                        unique_trade_df[['key_uuid', 'access_key', 'secret_key']] = pd.DataFrame(
                             unique_trade_df['api_keys'].tolist(),
                             index=unique_trade_df.index
                         )
@@ -997,6 +1036,16 @@ class UserBinanceAdaptor:
 
                         for row_tup in unique_trade_df.iterrows():
                             row = row_tup[1]
+                            # First check if the user has a valid api key
+                            _, error_str = self.check_api_key(row['access_key'], row['secret_key'], futures=True)
+                            if 'APIError' in error_str:
+                                # If the user has an invalid api key, send a message to the user and delete it from the database
+                                access_key_hidden = row['access_key'][:5] + '****' + row['access_key'][-5:]
+                                title = f"API key invalid"
+                                body = f"access_key: {access_key_hidden} 가 유효하지 않아 API키가 자동 삭제됩니다. IP 및 권한설정이 제대로 되었는지 확인하시고 다시 등록하십시오."
+                                self.acw_api.create_message_thread(row['telegram_id'], title, body, 'ERROR', send_times=1, send_term=1)
+                                # Delete the user's api key from the database
+                                self.delete_user_api_key(row['key_uuid'])
                             if 'BINANCE' in self.market_code_combination.split(':')[0]:
                                 margin_call_mode = row['target_market_margin_call']
                             else:
@@ -1012,7 +1061,7 @@ class UserBinanceAdaptor:
                                     row['access_key'], row['secret_key'], row['trade_config_uuid'], margin_call_mode, row['telegram_id']), daemon=True))
                                 monitor_thread_tup[1].start()
                                 self.user_stream_monitoring_list.append(monitor_thread_tup)
-                                self.logger.info(f"user_id: {row['trade_config_uuid']}'s user_stream monitor thread has been initiated.")
+                                self.logger.info(f"trade_config_uuid: {row['trade_config_uuid']}'s user_stream monitor thread has been initiated.")
                             time.sleep(0.25)
                         # Remove dead thread or unauthorized thread from the list
                         for i,each_tup in enumerate(self.user_stream_monitoring_list):

@@ -213,12 +213,12 @@ class UserUpbitAdaptor:
         # Pick one randomly using .sample among the same trade_config_uuid and futures flag
         try:
             api_key_df = self.user_api_key_df[(self.user_api_key_df['trade_config_uuid']==trade_config_uuid) & (self.user_api_key_df['futures']==futures)].sample(1)
-            return (api_key_df['access_key'].values[0], api_key_df['secret_key'].values[0])
+            return (api_key_df['uuid'].values[0], api_key_df['access_key'].values[0], api_key_df['secret_key'].values[0])
         except ValueError:
             if raise_error:
                 raise MyException(f"No API Key found for trade_config_uuid: {trade_config_uuid}, futures: {futures}", error_code=1)
             else:
-                return (None, None)
+                return (None, None, None)
         
     def get_spot_balance(self, access_key, secret_key, return_dict=None):
         upbit_client = self.load_user_client(access_key, secret_key)
@@ -370,7 +370,7 @@ class UserUpbitAdaptor:
         while True:
             try:
                 order_info_dict = self.order_info_dict_queue.get()
-                access_key, secret_key = self.get_api_key_tup(order_info_dict['trade_config_uuid'], (False if order_info_dict['market_type'] == "SPOT" else True))
+                key_uuid, access_key, secret_key = self.get_api_key_tup(order_info_dict['trade_config_uuid'], (False if order_info_dict['market_type'] == "SPOT" else True))
                 # API call
                 fetched_order_info_res = self.fetch_order_info(access_key, secret_key, order_info_dict['order_id'], order_info_dict['market_type'])
                 # process res and save data to db
