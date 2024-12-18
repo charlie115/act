@@ -398,10 +398,12 @@ class UserBinanceAdaptor:
     def check_api_key(self, access_key, secret_key, futures=False):
         self.user_client_dict.pop(access_key, None)
         try:
-            if futures is False:
-                self.get_spot_balance(access_key, secret_key)
-            else:
-                self.get_usdm_balance(access_key, secret_key)
+            # 이유는 모르겠는데 usdm balance 로 API 체크하면 ip permission 가 랜덤하게 뜸. 일단 spot balance 로 체크
+            self.get_spot_balance(access_key, secret_key)
+            # if futures is False:
+            #     self.get_spot_balance(access_key, secret_key)
+            # else:
+            #     self.get_usdm_balance(access_key, secret_key)
             return (True, 'OK')
         except Exception as e:
             self.user_client_dict.pop(access_key, None)
