@@ -91,10 +91,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    container_name: prod-community-drf
+      hd-api-key-generator: 
+        condition: service_started
+    environment:
+      - WALLET_SERVICE_URL=http://hdwallet-service:8000
+      - WALLET_API_KEY_FILE=/api_key/wallet_api_key.txt
+    container_name: test-community-drf
     volumes:
       - $HOME/prod-community-drf/static:/opt/community_drf/static
       - $HOME/prod-community-drf/media:/opt/community_drf/media
+      - $HOME/test-community-apikey:/api_key:ro
     expose:
       - "8000"
     networks:
@@ -133,6 +139,35 @@ services:
       - prod-community-network
     restart: always
 
+  hdwallet-service:
+    image: hdwallet-service
+    container_name: hdwallet-service
+    environment:
+      - MNEMONIC_FILE=/run/secrets/hd_mnemonic
+      - WALLET_API_KEY_FILE=/api_key/wallet_api_key.txt
+      - TRON_GRID_API_KEY=${TRON_GRID_API_KEY}
+    secrets:
+      - hd_mnemonic
+    volumes:
+      - $HOME/prod-community-apikey:/api_key:ro  # Mount the same volume
+    networks:
+      - prod-community-network
+    depends_on:
+      - hd-api-key-generator  # Ensure API key is generated before starting
+      - drf
+
+  hd-api-key-generator:
+    container_name: hd-api-key-generator
+    image: alpine:latest
+    command: sh -c "mkdir -p /api_key && head -c 32 /dev/urandom | base64 > /api_key/wallet_api_key.txt"
+    volumes:
+      - $HOME/prod-community-apikey:/api_key
+    networks:
+      - prod-community-network
+    deploy:
+      replicas: 1
+
 networks:
   prod-community-network:
     driver: bridge
+
