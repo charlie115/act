@@ -167,6 +167,10 @@ services:
     deploy:
       replicas: 1
 
+secrets:
+  hd_mnemonic:
+    file: $HOME/prod-community-secrets/hd_mnemonic.txt
+
 networks:
   prod-community-network:
     driver: bridge
