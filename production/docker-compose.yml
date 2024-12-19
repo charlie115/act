@@ -96,11 +96,11 @@ services:
     environment:
       - WALLET_SERVICE_URL=http://hdwallet-service:8000
       - WALLET_API_KEY_FILE=/api_key/wallet_api_key.txt
-    container_name: test-community-drf
+    container_name: prod-community-drf
     volumes:
       - $HOME/prod-community-drf/static:/opt/community_drf/static
       - $HOME/prod-community-drf/media:/opt/community_drf/media
-      - $HOME/test-community-apikey:/api_key:ro
+      - $HOME/prod-community-apikey:/api_key:ro
     expose:
       - "8000"
     networks:
