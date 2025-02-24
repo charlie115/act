@@ -78,6 +78,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
         "last_name",
         "is_staff",
         "show_role_customized_color",
+        "telegram_chat_id",
     ]
     list_filter = [
         "is_staff",
@@ -106,7 +107,10 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
         UserFeeLevelInline,
         ManagersInline,
         ManagedInline,
-    ]
+    ]    
+    
+    actions = ['unbind_telegram_id']
+    
     fieldsets = (
         (
             "Overview",
@@ -159,6 +163,20 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     add_form = UserCreationForm
     change_password_form = AdminPasswordChangeForm
 
+    def unbind_telegram_id(self, request, queryset):
+        count = 0
+        for user in queryset:
+            if user.telegram_chat_id:
+                # Remove the allauth/social account record for telegram
+                user.socialaccount_set.filter(provider="telegram").delete()
+                # Remove the telegram chat ID
+                user.telegram_chat_id = ""
+                user.save()
+                count += 1
+        self.message_user(request, f"Unbound telegram id from {count} user(s).")
+    
+    unbind_telegram_id.short_description = "Unbind Telegram ID from selected users"
+
     @display(description=_("Role"), ordering="role", label=True)
     def show_role_customized_color(self, obj):
         return obj.role.name
@@ -173,8 +191,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
             return super().get_inlines(request, obj)
         else:
             return []
-
-
+            
 # TODO: Group per manager, managed_user
 class UserManagementAdmin(ModelAdmin):
     list_display = [

@@ -378,3 +378,6 @@ if WALLET_API_KEY_FILE != "":
         WALLET_API_KEY = f.read().strip()
 else:
     WALLET_API_KEY = ""
+
+# Add this with the other environment variables
+START_BOT_SERVICES = env.bool("START_BOT_SERVICES", default=False)

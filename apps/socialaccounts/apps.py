@@ -1,5 +1,6 @@
 import sys
 
+from django.conf import settings
 from django.apps import AppConfig
 
 
@@ -14,8 +15,8 @@ class SocialaccountsConfig(AppConfig):
         from . import models
         from . import telegram
 
-        # Bot services should also start every time the app is started
-        if "runserver" in sys.argv or "daphne" in sys.argv[0]:
+        # Only start bot services if START_BOT_SERVICES is True
+        if settings.START_BOT_SERVICES:
             bots = models.ProxySocialApp.objects.filter(provider="telegram")
             for bot in bots:
                 processes = ["telegram_send_message", "telegram_command"]

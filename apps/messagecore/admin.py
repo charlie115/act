@@ -135,18 +135,6 @@ class MessageAdmin(ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
-    
-    def unbind_telegram_id(self, request, queryset):
-        count = 0
-        for message in queryset:
-            user = User.objects.filter(telegram_chat_id=message.telegram_chat_id).first()
-            if user:
-                # Remove the allauth/social account record for telegram.
-                user.socialaccount_set.filter(provider="telegram").delete()
-                user.telegram_chat_id = ""
-                user.save()
-                count += 1
-        self.message_user(request, f"Unbound telegram id from {count} user(s).")
 
     def has_change_permission(self, request, obj=None):
         return False
