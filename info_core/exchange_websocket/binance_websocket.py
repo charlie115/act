@@ -33,17 +33,22 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
     def on_message(ws, message):
         nonlocal last_message_time # Declare nonlocal to modify the outer variable
         last_message_time = time.time() # Update the time of the last received message
-        if error_event.is_set():
-            ws.close()
-            raise Exception(f"binance_websocket|{proc_name} error_event is set. closing websocket..")
-        msg = json.loads(message)
-        if 's' in msg.keys():
-            local_redis.update_exchange_stream_data(stream_data_type, f"BINANCE_{market_type.upper()}", msg['s'], {**msg, "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1_000_000)})
+        try:
+            if error_event.is_set():
+                ws.close()
+                raise Exception(f"binance_websocket|{proc_name} error_event is set. closing websocket..")
+            msg = json.loads(message)
+            if 's' in msg.keys():
+                local_redis.update_exchange_stream_data(stream_data_type, f"BINANCE_{market_type.upper()}", msg['s'], {**msg, "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1_000_000)})
+        except Exception as e:
+            logger.error(f"binance_websocket|{proc_name} on_message error: {e}, traceback: {traceback.format_exc()}")
+            error_event.set()  # Signal the main loop to close and restart
 
     def on_error(ws, error):
         logger.error(f'binance_websocket|{proc_name} on_error executed!\n Error: {error}, traceback: {traceback.format_exc()}')
         # Optionally, you can register the error with monitor_msg if needed
         acw_api.create_message_thread(admin_id, f'binance_websocket_on_error_{proc_name}', str(error))
+        error_event.set() # Signal the main loop
 
     def on_close(ws, close_status_code, close_msg):
         logger.info(f"binance_websocket|{proc_name} ### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
@@ -80,7 +85,6 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
                 except Exception as e:
                     logger.error(f"binance_websocket|{proc_name} check_inactivity|{traceback.format_exc()}")
                 error_event.set()
-                ws.close()
                 break
             time.sleep(1) # Check every 1 second
             

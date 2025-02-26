@@ -30,17 +30,22 @@ def upbit_websocket(stream_data_type, url, data, error_event, logging_dir, acw_a
     def on_message(ws, message):
         nonlocal last_message_time # Declare nonlocal to modify the outer variable
         last_message_time = time.time() # Update the time of the last received message
-        if error_event.is_set():
-            ws.close()
-            raise Exception("upbit_websocket|error_event is set. closing websocket..")
-        message_dict = json.loads(message)
-        local_redis.update_exchange_stream_data(stream_data_type, "UPBIT_SPOT", message_dict['cd'],
-                                                {**message_dict, 'last_update_timestamp': datetime.datetime.utcnow().timestamp()*1000000})
+        try:
+            if error_event.is_set():
+                ws.close()
+                raise Exception("upbit_websocket|error_event is set. closing websocket..")
+            message_dict = json.loads(message)
+            local_redis.update_exchange_stream_data(stream_data_type, "UPBIT_SPOT", message_dict['cd'],
+                                                    {**message_dict, 'last_update_timestamp': datetime.datetime.utcnow().timestamp()*1000000})
+        except Exception as e:
+            logger.error(f"upbit_websocket|on_message error: {e}, traceback: {traceback.format_exc()}")
+            error_event.set() # Signal error
 
     def on_error(ws, error):
         logger.error(f'upbit_websocket|on_error executed!\nError: {error}')
         # Optionally, you can register the error with monitor_msg if needed
         acw_api.create_message_thread(admin_id, 'upbit websocket error', str(error))
+        error_event.set() # Signal error
 
     def on_close(ws, close_status_code, close_msg):
         logger.info(
@@ -71,7 +76,6 @@ def upbit_websocket(stream_data_type, url, data, error_event, logging_dir, acw_a
                 except Exception as e:
                     logger.error(f"[UPBIT] {stream_data_type} websocket Inactivity|{traceback.format_exc()}")
                 error_event.set()
-                ws.close()
                 break
             time.sleep(1) # Check every 1 second
             

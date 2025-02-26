@@ -30,27 +30,33 @@ def init_websocket(stream_data_type, url, data, error_event, market_type, loggin
     def on_message(ws, message):
         nonlocal last_message_time # Declare nonlocal to modify the outer variable
         last_message_time = time.time() # Update the time of the last received message
-        if error_event.is_set():
-            ws.close()
-            raise Exception("okx_websocket|error_event is set. closing websocket..")
-        message_dict = json.loads(message)
-        if 'data' in message_dict.keys():
-            message_data_dict = message_dict['data'][0]
-            try:
-                if '' in message_data_dict.values():
-                    logger.error(f"okx_websocket|Empty string detected.\n{message_data_dict}")
+        try:
+            if error_event.is_set():
+                ws.close()
+                raise Exception("okx_websocket|error_event is set. closing websocket..")
+            message_dict = json.loads(message)
+            if 'data' in message_dict.keys():
+                message_data_dict = message_dict['data'][0]
+                try:
+                    if '' in message_data_dict.values():
+                        logger.error(f"okx_websocket|Empty string detected.\n{message_data_dict}")
+                        return
+                except Exception:
+                    logger.error(f"okx_websocket|message_data_dict.values(): {message_data_dict.values()}")
+                    logger.error(f"okx_websocket|{traceback.format_exc()}")
                     return
-            except Exception:
-                logger.error(f"okx_websocket|message_data_dict.values(): {message_data_dict.values()}")
-                logger.error(f"okx_websocket|{traceback.format_exc()}")
-                return
-            local_redis.update_exchange_stream_data(stream_data_type, f"OKX_{market_type.upper()}", message_data_dict['instId'], {
-                **message_data_dict,
-                "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)
-            })
+                local_redis.update_exchange_stream_data(stream_data_type, f"OKX_{market_type.upper()}", message_data_dict['instId'], {
+                    **message_data_dict,
+                        "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)
+                    })
+        except Exception as e:
+            logger.error(f"okx_websocket|on_message error: {e}, traceback: {traceback.format_exc()}")
+            error_event.set() # Signal error
 
     def on_error(ws, error):
-        logger.error(f"okx_websocket|on_error executed!\nError: {error}, traceback: {traceback.format_exc()}")
+        logger.error(f"okx_websocket|on_error: {error}, traceback: {traceback.format_exc()}")
+        acw_api.create_message_thread(admin_id, 'okx_websocket_on_error', str(error))
+        error_event.set() # Signal error
 
     def on_close(ws, close_status_code, close_msg):
         logger.info(
@@ -82,7 +88,6 @@ def init_websocket(stream_data_type, url, data, error_event, market_type, loggin
                     except Exception as e:
                         logger.error(f"okx_{market_type.lower()}_websocket|{traceback.format_exc()}")
                     error_event.set()
-                    ws.close()
                     break
                 time.sleep(1) # Check every 1 second
                 

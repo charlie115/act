@@ -31,18 +31,23 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw
     def on_message(ws, message):
         nonlocal last_message_time # Declare nonlocal to modify the outer variable
         last_message_time = time.time() # Update the time of the last received message
-        if error_event.is_set():
-            ws.close()
-            raise Exception("bithumb_websocket|error_event is set. closing websocket..")
-        message_dict = json.loads(message)
-        if 'content' in message_dict.keys():
-            local_redis.update_exchange_stream_data(stream_data_type, "BITHUMB_SPOT", message_dict['content']['symbol'], {
-                **message_dict['content'],
-                "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)
-            })
+        try:
+            if error_event.is_set():
+                ws.close()
+                raise Exception("bithumb_websocket|error_event is set. closing websocket..")
+            message_dict = json.loads(message)
+            if 'content' in message_dict.keys():
+                local_redis.update_exchange_stream_data(stream_data_type, "BITHUMB_SPOT", message_dict['content']['symbol'], {
+                    **message_dict['content'],
+                    "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)
+                })
+        except Exception as e:
+            logger.error(f"bithumb_websocket|on_message error: {e}, traceback: {traceback.format_exc()}")
+            error_event.set()  # Signal error
 
     def on_error(ws, error):
         logger.error(f'bithumb_websocket|on_error executed!\nError: {error}, traceback: {traceback.format_exc()}')
+        error_event.set() # Add this line
 
     def on_close(ws, close_status_code, close_msg):
         logger.info(f"bithumb_websocket|\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
@@ -71,7 +76,6 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw
                 except Exception as e:
                     logger.error(f"[BITHUMB {stream_data_type}]bithumb_websocket|{traceback.format_exc()}")
                 error_event.set()
-                ws.close()
                 break
             time.sleep(1) # Check every 1 second
             
