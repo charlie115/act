@@ -34,17 +34,14 @@ import ReactTableUI from 'components/ReactTableUI';
 import renderCurrencyFormatCell from 'components/tables/common/renderCurrencyFormatCell';
 import renderTruncatedCell from 'components/tables/common/renderTruncatedCell';
 import renderWithdrawalStatusCell from 'components/tables/deposit/renderWithdrawalStatusCell';
-import TronWeb from 'tronweb';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
-import { setWith } from 'lodash';
 
 export default function WithdrawDeposit() {
   const theme = useTheme();
   const { user } = useSelector((state) => state.auth);
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { t } = useTranslation();
-  const [usdtBalance, setUsdtBalance] = useState(0);
   const [withdrawableUsdt, setWithdrawableUsdt] = useState(0);
   const [withdrawableCommission, setWithdrawableCommission] = useState(0);
   const [pagination, setPagination] = useState({
@@ -103,7 +100,6 @@ export default function WithdrawDeposit() {
   useEffect(() => {
     if (walletWithdrawableUsdtBalance?.results?.length) {
       const ownBalance = walletWithdrawableUsdtBalance.results.find((item) => item.user === user.uuid);
-      setUsdtBalance(ownBalance.balance);
       setWithdrawableUsdt(ownBalance.withdrawable_balance);
       setWithdrawableCommission(ownBalance.withdrawable_commission);
     }
@@ -177,7 +173,7 @@ export default function WithdrawDeposit() {
       }).unwrap();
       reset();
     } catch (err) {
-      console.error('Failed to submit withdrawal request:', err);
+      // Removed unexpected console statement
     }
   };
 
@@ -280,7 +276,7 @@ export default function WithdrawDeposit() {
                   // Access isAddress from TronWeb constructor
                   return window.tronWeb?.isAddress(value) || t('Invalid TRC20(TRX) network address');
                 } catch (error) {
-                  console.error('TronWeb validation error:', error);
+                  // Removed unexpected console statement
                   return t('Unable to validate address');
                 }
               },

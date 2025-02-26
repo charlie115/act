@@ -22,7 +22,6 @@ import { DateTime } from 'luxon';
 import { Trans, useTranslation } from 'react-i18next';
 
 import PersonIcon from '@mui/icons-material/Person';
-import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
 import GoogleIcon from '@mui/icons-material/Google';
 import DomainVerificationIcon from '@mui/icons-material/DomainVerification';
 import TelegramIcon from '@mui/icons-material/Telegram';
@@ -54,7 +53,6 @@ export default function MyPage() {
       setReferralCodeInput('');
       refetchReferrals();
     } catch (error) {
-      console.error('Failed to register referral code', error);
       const errorMessage = error.data?.message || t('Failed to register referral code.');
       openSnackbar(errorMessage, { variant: 'error' });
     }
@@ -175,6 +173,14 @@ export default function MyPage() {
                   {t('Deposit Balance')}:
                 </Typography>
                 <DepositBalance />
+              </Box>
+
+              {/* Fee level */}
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Typography variant="body1" sx={{ mr: 1, fontWeight: 600 }}>
+                  {t('Fee Level')}:
+                </Typography>
+                <Typography variant="body1">{user?.fee_level}</Typography>
               </Box>
             </CardContent>
 

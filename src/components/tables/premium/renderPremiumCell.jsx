@@ -16,11 +16,10 @@ export default function renderPremiumCell({ cell, row: { original }, table }) {
     <>
       <Box
         component="span"
-        sx={{ fontSize: { xs: 11, sm: 12 }, fontWeight: 700 }}
+        sx={{ fontSize: { xs: 10, sm: 12 }, fontWeight: 700 }}
       >
         {formatIntlNumber(cell.getValue(), 3)}
-      </Box>{' '}
-      <small>%</small>
+      </Box>{' '}      
     </>
   );
 }

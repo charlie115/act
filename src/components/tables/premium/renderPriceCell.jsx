@@ -33,7 +33,7 @@ export default function renderPriceCell({ cell, row: { original } }) {
       </Stack>
       <Box>
         <Box component="small" sx={{ color: 'secondary.main' }}>
-          {formatIntlNumber(original.converted_tp, 2)}
+          {formatIntlNumber(original.converted_tp, 1)}
         </Box>
       </Box>
     </>

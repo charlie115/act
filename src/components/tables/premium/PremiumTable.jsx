@@ -113,8 +113,13 @@ function PremiumTable({
   );
 
   const realTimeDataList = useMemo(() => {
-    if (realTimeData?.disconnected) return [];
-    return orderBy(Object.values(realTimeData ?? {}), 'atp24h', 'desc');
+    if (realTimeData?.disconnected || !realTimeData) return [];
+    
+    const dataArray = Array.isArray(realTimeData) 
+      ? realTimeData 
+      : Object.values(realTimeData);
+      
+    return orderBy(dataArray, 'atp24h', 'desc');
   }, [realTimeData]);
 
   const { data: assetsData, isSuccess: isAssetsDataSuccess } =
@@ -240,7 +245,7 @@ function PremiumTable({
       {
         accessorKey: 'tp',
         enableGlobalFilter: false,
-        size: isMobile ? 40 : 65,
+        size: isMobile ? 50 : 65,
         header: t('Current Price'),
         cell: renderPriceCell,
       },
@@ -272,7 +277,7 @@ function PremiumTable({
       {
         accessorKey: 'volatility',
         enableGlobalFilter: false,
-        size: 50,
+        size: isMobile ? 30 : 40,
         header: t('Volatility'),
         cell: renderVolatilityCell,
       },
@@ -301,7 +306,7 @@ function PremiumTable({
       {
         accessorKey: 'atp24h',
         enableGlobalFilter: false,
-        size: isMobile ? 30 : 45,
+        size: isMobile ? 45 : 55,
         header: t('Volume (24h)'),
         cell: renderVolumeCell,
       },
@@ -403,37 +408,57 @@ function PremiumTable({
     ]
   );
 
-  useEffect(() => {
-    if (realTimeData?.disconnected) onDisconnected();
-  }, [realTimeData]);
-
   const prevAssets = usePrevious(assets);
+
   useEffect(() => {
     if (isSuccess) {
-      if (realTimeData.length === 0) {
-        setReady(false);
-        timeoutRef.current = setTimeout(() => {
-          // setAssets([]);
-          setReady(true);
-        }, 5000);
-      } else {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      
+      if (realTimeDataList.length > 0) {
         const realTimeAssets = realTimeDataList
           .map((item) => item.base_asset)
+          .filter(Boolean)
           .sort();
+        
         if (!isEqual(prevAssets, realTimeAssets)) {
           setAssets(realTimeAssets);
         }
+      } else if (!timeoutRef.current) {
+        timeoutRef.current = setTimeout(() => {
+          onDisconnected();
+          timeoutRef.current = null;
+        }, 2000);
       }
     }
-  }, [isSuccess, realTimeDataList]);
+  }, [isSuccess, realTimeDataList, prevAssets, onDisconnected]);
+
+  useEffect(() => {
+    if (realTimeData?.disconnected) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      
+      timeoutRef.current = setTimeout(() => {
+        onDisconnected();
+        timeoutRef.current = null;
+      }, 3000);
+    }
+  }, [realTimeData, onDisconnected]);
 
   useEffect(() => {
     if (!isEqual(prevAssets, assets)) {
-      setAssetsParam(assets.join(','));
-      if (assets.length) setReady(true);
+      if (assets.length > 0) {
+        setAssetsParam(assets.join(','));
+        setReady(true);
+      } else {
+        setReady(false);
+      }
     }
-  }, [assets]);
+  }, [assets, prevAssets]);
 
   useEffect(() => {
     setAssetsParam();
@@ -525,6 +550,13 @@ function PremiumTable({
       setExpanded(isFunction(newExpanded) ? newExpanded() : newExpanded),
     []
   );
+
+  useEffect(() => () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
 
   return (
     <Box sx={{ boxShadow: 2 }}>

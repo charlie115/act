@@ -10,13 +10,11 @@ import {
 } from '@mui/material';
 
 import { useTranslation } from 'react-i18next';
-import { useSelector } from 'react-redux';
 import { useGetCouponsQuery, useGetCouponRedemptionsQuery, useRedeemCouponMutation } from 'redux/api/drf/coupon';
 import useGlobalSnackbar from 'hooks/useGlobalSnackbar';
 
 export default function CouponDashboard() {
   const { t } = useTranslation();
-  const { user } = useSelector((state) => state.auth);
   const { openSnackbar } = useGlobalSnackbar();
 
   const { data: coupons = [], isLoading: couponsLoading } = useGetCouponsQuery();
@@ -35,7 +33,6 @@ export default function CouponDashboard() {
       await refetchRedemptions();
       openSnackbar(t('Coupon redeemed successfully!'), { variant: 'success' });
     } catch (error) {
-      console.error('Failed to redeem coupon:', error);
       openSnackbar(t('Failed to redeem coupon'), { variant: 'error' });
     }
   };

@@ -18,6 +18,7 @@ import DepositHistory from 'components/DepositHistory';
 import DropdownMenu from 'components/DropdownMenu';
 import TopUpDeposit from 'components/TopUpDeposit';
 import WithdrawDeposit from 'components/WithdrawDeposit';
+import CircularProgress from '@mui/material/CircularProgress';
 
 const COMPONENTS = [
   {
@@ -41,7 +42,14 @@ const COMPONENTS = [
 ];
 
 export default function Deposit() {
-  const { marketCodeCombination } = useOutletContext();
+  const context = useOutletContext();
+  
+  // Add early return with loading state if context is not ready
+  if (!context) {
+    return <CircularProgress />;
+  }
+
+  const { marketCodeCombination = {} } = context;
 
   const { i18n } = useTranslation();
 
@@ -63,7 +71,8 @@ export default function Deposit() {
     if (!selectedComponent) setSelectedComponent(components[0]);
   }, [selectedComponent, i18n.language]);
 
-  const { tradeConfigUuid } = marketCodeCombination;
+  // Safely access tradeConfigUuid
+  const tradeConfigUuid = marketCodeCombination?.tradeConfigUuid;
 
   return (
     <Box sx={{ p: 2 }}>
@@ -79,7 +88,6 @@ export default function Deposit() {
       {selectedComponent && (
         <selectedComponent.component tradeConfigUuid={tradeConfigUuid} />
       )}
-      {/* <TopUpDeposit tradeConfigUuid={tradeConfigUuid} /> */}
     </Box>
   );
 }

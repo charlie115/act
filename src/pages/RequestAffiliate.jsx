@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 
 import {
-  Avatar,
   Box,
   Button,
   Checkbox,
@@ -19,22 +18,17 @@ import {
   Typography,
 } from '@mui/material';
 
-import { useTheme } from '@mui/material/styles';
-import useMediaQuery from '@mui/material/useMediaQuery';
-
 import { useTranslation } from 'react-i18next';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 
 import { usePostAffiliateRequestMutation } from 'redux/api/drf/referral';
 import useGlobalSnackbar from 'hooks/useGlobalSnackbar';
 
 export default function RequestAffiliate() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { openSnackbar } = useGlobalSnackbar();
-  const { loggedin, user } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth);
 
   const [postAffiliateRequest, { isLoading }] = usePostAffiliateRequestMutation();
 
@@ -68,8 +62,6 @@ export default function RequestAffiliate() {
       navigate('/affiliate-dashboard');
     }
   }, [user]);
-
-  console.log(user.affiliate);
 
   const onSubmit = async (data) => {
     // If noUrl is checked, we send null for url

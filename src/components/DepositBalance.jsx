@@ -1,24 +1,15 @@
 import React, { useEffect, useState } from 'react';
-
 import { useNavigate } from 'react-router-dom';
-
-import IconButton from '@mui/material/IconButton';
-import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-
 import { useGetDepositBalanceQuery } from 'redux/api/drf/user';
-
 import { useSelector } from 'react-redux';
-
 import formatIntlNumber from 'utils/formatIntlNumber';
 
 export default function DepositBalance() {
   const navigate = useNavigate();
-
   const { user } = useSelector((state) => state.auth);
-
   const [balance, setBalance] = useState();
   const [ready, setReady] = useState(false);
 
@@ -39,19 +30,31 @@ export default function DepositBalance() {
   }, [isSuccess]);
 
   return (
-    <Stack direction="row" alignItems="center" sx={{ px: { xs: 2, md: 4 } }}>
-      <IconButton color="info" onClick={() => navigate('/bot/deposit')}>
-        <AccountBalanceWalletIcon />
-      </IconButton>
-      {!ready ? (
-        '...'
-      ) : (
-        <Typography
-          sx={{ fontSize: { xs: '0.75em', md: '1.1em' }, fontWeight: 500 }}
-        >
-          {balance ? `${formatIntlNumber(parseFloat(balance), 2, 2)} USDT` : 0}
-        </Typography>
-      )}
-    </Stack>
+    <Button
+      onClick={() => navigate('/bot/deposit')}
+      variant="standard"
+      color="primary"
+      startIcon={<AccountBalanceWalletIcon />}
+      sx={{
+        borderRadius: '5px',
+        height: 36,
+        padding: '4px 6px',
+        fontWeight: 600,
+        textTransform: 'none',
+        '&:hover': {
+          backgroundColor: 'rgba(25, 118, 210, 0.08)',
+        }
+      }}
+    >
+      <Typography 
+        sx={{ 
+          fontSize: { xs: '0.6rem', md: '0.95rem' },
+          fontWeight: 600,
+          whiteSpace: 'nowrap'
+        }}
+      >
+        {!ready ? '...' : `${formatIntlNumber(parseFloat(balance || 0), 2, 2)} USDT`}
+      </Typography>
+    </Button>
   );
 }

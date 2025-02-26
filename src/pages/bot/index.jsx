@@ -13,6 +13,11 @@ import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import Stack from '@mui/material/Stack';
 
 import AddIcon from '@mui/icons-material/Add';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
@@ -40,6 +45,7 @@ import uniqBy from 'lodash/uniqBy';
 import a11yProps from 'utils/a11yProps';
 
 import MarketCodeCombinationSelector from 'components/MarketCodeCombinationSelector';
+import TelegramLoginButton from 'components/TelegramLoginButton';
 
 import { MARKET_CODE_LIST } from 'constants/lists';
 
@@ -51,7 +57,7 @@ const TAB = {
   botSettings: '/bot/settings',
   apiKey: '/bot/api-key',
   deposit: '/bot/deposit',
-  userGuide: 7,
+  userGuide: '/community-board/',
   supportCenter: 8,
 };
 
@@ -93,18 +99,17 @@ const TABS = [
   },
   {
     id: TAB.userGuide,
-    name: 'userGuide',
+    name: '/community-board/',
     getLabel: () => i18n.t('User Guide'),
     component: Box,
-    disabled: true,
   },
-  {
-    id: TAB.supportCenter,
-    name: 'supportCenter',
-    getLabel: () => i18n.t('Support Center'),
-    component: Box,
-    disabled: true,
-  },
+  // {
+  //   id: TAB.supportCenter,
+  //   name: 'supportCenter',
+  //   getLabel: () => i18n.t('Support Center'),
+  //   component: Box,
+  //   disabled: true,
+  // },
 ];
 
 const MARKET_CODES_REQUIRED = [TAB.botSettings, TAB.position, TAB.capital];
@@ -162,6 +167,8 @@ export default function Bot() {
   const [selectedMarketCodeCombination, setSelectedMarketCodeCombination] =
     useState();
   const [postTradeConfig, tradeConfigResults] = usePostTradeConfigMutation();
+
+  const [showTelegramDialog, setShowTelegramDialog] = useState(false);
 
   useEffect(() => {
     if (nodes?.results?.length > 0) {
@@ -336,139 +343,169 @@ export default function Bot() {
     }
   }, [location.pathname, location.state, selectedMarketCodeCombination]);
 
+  useEffect(() => {
+    if (loggedin && !user?.telegram_chat_id) {
+      setShowTelegramDialog(true);
+    }
+  }, [loggedin, user?.telegram_chat_id]);
+
   useEffect(() => () => window.history.replaceState(null, ''), []);
 
   if (!loggedin)
     return <Navigate replace to="/login" state={{ from: location }} />;
 
   return (
-    <Box sx={{ flex: 1, overflowX: 'hidden' }}>
-      <Box sx={isMobile ? { maxWidth: window.innerWidth * 0.95 } : {}}>
-        <Grid container sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Grid item md xs={12}>
-            {location.pathname === '/bot' ? (
-              <Box />
-            ) : (
-              <Tabs
-                allowScrollButtonsMobile
-                scrollButtons
-                aria-label="arbitrage-tabs"
-                variant="scrollable"
-                value={location.pathname}
-                // value={currentTab}
-                // onChange={(e, newValue) => setCurrentTab(newValue)}
-                sx={{ borderBottom: 0, mb: 0 }}
-              >
-                {TABS.map(({ id, name, disabled, getLabel }) => (
-                  <Tab
-                    component={Link}
-                    key={name}
-                    label={getLabel()}
-                    value={name}
-                    to={name}
-                    state={{
-                      marketCodeCombination:
-                        selectedMarketCodeCombination?.value,
-                    }}
-                    disabled={
-                      disabled ||
-                      // (MARKET_CODES_REQUIRED.includes(id) &&
-                      //   selectedMarketCodeCombination?.value === 'ALL') ||
-                      (TRADE_SUPPORT_REQUIRED.includes(name) &&
-                        !selectedMarketCodeCombination?.tradeSupport)
+    <>
+      <Dialog
+        open={showTelegramDialog}
+        onClose={() => setShowTelegramDialog(false)}
+      >
+        <DialogTitle>{t('Connect to Telegram')}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ py: 2 }}>
+            <DialogContentText>
+              {t('Please connect your Telegram account to continue using the bot features')}
+            </DialogContentText>
+            <TelegramLoginButton buttonId="telegram-bot-page-button" />
+          </Stack>
+        </DialogContent>
+      </Dialog>
+
+      <Box sx={{ flex: 1, overflowX: 'hidden' }}>
+        <Box sx={isMobile ? { maxWidth: window.innerWidth * 0.95 } : {}}>
+          <Grid container sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Grid item md xs={12}>
+              {location.pathname === '/bot' ? (
+                <Box />
+              ) : (
+                <Tabs
+                  allowScrollButtonsMobile
+                  scrollButtons
+                  aria-label="arbitrage-tabs"
+                  variant="scrollable"
+                  value={location.pathname}
+                  // value={currentTab}
+                  // onChange={(e, newValue) => setCurrentTab(newValue)}
+                  sx={{ borderBottom: 0, mb: 0 }}
+                >
+                  {TABS.map(({ id, name, disabled, getLabel }) => {
+                    let state;
+                    if (name === '/community-board/') {
+                      // pass state with category 'User Guide'
+                      state = { category: 'User Guide' };
+                    } else {
+                      state = {
+                        marketCodeCombination: selectedMarketCodeCombination?.value,
+                      };
                     }
-                    {...a11yProps({ id, name })}
-                  />
-                ))}
-              </Tabs>
-            )}
+
+                    return (
+                      <Tab
+                        component={Link}
+                        key={name}
+                        label={getLabel()}
+                        value={name}
+                        to={name}
+                        state={state}
+                        disabled={
+                          disabled ||
+                          (TRADE_SUPPORT_REQUIRED.includes(name) &&
+                            !selectedMarketCodeCombination?.tradeSupport)
+                        }
+                        {...a11yProps({ id, name })}
+                      />
+                    );
+                  })}
+                </Tabs>
+              )}
+            </Grid>
+            <Grid
+              item
+              md
+              xs={12}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: { xs: 'center', md: 'flex-end' },
+                my: { xs: 1, md: 0 },
+              }}
+            >
+              <MarketCodeCombinationSelector
+                ref={marketCodeSelectorRef}
+                options={marketCodeCombinationList}
+                value={selectedMarketCodeCombination}
+                loading={tradeConfigResults.isLoading}
+                marketCodesRequired={MARKET_CODES_REQUIRED.includes(
+                  location.pathname
+                )}
+                tradeSupportRequired={TRADE_SUPPORT_REQUIRED.includes(
+                  location.pathname
+                )}
+                onSelectItem={(newValue) => {
+                  if (
+                    (MARKET_CODES_REQUIRED.includes(location.pathname) ||
+                      TRADE_SUPPORT_REQUIRED.includes(location.pathname)) &&
+                    newValue.value === 'ALL'
+                  )
+                    navigate('/bot');
+                  setSelectedMarketCodeCombination(newValue);
+                }}
+              />
+            </Grid>
           </Grid>
-          <Grid
-            item
-            md
-            xs={12}
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: { xs: 'center', md: 'flex-end' },
-              my: { xs: 1, md: 0 },
-            }}
-          >
-            <MarketCodeCombinationSelector
-              ref={marketCodeSelectorRef}
-              options={marketCodeCombinationList}
-              value={selectedMarketCodeCombination}
-              loading={tradeConfigResults.isLoading}
-              marketCodesRequired={MARKET_CODES_REQUIRED.includes(
-                location.pathname
-              )}
-              tradeSupportRequired={TRADE_SUPPORT_REQUIRED.includes(
-                location.pathname
-              )}
-              onSelectItem={(newValue) => {
-                if (
-                  (MARKET_CODES_REQUIRED.includes(location.pathname) ||
-                    TRADE_SUPPORT_REQUIRED.includes(location.pathname)) &&
-                  newValue.value === 'ALL'
-                )
-                  navigate('/bot');
-                setSelectedMarketCodeCombination(newValue);
+        </Box>
+        <Box sx={{ overflowX: 'hidden', mb: 2, p: 1 }}>
+          {!selectedMarketCodeCombination ||
+          (MARKET_CODES_REQUIRED.includes(location.pathname) &&
+            selectedMarketCodeCombination.value === 'ALL') ? (
+            <Box />
+          ) : (
+            <Outlet
+              context={{
+                marketCodeSelectorRef,
+                queryKey,
+                tradeConfigAllocations,
+                tradeConfigUuids,
+                marketCodeCombination: selectedMarketCodeCombination,
               }}
             />
-          </Grid>
-        </Grid>
-      </Box>
-      <Box sx={{ overflowX: 'hidden', mb: 2, p: 1 }}>
-        {!selectedMarketCodeCombination ||
-        (MARKET_CODES_REQUIRED.includes(location.pathname) &&
-          selectedMarketCodeCombination.value === 'ALL') ? (
-          <Box />
-        ) : (
-          <Outlet
-            context={{
-              marketCodeSelectorRef,
-              queryKey,
-              tradeConfigAllocations,
-              tradeConfigUuids,
-              marketCodeCombination: selectedMarketCodeCombination,
-            }}
-          />
-        )}
-      </Box>
-      {/* <SwipeableViews
-        axis={theme.direction === 'rtl' ? 'x-reverse' : 'x'}
-        index={currentTab}
-        onChangeIndex={(newIndex) => setCurrentTab(newIndex)}
-        >
-        {TABS.map(({ id, name, ...others }) => (
-          <TabPanel
-            key={name}
-            id={name}
-            index={id}
-            dir={theme.direction}
-            value={currentTab}
+          )}
+        </Box>
+        {/* <SwipeableViews
+          axis={theme.direction === 'rtl' ? 'x-reverse' : 'x'}
+          index={currentTab}
+          onChangeIndex={(newIndex) => setCurrentTab(newIndex)}
           >
-            {currentTab === id && (
-              <Box sx={{ overflowX: 'hidden', mb: 2, p: 1 }}>
-                {!selectedMarketCodeCombination ||
-                (MARKET_CODES_REQUIRED.includes(currentTab) &&
-                  selectedMarketCodeCombination.value === 'ALL') ? (
-                  <LinearProgress />
-                ) : (
-                  <others.component
-                    marketCodeSelectorRef={marketCodeSelectorRef}
-                    marketCodeCombination={selectedMarketCodeCombination}
-                    queryKey={queryKey}
-                    tradeConfigAllocations={tradeConfigAllocations}
-                    tradeConfigUuids={tradeConfigUuids}
-                    onChangeTabHandler={(newTab) => setCurrentTab(newTab)}
-                  />
-                )}
-              </Box>
-            )}
-          </TabPanel>
-        ))}
-      </SwipeableViews> */}
-    </Box>
+          {TABS.map(({ id, name, ...others }) => (
+            <TabPanel
+              key={name}
+              id={name}
+              index={id}
+              dir={theme.direction}
+              value={currentTab}
+            >
+              {currentTab === id && (
+                <Box sx={{ overflowX: 'hidden', mb: 2, p: 1 }}>
+                  {!selectedMarketCodeCombination ||
+                  (MARKET_CODES_REQUIRED.includes(currentTab) &&
+                    selectedMarketCodeCombination.value === 'ALL') ? (
+                    <LinearProgress />
+                  ) : (
+                    <others.component
+                      marketCodeSelectorRef={marketCodeSelectorRef}
+                      marketCodeCombination={selectedMarketCodeCombination}
+                      queryKey={queryKey}
+                      tradeConfigAllocations={tradeConfigAllocations}
+                      tradeConfigUuids={tradeConfigUuids}
+                      onChangeTabHandler={(newTab) => setCurrentTab(newTab)}
+                    />
+                  )}
+                </Box>
+              )}
+            </TabPanel>
+          ))}
+        </SwipeableViews> */}
+      </Box>
+    </>
   );
 }

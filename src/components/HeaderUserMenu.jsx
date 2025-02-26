@@ -31,8 +31,8 @@ export default function HeaderUserMenu({ iconStyle }) {
   const [logout, { isLoading, isSuccess, reset }] = useLogoutMutation();
 
   // Fetch coupons and redemptions
-  const { data: coupons = [], isLoading: couponsLoading } = useGetCouponsQuery();
-  const { data: redemptions = [], isLoading: redemptionsLoading } = useGetCouponRedemptionsQuery();
+  const { data: coupons = [] } = useGetCouponsQuery();
+  const { data: redemptions = [] } = useGetCouponRedemptionsQuery();
 
   const [anchorEl, setAnchorEl] = useState(null);
 

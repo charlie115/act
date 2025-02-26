@@ -120,7 +120,7 @@ export default function TriggersTable({
 
   const [klineInterval, setKlineInterval] = useState('1T');
 
-  const { data, isFetching, isLoading, isSuccess } = useGetAllTradesQuery(
+  const { data, isLoading, isSuccess } = useGetAllTradesQuery(
     { tradeConfigUuids },
     { pollingInterval: 1000 * 1, skip: !!autoRepeatTrade }
   );

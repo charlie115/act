@@ -16,11 +16,11 @@ function FundingRate({ diff, fundingTime, value, decimal = 3, isMobile, sx }) {
         component="span"
         sx={{
           color: value < 0 ? 'error.main' : undefined,
-          fontSize: { xs: 11, sm: 12 },
+          fontSize: { xs: 9, sm: 12 },
           ...sx,
         }}
       >
-        {formatIntlNumber(value, decimal, 1)} <small>%</small>
+        {formatIntlNumber(value, decimal, 1)}
       </Box>
       {diff && (
         <Box sx={{ color: 'secondary.main', fontStyle: 'italic' }}>

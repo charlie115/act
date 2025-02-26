@@ -10,7 +10,7 @@ export default function renderVolumeCell({ cell }) {
   return isUndefined(cell.getValue()) ? (
     '...'
   ) : (
-    <Box sx={{ fontSize: { xs: 10, sm: 12 } }}>
+    <Box sx={{ fontSize: { xs: 8, sm: 12 } }}>
       {formatShortNumber(cell.getValue(), 2)}
     </Box>
   );

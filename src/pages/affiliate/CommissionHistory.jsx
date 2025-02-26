@@ -33,7 +33,7 @@ export default function CommissionHistory() {
   const { data: subAffiliatesData = [], isLoading: subAffiliatesLoading } = useGetSubAffiliatesQuery(affiliateId, {
     skip: !affiliateId,
   });
-  const { data: tierData, isLoading: tierLoading } = useGetAffiliateTierQuery();
+  const { data: tierData } = useGetAffiliateTierQuery();
   const userTier = tierData?.find((tier) => tier.id === user?.affiliate?.tier) || null;
 
   // Filter State
@@ -144,10 +144,6 @@ export default function CommissionHistory() {
       </Box>
     );
   }
-
-  // Determine the TableSortLabel direction
-  const sortDirection = (column) =>
-    orderBy === column && order !== 'none' ? order : 'asc';
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>

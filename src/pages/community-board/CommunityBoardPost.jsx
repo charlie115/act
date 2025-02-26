@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import Box from '@mui/material/Box';
@@ -22,23 +21,25 @@ import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CommentIcon from '@mui/icons-material/Comment';
+import DeleteIcon from '@mui/icons-material/Delete';
 import PersonIcon from '@mui/icons-material/Person';
 import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 
 import { Controller, useForm } from 'react-hook-form';
-
 import { useSelector } from 'react-redux';
 
 import {
   useGetBoardCommentsQuery,
   useGetBoardPostByIdQuery,
+  useDeleteBoardPostMutation,
   useDeleteBoardPostReactionsMutation,
   usePostBoardCommentMutation,
   usePatchBoardPostReactionsMutation,
   usePostBoardPostReactionsMutation,
   usePostBoardPostViewsMutation,
+  useDeleteBoardCommentMutation
 } from 'redux/api/drf/board';
 
 import { useTranslation } from 'react-i18next';
@@ -46,13 +47,12 @@ import { useTranslation } from 'react-i18next';
 import { DateTime } from 'luxon';
 
 import isNumber from 'lodash/isNumber';
-
 import formatIntlNumber from 'utils/formatIntlNumber';
 
 import CommunityBoardComment from 'components/CommunityBoardComment';
 import RichTextEditor from 'components/RichTextEditor';
 
-import { POST_REACTION_TYPE } from 'constants';
+import { POST_REACTION_TYPE, USER_ROLE } from 'constants';
 
 export default function CommunityBoardPost() {
   const commentInputRef = useRef();
@@ -67,7 +67,6 @@ export default function CommunityBoardPost() {
   const { t } = useTranslation();
 
   const [addComment, setAddComment] = useState(false);
-
   const [reaction, setReaction] = useState();
 
   const { control, formState, handleSubmit, reset } = useForm({
@@ -76,7 +75,10 @@ export default function CommunityBoardPost() {
   });
   const { isDirty, isValid } = formState;
 
-  const { data: comments } = useGetBoardCommentsQuery(
+  const {
+    data: comments,
+    refetch: refetchComments
+  } = useGetBoardCommentsQuery(
     { post: params?.postId },
     {
       skip: !params?.postId,
@@ -90,9 +92,10 @@ export default function CommunityBoardPost() {
   const [patchReactions] = usePatchBoardPostReactionsMutation();
   const [postReactions] = usePostBoardPostReactionsMutation();
   const [postViews] = usePostBoardPostViewsMutation();
+  const [deleteBoardPost, { isLoading: isDeletingPost }] = useDeleteBoardPostMutation();
+  const [deleteBoardComment, { isLoading: isDeletingComment }] = useDeleteBoardCommentMutation();
 
-  const [createComment, { isLoading, isSuccess }] =
-    usePostBoardCommentMutation();
+  const [createComment, { isLoading, isSuccess }] = usePostBoardCommentMutation();
 
   const onPostReaction = (e, newReaction) => {
     if (post.user_reaction) {
@@ -107,6 +110,24 @@ export default function CommunityBoardPost() {
     createComment({ author: user?.uuid, post: params?.postId, ...data });
   };
 
+  const handleDeletePost = async () => {
+    try {
+      await deleteBoardPost(post.id).unwrap();
+      navigate('/community-board');
+    } catch (error) {
+      // handle error if needed
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await deleteBoardComment(commentId).unwrap();
+      refetchComments();
+    } catch (error) {
+      // handle error if needed
+    }
+  };
+
   useEffect(() => {
     if (user && isNumber(post?.id)) {
       if (post.user_view) {
@@ -115,7 +136,7 @@ export default function CommunityBoardPost() {
           postViews({ post: post.id, user: user.uuid });
       } else postViews({ post: post.id, user: user.uuid });
     }
-  }, [post?.id, user]);
+  }, [post?.id, user, postViews]);
 
   useEffect(() => {
     if (post?.user_reaction)
@@ -132,7 +153,7 @@ export default function CommunityBoardPost() {
   useEffect(() => {
     if (addComment) commentInputRef.current?.focus();
     else reset();
-  }, [commentInputRef, addComment]);
+  }, [commentInputRef, addComment, reset]);
 
   useEffect(() => {
     if (isSuccess) setAddComment(false);
@@ -140,15 +161,33 @@ export default function CommunityBoardPost() {
 
   if (!post) return <LinearProgress />;
 
+  const canDeletePost =
+    loggedin &&
+    (user?.uuid === post.author ||
+      user?.role === USER_ROLE.admin ||
+      user?.role === USER_ROLE.internal);
+
   return (
     <Paper elevation={2} sx={{ p: 2 }}>
-      <Button
-        color="info"
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/community-board')}
-      >
-        {t('Back')}
-      </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <Button
+          color="info"
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/community-board')}
+        >
+          {t('Back')}
+        </Button>
+        {canDeletePost && (
+          <Button
+            color="error"
+            startIcon={<DeleteIcon />}
+            onClick={handleDeletePost}
+            disabled={isDeletingPost}
+          >
+            {t('Delete')}
+          </Button>
+        )}
+      </Box>
       <Box sx={{ my: 2, p: { sm: 2, md: 4 } }}>
         <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
           {post?.title}
@@ -283,16 +322,36 @@ export default function CommunityBoardPost() {
             </LoadingButton>
           </Box>
         </Collapse>
-        {comments?.map((comment) => (
-          <Card key={comment.id} sx={{ mt: 2 }}>
-            <CommunityBoardComment
-              isParentComment
-              post={post}
-              comment={comment}
-              user={user}
-            />
-          </Card>
-        ))}
+        {comments?.map((comment) => {
+          const canDeleteComment =
+            loggedin &&
+            (user?.uuid === comment.author ||
+              user?.role === USER_ROLE.admin ||
+              user?.role === USER_ROLE.internal);
+
+          return (
+            <Card key={comment.id} sx={{ mt: 2, position: 'relative' }}>
+              <CommunityBoardComment
+                isParentComment
+                post={post}
+                comment={comment}
+                user={user}
+              />
+              {canDeleteComment && (
+                <Button
+                  size="small"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  sx={{ position: 'absolute', top: 8, right: 8 }}
+                  onClick={() => handleDeleteComment(comment.id)}
+                  disabled={isDeletingComment}
+                >
+                  {t('Delete')}
+                </Button>
+              )}
+            </Card>
+          );
+        })}
       </Box>
     </Paper>
   );

@@ -185,7 +185,7 @@ const AssetSearchInput = forwardRef(
             )}
           </Box>
         )}
-        sx={isMobile ? { height: '0.5em', width: 125 } : { width: 215 }}
+        sx={isMobile ? { width: 110 } : { width: 215 }}
       />
     );
   }

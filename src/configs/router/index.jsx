@@ -63,7 +63,7 @@ export default createBrowserRouter(
         ))}
       </Route>
       <Route element={<ProtectedLayout />}>
-        {navigation.protectedRoutes.map(({ element: Element, elementProps = {}, children, ...props }) => (
+        {navigation.protectedRoutes.map(({ element: Element, children, ...props }) => (
           <Route
             key={props.name}
             element={

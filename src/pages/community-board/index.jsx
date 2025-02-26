@@ -1,170 +1,163 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
-import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
-import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Paper from '@mui/material/Paper';
-import Tooltip from '@mui/material/Tooltip';
+import FormControl from '@mui/material/FormControl';
+import Select from '@mui/material/Select';
+import InputLabel from '@mui/material/InputLabel';
+import Typography from '@mui/material/Typography';
+import { useTheme, useMediaQuery } from '@mui/material';
 
 import AddIcon from '@mui/icons-material/Add';
 import CircleIcon from '@mui/icons-material/Circle';
 import CloseIcon from '@mui/icons-material/Close';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import SearchIcon from '@mui/icons-material/Search';
 
 import { useTranslation } from 'react-i18next';
-
 import { useSelector } from 'react-redux';
-
 import { useDebounce } from '@uidotdev/usehooks';
 
 import CommunityBoardPostsTable from 'components/tables/community_board/CommunityBoardPostsTable';
-
 import { POST_CATEGORY_LIST } from 'constants/lists';
 
 export default function CommunityBoard() {
   const location = useLocation();
   const navigate = useNavigate();
-
   const { t } = useTranslation();
-
   const { loggedin } = useSelector((state) => state.auth);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [categoryFilter, setCategoryFilter] = useState();
-
   const [searchValue, setSearchValue] = useState('');
   const globalFilter = useDebounce(searchValue, 300);
 
-  const [anchorEl, setAnchorEl] = React.useState(null);
-  const open = Boolean(anchorEl);
-
-  const handleMenuClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-  const handleSelectCategoryFilter = (value) => {
-    setCategoryFilter(value);
-    setAnchorEl(null);
-  };
+  useEffect(() => {
+    if (location.state?.category) {
+      const selected = POST_CATEGORY_LIST.find(
+        (item) => item.value === location.state.category
+      );
+      if (selected) {
+        setCategoryFilter(selected);
+      }
+    }
+  }, [location.state]);
 
   if (location.pathname.includes('post'))
     return (
-      <Box sx={{ flex: 1, p: 2 }}>
+      <Box sx={{ flex: 1, p: { xs: 1, sm: 2 } }}>
         <Outlet />
       </Box>
     );
 
   return (
-    <Box sx={{ flex: 1, p: 2 }}>
-      <Paper elevation={2} sx={{ minHeight: '100%', p: 2 }}>
-        <Grid container>
-          <Grid item md>
+    <Box sx={{ flex: 1, p: { xs: 1, sm: 2 } }}>
+      <Paper elevation={3} sx={{ p: { xs: 1.5, sm: 3 } }}>
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h5" component="h1" sx={{ 
+              fontSize: { xs: '1.25rem', sm: '1.5rem' },
+              fontWeight: 600 
+            }}>
+              {t('Community Board')}
+            </Typography>
+            
             {loggedin && (
               <Button
                 variant="contained"
+                color="primary"
+                size={isMobile ? "small" : "medium"}
                 startIcon={<AddIcon />}
-                onClick={() =>
-                  navigate('/community-board/post/new', {
-                    state: { from: location },
-                  })
-                }
-                sx={{ mb: 4 }}
+                onClick={() => navigate('post/new')}
+                sx={{ 
+                  whiteSpace: 'nowrap',
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                }}
               >
-                {t('New')}
+                {t('New Post')}
               </Button>
             )}
           </Grid>
-          <Grid
-            item
-            md
-            sx={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'flex-end',
+          
+          <Grid 
+            item 
+            xs={12} 
+            sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: { xs: 1.5, sm: 2 }
             }}
           >
-            <Tooltip title={t('Filter by category')}>
-              <IconButton
-                id="board-category-button"
-                aria-controls={open ? 'board-category-menu' : undefined}
-                aria-haspopup="true"
-                aria-expanded={open ? 'true' : undefined}
-                onClick={handleMenuClick}
-                sx={{ mr: 2 }}
-              >
-                <Badge
-                  color="transparent"
-                  variant="dot"
-                  invisible={!categoryFilter}
-                  anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
-                  sx={{
-                    '& .MuiBadge-badge': { bgcolor: categoryFilter?.color },
-                  }}
-                >
-                  <FilterListIcon />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-            <Menu
-              id="board-category-menu"
-              anchorEl={anchorEl}
-              anchorOrigin={{ horizontal: -60, vertical: 'bottom' }}
-              open={open}
-              onClose={() => setAnchorEl(null)}
-              MenuListProps={{
-                'aria-labelledby': 'board-category-button',
+            <FormControl 
+              variant="outlined" 
+              size="small" 
+              sx={{ 
+                width: { xs: '100%', sm: 180 },
+                minWidth: { xs: '100%', sm: 180 }
               }}
             >
-              {POST_CATEGORY_LIST.map((item) => (
-                <MenuItem
-                  key={item.value}
-                  onClick={() => handleSelectCategoryFilter(item)}
-                >
-                  <CircleIcon sx={{ color: item.color, fontSize: 12, mr: 1 }} />
-                  {item.getLabel()}
-                </MenuItem>
-              ))}
-              <Divider />
-              <MenuItem
-                disabled={!categoryFilter}
-                onClick={() => handleSelectCategoryFilter()}
+              <InputLabel>{t('Category')}</InputLabel>
+              <Select
+                label={t('Category')}
+                value={categoryFilter?.value || ''}
+                onChange={(e) => {
+                  const selected = POST_CATEGORY_LIST.find(item => item.value === e.target.value);
+                  setCategoryFilter(selected || undefined);
+                }}
               >
-                {t('Clear')}
-              </MenuItem>
-            </Menu>
+                <MenuItem value="">
+                  {t('All')}
+                </MenuItem>
+                {POST_CATEGORY_LIST.map((item) => (
+                  <MenuItem key={item.value} value={item.value}>
+                    <CircleIcon sx={{ color: item.color, fontSize: 12, mr: 1 }} />
+                    {item.getLabel()}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <OutlinedInput
               size="small"
               placeholder={t('Search')}
               onChange={(e) => setSearchValue(e.target.value)}
               value={searchValue}
+              fullWidth
+              sx={{
+                height: { xs: '40px', sm: '40px' },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              }}
               startAdornment={
                 <InputAdornment position="start">
                   <SearchIcon />
                 </InputAdornment>
               }
               endAdornment={
-                <InputAdornment position="end">
-                  <IconButton
-                    edge="end"
-                    onClick={() => {
-                      setSearchValue('');
-                    }}
-                  >
-                    <CloseIcon />
-                  </IconButton>
-                </InputAdornment>
+                searchValue ? (
+                  <InputAdornment position="end">
+                    <IconButton
+                      edge="end"
+                      onClick={() => {
+                        setSearchValue('');
+                      }}
+                    >
+                      <CloseIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null
               }
             />
           </Grid>
         </Grid>
+
         <CommunityBoardPostsTable
           filters={{ search: globalFilter, categoryFilter }}
         />

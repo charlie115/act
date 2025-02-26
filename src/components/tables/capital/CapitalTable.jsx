@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import Box from '@mui/material/Box';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
@@ -11,7 +11,6 @@ import { useGetCapitalQuery } from 'redux/api/drf/tradecore';
 import { useTranslation } from 'react-i18next';
 
 import ReactTableUI from 'components/ReactTableUI';
-import renderColoredSignedNumberCell from 'components/tables/common/renderColoredSignedNumberCell';
 import renderMarketCodeHeader from 'components/tables/position/renderMarketCodeHeader';
 import renderPositionCell from 'components/tables/position/renderPositionCell';
 
@@ -70,7 +69,7 @@ export default function CapitalTable({ marketCodeCombination }) {
         accessorKey: 'target',
         header: renderMarketCodeHeader,
         props: { sx: { bgcolor: 'background.default', textAlign: 'center' } },
-        cell: ({ cell, row, column }) => {
+        cell: ({ cell, row }) => {
           const value = cell.getValue();
           if (row.original.isTotalRow) {
             return renderPositionCell({ cell });
@@ -84,7 +83,7 @@ export default function CapitalTable({ marketCodeCombination }) {
       {
         accessorKey: 'origin',
         header: renderMarketCodeHeader,
-        cell: ({ cell, row, column }) => {
+        cell: ({ cell, row }) => {
           const value = cell.getValue();
           if (row.original.isTotalRow) {
             return null; // Will be hidden via colSpan
@@ -100,7 +99,7 @@ export default function CapitalTable({ marketCodeCombination }) {
   );
 
   const tableData = useMemo(() =>
-    metrics.map(({ key, label, isColored, isTotalRow }) => {
+    metrics.map(({ key, label, isTotalRow }) => {
       const row = { metric: label, isTotalRow };
 
       if (isTotalRow) {

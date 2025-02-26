@@ -79,7 +79,7 @@ export default function CommunityBoardComment({
           <Tooltip
             placement="right"
             title={DateTime.fromISO(comment.date_created).toLocaleString(
-              DateTime.DATETIME_MED
+              DateTime.DATETIME_HUGE_WITH_SECONDS
             )}
             sx={{ width: '50%' }}
           >
@@ -87,7 +87,7 @@ export default function CommunityBoardComment({
               component="small"
               sx={{ color: 'secondary.main', cursor: 'pointer' }}
             >
-              {DateTime.fromISO(comment.date_created).toRelativeCalendar()}
+              {DateTime.fromISO(comment.date_created).toLocaleString(DateTime.DATETIME_SHORT)}
             </Box>
           </Tooltip>
         </Stack>

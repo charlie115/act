@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -13,14 +13,12 @@ import { useTheme } from '@mui/material/styles';
 
 import { useSelector } from 'react-redux';
 
-import { useLoginTelegramMutation } from 'redux/api/drf/auth';
 import { useGetNodesQuery } from 'redux/api/drf/tradecore';
 
 import { useTranslation } from 'react-i18next';
 
 import sortBy from 'lodash/sortBy';
 
-import useScript from 'hooks/useScript';
 import a11yProps from 'utils/a11yProps';
 
 import CreateTriggerForm from 'components/CreateTriggerForm';
@@ -57,8 +55,7 @@ function AssetTradeConfig({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const [loginTelegram] = useLoginTelegramMutation();
-  const { telegramBot, user } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth);
 
   const { data: nodes } = useGetNodesQuery(
     {

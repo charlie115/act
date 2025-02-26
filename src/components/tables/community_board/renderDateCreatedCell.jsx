@@ -9,7 +9,7 @@ export default function renderDateCreatedCell({ cell }) {
     <Typography sx={{ fontSize: { xs: '0.9em', md: '1em' } }}>
       {
         DateTime.fromISO(cell.getValue()).toLocaleString(
-          DateTime.DATE_MED_WITH_WEEKDAY
+          DateTime.DATETIME_SHORT
         )
         // .toRelativeCalendar()
         // .toLocaleUpperCase()

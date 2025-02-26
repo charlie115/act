@@ -21,8 +21,6 @@ import { useSelector } from 'react-redux';
 import BrandLogo from 'components/BrandLogo';
 import HeaderUserMenu from 'components/HeaderUserMenu';
 import DepositBalance from 'components/DepositBalance';
-import LanguageSelector from 'components/LanguageSelector';
-import ThemeSelector from 'components/ThemeSelector';
 
 const MenuButton = styled(Button, {
   shouldForwardProp: (prop) => prop !== 'active',
@@ -142,8 +140,6 @@ export default function Header() {
         sx={{ alignItems: 'center', justifyContent: 'end' }}
       >
         {loggedin && <DepositBalance />}
-        <LanguageSelector />
-        <ThemeSelector />
         <HeaderUserMenu />
       </Stack>
     </Toolbar>

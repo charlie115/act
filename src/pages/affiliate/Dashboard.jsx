@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import {
@@ -46,7 +46,7 @@ import useGlobalSnackbar from 'hooks/useGlobalSnackbar';
 export default function Dashboard() {
   const { t } = useTranslation();
   const { openSnackbar } = useGlobalSnackbar();
-  const { loggedin, user } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth);
 
   const [openModal, setOpenModal] = useState(false);
 
@@ -54,7 +54,7 @@ export default function Dashboard() {
   
   const { data: tierData, isLoading: tierLoading } = useGetAffiliateTierQuery();
   const [postReferralCode, { isLoading: creatingCode }] = usePostReferralCodeMutation();
-  const [deleteReferralCode, { isLoading: deletingCode }] = useDeleteReferralCodeMutation();
+  const [deleteReferralCode] = useDeleteReferralCodeMutation();
   
   const { data: referralCodesData, isLoading: codesLoading, refetch: refetchCodes } = useGetReferralCodesQuery();
   

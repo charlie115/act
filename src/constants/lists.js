@@ -258,11 +258,16 @@ export const POST_CATEGORY_LIST = [
     value: 'Information',
     getLabel: () => i18n.t('Information'),
   },
+  {
+    color: colors.cyan['600'],
+    value: 'User Guide',
+    getLabel: () => i18n.t('User Guide'),
+  },
 ];
 
 export const TRADING_VIEW_TICKER_SYMBOLS = [
   {
-    description: '달러환율',
+    description: '달러',
     proName: 'FX_IDC:USDKRW',
   },
   {
@@ -274,12 +279,12 @@ export const TRADING_VIEW_TICKER_SYMBOLS = [
     proName: 'CRYPTOCAP:BTC.D',
   },
   {
-    description: '나스닥',
-    proName: 'FOREXCOM:NSXUSD',
+    description: '비트코인',
+    proName: 'BINANCE:BTCUSDT',
   },
   {
-    description: '코스피',
-    proName: 'KRX:KOSPI',
+    description: '나스닥',
+    proName: 'FOREXCOM:NSXUSD',
   },
 ];
 

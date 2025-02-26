@@ -222,7 +222,7 @@ function MarketCodeMenu({ onChange }) {
               lg: '0.85rem',
             },
             height: '100%',
-            minWidth: { xs: '40%', sm: 320 },
+            minWidth: { xs: 190, sm: 320 },
             px: { xs: 0.5, sm: 1, md: 1.5 },
             '& .market-icon': {
               bgcolor: 'transparent',

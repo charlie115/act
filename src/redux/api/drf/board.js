@@ -41,6 +41,7 @@ const api = drfApi.injectEndpoints({
         results: response?.results,
       }),
     }),
+
     deleteBoardPostReactions: builder.mutation({
       invalidatesTags: ['CommunityBoardPost', 'CommunityBoardPosts'],
       query: (id) => ({
@@ -52,6 +53,20 @@ const api = drfApi.injectEndpoints({
       invalidatesTags: ['CommunityBoardComments', 'CommunityBoardPosts'],
       query: (id) => ({
         url: `/board/comment-reactions/${id}/`,
+        method: 'DELETE',
+      }),
+    }),
+    deleteBoardPost: builder.mutation({
+      invalidatesTags: ['CommunityBoardPosts'],
+      query: (id) => ({
+        url: `/board/posts/${id}/`,
+        method: 'DELETE',
+      }),
+    }),
+    deleteBoardComment: builder.mutation({
+      invalidatesTags: ['CommunityBoardComments', 'CommunityBoardPost'],
+      query: (id) => ({
+        url: `/board/comments/${id}/`,
         method: 'DELETE',
       }),
     }),
@@ -118,4 +133,6 @@ export const {
   usePostBoardPostMutation,
   usePostBoardPostReactionsMutation,
   usePostBoardPostViewsMutation,
+  useDeleteBoardPostMutation,
+  useDeleteBoardCommentMutation,
 } = api;

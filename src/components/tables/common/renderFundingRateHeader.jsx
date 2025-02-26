@@ -31,7 +31,7 @@ export default function renderFundingRateHeader({ column, table }) {
         flexWrap="wrap"
         spacing={0.5}
       >
-        <Box component="span">{i18n.t('Funding Rate')}</Box>
+        <Box component="span">{i18n.t('Funding Rate%')}</Box>
         <Box
           component="img"
           src={marketCode.icon}

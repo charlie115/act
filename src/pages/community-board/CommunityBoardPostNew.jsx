@@ -13,6 +13,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
+import { useTheme, useMediaQuery } from '@mui/material';
 
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CircleIcon from '@mui/icons-material/Circle';
@@ -38,6 +39,8 @@ export default function CommunityBoardPostNew() {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const { t } = useTranslation();
 
@@ -62,24 +65,26 @@ export default function CommunityBoardPostNew() {
       ?.filter((op) => op.insert?.image);
 
     let newContent = data.content;
-    const images = await Promise.all(
-      attachedImages.map(async (item) => {
-        const image = await fetch(item.insert.image);
-        const mimeType = image.headers.get('content-type');
-        const fileName = item.insert.image.split('/').pop();
-        const fileExtension = mime.getExtension(mimeType);
+    const images = attachedImages
+      ? await Promise.all(
+          attachedImages.map(async (item) => {
+            const image = await fetch(item.insert.image);
+            const mimeType = image.headers.get('content-type');
+            const fileName = item.insert.image.split('/').pop();
+            const fileExtension = mime.getExtension(mimeType);
 
-        newContent = newContent.replace(
-          item.insert.image,
-          `${fileName}.${fileExtension}`
-        );
+            newContent = newContent.replace(
+              item.insert.image,
+              `${fileName}.${fileExtension}`
+            );
 
-        const blob = await image.blob();
-        return new File([blob], `${fileName}.${fileExtension}`, {
-          type: blob.type,
-        });
-      })
-    );
+            const blob = await image.blob();
+            return new File([blob], `${fileName}.${fileExtension}`, {
+              type: blob.type,
+            });
+          })
+        )
+      : [];
 
     const formData = new FormData();
     formData.append('author', user.uuid);
@@ -95,37 +100,42 @@ export default function CommunityBoardPostNew() {
   };
 
   useEffect(() => {
-    setCategories(
-      POST_CATEGORY_LIST.filter((category) =>
-        user.role !== USER_ROLE.admin && user.role !== USER_ROLE.internal
-          ? category.value !== 'Announcement'
-          : true
-      )
-    );
+    // Only admins and internal can post Announcement and User Guid
+    // If user is not admin or internal, filter out these categories
+    const allowedCategories =
+      user.role === USER_ROLE.admin || user.role === USER_ROLE.internal
+        ? POST_CATEGORY_LIST
+        : POST_CATEGORY_LIST.filter(
+            (category) =>
+              category.value !== 'Announcement' && category.value !== 'User Guide'
+          );
+
+    setCategories(allowedCategories);
   }, [user]);
 
   useEffect(() => {
-    if (isSuccess && boardPost)
-      navigate(`/community-board/post/${boardPost.id}`);
-  }, [boardPost, isSuccess]);
+    if (isSuccess && boardPost) navigate(`/community-board/post/${boardPost.id}`);
+  }, [boardPost, isSuccess, navigate]);
 
   useEffect(() => {
     if (isError)
       openSnackbar(t('An error occurred. Please try again.'), {
         alertProps: { severity: 'error' },
       });
-  }, [isError]);
+  }, [isError, openSnackbar, t]);
 
   if (!loggedin)
     return <Navigate replace to="/login" state={{ from: location }} />;
 
   return (
-    <Paper elevation={2} sx={{ p: 2 }}>
+    <Paper elevation={2} sx={{ p: { xs: 1.5, sm: 2 } }}>
       {isLoading && <LinearProgress />}
       <Button
         color="info"
         startIcon={<ArrowBackIcon />}
         onClick={() => navigate('/community-board')}
+        size={isMobile ? "small" : "medium"}
+        sx={{ mb: { xs: 1, sm: 2 } }}
       >
         {t('Back')}
       </Button>
@@ -133,18 +143,24 @@ export default function CommunityBoardPostNew() {
         component="form"
         autoComplete="off"
         onSubmit={handleSubmit(onSubmit)}
-        sx={{ p: 2 }}
+        sx={{ p: { xs: 1, sm: 2 } }}
       >
-        <Button
-          type="submit"
-          variant="contained"
-          disabled={!isDirty || !isValid || isLoading}
-          sx={{ float: 'right', mb: 3 }}
-        >
-          {t('Post')}
-        </Button>
-        <Grid container spacing={2}>
-          <Grid item md={8} sm={12}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'flex-end',
+          mb: { xs: 2, sm: 3 }
+        }}>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={!isDirty || !isValid || isLoading}
+            size={isMobile ? "small" : "medium"}
+          >
+            {t('Complete')}
+          </Button>
+        </Box>
+        <Grid container spacing={isMobile ? 1 : 2}>
+          <Grid item xs={12} md={8}>
             <Controller
               name="title"
               control={control}
@@ -156,13 +172,13 @@ export default function CommunityBoardPostNew() {
                 <FormControl
                   fullWidth
                   error={!!fieldState.error}
-                  size="large"
-                  sx={{ mb: 3 }}
+                  size={isMobile ? "small" : "large"}
+                  sx={{ mb: { xs: 1.5, sm: 3 } }}
                 >
                   <FormLabel>{t('Title')}</FormLabel>
                   <FilledInput
                     autoFocus
-                    size="large"
+                    size={isMobile ? "small" : "large"}
                     readOnly={isLoading}
                     {...field}
                   />
@@ -171,7 +187,7 @@ export default function CommunityBoardPostNew() {
               )}
             />
           </Grid>
-          <Grid item md={4} sm={12}>
+          <Grid item xs={12} md={4}>
             <Controller
               name="category"
               control={control}
@@ -180,8 +196,8 @@ export default function CommunityBoardPostNew() {
                 <FormControl
                   fullWidth
                   error={!!fieldState.error}
-                  size="large"
-                  sx={{ mb: 3 }}
+                  size={isMobile ? "small" : "large"}
+                  sx={{ mb: { xs: 1.5, sm: 3 } }}
                   variant="filled"
                 >
                   <FormLabel>{t('Category')}</FormLabel>
@@ -189,6 +205,7 @@ export default function CommunityBoardPostNew() {
                     displayEmpty
                     disabled={isLoading}
                     inputProps={{ 'aria-label': 'Category' }}
+                    size={isMobile ? "small" : "medium"}
                     {...field}
                   >
                     <MenuItem value="">
@@ -214,9 +231,14 @@ export default function CommunityBoardPostNew() {
           control={control}
           rules={{ required: true }}
           render={({ field, fieldState }) => (
-            <FormControl fullWidth error={!!fieldState.error} size="large">
+            <FormControl fullWidth error={!!fieldState.error} size={isMobile ? "small" : "large"}>
               <FormLabel sx={{ mb: 0.5 }}>{t('Content')}</FormLabel>
-              <Paper>
+              <Paper sx={{ 
+                minHeight: { xs: '200px', sm: '300px' },
+                '& .ql-editor': {
+                  minHeight: { xs: '150px', sm: '250px' }
+                }
+              }}>
                 <RichTextEditor
                   showToolbar
                   ref={quillRef}

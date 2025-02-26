@@ -365,10 +365,15 @@ export default function FundingRateDiffTable() {
           buttonStyle={{ justifyContent: 'flex-start' }}
         />
         <FormControlLabel
-          control={<Checkbox />}
+          control={<Checkbox size="small" />}
           label={t('Within the same exchange')}
           onChange={(e) => setSameExchangeChecked(e.target.checked)}
-          sx={{ mr: 'auto!important' }}
+          sx={{
+            mr: 'auto!important',
+            '& .MuiFormControlLabel-label': {
+              fontSize: { xs: '0.55rem', sm: '1rem' }
+            }
+          }}
         />
         <AssetSearchInput
           customList={assets}

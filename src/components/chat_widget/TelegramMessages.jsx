@@ -26,7 +26,6 @@ import orderBy from 'lodash/orderBy';
 import { usePrevious } from '@uidotdev/usehooks';
 
 import useElementScroll from 'hooks/useElementScroll';
-import useScript from 'hooks/useScript';
 
 import { RIGHT_SIDEBAR_WIDTH } from 'constants';
 
@@ -50,7 +49,7 @@ export default function TelegramMessages({ display, isOpen, onNewMessages }) {
   const theme = useTheme();
 
   const { timezone } = useSelector((state) => state.app);
-  const { loggedin, telegramBot, user } = useSelector((state) => state.auth);
+  const { loggedin, telegramBot } = useSelector((state) => state.auth);
 
   const [messagesContainerRef, { y, height }, scrollTo] = useElementScroll();
 

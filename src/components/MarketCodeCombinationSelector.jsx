@@ -17,6 +17,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction';
 import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
+import Chip from '@mui/material/Chip';
 
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
@@ -148,13 +149,14 @@ const MarketCodeCombinationSelector = forwardRef(
                 key={item.value}
                 disabled={
                   tradeSupportRequired &&
-                  !item.value === 'ALL' &&
+                  item.value !== 'ALL' &&
                   !item.tradeSupport
                 }
                 selected={item.value === value.value}
                 onClick={(e) => handleSelect(e, item)}
                 sx={{
                   p: 1,
+                  pr: 3,
                   ...(!item.disabled
                     ? {
                         cursor: 'pointer',
@@ -187,25 +189,18 @@ const MarketCodeCombinationSelector = forwardRef(
                       </Box>
                     </ListItemText>
                     {item.secondaryIcon && (
-                      <ListItemSecondaryAction>
+                      <ListItemSecondaryAction sx={{ ml: 2 }}>
                         {item.secondaryIcon}
                       </ListItemSecondaryAction>
                     )}
-                    {/* {item.add && (
-                              <ListItemSecondaryAction>
-                                <IconButton
-                                  color="success"
-                                  edge="end"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onAddItem(item);
-                                  }}
-                                  sx={{ p: 0 }}
-                                >
-                                  <AddIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
-                              </ListItemSecondaryAction>
-                            )} */}
+                    {item.value !== 'ALL' && item.tradeSupport && (
+                      <Chip
+                        size="small"
+                        label={t('Trade Support')}
+                        color="success"
+                        sx={{ height: 20, ml: 1, fontSize: '0.7rem' }}
+                      />
+                    )}
                   </>
                 ) : (
                   <>
@@ -215,7 +210,11 @@ const MarketCodeCombinationSelector = forwardRef(
                         {item.getLabel()}
                       </Box>
                     </ListItemText>
-                    {item.secondaryIcon && item.secondaryIcon}
+                    {item.secondaryIcon && (
+                      <ListItemSecondaryAction sx={{ ml: 2 }}>
+                        {item.secondaryIcon}
+                      </ListItemSecondaryAction>
+                    )}
                   </>
                 )}
               </ListItem>
