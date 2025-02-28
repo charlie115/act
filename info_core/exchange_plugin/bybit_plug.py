@@ -93,7 +93,7 @@ class InitBybitAdaptor:
         else:
             info_df = self.info_dict.get('bybit_spot_info_df')
         merged_df = ticker_df.merge(info_df[['symbol','base_asset','quote_asset']], on='symbol', how='inner')
-        merged_df = merged_df[merged_df['bid1Price'] != '']
+        merged_df = merged_df[(merged_df['bid1Price'] != '')&(merged_df['ask1Price'] != '')]
         merged_df.loc[:, 'bid1Price':'usdIndexPrice'] = merged_df.loc[:, 'bid1Price':'usdIndexPrice'].astype(float)
         merged_df['quote_symbol'] = merged_df['quote_asset'] + 'USDT'
         temp_df = merged_df.copy()

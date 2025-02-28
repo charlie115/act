@@ -92,7 +92,10 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
     monitor_thread = Thread(target=check_inactivity, daemon=True)
     monitor_thread.start()
     
-    ws.run_forever(ping_interval=30)
+    try:
+        ws.run_forever(ping_interval=30, ping_timeout=10)
+    except Exception as e:
+        logger.error(f"binance_websocket|{proc_name} run_forever error: {e}, traceback: {traceback.format_exc()}")
     
     if error_event.is_set():
         ws.close()

@@ -83,7 +83,10 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw
     monitor_thread = Thread(target=check_inactivity, daemon=True)
     monitor_thread.start()
     
-    ws.run_forever(ping_interval=30)
+    try:
+        ws.run_forever(ping_interval=30, ping_timeout=10)
+    except Exception as e:
+        logger.error(f"bithumb_websocket|run_forever error: {e}, traceback: {traceback.format_exc()}")
     
     if error_event.is_set():
         raise Exception("bithumb_websocket|error_event is set. closing websocket..")
