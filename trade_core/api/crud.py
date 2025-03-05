@@ -101,7 +101,21 @@ async def create_trade_config(trade_config: schemas.TradeConfigCreate, db: Async
     db_trade_config = result.scalar_one_or_none()
     if db_trade_config is not None:
         raise HTTPException(status_code=409, detail="Exchange config already exists")
-    db_trade_config = models.TradeConfig(**trade_config.dict())
+
+    # Convert trade_config to a dict and update leverage fields based on market code
+    trade_config_data = trade_config.dict()
+    
+    if "SPOT" in trade_config_data.get("origin_market_code", ""):
+        trade_config_data["origin_market_leverage"] = None
+    else:
+        trade_config_data["origin_market_leverage"] = 1
+
+    if "SPOT" in trade_config_data.get("target_market_code", ""):
+        trade_config_data["target_market_leverage"] = None
+    else:
+        trade_config_data["target_market_leverage"] = 1
+
+    db_trade_config = models.TradeConfig(**trade_config_data)
     db.add(db_trade_config)
     await db.commit()
     await db.refresh(db_trade_config)

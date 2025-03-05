@@ -264,6 +264,11 @@ class UserExchangeAdaptor:
         if exchange == "UPBIT":
             currency = 'KRW'
             position_df = exchange_adaptor.get_balance(access_key, secret_key, market_type)
+            locked_krw = position_df['locked'].values[0]
+            if locked_krw:
+                locked_krw = float(locked_krw)
+            else:
+                locked_krw = 0
             ticker_df = fetched_info_dict[f"{exchange.lower()}_{market_type.lower()}_ticker_df"]
             position_df['symbol'] = position_df['unit_currency']+'-'+position_df['asset']
             merged_df = position_df.merge(ticker_df[['symbol','lastPrice']], how='left', on='symbol')
