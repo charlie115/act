@@ -276,7 +276,7 @@ class UserExchangeAdaptor:
             merged_df['entered'] = merged_df['avg_buy_price'] * merged_df['free']
             merged_df['locked'] = merged_df['avg_buy_price'] * merged_df['locked']
             free = round(merged_df.loc[merged_df['asset']==currency, 'free'].values[0])
-            locked = round(merged_df['entered'].sum() + merged_df['locked'].sum())
+            locked = round(merged_df['entered'].sum() + merged_df['locked'].sum()) + locked_krw
             before_pnl = round(free + locked)
             after_pnl = round((((merged_df['free'] + merged_df['locked']) * merged_df['lastPrice'])).sum())
             pnl = round(after_pnl - before_pnl)
