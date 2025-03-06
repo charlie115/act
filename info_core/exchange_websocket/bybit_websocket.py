@@ -460,7 +460,6 @@ class BybitWebsocket:
                         last_update_us = symbol_data.get("last_update_timestamp")  # microseconds
                         if last_update_us is None:
                             # If no timestamp, treat as stale
-                            self.websocket_logger.info(f"sym: {sym}, data: {symbol_data}")
                             stale_count += 1
                             continue
 

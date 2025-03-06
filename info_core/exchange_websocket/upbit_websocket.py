@@ -105,7 +105,7 @@ class UpbitWebsocket:
         self.local_redis.delete_all_exchange_stream_data("ticker", "UPBIT_SPOT")
         self.local_redis.delete_all_exchange_stream_data("orderbook", "UPBIT_SPOT")
         self.url = "wss://api.upbit.com/websocket/v1"
-        self.websocket_logger = InfoCoreLogger("upbit_websocket", logging_dir).logger
+        self.logger = InfoCoreLogger("upbit_websocket", logging_dir).logger
         self.proc_n = proc_n
         self.before_upbit_symbols_list = self.get_upbit_symbol_list()
         self.sliced_upbit_symbols_list = list_slice(self.get_upbit_symbol_list(), self.proc_n)
@@ -118,7 +118,7 @@ class UpbitWebsocket:
         while True:
             if (not self.local_redis.get_all_exchange_stream_data("ticker", "UPBIT_SPOT") or
                 not self.local_redis.get_all_exchange_stream_data("orderbook", "UPBIT_SPOT")):
-                self.websocket_logger.info("[UPBIT SPOT] Waiting for websocket data to be loaded...")
+                self.logger.info("[UPBIT SPOT] Waiting for websocket data to be loaded...")
                 time.sleep(2)
             else:
                 break
@@ -142,7 +142,7 @@ class UpbitWebsocket:
                     if not self.stop_restart_websocket:
                         # Check whether UPBIT_SPOT/KRW is in maintenance
                         if fetch_market_servercheck("UPBIT_SPOT/KRW"):
-                            self.websocket_logger.info("[UPBIT SPOT] UPBIT_SPOT is in maintenance. Skipping (re)starting websockets..")
+                            self.logger.info("[UPBIT SPOT] UPBIT_SPOT is in maintenance. Skipping (re)starting websockets..")
                             time.sleep(1)
                             continue
                         for i in range(self.proc_n):
@@ -160,15 +160,15 @@ class UpbitWebsocket:
                                 ticker_restarted = True
                                 self.websocket_proc_dict[ticker_proc_name].terminate()
                                 self.websocket_proc_dict[ticker_proc_name].join()
-                                self.websocket_logger.info(
+                                self.logger.info(
                                     f"upbit_orderbook_ticker_websocket|{index}th upbit_ticker_proc terminated."
                                 )
                             elif ticker_proc_name not in self.websocket_proc_dict:
                                 ticker_start_proc = True
-                                self.websocket_logger.info(
+                                self.logger.info(
                                     f"{index}th Upbit ticker websocket does not exist. Starting..."
                                 )
-                                self.websocket_logger.info(
+                                self.logger.info(
                                     f"upbit_orderbook_ticker_websocket|{index}th upbit_ticker_proc started."
                                 )
 
@@ -201,7 +201,7 @@ class UpbitWebsocket:
                                         f"restarted {index}th Upbit ticker websocket.. "
                                         f"alive state: {upbit_ticker_proc.is_alive()}"
                                     )
-                                    self.websocket_logger.info(
+                                    self.logger.info(
                                         f"upbit_orderbook_ticker_websocket|{content}"
                                     )
                                     self.acw_api.create_message_thread(
@@ -223,15 +223,15 @@ class UpbitWebsocket:
                                 orderbook_restarted = True
                                 self.websocket_proc_dict[orderbook_proc_name].terminate()
                                 self.websocket_proc_dict[orderbook_proc_name].join()
-                                self.websocket_logger.info(
+                                self.logger.info(
                                     f"upbit_orderbook_ticker_websocket|{index}th upbit_orderbook_proc terminated."
                                 )
                             elif orderbook_proc_name not in self.websocket_proc_dict:
                                 orderbook_start_proc = True
-                                self.websocket_logger.info(
+                                self.logger.info(
                                     f"{index}th Upbit orderbook websocket does not exist. Starting..."
                                 )
-                                self.websocket_logger.info(
+                                self.logger.info(
                                     f"upbit_orderbook_ticker_websocket|{index}th upbit_orderbook_proc started."
                                 )
 
@@ -267,7 +267,7 @@ class UpbitWebsocket:
                                         f"restarted {index}th Upbit orderbook websocket.. "
                                         f"alive state: {upbit_orderbook_proc.is_alive()}"
                                     )
-                                    self.websocket_logger.info(
+                                    self.logger.info(
                                         f"upbit_orderbook_ticker_websocket|{content}"
                                     )
                                     self.acw_api.create_message_thread(
@@ -281,7 +281,7 @@ class UpbitWebsocket:
                         time.sleep(1)
                 except Exception:
                     content = f"handle_price_procs|{traceback.format_exc()}"
-                    self.websocket_logger.error(content)
+                    self.logger.error(content)
                     self.acw_api.create_message_thread(
                         self.admin_id, 'upbit websocket error', content
                     )
@@ -296,7 +296,7 @@ class UpbitWebsocket:
         time.sleep(0.5)
         for each_event in self.price_proc_event_list:
             each_event.set()
-        self.websocket_logger.info("[UPBIT SPOT] All websockets' events have been set.")
+        self.logger.info("[UPBIT SPOT] All websockets' events have been set.")
         self.price_proc_event_list = []
         
     def restart_websocket(self):
@@ -325,7 +325,7 @@ class UpbitWebsocket:
             return proc_status
 
     def monitor_shared_symbol_change(self, loop_time_secs=60):
-        self.websocket_logger.info("[UPBIT SPOT]started monitor_shared_symbol_change..")
+        self.logger.info("[UPBIT SPOT]started monitor_shared_symbol_change..")
         while True:
             time.sleep(loop_time_secs)
             try:
@@ -335,7 +335,7 @@ class UpbitWebsocket:
                     deleted_spot_shared_symbol = [x for x in self.before_upbit_symbols_list if x not in new_upbit_symbols_list]
                     added_spot_shared_symbol = [x for x in new_upbit_symbols_list if x not in self.before_upbit_symbols_list]
                     content = f"monitor_shared_symbol_change|[UPBIT SPOT]SPOT shared symbol changed. deleted: {deleted_spot_shared_symbol}, added: {added_spot_shared_symbol}"
-                    self.websocket_logger.info(content)
+                    self.logger.info(content)
                     self.acw_api.create_message_thread(self.admin_id, 'monitor_shared_symbol_change', content)
                     
                     # Set the newer values to before values
@@ -347,19 +347,19 @@ class UpbitWebsocket:
                     for each_spot_shared_symbol in deleted_spot_shared_symbol:
                         # remove deleted symbol from redis
                         try:
-                            self.websocket_logger.info(f"monitor_shared_symbol_change|deleting {each_spot_shared_symbol} from redis..")
+                            self.logger.info(f"monitor_shared_symbol_change|deleting {each_spot_shared_symbol} from redis..")
                             self.local_redis.delete_exchange_stream_data("ticker", "UPBIT_SPOT", each_spot_shared_symbol)
                         except Exception:
-                            self.websocket_logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")
+                            self.logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")
                         try:
-                            self.websocket_logger.info(f"monitor_shared_symbol_change|deleting {each_spot_shared_symbol} from redis..")
+                            self.logger.info(f"monitor_shared_symbol_change|deleting {each_spot_shared_symbol} from redis..")
                             self.local_redis.delete_exchange_stream_data("orderbook", "UPBIT_SPOT", each_spot_shared_symbol)
                         except Exception:
-                            self.websocket_logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")
+                            self.logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")
                                     
             except Exception as e:
                 content = f"monitor_shared_symbol_change|{traceback.format_exc()}"
-                self.websocket_logger.error(content)
+                self.logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, 'monitor_shared_symbol_change', content)
                 
     def monitor_stale_data_per_proc(self, loop_time_secs=60, stale_threshold_secs=90):
@@ -372,7 +372,7 @@ class UpbitWebsocket:
         :param loop_time_secs: how often to run the check (in seconds).
         :param stale_threshold_secs: how long to wait before deciding data is stale
         """
-        self.websocket_logger.info("[UPBIT SPOT]started monitor_stale_data_per_proc..")
+        self.logger.info("[UPBIT SPOT]started monitor_stale_data_per_proc..")
         while True:
             time.sleep(loop_time_secs)
             now_us = int(time.time() * 1_000_000)  # current time in microseconds
@@ -417,14 +417,13 @@ class UpbitWebsocket:
                         last_update_us = symbol_data.get("last_update_timestamp")  # microseconds
                         if last_update_us is None:
                             # If no timestamp, treat as stale
-                            self.websocket_logger.info(f"sym: {sym}, data: {symbol_data}")
                             stale_count += 1
                             continue
 
                         # Compare difference in microseconds
                         diff_us = now_us - last_update_us
                         if diff_us > stale_threshold_secs * 1_000_000:
-                            self.websocket_logger.info(f"Stale sym: {sym}, data: {symbol_data}")
+                            self.logger.info(f"Stale sym: {sym}, data: {symbol_data}")
                             # It's stale
                             stale_count += 1
 
@@ -435,11 +434,11 @@ class UpbitWebsocket:
                             f"All {stale_count} symbols are stale for > {stale_threshold_secs}s. "
                             f"Forcing process restart."
                         )
-                        self.websocket_logger.error(content)
+                        self.logger.error(content)
                         self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
 
                         # Force kill the process
-                        self.websocket_logger.warning(f"Killing process: {proc_name}")
+                        self.logger.warning(f"Killing process: {proc_name}")
                         proc.terminate()
                         proc.join()
 
@@ -447,11 +446,11 @@ class UpbitWebsocket:
                         # and restart it automatically. Let's sleep a bit
                         time.sleep(60)
                     else:
-                        self.websocket_logger.info(f"monitor_stale_data_per_proc|{proc_name} => {stale_count} symbols among {len(symbol_list)} symbols are stale for > {stale_threshold_secs}s.")
+                        self.logger.info(f"monitor_stale_data_per_proc|{proc_name} => {stale_count} symbols among {len(symbol_list)} symbols are stale for > {stale_threshold_secs}s.")
 
             except Exception as e:
                 content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"
-                self.websocket_logger.error(content)
+                self.logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
 
     def get_price_df(self):

@@ -357,6 +357,7 @@ class BithumbWebsocket:
 
                         diff_us = now_us - last_update_ts
                         if diff_us > stale_threshold_secs * 1_000_000:
+                            self.logger.info(f"Stale sym: {sym}, data: {symbol_data}")
                             stale_count += 1
 
                     if stale_count == len(symbol_list):

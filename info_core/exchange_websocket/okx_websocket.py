@@ -121,7 +121,7 @@ class OkxWebsocket:
         self.logging_dir = logging_dir
         self.local_redis = RedisHelper()
         self.local_redis.delete_all_exchange_stream_data("ticker", f"OKX_{self.market_type.upper()}")
-        self.websocket_logger = InfoCoreLogger(f"okx_{self.market_type.lower()}_websocket", logging_dir).logger
+        self.logger = InfoCoreLogger(f"okx_{self.market_type.lower()}_websocket", logging_dir).logger
         manager = Manager()
         self.proc_n = proc_n
         self.before_symbols_list = self.get_symbol_list()
@@ -133,7 +133,7 @@ class OkxWebsocket:
         self._start_websocket()
         while True:
             if not self.local_redis.get_all_exchange_stream_data("ticker", f"OKX_{self.market_type.upper()}"):
-                self.websocket_logger.info(f"[OKX {self.market_type}]waiting for websocket data to be loaded..")
+                self.logger.info(f"[OKX {self.market_type}]waiting for websocket data to be loaded..")
                 time.sleep(2)
             else:
                 break
@@ -155,7 +155,7 @@ class OkxWebsocket:
                         else:
                             quote_asset = "USD"
                         if fetch_market_servercheck(f"OKX_{self.market_type}/{quote_asset}"):
-                            self.websocket_logger.info(f"[OKX_{self.market_type}] OKX_{self.market_type} is in maintenance. Skipping (re)starting websockets..")
+                            self.logger.info(f"[OKX_{self.market_type}] OKX_{self.market_type} is in maintenance. Skipping (re)starting websockets..")
                             time.sleep(1)
                             continue
                         for i in range(self.proc_n):
@@ -166,11 +166,11 @@ class OkxWebsocket:
                                 ticker_restarted = True
                                 self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
                                 self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
-                                self.websocket_logger.info(f"okx_ticker_websocket|{i+1}th okx_ticker_proc terminated.")
+                                self.logger.info(f"okx_ticker_websocket|{i+1}th okx_ticker_proc terminated.")
                             elif f"{i+1}th_ticker_proc" not in self.websocket_proc_dict.keys():
                                 ticker_start_proc = True
-                                self.websocket_logger.info(f"{i+1}th Okx ticker websocket does not exist. starting..")
-                                self.websocket_logger.info(f"okx_ticker_websocket|{i+1}th okx_ticker_proc started.")
+                                self.logger.info(f"{i+1}th Okx ticker websocket does not exist. starting..")
+                                self.logger.info(f"okx_ticker_websocket|{i+1}th okx_ticker_proc started.")
                             if ticker_start_proc is True:
                                 error_event = Event()
                                 self.price_proc_event_list.append(error_event)
@@ -198,12 +198,12 @@ class OkxWebsocket:
                                 ticker_proc.start()
                                 if ticker_restarted:
                                     content = f"[OKX {self.market_type}]restarted {i+1}th ticker websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_ticker_proc'].is_alive()}"
-                                    self.websocket_logger.info(f"ticker_websocket|{content}")
+                                    self.logger.info(f"ticker_websocket|{content}")
                                     self.acw_api.create_message_thread(self.admin_id, f'OKX {self.market_type} ticker websocket restart', content)
                             time.sleep(0.5)
                 except Exception as e:
                     content = f"handle_price_procs|{traceback.format_exc()}"
-                    self.websocket_logger.error(content)
+                    self.logger.error(content)
                     self.acw_api.create_message_thread(self.admin_id, f"[OKX {self.market_type}]handle_price_procs", content)
                     time.sleep(1)
                 time.sleep(0.5)
@@ -215,7 +215,7 @@ class OkxWebsocket:
         time.sleep(0.5)
         for each_event in self.price_proc_event_list:
             each_event.set()
-        self.websocket_logger.info(f"[OKX {self.market_type}]all websockets' event has been set")
+        self.logger.info(f"[OKX {self.market_type}]all websockets' event has been set")
         self.price_proc_event_list = []
 
     def restart_websocket(self):
@@ -244,7 +244,7 @@ class OkxWebsocket:
             return proc_status
 
     def monitor_shared_symbol_change(self, loop_time_secs=60):
-        self.websocket_logger.info(f"[OKX {self.market_type}]started monitor_shared_symbol_change..")
+        self.logger.info(f"[OKX {self.market_type}]started monitor_shared_symbol_change..")
         while True:
             time.sleep(loop_time_secs)
             try:
@@ -254,7 +254,7 @@ class OkxWebsocket:
                     deleted_shared_symbol = [x for x in self.before_symbols_list if x not in new_symbols_list]
                     added_shared_symbol = [x for x in new_symbols_list if x not in self.before_symbols_list]
                     content = f"monitor_shared_symbol_change|[OKX {self.market_type}]shared symbol changed. deleted: {deleted_shared_symbol}, added: {added_shared_symbol}"
-                    self.websocket_logger.info(content)
+                    self.logger.info(content)
                     self.acw_api.create_message_thread(self.admin_id, "monitor_shared_symbol_change", content)
                     
                     # Set the newer values to before values
@@ -266,13 +266,13 @@ class OkxWebsocket:
                     for each_shared_symbol in deleted_shared_symbol:
                         # remove deleted symbol from redis
                         try:
-                            self.websocket_logger.info(f"monitor_shared_symbol_change|deleting {each_shared_symbol} from ticker redis..")
+                            self.logger.info(f"monitor_shared_symbol_change|deleting {each_shared_symbol} from ticker redis..")
                             self.local_redis.delete_exchange_stream_data("ticker", f"OKX_{self.market_type.upper()}", each_shared_symbol)
                         except Exception:
-                            self.websocket_logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")                    
+                            self.logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")                    
             except Exception as e:
                 content = f"monitor_shared_symbol_change|{traceback.format_exc()}"
-                self.websocket_logger.error(content)
+                self.logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, "monitor_shared_symbol_change", content)
                 
     def monitor_stale_data_per_proc(self, loop_time_secs=60, stale_threshold_secs=90):
@@ -285,7 +285,7 @@ class OkxWebsocket:
         :param loop_time_secs: how often to run the check (in seconds).
         :param stale_threshold_secs: how long to wait before deciding data is stale
         """
-        self.websocket_logger.info(f"[OKX {self.market_type}]started monitor_stale_data_per_proc..")
+        self.logger.info(f"[OKX {self.market_type}]started monitor_stale_data_per_proc..")
         while True:
             time.sleep(loop_time_secs)
             now_us = int(time.time() * 1_000_000)  # current time in microseconds
@@ -327,14 +327,13 @@ class OkxWebsocket:
                         last_update_us = symbol_data.get("last_update_timestamp")  # microseconds
                         if last_update_us is None:
                             # If no timestamp, treat as stale
-                            self.websocket_logger.info(f"sym: {sym}, data: {symbol_data}")
                             stale_count += 1
                             continue
 
                         # Compare difference in microseconds
                         diff_us = now_us - last_update_us
                         if diff_us > stale_threshold_secs * 1_000_000:
-                            self.websocket_logger.info(f"Stale sym: {sym}, data: {symbol_data}")
+                            self.logger.info(f"Stale sym: {sym}, data: {symbol_data}")
                             # It's stale
                             stale_count += 1
 
@@ -345,11 +344,11 @@ class OkxWebsocket:
                             f"All {stale_count} symbols are stale for > {stale_threshold_secs}s. "
                             f"Forcing process restart."
                         )
-                        self.websocket_logger.error(content)
+                        self.logger.error(content)
                         self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
 
                         # Force kill the process
-                        self.websocket_logger.warning(f"Killing process: {proc_name}")
+                        self.logger.warning(f"Killing process: {proc_name}")
                         proc.terminate()
                         proc.join()
 
@@ -357,11 +356,11 @@ class OkxWebsocket:
                         # and restart it automatically. Let's sleep a bit
                         time.sleep(60)
                     else:
-                        self.websocket_logger.info(f"monitor_stale_data_per_proc|{proc_name} => {stale_count} symbols among {len(symbol_list)} symbols are stale for > {stale_threshold_secs}s.")
+                        self.logger.info(f"monitor_stale_data_per_proc|{proc_name} => {stale_count} symbols among {len(symbol_list)} symbols are stale for > {stale_threshold_secs}s.")
 
             except Exception as e:
                 content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"
-                self.websocket_logger.error(content)
+                self.logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, f"[OKX {self.market_type}] monitor_stale_data_per_proc", content)
 
     def get_price_df(self):
@@ -377,10 +376,10 @@ class OkxWebsocket:
             return ticker_df
         except Exception as e:
             content = f"get_price_df|{traceback.format_exc()}"
-            self.websocket_logger.error(content)
+            self.logger.error(content)
             empty_string_rows = ticker_df[ticker_df[['tp', 'ap', 'bp', 'open24h', 'atp24h']].eq('').any(axis=1)]
-            self.websocket_logger.error(f"get_price_df|empty_string_rows: {empty_string_rows[['instId','tp', 'ap', 'bp', 'open24h', 'atp24h']]}")
-            self.websocket_logger.error(f"{empty_string_rows[['instId','tp', 'ap', 'bp', 'open24h', 'atp24h']].to_dict()}")
+            self.logger.error(f"get_price_df|empty_string_rows: {empty_string_rows[['instId','tp', 'ap', 'bp', 'open24h', 'atp24h']]}")
+            self.logger.error(f"{empty_string_rows[['instId','tp', 'ap', 'bp', 'open24h', 'atp24h']].to_dict()}")
             # Find where the cell in dataframe is empty string
 
             raise e
