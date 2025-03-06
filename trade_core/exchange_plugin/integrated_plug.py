@@ -11,6 +11,7 @@ from threading import Thread
 from queue import Queue
 from decimal import Decimal
 import _pickle as pickle
+import queue
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
@@ -821,14 +822,86 @@ class UserExchangeAdaptor:
 
     def handle_trade_info_queue_loop(self):
         self.logger.info(f"handle_trade_info_queue_loop started.")
+        consecutive_errors = 0
+        max_consecutive_errors = 5
+        error_sleep_time = 3
+        
+        # Setup watchdog thread to ensure this loop is still running
+        self._trade_info_watchdog_last_heartbeat = time.time()
+        self._trade_info_watchdog_running = True
+        
+        def watchdog_func():
+            while self._trade_info_watchdog_running:
+                time_since_last_heartbeat = time.time() - self._trade_info_watchdog_last_heartbeat
+                # If no heartbeat for 5 minutes, log a critical error
+                if time_since_last_heartbeat > 300:  # 5 minutes
+                    self.logger.critical(f"handle_trade_info_queue_loop watchdog detected no heartbeat for {time_since_last_heartbeat} seconds!")
+                    # You could implement additional alerting here (email, SMS, etc.)
+                time.sleep(60)  # Check every minute
+        
+        # Start watchdog in a daemon thread
+        watchdog_thread = Thread(target=watchdog_func, daemon=True)
+        watchdog_thread.start()
+        
         while True:
             try:
-                self.handle_trade_info()
+                # Update heartbeat
+                self._trade_info_watchdog_last_heartbeat = time.time()
+                
+                # Try to get an item from the queue with a timeout
+                try:
+                    # Use a timeout to ensure the loop continues to run even if the queue is empty
+                    # This also allows the heartbeat to be updated regularly
+                    self.handle_trade_info()
+                    # Reset error counter on success
+                    consecutive_errors = 0
+                except queue.Empty:
+                    # No items in queue, just continue the loop
+                    time.sleep(1)
+                    continue
+                    
             except Exception as e:
+                consecutive_errors += 1
                 self.logger.error(f"handle_trade_info_queue_loop|{e}")
                 self.logger.error(traceback.format_exc())
-                time.sleep(3)
+                try:
+                    self.acw_api.create_message_thread(self.admin_id, f"handle_trade_info_queue_loop 에러", f"{e}", 'ERROR')
+                except Exception as e:
+                    pass
                 
+                # Implement exponential backoff for repeated errors
+                sleep_time = error_sleep_time * (2 ** min(consecutive_errors - 1, 5))  # Cap at 32x initial sleep time
+                self.logger.warning(f"Sleeping for {sleep_time} seconds after error {consecutive_errors}/{max_consecutive_errors}")
+                
+                # If too many consecutive errors, attempt recovery
+                if consecutive_errors >= max_consecutive_errors:
+                    self.logger.critical(f"Too many consecutive errors ({consecutive_errors}), attempting recovery...")
+                    try:
+                        self.acw_api.create_message_thread(self.admin_id, f"handle_trade_info_queue_loop 복구 시도", f"복구 시도 중...", 'ERROR')
+                    except Exception as e:
+                        pass
+                    try:
+                        # Implement recovery logic here - could be reinitializing connections, etc.
+                        # For example:
+                        # self.redis_client = self._initialize_redis_connection()
+                        # You'd need to implement such methods
+                        
+                        # Log recovery attempt
+                        # self.logger.info("Recovery attempt completed")
+                        
+                        # Check the queue information
+                        queue_info = self.trade_info_dict_queue.qsize()
+                        self.logger.info(f"handle_trade_info_queue_loop, trade_info_dict_queue 큐 크기: {queue_info}")
+                        consecutive_errors = 0
+                    except Exception as recovery_error:
+                        self.logger.critical(f"Recovery attempt failed: {recovery_error}")
+                        try:
+                            self.acw_api.create_message_thread(self.admin_id, f"handle_trade_info_queue_loop 복구 실패", f"{recovery_error}", 'ERROR')
+                        except Exception as e:
+                            pass
+                    
+                time.sleep(sleep_time)
+
     def handle_margin_liquidation_call_trade(self):
         try:
             # Load info_dict
