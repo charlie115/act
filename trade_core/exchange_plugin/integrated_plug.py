@@ -692,7 +692,7 @@ class UserExchangeAdaptor:
         origin_order_history = None
         try:
             # if self.market_code_combination == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT":
-            trade_info_dict = self.trade_info_dict_queue.get()
+            trade_info_dict = self.trade_info_dict_queue.get(timeout=10)
             # clean numpy type. Convert it to python native type
             trade_info_dict = {k: v.item() if isinstance(v, np.generic) else v for k, v in trade_info_dict.items()}
 
@@ -858,7 +858,7 @@ class UserExchangeAdaptor:
                     consecutive_errors = 0
                 except queue.Empty:
                     # No items in queue, just continue the loop
-                    time.sleep(1)
+                    time.sleep(0.1)
                     continue
                     
             except Exception as e:
