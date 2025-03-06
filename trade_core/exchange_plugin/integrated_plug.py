@@ -831,6 +831,7 @@ class UserExchangeAdaptor:
         self._trade_info_watchdog_running = True
         
         def watchdog_func():
+            self.logger.info(f"handle_trade_info_queue_loop watchdog started.")
             while self._trade_info_watchdog_running:
                 time_since_last_heartbeat = time.time() - self._trade_info_watchdog_last_heartbeat
                 # If no heartbeat for 5 minutes, log a critical error
