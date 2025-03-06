@@ -816,8 +816,9 @@ class UserExchangeAdaptor:
                 self.generate_pnl_history(trade_info_dict)
         except Exception as e:
             self.postgres_client.pool.putconn(conn)
-            self.logger.error(f"handle_trade_info|{e}")
-            self.logger.error(traceback.format_exc())
+            if not isinstance(e, queue.Empty):
+                self.logger.error(f"handle_trade_info|{e}")
+                self.logger.error(traceback.format_exc())
             raise e
 
     def handle_trade_info_queue_loop(self):
