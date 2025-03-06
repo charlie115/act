@@ -26,6 +26,8 @@ import traceback
 from functools import partial
 from standalone_func.get_dollar_dict import get_dollar_dict
 from standalone_func.store_exchange_status import store_markets_servercheck_loop, fetch_market_servercheck
+import requests
+from io import StringIO
 
 current_file_dir = os.path.realpath(__file__)
 current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
@@ -522,7 +524,9 @@ class InitCore:
     
     def fetch_dollar(self, update_dollar_logger, url='https://finance.naver.com/marketindex/exchangeDegreeCountQuote.naver?marketindexCd=FX_USDKRW', timedelta_hours=9):
         try:
-            exchange_rate = pd.read_html(url, encoding='EUC-KR')[0]
+            resp = requests.get(url)
+            content = resp.content.decode('EUC-KR', errors='replace')
+            exchange_rate = pd.read_html(StringIO(content))[0]
             self.update_dollar_return_dict['price'] = exchange_rate.iloc[0,1]
             self.update_dollar_return_dict['change'] = exchange_rate.iloc[0,2]
             self.update_dollar_return_dict['last_updated_time'] = datetime.datetime.utcnow()
