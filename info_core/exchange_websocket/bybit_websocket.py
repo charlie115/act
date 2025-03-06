@@ -4,7 +4,6 @@ import pandas as pd
 import traceback
 from pybit.unified_trading import WebSocket
 import json
-import datetime
 import time
 import _pickle as pickle
 # set directory to upper directory
@@ -58,7 +57,7 @@ def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir, ac
             local_redis.update_exchange_stream_data("ticker", 
                                                     f"BYBIT_{market_type.upper()}", 
                                                     message['data']['symbol'], 
-                                                    {**message['data'], 'last_update_timestamp': int(datetime.datetime.utcnow().timestamp() * 1000000)})
+                                                    {**message['data'], 'last_update_timestamp': int(time.time() * 1_000_000)})
         
             
 
@@ -147,7 +146,7 @@ def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir,
             local_redis.update_exchange_stream_data("orderbook",
                                                     f"BYBIT_{market_type.upper()}",
                                                     message['data']['s'],
-                                                    {**message['data'], 'last_update_timestamp': int(datetime.datetime.utcnow().timestamp() * 1000000)})
+                                                    {**message['data'], 'last_update_timestamp': int(time.time() * 1_000_000)})
 
     try:
         if market_type == "SPOT":
@@ -175,8 +174,12 @@ def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir,
                         acw_api.create_message_thread(admin_id, f"bybit_{market_type.lower()}_orderbook_websocket Inactivity", f"bybit_{market_type.lower()}_orderbook_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                     except Exception as e:
                         logger.error(f"init_orderbook_websocket|{traceback.format_exc()}")
+                    # ---- THE CRUCIAL PART: EXPLICITLY CLOSE THE WEBSOCKET ----
+                    try:
+                        ws.close()
+                    except Exception:
+                        pass
                     error_event.set()
-                    ws.close()
                     break
                 time.sleep(1)
                 
@@ -224,6 +227,8 @@ class BybitWebsocket:
                 break
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
+        self.monitor_stale_data_per_proc_thread = Thread(target=self.monitor_stale_data_per_proc, daemon=True)
+        self.monitor_stale_data_per_proc_thread.start()
     
     def _start_websocket(self):
         def handle_price_procs():
@@ -322,6 +327,13 @@ class BybitWebsocket:
                 time.sleep(0.5)
         self.handle_price_procs_thread = Thread(target=handle_price_procs, daemon=True)
         self.handle_price_procs_thread.start()
+        
+        # Start the per-process stale checker:
+        self.stale_data_per_proc_thread = Thread(
+            target=self.monitor_stale_data_per_proc,
+            daemon=True
+        )
+        self.stale_data_per_proc_thread.start()
 
     def terminate_websocket(self):
         self.stop_restart_websocket = True
@@ -392,6 +404,98 @@ class BybitWebsocket:
                 content = f"monitor_shared_symbol_change|{traceback.format_exc()}"
                 self.websocket_logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, "monitor_shared_symbol_change", content)
+                
+    def monitor_stale_data_per_proc(self, loop_time_secs=60, stale_threshold_secs=90):
+        """
+        Periodically checks if the slice of symbols for each process has not
+        been updated within `stale_threshold_secs`. If *all* symbols in that
+        slice are stale, forcefully kill only that process. The existing logic
+        in `handle_price_procs()` will see the process is dead and restart it.
+
+        :param loop_time_secs: how often to run the check (in seconds).
+        :param stale_threshold_secs: how long to wait before deciding data is stale
+        """
+        self.websocket_logger.info(f"[BYBIT {self.market_type}]started monitor_stale_data_per_proc..")
+        while True:
+            time.sleep(loop_time_secs)
+            now_us = int(time.time() * 1_000_000)  # current time in microseconds
+            
+            try:
+                # We'll iterate over each known process in `self.websocket_proc_dict`.
+                # For each, we look up its symbol list in `self.websocket_symbol_dict`.
+                for proc_name, proc in list(self.websocket_proc_dict.items()):
+
+                    # If the process is already dead, skip it.
+                    if not proc.is_alive():
+                        continue
+
+                    # Determine which list of symbols belongs to this process
+                    if "ticker_proc" in proc_name:
+                        symbol_list_key = proc_name.replace("proc", "symbol")
+                        redis_stream_type = "ticker"
+                    elif "orderbook_proc" in proc_name:
+                        symbol_list_key = proc_name.replace("proc", "symbol")
+                        redis_stream_type = "orderbook"
+                    else:
+                        # If you have any other naming conventions, handle them here.
+                        continue
+
+                    symbol_list = self.websocket_symbol_dict.get(symbol_list_key, [])
+                    if not symbol_list:
+                        # If we somehow have no symbols for that process, skip
+                        continue
+
+                    data = None
+                    while data is None:
+                        data = self.local_redis.get_all_exchange_stream_data(
+                            redis_stream_type, f"BYBIT_{self.market_type.upper()}"
+                        )
+                        if data is None:
+                            time.sleep(0.5)  # Add small delay to prevent busy waiting
+
+                    # We'll see if *all* are stale
+                    stale_count = 0
+                    for sym in symbol_list:
+                        symbol_data = data.get(sym, {})
+                        last_update_us = symbol_data.get("last_update_timestamp")  # microseconds
+                        if last_update_us is None:
+                            # If no timestamp, treat as stale
+                            self.websocket_logger.info(f"sym: {sym}, data: {symbol_data}")
+                            stale_count += 1
+                            continue
+
+                        # Compare difference in microseconds
+                        diff_us = now_us - last_update_us
+                        if diff_us > stale_threshold_secs * 1_000_000:
+                            self.websocket_logger.info(f"Stale sym: {sym}, data: {symbol_data}")
+                            # It's stale
+                            stale_count += 1
+
+                    # If every symbol in that slice is stale, kill the process
+                    if stale_count == len(symbol_list):
+                        content = (
+                            f"[BYBIT {self.market_type}] {proc_name} => "
+                            f"All {stale_count} symbols are stale for > {stale_threshold_secs}s. "
+                            f"Forcing process restart."
+                        )
+                        self.websocket_logger.error(content)
+                        self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
+
+                        # Force kill the process
+                        self.websocket_logger.warning(f"Killing process: {proc_name}")
+                        proc.terminate()
+                        proc.join()
+
+                        # The handle_price_procs() loop will detect it is dead
+                        # and restart it automatically. Let's sleep a bit
+                        time.sleep(60)
+                    else:
+                        self.websocket_logger.info(f"monitor_stale_data_per_proc|{proc_name} => {stale_count} symbols among {len(symbol_list)} symbols are stale for > {stale_threshold_secs}s.")
+
+            except Exception as e:
+                content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"
+                self.websocket_logger.error(content)
+                self.acw_api.create_message_thread(self.admin_id, f"[BYBIT {self.market_type}] monitor_stale_data_per_proc", content)
 
     def get_price_df(self):
         ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", f"BYBIT_{self.market_type.upper()}")).T.reset_index()
@@ -408,7 +512,6 @@ class BybitWebsocket:
         merged_df.loc[:, ['tp','ap','bp','scr','atp24h']] = merged_df[['tp','ap','bp','scr','atp24h']].astype(float)
         merged_df = merged_df[['symbol','base_asset','quote_asset','tp','bp','ap','scr','atp24h']]
         return merged_df
-
 class BybitUSDMWebsocket(BybitWebsocket):
     def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, market_type, info_dict, logging_dir):
         super().__init__(admin_id, node, proc_n, get_symbol_list, acw_api, market_type, info_dict, logging_dir)

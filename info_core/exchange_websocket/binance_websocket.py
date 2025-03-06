@@ -1,7 +1,6 @@
 from multiprocessing import Process, Manager, Queue, Event
 from threading import Thread
 import pandas as pd
-import datetime
 import websocket
 from binance import ThreadedWebsocketManager
 from binance.enums import FuturesType
@@ -39,7 +38,7 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
                 raise Exception(f"binance_websocket|{proc_name} error_event is set. closing websocket..")
             msg = json.loads(message)
             if 's' in msg.keys():
-                local_redis.update_exchange_stream_data(stream_data_type, f"BINANCE_{market_type.upper()}", msg['s'], {**msg, "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1_000_000)})
+                local_redis.update_exchange_stream_data(stream_data_type, f"BINANCE_{market_type.upper()}", msg['s'], {**msg, "last_update_timestamp": int(time.time() * 1_000_000)})
         except Exception as e:
             logger.error(f"binance_websocket|{proc_name} on_message error: {e}, traceback: {traceback.format_exc()}")
             error_event.set()  # Signal the main loop to close and restart
@@ -79,14 +78,31 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
         logger.info(f"binance_websocket|{proc_name} started monitoring inactivity... for {data['params']}...")
         while True:
             if time.time() - last_message_time > inactivity_time_secs:
-                logger.error(f"binance_websocket|{proc_name} has been inactive for {inactivity_time_secs} seconds for {data['params']}. Closing websocket... and set error_event..")
+                logger.error(
+                    f"binance_websocket|{proc_name} has been inactive for "
+                    f"{inactivity_time_secs} seconds. Closing websocket... "
+                    f"and setting error_event..."
+                )
                 try:
-                    acw_api.create_message_thread(admin_id, f"binance_websocket|{proc_name} Inactivity", f"binance_websocket|{proc_name} has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
-                except Exception as e:
+                    acw_api.create_message_thread(
+                        admin_id,
+                        f"binance_websocket|{proc_name} Inactivity",
+                        f"binance_websocket|{proc_name} has been inactive for "
+                        f"{inactivity_time_secs} seconds. Closing websocket..."
+                    )
+                except Exception:
                     logger.error(f"binance_websocket|{proc_name} check_inactivity|{traceback.format_exc()}")
+
+                # ---- THE CRUCIAL PART: EXPLICITLY CLOSE THE WEBSOCKET ----
+                try:
+                    ws.close()
+                except Exception:
+                    pass
+                
                 error_event.set()
                 break
-            time.sleep(1) # Check every 1 second
+
+            time.sleep(1)  # check every 1 second
             
     # Start the monitoring thread
     monitor_thread = Thread(target=check_inactivity, daemon=True)
@@ -167,6 +183,8 @@ class BinanceWebsocket:
 
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
+        self.monitor_stale_data_per_proc_thread = Thread(target=self.monitor_stale_data_per_proc, daemon=True)
+        self.monitor_stale_data_per_proc_thread.start()
     
     def __del__(self):
         self.terminate_websocket()
@@ -353,8 +371,6 @@ class BinanceWebsocket:
         self.handle_price_procs_thread = Thread(target=handle_price_procs, daemon=True)
         self.handle_price_procs_thread.start()
 
-    # Rest of your class methods remain unchanged, but ensure that you don't reference self.binance_websocket or self.liquidation_websocket
-
     def terminate_websocket(self):
         self.stop_restart_websocket = True
         time.sleep(0.5)
@@ -429,6 +445,117 @@ class BinanceWebsocket:
                 content = f"monitor_shared_symbol_change|{traceback.format_exc()}"
                 self.logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, f"[BINANCE {self.market_type}] monitor_shared_symbol_change", content)
+                
+    def monitor_stale_data_per_proc(self, loop_time_secs=60, stale_threshold_secs=90):
+        """
+        Periodically checks if the slice of symbols for each process has not
+        been updated within `stale_threshold_secs`. If *all* symbols in that
+        slice are stale, forcefully kill only that process. The existing logic
+        in `handle_price_procs()` will see the process is dead and restart it.
+
+        :param loop_time_secs: how often to run the check (in seconds).
+        :param stale_threshold_secs: how long to wait before deciding data is stale
+        """
+        self.logger.info(f"[BINANCE {self.market_type}]started monitor_stale_data_per_proc..")
+        while True:
+            time.sleep(loop_time_secs)
+            now_us = int(time.time() * 1_000_000)  # current time in microseconds
+            
+            try:
+                # We'll iterate over each known process in `self.websocket_proc_dict`.
+                # For each, we look up its symbol list in `self.websocket_symbol_dict`.
+                for proc_name, proc in list(self.websocket_proc_dict.items()):
+
+                    # If the process is already dead, skip it.
+                    if not proc.is_alive():
+                        continue
+
+                    # We might skip liquidation, or handle it differently.
+                    if "liquidation" in proc_name:
+                        # optional: continue
+                        continue
+
+                    # Determine which list of symbols belongs to this process
+                    # e.g. "1th_bookticker_proc" => "1th_bookticker_symbol"
+                    # If it's the ticker_proc => "ticker_symbol"
+                    if "bookticker_proc" in proc_name:
+                        # E.g. proc_name == "1th_bookticker_proc"
+                        #     => symbol_list_key = "1th_bookticker_symbol"
+                        symbol_list_key = proc_name.replace("proc", "symbol")
+                    elif "ticker_proc" in proc_name:
+                        symbol_list_key = "ticker_symbol"
+                    else:
+                        # If you have any other naming conventions, handle them here.
+                        continue
+
+                    symbol_list = self.websocket_symbol_dict.get(symbol_list_key, [])
+                    if not symbol_list:
+                        # If we somehow have no symbols for that process, skip
+                        continue
+
+                    # Now let's check these symbols in Redis
+                    # We only need to check "orderbook" or "ticker" data
+                    # depending on what this process is streaming. You can unify or separate:
+                    # - For 'bookticker_proc', check "orderbook" data in Redis
+                    # - For 'ticker_proc', check "ticker" data in Redis
+                    # This logic can be adapted to your naming scheme.
+
+                    if "bookticker_proc" in proc_name:
+                        redis_stream_type = "orderbook"
+                    elif "ticker_proc" in proc_name:
+                        redis_stream_type = "ticker"
+                    else:
+                        redis_stream_type = "orderbook"
+                        
+                    data = None
+                    while data is None:
+                        data = self.local_redis.get_all_exchange_stream_data(
+                            redis_stream_type, f"BINANCE_{self.market_type.upper()}"
+                        )
+                        if data is None:
+                            time.sleep(0.5)  # Add small delay to prevent busy waiting
+
+                    # We'll see if *all* are stale
+                    stale_count = 0
+                    for sym in symbol_list:
+                        symbol_data = data.get(sym, {})
+                        last_update_us = symbol_data.get("last_update_timestamp")  # microseconds
+                        if last_update_us is None:
+                            # If no timestamp, treat as stale
+                            stale_count += 1
+                            continue
+
+                        # Compare difference in microseconds
+                        diff_us = now_us - last_update_us
+                        if diff_us > stale_threshold_secs * 1_000_000:
+                            # It's stale
+                            stale_count += 1
+
+                    # If every symbol in that slice is stale, kill the process
+                    if stale_count == len(symbol_list):
+                        content = (
+                            f"[BINANCE {self.market_type}] {proc_name} => "
+                            f"All {stale_count} symbols are stale for > {stale_threshold_secs}s. "
+                            f"Forcing process restart."
+                        )
+                        self.logger.error(content)
+                        self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
+
+                        # Force kill the process
+                        self.logger.warning(f"Killing process: {proc_name}")
+                        proc.terminate()
+                        proc.join()
+
+                        # The handle_price_procs() loop will detect it is dead
+                        # and restart it automatically. Let's sleep a bit
+                        time.sleep(60)
+                    else:
+                        self.logger.info(f"monitor_stale_data_per_proc|{proc_name} => {stale_count} symbols among {len(symbol_list)} symbols are stale for > {stale_threshold_secs}s.")
+
+            except Exception as e:
+                content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"
+                self.logger.error(content)
+                self.acw_api.create_message_thread(self.admin_id, f"[BINANCE {self.market_type}] monitor_stale_data_per_proc", content)
 
     def get_price_df(self):
         binance_ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", f"BINANCE_{self.market_type.upper()}")).T.reset_index(drop=True)[['s','P','c','v','q']]

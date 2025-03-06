@@ -4,7 +4,6 @@ import pandas as pd
 import traceback
 import websocket
 import json
-import datetime
 import time
 import _pickle as pickle
 # set directory to upper directory
@@ -36,7 +35,7 @@ def upbit_websocket(stream_data_type, url, data, error_event, logging_dir, acw_a
                 raise Exception("upbit_websocket|error_event is set. closing websocket..")
             message_dict = json.loads(message)
             local_redis.update_exchange_stream_data(stream_data_type, "UPBIT_SPOT", message_dict['cd'],
-                                                    {**message_dict, 'last_update_timestamp': datetime.datetime.utcnow().timestamp()*1000000})
+                                                    {**message_dict, 'last_update_timestamp': int(time.time() * 1_000_000)})
         except Exception as e:
             logger.error(f"upbit_websocket|on_message error: {e}, traceback: {traceback.format_exc()}")
             error_event.set() # Signal error
@@ -75,6 +74,11 @@ def upbit_websocket(stream_data_type, url, data, error_event, logging_dir, acw_a
                     acw_api.create_message_thread(admin_id, f"[UPBIT] {stream_data_type} websocket Inactivity", f"[UPBIT] {stream_data_type} websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                 except Exception as e:
                     logger.error(f"[UPBIT] {stream_data_type} websocket Inactivity|{traceback.format_exc()}")
+                # ---- THE CRUCIAL PART: EXPLICITLY CLOSE THE WEBSOCKET ----
+                try:
+                    ws.close()
+                except Exception:
+                    pass
                 error_event.set()
                 break
             time.sleep(1) # Check every 1 second
@@ -123,6 +127,10 @@ class UpbitWebsocket:
             target=self.monitor_shared_symbol_change, daemon=True
         )
         self.monitor_shared_symbol_change_thread.start()
+        self.monitor_stale_data_per_proc_thread = Thread(
+            target=self.monitor_stale_data_per_proc, daemon=True
+        )
+        self.monitor_stale_data_per_proc_thread.start()
 
     def __del__(self):
         self.terminate_websocket()
@@ -353,6 +361,98 @@ class UpbitWebsocket:
                 content = f"monitor_shared_symbol_change|{traceback.format_exc()}"
                 self.websocket_logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, 'monitor_shared_symbol_change', content)
+                
+    def monitor_stale_data_per_proc(self, loop_time_secs=60, stale_threshold_secs=90):
+        """
+        Periodically checks if the slice of symbols for each process has not
+        been updated within `stale_threshold_secs`. If *all* symbols in that
+        slice are stale, forcefully kill only that process. The existing logic
+        in `handle_price_procs()` will see the process is dead and restart it.
+
+        :param loop_time_secs: how often to run the check (in seconds).
+        :param stale_threshold_secs: how long to wait before deciding data is stale
+        """
+        self.websocket_logger.info("[UPBIT SPOT]started monitor_stale_data_per_proc..")
+        while True:
+            time.sleep(loop_time_secs)
+            now_us = int(time.time() * 1_000_000)  # current time in microseconds
+            
+            try:
+                # We'll iterate over each known process in `self.websocket_proc_dict`.
+                # For each, we look up its symbol list in `self.websocket_symbol_dict`.
+                for proc_name, proc in list(self.websocket_proc_dict.items()):
+
+                    # If the process is already dead, skip it.
+                    if not proc.is_alive():
+                        continue
+
+                    # Determine which list of symbols belongs to this process
+                    if "ticker_proc" in proc_name:
+                        symbol_list_key = proc_name.replace("proc", "symbol")
+                        redis_stream_type = "ticker"
+                    elif "orderbook_proc" in proc_name:
+                        symbol_list_key = proc_name.replace("proc", "symbol")
+                        redis_stream_type = "orderbook"
+                    else:
+                        # If you have any other naming conventions, handle them here.
+                        continue
+
+                    symbol_list = self.websocket_symbol_dict.get(symbol_list_key, [])
+                    if not symbol_list:
+                        # If we somehow have no symbols for that process, skip
+                        continue
+
+                    data = None
+                    while data is None:
+                        data = self.local_redis.get_all_exchange_stream_data(
+                            redis_stream_type, "UPBIT_SPOT"
+                        )
+                        if data is None:
+                            time.sleep(0.5)  # Add small delay to prevent busy waiting
+
+                    # We'll see if *all* are stale
+                    stale_count = 0
+                    for sym in symbol_list:
+                        symbol_data = data.get(sym, {})
+                        last_update_us = symbol_data.get("last_update_timestamp")  # microseconds
+                        if last_update_us is None:
+                            # If no timestamp, treat as stale
+                            self.websocket_logger.info(f"sym: {sym}, data: {symbol_data}")
+                            stale_count += 1
+                            continue
+
+                        # Compare difference in microseconds
+                        diff_us = now_us - last_update_us
+                        if diff_us > stale_threshold_secs * 1_000_000:
+                            self.websocket_logger.info(f"Stale sym: {sym}, data: {symbol_data}")
+                            # It's stale
+                            stale_count += 1
+
+                    # If every symbol in that slice is stale, kill the process
+                    if stale_count == len(symbol_list):
+                        content = (
+                            f"[UPBIT SPOT] {proc_name} => "
+                            f"All {stale_count} symbols are stale for > {stale_threshold_secs}s. "
+                            f"Forcing process restart."
+                        )
+                        self.websocket_logger.error(content)
+                        self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
+
+                        # Force kill the process
+                        self.websocket_logger.warning(f"Killing process: {proc_name}")
+                        proc.terminate()
+                        proc.join()
+
+                        # The handle_price_procs() loop will detect it is dead
+                        # and restart it automatically. Let's sleep a bit
+                        time.sleep(60)
+                    else:
+                        self.websocket_logger.info(f"monitor_stale_data_per_proc|{proc_name} => {stale_count} symbols among {len(symbol_list)} symbols are stale for > {stale_threshold_secs}s.")
+
+            except Exception as e:
+                content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"
+                self.websocket_logger.error(content)
+                self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
 
     def get_price_df(self):
         upbit_ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", "UPBIT_SPOT")).T.reset_index()[['index','tp','scr','atp24h','h52wp','l52wp','ms','mw','tms']]

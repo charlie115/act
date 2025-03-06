@@ -522,7 +522,6 @@ class InitCore:
         try:
             exchange_rate = pd.read_html(url, encoding='EUC-KR')[0]
             self.update_dollar_return_dict['price'] = exchange_rate.iloc[0,1]
-            # return_dict['change'] = exchange_rate.iloc[0,-1]
             self.update_dollar_return_dict['change'] = exchange_rate.iloc[0,2]
             self.update_dollar_return_dict['last_updated_time'] = datetime.datetime.utcnow()
             dict_for_redis = {
@@ -531,15 +530,16 @@ class InitCore:
                 "last_updated_time": self.update_dollar_return_dict['last_updated_time'].strftime("%Y-%m-%d %H:%M:%S")
             }
             self.local_redis.set_dict('INFO_CORE|dollar', dict_for_redis)
-            self.remote_redis.set_dict('INFO_CORE|dollar', dict_for_redis) # For the ACW infocore API
-            update_dollar_logger.info(f"fetch_dollar|Dollar price ({self.update_dollar_return_dict['price']} KRW) has been updated.")
+            
+            # Generate log once every 10 times
+            self.update_dollar_return_dict['log_counter'] = self.update_dollar_return_dict.get('log_counter', 0) + 1
+            if self.update_dollar_return_dict['log_counter'] % 10 == 0:
+                update_dollar_logger.info(f"fetch_dollar|Dollar price ({self.update_dollar_return_dict['price']} KRW) has been updated.")
         except Exception as e:
             self.acw_api.create_message_thread(self.admin_id, f"fetch_dollar|Exception occured! Error: {e}", f"fetch_dollar|Exception occured! Error: {e}")
-            # print(f'Except executed in get_dollar function, {e}')
             update_dollar_logger.warning(f"fetch_dollar|Exception occured! Error: {e}, pd.read_html(url): {pd.read_html(url)}")
             exchange_rate = pd.read_html(url)[1]
             self.update_dollar_return_dict['price'] = exchange_rate.iloc[0,1]
-            # return_dict['change'] = exchange_rate.iloc[0,-1]
             self.update_dollar_return_dict['change'] = exchange_rate.iloc[0,2]
             self.update_dollar_return_dict['last_updated_time'] = datetime.datetime.utcnow()
         return self.update_dollar_return_dict
