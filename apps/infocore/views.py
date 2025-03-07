@@ -310,14 +310,15 @@ class KlineVolatilityView(views.APIView):
 
             cursor = coll.aggregate(pipeline)
             
-            results = {
-                item["_id"]: KlineVolatilitySerializer(item["data"], context={"tz": tz}).data
+            # Return a list of serialized values instead of a dictionary with base_asset keys
+            results = [
+                KlineVolatilitySerializer(item["data"], context={"tz": tz}).data
                 for item in cursor
-            }
+            ]
             return results
         except Exception as e:
             print(f"Error fetching volatility data: {e}")
-            return {}
+            return []
 
 
 @extend_schema_view(
