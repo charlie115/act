@@ -1,5 +1,6 @@
 import json
 import pandas as pd
+import pickle
 
 from django.conf import settings
 from django_filters import FilterSet
@@ -25,6 +26,8 @@ from infocore.serializers import (
     KlineVolatilitySerializer,
     WalletStatusQueryParamsSerializer,
     WalletStatusResponseSerializer,
+    RankIndicatorQueryParamsSerializer,
+    RankIndicatorSerializer,
 )
 from lib.filters import CharArrayFilter
 from lib.views import BaseViewSet
@@ -286,34 +289,35 @@ class KlineVolatilityView(views.APIView):
         base_assets,
         tz,
     ):
-        database = target_market_code.replace("/", "__") + '-' + origin_market_code.replace("/", "__")
-        collection = "volatility_info"
+        try:
+            database = target_market_code.replace("/", "__") + '-' + origin_market_code.replace("/", "__")
+            collection = "volatility_info"
 
-        # Get database and collection
-        db = MONGODB_CLI.get_database(database)
-        coll = db.get_collection(collection)
+            # Get database and collection
+            db = MONGODB_CLI.get_database(database)
+            coll = db.get_collection(collection)
 
-        # Prepare parameters
-        query_filter = {}
-        if base_assets:
-            query_filter["base_asset"] = {"$in": base_assets}
+            pipeline = []
+            if base_assets:
+                pipeline.append({"$match": {"base_asset": {"$in": base_assets}}})
+            
+            pipeline.append({
+                "$group": {
+                    "_id": "$base_asset",
+                    "data": {"$first": "$$ROOT"}
+                }
+            })
 
-        projection = {
-            "_id": False,
-        }
-
-        # Query collection
-        cursor = coll.find(
-            filter=query_filter,
-            projection=projection,
-        )
-
-        # Serialize
-        results = [
-            KlineVolatilitySerializer(item, context={"tz": tz}).data for item in cursor
-        ]
-
-        return results
+            cursor = coll.aggregate(pipeline)
+            
+            results = {
+                item["_id"]: KlineVolatilitySerializer(item["data"], context={"tz": tz}).data
+                for item in cursor
+            }
+            return results
+        except Exception as e:
+            print(f"Error fetching volatility data: {e}")
+            return {}
 
 
 @extend_schema_view(
@@ -660,3 +664,272 @@ class WalletStatusView(views.APIView):
                         results[asset][origin_exchange]["withdraw"].append(network)
 
         return results
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Get rank indicator",
+        description="Returns rank indicator using kline data, volatility data and funding rate",
+        parameters=[RankIndicatorQueryParamsSerializer],
+        responses={200: RankIndicatorSerializer},
+        tags=["RankIndicator"],
+    ),
+)
+class RankIndicatorView(views.APIView):
+    http_method_names = ["get"]
+    permission_classes = []
+    
+    def get(self, request):
+        query_params = RankIndicatorQueryParamsSerializer(data=request.query_params)
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+        
+        target_market_code = query.get("target_market_code", "")
+        origin_market_code = query.get("origin_market_code", "")
+        # weights parameters
+        w_ls_close = query.get("w_ls_close", -0.3)
+        w_spread = query.get("w_spread", -0.35)
+        w_volatility = query.get("w_volatility", 0.6)
+        w_funding = query.get("w_funding", 0.1)
+        w_atp = query.get("w_atp", 1.0)
+                
+        tz = query.get("tz")
+        base_assets = query.get("base_asset")
+        # convert base_assets to list
+        if base_assets:
+            base_assets = base_assets.split(",")
+                
+        # 1. Get kline data
+        kline_data = self.get_kline_data(
+            target_market_code=target_market_code,
+            origin_market_code=origin_market_code,
+        )
+        
+        # 2. Get volatility data
+        volatility_data = self.get_volatility_data(
+            target_market_code=target_market_code,
+            origin_market_code=origin_market_code,
+            base_assets=base_assets,
+            tz=tz,
+        )
+        
+        # 3. Get funding rate data
+        funding_rate_data = self.get_funding_rate_data(
+            market_code=origin_market_code,
+            base_assets=base_assets,
+            tz=tz,
+        )
+        
+        # 4. Combine data and calculate indicator
+        combined_data = self.rank_indicator(
+            kline_data=kline_data,
+            volatility_data=volatility_data,
+            funding_rate_data=funding_rate_data,
+            w_ls_close=w_ls_close,
+            w_spread=w_spread,
+            w_volatility=w_volatility,
+            w_funding=w_funding,
+            w_atp=w_atp,
+        )
+        
+        return response.Response(combined_data)
+    
+    def get_kline_data(self, target_market_code, origin_market_code):
+        # Construct Redis channel name based on websocket implementation
+        channel_name = f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_now"
+        
+        try:
+            # Get latest stream entry from Redis
+            stream = REDIS_CLI.xread(
+                streams={channel_name: "0-0"},
+                count=1,
+                block=0,
+            )
+            
+            if not stream:
+                return {}
+
+            # Unpack stream data (same as websocket consumer)
+            _, entries = stream[0]
+            entry_id, entry_data = entries[0]
+            kline_df = pickle.loads(entry_data[b"data"])
+            
+            # Convert to JSON and filter by base_asset
+            kline_json = json.loads(kline_df.to_json(orient="records"))            
+            return kline_json
+            
+        except Exception as e:
+            print(f"Error fetching Redis kline data: {e}")
+            return {}
+    
+    def get_volatility_data(self, target_market_code, origin_market_code, base_assets, tz):
+        try:
+            database = target_market_code.replace("/", "__") + '-' + origin_market_code.replace("/", "__")
+            collection = "volatility_info"
+
+            # Get database and collection
+            db = MONGODB_CLI.get_database(database)
+            coll = db.get_collection(collection)
+
+            pipeline = []
+            if base_assets:
+                pipeline.append({"$match": {"base_asset": {"$in": base_assets}}})
+            
+            pipeline.append({
+                "$group": {
+                    "_id": "$base_asset",
+                    "data": {"$first": "$$ROOT"}
+                }
+            })
+
+            cursor = coll.aggregate(pipeline)
+            
+            results = {
+                item["_id"]: KlineVolatilitySerializer(item["data"], context={"tz": tz}).data
+                for item in cursor
+            }
+            return results
+        except Exception as e:
+            print(f"Error fetching volatility data: {e}")
+            return {}
+    
+    def get_funding_rate_data(self, market_code, base_assets, tz):
+        try:
+            market_code, quote_asset = market_code.split("/")
+        except ValueError:
+            return {}
+        
+        database = f"{market_code.split('_')[0]}_fundingrate"
+        collection = "_".join(market_code.split("_")[1:])
+        
+        try:
+            db = MONGODB_CLI.get_database(database)
+            coll = db.get_collection(collection)
+            
+            # Create aggregation pipeline
+            pipeline = [
+                {"$match": {
+                    "perpetual": True,
+                    "base_asset": {"$in": base_assets} if base_assets else {"$exists": True},
+                    "quote_asset": quote_asset
+                }},
+                {"$sort": {"funding_time": DESCENDING}},
+                {"$group": {
+                    "_id": "$base_asset",
+                    "latest_entry": {"$first": "$$ROOT"}
+                }}
+            ]
+
+            cursor = coll.aggregate(pipeline)
+            
+            return {
+                item["_id"]: FundingRateDataSerializer(
+                    item["latest_entry"], 
+                    context={"tz": tz}
+                ).data
+                for item in cursor
+            }
+        except Exception as e:
+            print(f"Error fetching funding rate data: {e}")
+            return {}
+    
+    def rank_indicator(self,
+                      kline_data,
+                      volatility_data,
+                      funding_rate_data,
+                      w_ls_close,
+                      w_spread,
+                      w_volatility,
+                      w_funding,
+                      w_atp):
+        """
+        Combine and normalize data, then calculate indicator with weights
+        """
+        if not kline_data:
+            return []
+
+        # Phase 1: Collect all raw values
+        features = []
+        for each_kline in kline_data:
+            base_asset = each_kline.get("base_asset")
+            ls_close = each_kline.get("LS_close", 0)
+            spread = abs(each_kline.get("LS_close", 0) - each_kline.get("SL_close", 0))
+            atp24h = each_kline.get("atp24h", 0)
+            volatility = volatility_data.get(base_asset, {}).get("mean_diff", 0)
+            funding = funding_rate_data.get(base_asset, {}).get("funding_rate", 0)
+            
+            features.append({
+                "base_asset": base_asset,
+                "ls_close": ls_close,
+                "spread": spread,
+                "volatility": volatility,
+                "funding": funding,
+                "atp24h": atp24h
+            })
+
+        # Extract values for normalization
+        ls_closes = [f["ls_close"] for f in features]
+        spreads = [f["spread"] for f in features]
+        volatilities = [f["volatility"] for f in features]
+        fundings = [f["funding"] for f in features]
+        atps = [f["atp24h"] for f in features]
+
+        # Calculate normalization parameters
+        def get_norm_params(values):
+            v_min = min(values) if values else 0
+            v_max = max(values) if values else 0
+            return v_min, v_max, v_max - v_min
+
+        ls_closes_min, ls_closes_max, ls_closes_range = get_norm_params(ls_closes)
+        s_min, s_max, s_range = get_norm_params(spreads)
+        v_min, v_max, v_range = get_norm_params(volatilities)
+        f_min, f_max, f_range = get_norm_params(fundings)
+        a_min, a_max, a_range = get_norm_params(atps)
+
+        # Phase 2: Calculate normalized values
+        combined_data = []
+        for f in features:
+            # Normalize each feature (0-1 range)
+            norm_ls_close = (f["ls_close"] - ls_closes_min) / ls_closes_range if ls_closes_range != 0 else 0.5
+            norm_spread = (f["spread"] - s_min) / s_range if s_range != 0 else 0.5
+            norm_volatility = (f["volatility"] - v_min) / v_range if v_range != 0 else 0.5
+            
+            # Better funding rate normalization that preserves sign information
+            if f_range != 0:
+                # Center around zero and scale to [-1, 1] range
+                norm_funding = f["funding"] / max(abs(f_min), abs(f_max)) if max(abs(f_min), abs(f_max)) != 0 else 0
+            else:
+                norm_funding = 0
+                
+            norm_atp = (f["atp24h"] - a_min) / a_range if a_range != 0 else 0.5
+            
+            # Apply weights to normalized values
+            indicator_value = (
+                w_ls_close * norm_ls_close +
+                w_spread * norm_spread +
+                w_volatility * norm_volatility +
+                w_funding * norm_funding +
+                w_atp * norm_atp
+            )
+
+            combined_data.append({
+                "base_asset": f["base_asset"],
+                "indicator_value": indicator_value,
+                # Include normalized values for debugging:
+                "_normalized": {
+                    "ls_close": norm_ls_close,
+                    "spread": norm_spread,
+                    "volatility": norm_volatility,
+                    "funding": norm_funding,
+                    "atp24h": norm_atp
+                }
+            })
+
+        # Sort and rank
+        combined_data.sort(key=lambda x: x["indicator_value"], reverse=True)
+        for rank, item in enumerate(combined_data, 1):
+            item["rank"] = rank
+            # Remove debug info in production
+            # del item["_normalized"]
+
+        return combined_data

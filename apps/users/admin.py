@@ -73,6 +73,7 @@ class UserRoleAdmin(ModelAdmin):
 class UserAdmin(BaseUserAdmin, ModelAdmin):
     list_display = [
         "email",
+        "date_joined",
         "username",
         "first_name",
         "last_name",

@@ -16,7 +16,6 @@ from rest_framework.response import Response
 from lib.views import BaseAPIListView
 from lib.url import mkpath
 
-
 class APIListView(BaseAPIListView):
     def get(self, request, *args, **kwargs):
         api_list = {
@@ -31,7 +30,6 @@ class APIListView(BaseAPIListView):
                     api_list[name] = request.build_absolute_uri(os.path.join(name, ""))
 
         return Response(api_list)
-
 
 urlpatterns = [
     path(mkpath(""), APIListView.as_view(), name="api-root"),

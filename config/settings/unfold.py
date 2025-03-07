@@ -103,6 +103,37 @@ UNFOLD = {
                 ],
             },
             {
+                "title": _("TRADE INFO"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("TRADE"),
+                        "icon": "candlestick_chart",
+                        "link": reverse_lazy("admin:tradecore_trade_changelist"),
+                    },
+                    {
+                        "title": _("TRADE LOG"),
+                        "icon": "history",
+                        "link": reverse_lazy("admin:tradecore_tradelog_changelist"),
+                    },
+                    {
+                        "title": _("Repeat Trades"),
+                        "icon": "repeat",
+                        "link": reverse_lazy("admin:tradecore_repeattrade_changelist"),
+                    },
+                    {
+                        "title": _("ORDER HISTORY"),
+                        "icon": "receipt_long",
+                        "link": reverse_lazy("admin:tradecore_orderhistory_changelist"),
+                    },
+                    {
+                        "title": _("TRADE HISTORY"),
+                        "icon": "trending_up",
+                        "link": reverse_lazy("admin:tradecore_tradehistory_changelist"),
+                    },
+                ],
+            },
+            {
                 "title": _(""),
                 "separator": True,
                 "items": [
@@ -360,6 +391,37 @@ UNFOLD = {
                     "link": reverse_lazy(
                         "admin:django_celery_results_taskresult_changelist"
                     ),
+                },
+            ],
+        },
+        {
+            "models": [
+                "tradecore.trade",
+                "tradecore.tradelog",
+                "tradecore.repeattrade",
+                "tradecore.orderhistory",
+                "tradecore.tradehistory",
+            ],
+            "items": [
+                {
+                    "title": _("Trades"),
+                    "link": reverse_lazy("admin:tradecore_trade_changelist"),
+                },
+                {
+                    "title": _("Trade Logs"),
+                    "link": reverse_lazy("admin:tradecore_tradelog_changelist"),
+                },
+                {
+                    "title": _("Repeat Trades"),
+                    "link": reverse_lazy("admin:tradecore_repeattrade_changelist"),
+                },
+                {
+                    "title": _("Order History"),
+                    "link": reverse_lazy("admin:tradecore_orderhistory_changelist"),
+                },
+                {
+                    "title": _("Trade History"),
+                    "link": reverse_lazy("admin:tradecore_tradehistory_changelist"),
                 },
             ],
         },

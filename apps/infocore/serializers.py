@@ -204,3 +204,19 @@ class WalletStatusResponseSerializer(serializers.Serializer):
     )
     def get_base_asset(self, obj):
         pass
+
+
+class RankIndicatorQueryParamsSerializer(serializers.Serializer):
+    target_market_code = serializers.CharField(required=True)
+    origin_market_code = serializers.CharField(required=True)
+    tz = TimezoneField(default=UTC)
+    w_ls_close = serializers.FloatField(required=False)
+    w_spread = serializers.FloatField(required=False)
+    w_volatility = serializers.FloatField(required=False)
+    w_funding = serializers.FloatField(required=False)
+    w_atp = serializers.FloatField(required=False)
+
+class RankIndicatorSerializer(serializers.Serializer):
+    base_asset = serializers.CharField()
+    # Rank indicator values.
+    indicator_value = serializers.IntegerField()
