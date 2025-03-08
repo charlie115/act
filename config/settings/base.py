@@ -345,7 +345,7 @@ FIXTURE_DIRS = [os.path.normpath(os.path.join(os.path.dirname(BASE_DIR), "fixtur
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Seoul"
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 

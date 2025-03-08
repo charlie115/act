@@ -1,6 +1,9 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.filters import OrderingFilter
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
 
 from lib.authentication import NodeIPAuthentication
 from lib.views import BaseViewSet, UserOwnedViewSet
@@ -28,6 +31,7 @@ from users.serializers import (
     DepositHistorySerializer,
     WithdrawalRequestSerializer,
 )
+from lib.status import HTTP_200_OK
 
 
 @extend_schema(tags=["User"])
@@ -86,6 +90,31 @@ class UserViewSet(BaseViewSet):
     ordering = ["email"]
     http_method_names = ["get", "post", "put", "patch", "delete"]
 
+    @action(detail=False, methods=['post'], url_path='unbind-telegram')
+    def unbind_telegram(self, request):
+        """
+        Unbinds the telegram account from the current user.
+        Deletes the associated socialaccount record and clears the telegram_chat_id.
+        """
+        user = request.user
+        
+        if not user.telegram_chat_id:
+            return Response(
+                {"detail": "No telegram account is bound to this user."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Remove the allauth/social account record for telegram
+        user.socialaccount_set.filter(provider="telegram").delete()
+        
+        # Remove the telegram chat ID
+        user.telegram_chat_id = ""
+        user.save()
+        
+        return Response(
+            {"detail": "Telegram account successfully unbound."},
+            status=HTTP_200_OK
+        )
 
 @extend_schema(tags=["UserFavoriteAssets"])
 @extend_schema_view(

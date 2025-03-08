@@ -313,6 +313,19 @@ class DepositBalanceAdmin(ModelAdmin):
         return False
 
 
+class DepositHistoryAdminForm(forms.ModelForm):
+    class Meta:
+        model = DepositHistory
+        fields = ['user', 'change', 'type', 'description', 'pending']
+        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make type default to COUPON
+        self.fields['type'].initial = DepositHistory.COUPON
+        # Use standard select
+        self.fields['user'].widget = forms.Select(attrs={'class': ' '.join([*SELECT_CLASSES])})
+        self.fields['user'].queryset = User.objects.all().order_by('email')
+
 class DepositHistoryAdmin(ModelAdmin):
     list_display = [
         "user",
@@ -331,16 +344,33 @@ class DepositHistoryAdmin(ModelAdmin):
         "user__email",
         "user__username",
     ]
-
+    form = DepositHistoryAdminForm
+    autocomplete_fields = ['user']
+    
     def has_add_permission(self, request, obj=None):
-        return False
+        return True  # Allow adding new records
 
     def has_change_permission(self, request, obj=None):
-        return False
+        if obj is None:
+            return True  # Allow viewing the changelist
+        return False  # Prevent editing existing records
 
     def has_delete_permission(self, request, obj=None):
         return False
     
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj is None:  # This is an add form
+            form.base_fields['type'].initial = DepositHistory.COUPON
+        return form
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # This is an edit form
+            return ['user', 'change', 'balance', 'type', 'coupon', 'registered_datetime']
+        # This is an add form
+        return ['balance']  # Balance is calculated automatically
+
+
 class WithdrawalRequestAdmin(ModelAdmin):
     hdwallet_address_endpoint = "user_wallet/"
     hdwallet_balance_endpoint = "user_wallet/balance/"
