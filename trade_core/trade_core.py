@@ -275,84 +275,63 @@ class InitCore:
                     self.logger.info(f"update_exchange_info_as_df|name:{data_name} has been skipped due to server check.")
                     time.sleep(loop_time_secs)
                     continue
+                start_time = time.time()
                 if data_name == "upbit_spot_info_df":
-                    # self.info_dict[data_name] = self.upbit_adaptor.spot_exchange_info()
                     self.store_info_dict_to_redis(data_name, self.upbit_adaptor.spot_exchange_info())
                 elif data_name == "upbit_spot_ticker_df":
-                    # self.info_dict[data_name] = self.upbit_adaptor.spot_all_tickers()
                     self.store_info_dict_to_redis(data_name, self.upbit_adaptor.spot_all_tickers())
                 elif data_name == "upbit_wallet_status_df":
-                    # self.info_dict[data_name] = self.upbit_adaptor.wallet_status()
                     self.store_info_dict_to_redis(data_name, self.upbit_adaptor.wallet_status())
                 elif data_name == "binance_spot_ticker_df":
-                    # self.info_dict[data_name] = self.binance_adaptor.spot_all_tickers()
                     self.store_info_dict_to_redis(data_name, self.binance_adaptor.spot_all_tickers())
                 elif data_name == "binance_spot_info_df":
-                    # self.info_dict[data_name] = self.binance_adaptor.spot_exchange_info()
                     self.store_info_dict_to_redis(data_name, self.binance_adaptor.spot_exchange_info())
                 elif data_name == "binance_usd_m_ticker_df":
-                    # self.info_dict[data_name] = self.binance_adaptor.usd_m_all_tickers()
                     self.store_info_dict_to_redis(data_name, self.binance_adaptor.usd_m_all_tickers())
                 elif data_name == "binance_usd_m_info_df":
-                    # self.info_dict[data_name] = self.binance_adaptor.usd_m_exchange_info()
                     self.store_info_dict_to_redis(data_name, self.binance_adaptor.usd_m_exchange_info())
                 elif data_name == "binance_coin_m_ticker_df":
-                    # self.info_dict[data_name] = self.binance_adaptor.coin_m_all_tickers()
                     self.store_info_dict_to_redis(data_name, self.binance_adaptor.coin_m_all_tickers())
                 elif data_name == "binance_coin_m_info_df":
-                    # self.info_dict[data_name] = self.binance_adaptor.coin_m_exchange_info()
                     self.store_info_dict_to_redis(data_name, self.binance_adaptor.coin_m_exchange_info())
                 elif data_name == "okx_spot_ticker_df":
-                    # self.info_dict[data_name] = self.okx_adaptor.spot_all_tickers()
                     self.store_info_dict_to_redis(data_name, self.okx_adaptor.spot_all_tickers())
                 elif data_name == "okx_spot_info_df":
-                    # self.info_dict[data_name] = self.okx_adaptor.spot_exchange_info()
                     self.store_info_dict_to_redis(data_name, self.okx_adaptor.spot_exchange_info())
                 elif data_name == "okx_usd_m_ticker_df":
-                    # self.info_dict[data_name] = self.okx_adaptor.usd_m_all_tickers()
                     self.store_info_dict_to_redis(data_name, self.okx_adaptor.usd_m_all_tickers())
                 elif data_name == "okx_usd_m_info_df":
-                    # self.info_dict[data_name] = self.okx_adaptor.usd_m_exchange_info()
                     self.store_info_dict_to_redis(data_name, self.okx_adaptor.usd_m_exchange_info())
                 elif data_name == "okx_coin_m_ticker_df":
-                    # self.info_dict[data_name] = self.okx_adaptor.coin_m_all_tickers()
                     self.store_info_dict_to_redis(data_name, self.okx_adaptor.coin_m_all_tickers())
                 elif data_name == "okx_coin_m_info_df":
-                    # self.info_dict[data_name] = self.okx_adaptor.coin_m_exchange_info()
                     self.store_info_dict_to_redis(data_name, self.okx_adaptor.coin_m_exchange_info())
                 elif data_name == "bithumb_spot_info_df":
-                    # self.info_dict[data_name] = self.bithumb_adaptor.spot_exchange_info()
                     self.store_info_dict_to_redis(data_name, self.bithumb_adaptor.spot_exchange_info())
                 elif data_name == "bithumb_spot_ticker_df":
-                    # self.info_dict[data_name] = self.bithumb_adaptor.spot_all_tickers()
                     self.store_info_dict_to_redis(data_name, self.bithumb_adaptor.spot_all_tickers())
                 elif data_name == "bithumb_wallet_status_df":
-                    # self.info_dict[data_name] = self.bithumb_adaptor.wallet_status()
                     self.store_info_dict_to_redis(data_name, self.bithumb_adaptor.wallet_status())
                 elif data_name == "bybit_spot_info_df":
-                    # self.info_dict[data_name] = self.bybit_adaptor.spot_exchange_info()
                     self.store_info_dict_to_redis(data_name, self.bybit_adaptor.spot_exchange_info())
                 elif data_name == "bybit_spot_ticker_df":
-                    # self.info_dict[data_name] = self.bybit_adaptor.spot_all_tickers()
                     self.store_info_dict_to_redis(data_name, self.bybit_adaptor.spot_all_tickers())
                 elif data_name == "bybit_usd_m_info_df":
-                    # self.info_dict[data_name] = self.bybit_adaptor.usd_m_exchange_info()
                     self.store_info_dict_to_redis(data_name, self.bybit_adaptor.usd_m_exchange_info())
                 elif data_name == "bybit_usd_m_ticker_df":
-                    # self.info_dict[data_name] = self.bybit_adaptor.usd_m_all_tickers()
                     self.store_info_dict_to_redis(data_name, self.bybit_adaptor.usd_m_all_tickers())
                 elif data_name == "bybit_coin_m_info_df":
-                    # self.info_dict[data_name] = self.bybit_adaptor.coin_m_exchange_info()
                     self.store_info_dict_to_redis(data_name, self.bybit_adaptor.coin_m_exchange_info())
                 elif data_name == "bybit_coin_m_ticker_df":
-                    # self.info_dict[data_name] = self.bybit_adaptor.coin_m_all_tickers()
                     self.store_info_dict_to_redis(data_name, self.bybit_adaptor.coin_m_all_tickers())
                 else:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name} is not valid.")
                     self.acw_api.create_message_thread(self.admin_id, f"update_exchange_info_as_df|name:{data_name} is not valid.", f"update_exchange_info_as_df|name:{data_name} is not valid.")
                     break
-                time.sleep(loop_time_secs)
+                end_time = time.time() - start_time
+                self.logger.info(f"update_exchange_info_as_df|name:{data_name} has been updated. ({end_time:.2f} secs), error_count:{error_count}")
                 error_count = 0
+                time.sleep(loop_time_secs)
             except Exception as e:
                 error_count += 1
                 if error_count >= error_count_limit:

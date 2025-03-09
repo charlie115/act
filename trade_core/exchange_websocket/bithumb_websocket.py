@@ -5,7 +5,6 @@ import numpy as np
 import traceback
 import websocket
 import json
-import datetime
 import time
 import _pickle as pickle
 # set directory to upper directory
@@ -31,18 +30,23 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw
     def on_message(ws, message):
         nonlocal last_message_time # Declare nonlocal to modify the outer variable
         last_message_time = time.time() # Update the time of the last received message
-        if error_event.is_set():
-            ws.close()
-            raise Exception("bithumb_websocket|error_event is set. closing websocket..")
-        message_dict = json.loads(message)
-        if 'content' in message_dict.keys():
-            local_redis.update_exchange_stream_data(stream_data_type, "BITHUMB_SPOT", message_dict['content']['symbol'], {
-                **message_dict['content'],
-                "last_update_timestamp": int(datetime.datetime.utcnow().timestamp() * 1000000)
-            })
+        try:
+            if error_event.is_set():
+                ws.close()
+                raise Exception("bithumb_websocket|error_event is set. closing websocket..")
+            message_dict = json.loads(message)
+            if 'content' in message_dict.keys():
+                local_redis.update_exchange_stream_data(stream_data_type, "BITHUMB_SPOT", message_dict['content']['symbol'], {
+                    **message_dict['content'],
+                    "last_update_timestamp": int(time.time() * 1_000_000)
+                })
+        except Exception as e:
+            logger.error(f"bithumb_websocket|on_message error: {e}, traceback: {traceback.format_exc()}")
+            error_event.set()  # Signal error
 
     def on_error(ws, error):
         logger.error(f'bithumb_websocket|on_error executed!\nError: {error}, traceback: {traceback.format_exc()}')
+        error_event.set() # Add this line
 
     def on_close(ws, close_status_code, close_msg):
         logger.info(f"bithumb_websocket|\n### closed ###\nclose_msg: {close_msg}\nclose_status_code: {close_status_code}")
@@ -70,8 +74,14 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw
                     acw_api.create_message_thread(admin_id, f"[BITHUMB {stream_data_type}]bithumb_websocket Inactivity", f"[BITHUMB {stream_data_type}]bithumb_websocket has been inactive for {inactivity_time_secs} seconds. Closing websocket...")
                 except Exception as e:
                     logger.error(f"[BITHUMB {stream_data_type}]bithumb_websocket|{traceback.format_exc()}")
+                    
+                # ---- THE CRUCIAL PART: EXPLICITLY CLOSE THE WEBSOCKET ----
+                try:
+                    ws.close()
+                except Exception:
+                    pass
+                
                 error_event.set()
-                ws.close()
                 break
             time.sleep(1) # Check every 1 second
             
@@ -79,12 +89,13 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw
     monitor_thread = Thread(target=check_inactivity, daemon=True)
     monitor_thread.start()
     
-    ws.run_forever(ping_interval=30)
+    try:
+        ws.run_forever(ping_interval=30, ping_timeout=10)
+    except Exception as e:
+        logger.error(f"bithumb_websocket|run_forever error: {e}, traceback: {traceback.format_exc()}")
     
     if error_event.is_set():
         raise Exception("bithumb_websocket|error_event is set. closing websocket..")
-        
-
 class BithumbWebsocket:
     def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, logging_dir):
         self.admin_id = admin_id
@@ -96,7 +107,7 @@ class BithumbWebsocket:
         self.local_redis = RedisHelper()
         self.local_redis.delete_all_exchange_stream_data("ticker", "BITHUMB_SPOT")
         self.local_redis.delete_all_exchange_stream_data("orderbook", "BITHUMB_SPOT")
-        self.websocket_logger = TradeCoreLogger("bithumb_websocket", logging_dir).logger
+        self.logger = TradeCoreLogger("bithumb_websocket", logging_dir).logger
         manager = Manager()
         self.proc_n = proc_n
         self.before_symbols_list = self.get_symbol_list()
@@ -109,12 +120,14 @@ class BithumbWebsocket:
         while True:
             if (not self.local_redis.get_all_exchange_stream_data("ticker", "BITHUMB_SPOT") or
                 not self.local_redis.get_all_exchange_stream_data("orderbook", "BITHUMB_SPOT")):
-                self.websocket_logger.info(f"[BITHUMB SPOT]waiting for websocket data to be loaded..")
+                self.logger.info(f"[BITHUMB SPOT]waiting for websocket data to be loaded..")
                 time.sleep(2)
             else:
                 break
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
         self.monitor_shared_symbol_change_thread.start()
+        self.monitor_stale_data_per_proc_thread = Thread(target=self.monitor_stale_data_per_proc, daemon=True)
+        self.monitor_stale_data_per_proc_thread.start()
 
     def __del__(self):
         self.terminate_websocket()
@@ -126,7 +139,7 @@ class BithumbWebsocket:
                     if self.stop_restart_websocket is False:
                         # Check whether BITHUMB_SPOT/KRW is in maintenance
                         if fetch_market_servercheck("BITHUMB_SPOT/KRW"):
-                            self.websocket_logger.info("[BITHUMB SPOT] BITHUMB_SPOT is in maintenance. Skipping (re)starting websockets..")
+                            self.logger.info("[BITHUMB SPOT] BITHUMB_SPOT is in maintenance. Skipping (re)starting websockets..")
                             time.sleep(1)
                             continue
                         for i in range(self.proc_n):
@@ -137,11 +150,11 @@ class BithumbWebsocket:
                                 ticker_restarted = True
                                 self.websocket_proc_dict[f"{i+1}th_ticker_proc"].terminate()
                                 self.websocket_proc_dict[f"{i+1}th_ticker_proc"].join()
-                                self.websocket_logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_ticker_proc terminated.")
+                                self.logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_ticker_proc terminated.")
                             elif f"{i+1}th_ticker_proc" not in self.websocket_proc_dict.keys():
                                 ticker_start_proc = True
-                                self.websocket_logger.info(f"{i+1}th bithumb ticker websocket does not exist. starting..")
-                                self.websocket_logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_ticker_proc started.")
+                                self.logger.info(f"{i+1}th bithumb ticker websocket does not exist. starting..")
+                                self.logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_ticker_proc started.")
                             if ticker_start_proc is True:
                                 error_event = Event()
                                 self.price_proc_event_list.append(error_event)
@@ -164,7 +177,7 @@ class BithumbWebsocket:
                                 ticker_proc.start()
                                 if ticker_restarted:
                                     content = f"restarted {i+1}th Bithumb ticker websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_ticker_proc'].is_alive()}"
-                                    self.websocket_logger.info(f"bithumb_orderbook_ticker_websocket|{content}")
+                                    self.logger.info(f"bithumb_orderbook_ticker_websocket|{content}")
                                     self.acw_api.create_message_thread(self.admin_id, 'bithumb ticker websocket restart', content)
                                 time.sleep(2)
                             time.sleep(0.5)
@@ -175,11 +188,11 @@ class BithumbWebsocket:
                                 orderbook_restarted = True
                                 self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].terminate()
                                 self.websocket_proc_dict[f"{i+1}th_orderbook_proc"].join()
-                                self.websocket_logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_orderbook_proc terminated.")
+                                self.logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_orderbook_proc terminated.")
                             elif f"{i+1}th_orderbook_proc" not in self.websocket_proc_dict.keys():
                                 orderbook_start_proc = True
-                                self.websocket_logger.info(f"{i+1}th bithumb orderbook websocket does not exist. starting..")
-                                self.websocket_logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_orderbook_proc started.")
+                                self.logger.info(f"{i+1}th bithumb orderbook websocket does not exist. starting..")
+                                self.logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_orderbook_proc started.")
                             if orderbook_start_proc is True:
                                 error_event = Event()
                                 self.price_proc_event_list.append(error_event)
@@ -202,13 +215,13 @@ class BithumbWebsocket:
                                 orderbook_proc.start()
                                 if orderbook_restarted:
                                     content = f"restarted {i+1}th bithumb orderbook websocket.. alive state: {self.websocket_proc_dict[f'{i+1}th_orderbook_proc'].is_alive()}"
-                                    self.websocket_logger.info(f"bithumb_orderbook_ticker_websocket|{content}")
+                                    self.logger.info(f"bithumb_orderbook_ticker_websocket|{content}")
                                     self.acw_api.create_message_thread(self.admin_id, 'bithumb orderbook websocket restart', content)
                                 time.sleep(2)
                             time.sleep(0.5)
                 except Exception as e:
                     content = f"handle_price_procs|{traceback.format_exc()}"
-                    self.websocket_logger.error(content)
+                    self.logger.error(content)
                     self.acw_api.create_message_thread(self.admin_id, 'handle_price_procs', content)
                     time.sleep(1)
                 time.sleep(0.5)
@@ -220,7 +233,7 @@ class BithumbWebsocket:
         time.sleep(0.5)
         for each_event in self.price_proc_event_list:
             each_event.set()
-        self.websocket_logger.info(f"[BITHUMB SPOT]all websockets' event has been set")
+        self.logger.info(f"[BITHUMB SPOT]all websockets' event has been set")
         self.price_proc_event_list = []
         
     def restart_websocket(self):
@@ -249,7 +262,7 @@ class BithumbWebsocket:
             return proc_status
 
     def monitor_shared_symbol_change(self, loop_time_secs=60):
-        self.websocket_logger.info("[BITHUMB SPOT]started monitor_shared_symbol_change..")
+        self.logger.info("[BITHUMB SPOT]started monitor_shared_symbol_change..")
         while True:
             time.sleep(loop_time_secs)
             try:
@@ -259,7 +272,7 @@ class BithumbWebsocket:
                     deleted_spot_shared_symbol = [x for x in self.before_symbols_list if x not in new_symbols_list]
                     added_spot_shared_symbol = [x for x in new_symbols_list if x not in self.before_symbols_list]
                     content = f"monitor_shared_symbol_change|[BITHUMB SPOT]SPOT shared symbol changed. deleted: {deleted_spot_shared_symbol}, added: {added_spot_shared_symbol}"
-                    self.websocket_logger.info(content)
+                    self.logger.info(content)
                     self.acw_api.create_message_thread(self.admin_id, 'monitor_shared_symbol_change', content)
                     
                     # Set the newer values to before values
@@ -271,16 +284,102 @@ class BithumbWebsocket:
                     for each_spot_shared_symbol in deleted_spot_shared_symbol:
                         # remove deleted symbol from bithumb_ticker_dict and bithumb_orderbook_dict
                         try:
-                            self.websocket_logger.info(f"monitor_shared_symbol_change|deleting ticker data for {each_spot_shared_symbol} from redis..")
+                            self.logger.info(f"monitor_shared_symbol_change|deleting ticker data for {each_spot_shared_symbol} from redis..")
                             self.local_redis.delete_exchange_stream_data("ticker", "BITHUMB_SPOT", each_spot_shared_symbol)
                         except Exception:
-                            self.websocket_logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")
+                            self.logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")
                         try:
-                            self.websocket_logger.info(f"monitor_shared_symbol_change|deleting orderbook data for {each_spot_shared_symbol} from redis..")
+                            self.logger.info(f"monitor_shared_symbol_change|deleting orderbook data for {each_spot_shared_symbol} from redis..")
                             self.local_redis.delete_exchange_stream_data("orderbook", "BITHUMB_SPOT", each_spot_shared_symbol)
                         except Exception:
-                            self.websocket_logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")
+                            self.logger.error(f"monitor_shared_symbol_change|{traceback.format_exc()}")
             except Exception as e:
                 content = f"monitor_shared_symbol_change|{traceback.format_exc()}"
-                self.websocket_logger.error(content)
+                self.logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, 'monitor_shared_symbol_change', content)
+                
+    def monitor_stale_data_per_proc(self, loop_time_secs=60, stale_threshold_secs=90):
+        """
+        Periodically checks if the slice of symbols for each process
+        has not been updated within `stale_threshold_secs`.
+        If all symbols in that slice are stale, forcefully kill only that process.
+        handle_price_procs() will then detect the process is dead and restart it.
+        """
+        self.logger.info("[BITHUMB SPOT]started monitor_stale_data_per_proc..")
+        while True:
+            time.sleep(loop_time_secs)
+            now_us = int(time.time() * 1_000_000)  # current time in microseconds
+
+            try:
+                # For each known process in self.websocket_proc_dict:
+                #   - If it's ticker_proc => check ticker data in Redis
+                #   - If it's orderbook_proc => check orderbook data in Redis
+                for proc_name, proc in list(self.websocket_proc_dict.items()):
+                    # Skip if the process is already dead
+                    if not proc.is_alive():
+                        continue
+
+                    # Determine if it's ticker or orderbook
+                    if "ticker_proc" in proc_name:
+                        # e.g. "1th_ticker_proc" => symbol key: "1th_ticker_symbol"
+                        symbol_list_key = proc_name.replace("proc", "symbol")
+                        redis_stream_type = "ticker"
+                    elif "orderbook_proc" in proc_name:
+                        # e.g. "1th_orderbook_proc" => symbol key: "1th_orderbook_symbol"
+                        symbol_list_key = proc_name.replace("proc", "symbol")
+                        redis_stream_type = "orderbook"
+                    else:
+                        # If there's any other type, skip or adapt logic
+                        continue
+
+                    symbol_list = self.websocket_symbol_dict.get(symbol_list_key, [])
+                    if not symbol_list:
+                        # If no symbols found for that process, skip
+                        continue
+                    
+                    data = None
+                    while data is None:
+                        data = self.local_redis.get_all_exchange_stream_data(
+                            redis_stream_type, f"BITHUMB_SPOT"
+                        )
+                        if data is None:
+                            time.sleep(0.5)  # Add small delay to prevent busy waiting
+
+                    # Check if all symbols are stale
+                    stale_count = 0
+                    for sym in symbol_list:
+                        symbol_data = data.get(sym, {})
+                        last_update_ts = symbol_data.get("last_update_timestamp")  # microseconds
+                        if last_update_ts is None:
+                            # If no timestamp, treat as stale
+                            stale_count += 1
+                            continue
+
+                        diff_us = now_us - last_update_ts
+                        if diff_us > stale_threshold_secs * 1_000_000:
+                            self.logger.info(f"Stale sym: {sym}, data: {symbol_data}")
+                            stale_count += 1
+
+                    if stale_count == len(symbol_list):
+                        # All symbols are stale => kill process
+                        content = (
+                            f"[BITHUMB SPOT]{proc_name} => "
+                            f"All {stale_count} symbols stale > {stale_threshold_secs}s. "
+                            f"Forcing process restart."
+                        )
+                        self.logger.error(content)
+                        self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
+
+                        self.logger.warning(f"Killing process: {proc_name}")
+                        proc.terminate()
+                        proc.join()
+
+                        # handle_price_procs() will detect it's dead and restart it.
+                        time.sleep(60)
+                    else:
+                        self.logger.info(f"monitor_stale_data_per_proc|{proc_name} => {stale_count} symbols among {len(symbol_list)} symbols are stale for > {stale_threshold_secs}s.")
+
+            except Exception as e:
+                content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"
+                self.logger.error(content)
+                self.acw_api.create_message_thread(self.admin_id, f"[BITHUMB SPOT] monitor_stale_data_per_proc", content)
