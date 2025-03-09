@@ -72,7 +72,7 @@ def calculate_fee_and_commission_for_trade(user, user_fee, referral, trade_uuid=
         "change": -user_pays,  # user pays fee, so negative from user perspective
         "referral_discount": user_discount,
         "type": PROFIT_TYPE_FEE,
-        "description": f"User trading fee after discount, original fee: {user_fee}, discount: {user_discount}",
+        "description": f"User trading fee after discount, original fee: {float(user_fee)}, discount: {float(user_discount)}",
         "trade_uuid": trade_uuid,
     })
 

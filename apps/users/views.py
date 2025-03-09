@@ -300,8 +300,8 @@ class DepositHistoryViewSet(UserOwnedViewSet):
     ordering_fields = [
         "id",
         "user",
-        "balance",
         "change",
+        "referral_discount",
         "registered_datetime",
     ]
     ordering = ["id"]

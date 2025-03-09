@@ -330,11 +330,13 @@ class DepositHistoryAdmin(ModelAdmin):
     list_display = [
         "user",
         "change",
+        "referral_discount",
         "balance",
         "type",
         "coupon",
         "pending",
         "registered_datetime",
+        "description",
     ]
     list_filter = (
         "type",

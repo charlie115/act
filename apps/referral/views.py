@@ -9,6 +9,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from lib.authentication import NodeIPAuthentication
+from django.db import models
 
 from referral.constants import (
     PROFIT_TYPE_FEE,
@@ -194,7 +195,63 @@ class ReferralCommissionView(APIView):
         apply_to_deposit = validated.get("apply_to_deposit")
         trade_uuid = validated.get("trade_uuid")
         
-        if not referral:
+        # Check if user has any remaining coupon credit
+        coupon_credits = DepositHistory.objects.filter(
+            user=user,
+            type=DepositHistory.COUPON
+        ).aggregate(total=models.Sum('change'))['total'] or 0
+        
+        # Get fee payments to calculate how much coupon credit has been used so far
+        fee_payments = DepositHistory.objects.filter(
+            user=user,
+            type=DepositHistory.FEE
+        ).aggregate(total=models.Sum('change'))['total'] or 0
+                
+        # Calculate remaining coupon credit (coupon credits minus fee payments)
+        # Assuming coupons are used first for fees
+        remaining_coupon_credit = coupon_credits + fee_payments # fee_payments are negative, so we add them
+        
+        # Get current user balance
+        try:
+            current_balance = user.deposit_balance.balance
+        except User.deposit_balance.RelatedObjectDoesNotExist:
+            current_balance = 0
+        
+        # Check both coupon credit and balance conditions
+        using_coupon_funds = remaining_coupon_credit > 0
+        has_negative_balance = current_balance < 0
+        would_have_negative_balance = current_balance - user_fee < 0
+        
+        # Bypass commission if any of these conditions is true
+        bypass_commission = using_coupon_funds or has_negative_balance or would_have_negative_balance
+        
+        if bypass_commission:
+            # Determine reason for bypass
+            reason = []
+            if using_coupon_funds:
+                reason.append(f"user has coupon credit (${float(remaining_coupon_credit)} remaining)")
+            if has_negative_balance:
+                reason.append(f"user has negative balance (${float(current_balance)})")
+            elif would_have_negative_balance:
+                reason.append(f"fee would cause negative balance (${float(current_balance)} - ${float(user_fee)})")
+            
+            reason_str = " and ".join(reason)
+            
+            # Skip commission calculation
+            result = {
+                "trade_uuid": trade_uuid,
+                "records": [
+                    {
+                        "data_type": "deposit_history",
+                        "user": user,
+                        "change": user_fee * -1,
+                        "type": PROFIT_TYPE_FEE,
+                        "trade_uuid": trade_uuid,
+                        "description": f"Fee paid with {reason_str} - no commission applied"
+                    }
+                ]
+            }
+        elif not referral:
             result = {
                 "trade_uuid": trade_uuid,
                 "records": [
@@ -207,7 +264,6 @@ class ReferralCommissionView(APIView):
                     }
                 ]
             }
-
         else:
             result = calculate_fee_and_commission_for_trade(user, user_fee, referral, trade_uuid)
 
