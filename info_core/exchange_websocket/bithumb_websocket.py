@@ -383,15 +383,3 @@ class BithumbWebsocket:
                 content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"
                 self.logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, f"[BITHUMB SPOT] monitor_stale_data_per_proc", content)
-
-    def get_price_df(self):
-        orderbook_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("orderbook", "BITHUMB_SPOT")).T.reset_index()
-        ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", "BITHUMB_SPOT")).T.reset_index()
-        orderbook_df['best_ask'] = orderbook_df['asks'].apply(lambda x: x[0][0])
-        orderbook_df['best_bid'] = orderbook_df['bids'].apply(lambda x: x[0][0])
-        merged_df = orderbook_df.merge(ticker_df[['symbol','chgRate','value']], on='symbol', how='inner')
-        merged_df[['base_asset', 'quote_asset']] = merged_df['symbol'].str.split('_', expand=True)
-        merged_df = merged_df.rename(columns={'value':'atp24h', 'chgRate':'scr', 'best_ask':'ap', 'best_bid':'bp'})
-        merged_df.loc[:, ['scr','atp24h','ap','bp']] = merged_df.loc[:, ['scr','atp24h','ap','bp']].astype(float)
-        merged_df['tp'] = np.nan
-        return merged_df

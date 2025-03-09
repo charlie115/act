@@ -49,6 +49,10 @@ class RedisHelper:
     def hset_dict(self, key_name, mapping):
         redis_conn = self.get_redis_client()
         redis_conn.hset(name=key_name, mapping=mapping)
+        
+    def hgetall_dict(self, key_name):
+        redis_conn = self.get_redis_client()
+        return redis_conn.hgetall(key_name)
 
     def hget_dict(self, key_name):
         redis_conn = self.get_redis_client()

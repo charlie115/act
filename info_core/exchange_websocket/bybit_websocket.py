@@ -197,13 +197,12 @@ def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir,
         logger.error(content)
 
 class BybitWebsocket:
-    def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, market_type, info_dict, logging_dir=None):
+    def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, market_type, logging_dir=None):
         self.market_type = market_type
         self.admin_id = admin_id
         self.node = node
         self.acw_api = acw_api
         self.get_symbol_list = get_symbol_list
-        self.info_dict = info_dict
         self.logging_dir = logging_dir
         self.local_redis = RedisHelper()
         self.local_redis.delete_all_exchange_stream_data("ticker", f"BYBIT_{self.market_type.upper()}")
@@ -495,27 +494,11 @@ class BybitWebsocket:
                 content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"
                 self.websocket_logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, f"[BYBIT {self.market_type}] monitor_stale_data_per_proc", content)
-
-    def get_price_df(self):
-        ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", f"BYBIT_{self.market_type.upper()}")).T.reset_index()
-        orderbook_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("orderbook", f"BYBIT_{self.market_type.upper()}")).T.reset_index()
-        merged_df = ticker_df.merge(orderbook_df, left_on='symbol', right_on='s', how='inner')
-        merged_df = merged_df.merge(self.info_dict[f'bybit_{self.market_type.lower()}_info_df'][['symbol','base_asset','quote_asset']], on='symbol', how='inner')
-        merged_df.loc[:, 'b'] = merged_df['b'].apply(lambda x: x[0][0])
-        merged_df.loc[:, 'a'] = merged_df['a'].apply(lambda x: x[0][0])
-        merged_df.loc[:, 'price24hPcnt'] = merged_df['price24hPcnt'].astype(float) * 100
-        if self.market_type == "COIN_M":
-            merged_df = merged_df.rename(columns={"lastPrice":'tp', 'a':'ap', 'b':'bp', 'price24hPcnt':'scr', 'volume24h':'atp24h'})
-        else:
-            merged_df = merged_df.rename(columns={"lastPrice":'tp', 'a':'ap', 'b':'bp', 'price24hPcnt':'scr', 'turnover24h':'atp24h'})
-        merged_df.loc[:, ['tp','ap','bp','scr','atp24h']] = merged_df[['tp','ap','bp','scr','atp24h']].astype(float)
-        merged_df = merged_df[['symbol','base_asset','quote_asset','tp','bp','ap','scr','atp24h']]
-        return merged_df
 class BybitUSDMWebsocket(BybitWebsocket):
-    def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, market_type, info_dict, logging_dir):
-        super().__init__(admin_id, node, proc_n, get_symbol_list, acw_api, market_type, info_dict, logging_dir)
+    def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, market_type, logging_dir):
+        super().__init__(admin_id, node, proc_n, get_symbol_list, acw_api, market_type, logging_dir)
 
 class BybitCOINMWebsocket(BybitWebsocket):
-    def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, market_type, info_dict, logging_dir):
-        super().__init__(admin_id, node, proc_n, get_symbol_list, acw_api, market_type, info_dict, logging_dir)
+    def __init__(self, admin_id, node, proc_n, get_symbol_list, acw_api, market_type, logging_dir):
+        super().__init__(admin_id, node, proc_n, get_symbol_list, acw_api, market_type, logging_dir)
         

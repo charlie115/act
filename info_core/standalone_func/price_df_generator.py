@@ -3,12 +3,10 @@ from etc.redis_connector.redis_helper import RedisHelper
 import numpy as np
 import traceback
 
-local_redis = RedisHelper()
-
-def get_binance_price_df(info_dict, market_type):
-    binance_ticker_df = pd.DataFrame(local_redis.get_all_exchange_stream_data("ticker", f"BINANCE_{market_type}")).T.reset_index(drop=True)[['s','P','c','v','q']]
+def get_binance_price_df(redis_client, info_dict, market_type):
+    binance_ticker_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("ticker", f"BINANCE_{market_type}")).T.reset_index(drop=True)[['s','P','c','v','q']]
     binance_ticker_df.rename(columns={"q": "atp24h", 'P': 'scr', 'c': 'tp'}, inplace=True)
-    binance_bookticker_df = pd.DataFrame(local_redis.get_all_exchange_stream_data("orderbook", f"BINANCE_{market_type}")).T.reset_index(drop=True)[['s','b','a']]
+    binance_bookticker_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("orderbook", f"BINANCE_{market_type}")).T.reset_index(drop=True)[['s','b','a']]
     binance_bookticker_df.rename(columns={"b": "bp", "a": "ap"}, inplace=True)
     binance_merged_df = pd.merge(binance_ticker_df, binance_bookticker_df, on='s', how='inner')
     binance_merged_df[['scr','tp','atp24h','ap','bp']] = binance_merged_df[['scr','tp','atp24h','ap','bp']].astype(float)
@@ -16,9 +14,9 @@ def get_binance_price_df(info_dict, market_type):
     binance_merged_df.drop(['symbol', 's'], axis=1, inplace=True)
     return binance_merged_df
 
-def get_bithumb_price_df(info_dict):
-    orderbook_df = pd.DataFrame(local_redis.get_all_exchange_stream_data("orderbook", "BITHUMB_SPOT")).T.reset_index()
-    ticker_df = pd.DataFrame(local_redis.get_all_exchange_stream_data("ticker", "BITHUMB_SPOT")).T.reset_index()
+def get_bithumb_price_df(redis_client, info_dict):
+    orderbook_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("orderbook", "BITHUMB_SPOT")).T.reset_index()
+    ticker_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("ticker", "BITHUMB_SPOT")).T.reset_index()
     orderbook_df['best_ask'] = orderbook_df['asks'].apply(lambda x: x[0][0])
     orderbook_df['best_bid'] = orderbook_df['bids'].apply(lambda x: x[0][0])
     merged_df = orderbook_df.merge(ticker_df[['symbol','chgRate','value']], on='symbol', how='inner')
@@ -28,9 +26,9 @@ def get_bithumb_price_df(info_dict):
     merged_df['tp'] = np.nan
     return merged_df
 
-def get_bybit_price_df(info_dict, market_type):
-    ticker_df = pd.DataFrame(local_redis.get_all_exchange_stream_data("ticker", f"BYBIT_{market_type}")).T.reset_index()
-    orderbook_df = pd.DataFrame(local_redis.get_all_exchange_stream_data("orderbook", f"BYBIT_{market_type}")).T.reset_index()
+def get_bybit_price_df(redis_client, info_dict, market_type):
+    ticker_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("ticker", f"BYBIT_{market_type}")).T.reset_index()
+    orderbook_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("orderbook", f"BYBIT_{market_type}")).T.reset_index()
     merged_df = ticker_df.merge(orderbook_df, left_on='symbol', right_on='s', how='inner')
     merged_df = merged_df.merge(info_dict[f'bybit_{market_type.lower()}_info_df'][['symbol','base_asset','quote_asset']], on='symbol', how='inner')
     merged_df['b'] = merged_df['b'].apply(lambda x: x[0][0])
@@ -44,9 +42,9 @@ def get_bybit_price_df(info_dict, market_type):
     merged_df = merged_df[['symbol','base_asset','quote_asset','tp','bp','ap','scr','atp24h']]
     return merged_df
 
-def get_okx_price_df(info_dict, market_type):
+def get_okx_price_df(redis_client, info_dict, market_type):
     try:
-        ticker_df = pd.DataFrame(local_redis.get_all_exchange_stream_data("ticker", f"OKX_{market_type}")).T
+        ticker_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("ticker", f"OKX_{market_type}")).T
         ticker_df['base_asset'] = ticker_df['instId'].apply(lambda x: x.split('-')[0])
         ticker_df['quote_asset'] = ticker_df['instId'].apply(lambda x: x.split('-')[1])
         ticker_df = ticker_df.rename(columns={"last": "tp", "askPx": "ap", "bidPx":"bp", "volCcy24h":"atp24h"})
@@ -60,9 +58,9 @@ def get_okx_price_df(info_dict, market_type):
         # Handle logging or error handling here
         raise e
 
-def get_upbit_price_df(info_dict):
-    upbit_ticker_df = pd.DataFrame(local_redis.get_all_exchange_stream_data("ticker", "UPBIT_SPOT")).T.reset_index()[['index','tp','scr','atp24h','h52wp','l52wp','ms','mw','tms']]
-    upbit_orderbook_df = pd.DataFrame(local_redis.get_all_exchange_stream_data("orderbook", "UPBIT_SPOT")).T.reset_index(drop=True)[['cd','tms','obu']]
+def get_upbit_price_df(redis_client, info_dict):
+    upbit_ticker_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("ticker", "UPBIT_SPOT")).T.reset_index()[['index','tp','scr','atp24h','h52wp','l52wp','ms','mw','tms']]
+    upbit_orderbook_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("orderbook", "UPBIT_SPOT")).T.reset_index(drop=True)[['cd','tms','obu']]
     upbit_orderbook_df['ap'] = upbit_orderbook_df['obu'].apply(lambda x: x[0]['ap'])
     upbit_orderbook_df['bp'] = upbit_orderbook_df['obu'].apply(lambda x: x[0]['bp'])
     upbit_orderbook_df.drop('obu', axis=1, inplace=True)
@@ -84,7 +82,7 @@ EXCHANGE_HANDLERS = {
     "UPBIT": get_upbit_price_df
 }
 
-def get_price_df(info_dict, market_code):
+def get_price_df(redis_client, info_dict, market_code):
     exchange = market_code.split('_')[0]
     # all the part excluding exchange
     market_type = '_'.join(market_code.split('_')[1:])
@@ -94,8 +92,8 @@ def get_price_df(info_dict, market_code):
     handler = EXCHANGE_HANDLERS.get(exchange)
     if handler:
         if exchange in ["BINANCE", "BYBIT", "OKX"]:
-            return handler(info_dict, market_type)
+            return handler(redis_client, info_dict, market_type)
         else:
-            return handler(info_dict)
+            return handler(redis_client, info_dict)
     else:
         raise ValueError(f"get_price_df|exchange: {exchange} is not supported!")

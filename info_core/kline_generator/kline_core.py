@@ -23,15 +23,11 @@ from standalone_func.kline_data_generator import (
                                                   ohlc_interval_generator,
                                                   store_kline_volatility_info_loop,
                                                   )
-from standalone_func.price_df_generator import get_price_df
-
 class InitKlineCore:
     def __init__(
         self,
         admin_id,
         node,
-        info_dict,
-        convert_rate_dict,
         enabled_market_klines,
         acw_api,
         redis_dict,
@@ -40,23 +36,18 @@ class InitKlineCore:
         ):
         self.node = node
         self.admin_id = admin_id
-        self.info_dict = info_dict
-        self.convert_rate_dict = convert_rate_dict
         self.acw_api = acw_api
         self.logging_dir = logging_dir
         self.kline_logger = InfoCoreLogger("kline_core", logging_dir).logger
         self.kline_logger.info(f"InitKlineCore started.")
         self.remote_redis = RedisHelper(**redis_dict)
         self.local_redis = RedisHelper()
-        # self.market_code_list = get_market_code_list()
-        # self.market_combination_list = self.get_market_combination_list()
         self.enabled_market_klines = enabled_market_klines
         self.enabled_kline_types = ['1T', '5T', '15T', '30T', '1H', '4H']
         self.kline_proc_dict = {}
         self.pubsub = self.remote_redis.get_pubsub()
         self.mongodb_dict = mongodb_dict
         self.redis_dict = redis_dict
-        # self.enaled_market_combination_list = []
         self.register_enabled_market_klines()
         self._start_generating_kline()
         self.store_kline_volatility_info_proc = Process(
@@ -77,8 +68,6 @@ class InitKlineCore:
                         return Process(
                             target=ohlc_1T_generator,
                             args=(
-                                self.info_dict,
-                                self.convert_rate_dict,
                                 insert_kline_to_db,
                                 target_market_code,
                                 origin_market_code,

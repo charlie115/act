@@ -37,10 +37,9 @@ def calculate_upbit_price(price):
     return price
 
 class InitUpbitAdaptor:
-    def __init__(self, my_upbit_access_key=None, my_upbit_secret_key=None, info_dict=None, logging_dir=None):
+    def __init__(self, my_upbit_access_key=None, my_upbit_secret_key=None, logging_dir=None):
         self.my_client = Upbit(my_upbit_access_key, my_upbit_secret_key)
         self.pub_client = Upbit()
-        self.info_dict = info_dict
         self.upbit_plug_logger = InfoCoreLogger("upbit_plug", logging_dir).logger
         self.upbit_plug_logger.info(f"upbit_plug_logger started.")
         self.symbols_to_exclude = [

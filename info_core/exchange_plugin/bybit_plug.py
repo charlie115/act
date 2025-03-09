@@ -7,10 +7,12 @@ import time
 import traceback
 import requests
 from pybit.unified_trading import HTTP
+import _pickle as pickle
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from loggers.logger import InfoCoreLogger
+from etc.redis_connector.redis_helper import RedisHelper
 
 class Bybit:
     def __init__(self, api_key=None, secret_key=None):
@@ -72,10 +74,10 @@ class Bybit:
         return info_df
 
 class InitBybitAdaptor:
-    def __init__(self, my_access_key=None, my_secret_key=None, info_dict={}, logging_dir=None):
+    def __init__(self, my_access_key=None, my_secret_key=None, logging_dir=None):
         self.my_client = Bybit(my_access_key, my_secret_key)
         self.pub_client = Bybit()
-        self.info_dict = info_dict
+        self.local_redis = RedisHelper()
         self.bybit_plug_logger = InfoCoreLogger("bybit_plug", logging_dir).logger
         self.bybit_plug_logger.info(f"bybit_plug_logger started.")
 
@@ -86,12 +88,14 @@ class InitBybitAdaptor:
         return self.pub_client.spot_exchange_info()
     
     def spot_all_tickers(self):
-        ticker_df = self.pub_client.all_tickers(category='spot')        
-        if self.info_dict is None or self.info_dict.get('bybit_spot_info_df') is None:
+        ticker_df = self.pub_client.all_tickers(category='spot')
+        # Load info_dict
+        fetched_info_dict = self.local_redis.get_data("info_dict")
+        if fetched_info_dict is None or pickle.loads(fetched_info_dict).get('bybit_spot_info_df') is None:
             info_df = self.spot_exchange_info()
-            self.bybit_plug_logger.info(f"self.info_dict is None or self.info_dict.get('bybit_spot_info_df') is None, Fetched from API")
+            self.bybit_plug_logger.info(f"fetched_info_dict is None or pickle.loads(fetched_info_dict).get('bybit_spot_info_df') is None, Fetched from API")
         else:
-            info_df = self.info_dict.get('bybit_spot_info_df')
+            info_df = pickle.loads(fetched_info_dict).get('bybit_spot_info_df')
         merged_df = ticker_df.merge(info_df[['symbol','base_asset','quote_asset']], on='symbol', how='inner')
         merged_df = merged_df[(merged_df['bid1Price'] != '')&(merged_df['ask1Price'] != '')]
         merged_df.loc[:, 'bid1Price':'usdIndexPrice'] = merged_df.loc[:, 'bid1Price':'usdIndexPrice'].astype(float)
@@ -109,11 +113,13 @@ class InitBybitAdaptor:
     
     def usd_m_all_tickers(self):
         ticker_df = self.pub_client.all_tickers(category='linear')
-        if self.info_dict is None or self.info_dict.get('bybit_usd_m_info_df') is None:
+        # Load info_dict
+        fetched_info_dict = self.local_redis.get_data("info_dict")
+        if fetched_info_dict is None or pickle.loads(fetched_info_dict).get('bybit_usd_m_info_df') is None:
             info_df = self.usd_m_exchange_info()
-            self.bybit_plug_logger.info(f"self.info_dict is None or self.info_dict.get('bybit_usd_m_info_df') is None, Fetched from API")
+            self.bybit_plug_logger.info(f"fetched_info_dict is None or pickle.loads(fetched_info_dict).get('bybit_usd_m_info_df') is None, Fetched from API")
         else:
-            info_df = self.info_dict.get('bybit_usd_m_info_df')
+            info_df = pickle.loads(fetched_info_dict).get('bybit_usd_m_info_df')
         merged_df = ticker_df.merge(info_df[['symbol','base_asset','quote_asset']], on='symbol', how='inner')
         merged_df.loc[:, ['lastPrice','turnover24h','volume24h']] = merged_df.loc[:, ['lastPrice','turnover24h','volume24h']].astype(float)
         merged_df['quote_symbol'] = merged_df['quote_asset'] + 'USDT'
@@ -130,11 +136,13 @@ class InitBybitAdaptor:
     
     def coin_m_all_tickers(self):
         ticker_df = self.pub_client.all_tickers(category='inverse')
-        if self.info_dict is None or self.info_dict.get('bybit_coin_m_info_df') is None:
+        # Load info_dict
+        fetched_info_dict = self.local_redis.get_data("info_dict")
+        if fetched_info_dict is None or pickle.loads(fetched_info_dict).get('bybit_coin_m_info_df') is None:
             info_df = self.coin_m_exchange_info()
-            self.bybit_plug_logger.info(f"self.info_dict is None or self.info_dict.get('bybit_coin_m_info_df') is None, Fetched from API")
+            self.bybit_plug_logger.info(f"fetched_info_dict is None or pickle.loads(fetched_info_dict).get('bybit_coin_m_info_df') is None, Fetched from API")
         else:
-            info_df = self.info_dict.get('bybit_coin_m_info_df')
+            info_df = pickle.loads(fetched_info_dict).get('bybit_coin_m_info_df')
         merged_df = ticker_df.merge(info_df[['symbol','base_asset','quote_asset']], on='symbol', how='inner')
         merged_df.loc[:, ['lastPrice','turnover24h','volume24h']] = merged_df.loc[:, ['lastPrice','turnover24h','volume24h']].astype(float)
         merged_df['quote_symbol'] = merged_df['quote_asset'] + 'USDT'

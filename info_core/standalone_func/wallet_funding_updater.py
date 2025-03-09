@@ -26,20 +26,17 @@ def start_wallet_funding_update(admin_id, node, acw_api, logging_dir, db_dict, e
     upbit_adaptor = InitUpbitAdaptor(
         exchange_api_key_dict['upbit_read_only']['api_key'],
         exchange_api_key_dict['upbit_read_only']['secret_key'],
-        {},  # Empty info_dict
         logging_dir
     )
     binance_adaptor = InitBinanceAdaptor(
         exchange_api_key_dict['binance_read_only']['api_key'],
         exchange_api_key_dict['binance_read_only']['secret_key'],
-        {},  # Empty info_dict
         logging_dir
     )
     bithumb_adaptor = InitBithumbAdaptor(logging_dir=logging_dir)
     bybit_adaptor = InitBybitAdaptor(
         exchange_api_key_dict['bybit_read_only']['api_key'],
         exchange_api_key_dict['bybit_read_only']['secret_key'],
-        {},  # Empty info_dict
         logging_dir
     )
 

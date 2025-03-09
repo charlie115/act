@@ -82,14 +82,13 @@ class InitCore:
         self.update_dollar_thread = Thread(target=self.fetch_dollar_loop, args=(self.update_dollar_logger,), daemon=True)
         self.update_dollar_thread.start()
 
-        self.info_dict = {}
         self.info_thread_dict = {}
 
         self.okx_adaptor = InitOkxAdaptor(self.exchange_api_key_dict['okx_read_only']['api_key'], self.exchange_api_key_dict['okx_read_only']['secret_key'], self.exchange_api_key_dict['okx_read_only']['passphrase'], logging_dir=self.logging_dir)
-        self.upbit_adaptor = InitUpbitAdaptor(self.exchange_api_key_dict['upbit_read_only']['api_key'], self.exchange_api_key_dict['upbit_read_only']['secret_key'], self.info_dict, self.logging_dir)
-        self.binance_adaptor = InitBinanceAdaptor(self.exchange_api_key_dict['binance_read_only']['api_key'], self.exchange_api_key_dict['binance_read_only']['secret_key'], self.info_dict, logging_dir=self.logging_dir)
+        self.upbit_adaptor = InitUpbitAdaptor(self.exchange_api_key_dict['upbit_read_only']['api_key'], self.exchange_api_key_dict['upbit_read_only']['secret_key'], self.logging_dir)
+        self.binance_adaptor = InitBinanceAdaptor(self.exchange_api_key_dict['binance_read_only']['api_key'], self.exchange_api_key_dict['binance_read_only']['secret_key'], logging_dir=self.logging_dir)
         self.bithumb_adaptor = InitBithumbAdaptor(logging_dir=self.logging_dir)
-        self.bybit_adaptor = InitBybitAdaptor(self.exchange_api_key_dict['bybit_read_only']['api_key'], self.exchange_api_key_dict['bybit_read_only']['secret_key'], self.info_dict, self.logging_dir)
+        self.bybit_adaptor = InitBybitAdaptor(self.exchange_api_key_dict['bybit_read_only']['api_key'], self.exchange_api_key_dict['bybit_read_only']['secret_key'], self.logging_dir)
         
         # Initiate Fetching USDT from Bithumb
         self.update_usdt_thread = Thread(target=self.fetch_usdt, daemon=True)
@@ -123,7 +122,7 @@ class InitCore:
             "bybit_coin_m_ticker_df"
         ]
 
-        # self.enabled_data_name_list = self.get_enabled_data_name_list()
+        self.enabled_data_name_list = self.get_enabled_data_name_list()
 
         for data_name in self.total_data_name_list:
             if 'okx' in data_name:
@@ -135,7 +134,8 @@ class InitCore:
 
         # Wait until all info df has been updated
         while True:
-            if all([x in self.info_dict.keys() for x in self.total_data_name_list]):
+            fetched_info_dict = self.local_redis.get_data('info_dict')
+            if fetched_info_dict is not None and all([x in pickle.loads(fetched_info_dict).keys() for x in self.enabled_data_name_list]):
                 self.logger.info(f"InitCore|All info df has been updated.")
                 break
             else:
@@ -149,11 +149,11 @@ class InitCore:
             elif enabled_websocket_name == "BITHUMB_SPOT":
                 self.exchange_websocket_dict[enabled_websocket_name] = BithumbWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, self.logging_dir)
             elif enabled_websocket_name == "BINANCE_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "SPOT", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "SPOT", logging_dir)
             elif enabled_websocket_name == "BINANCE_USD_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "USD_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "USD_M", logging_dir)
             elif enabled_websocket_name == "BINANCE_COIN_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "COIN_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BinanceCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "COIN_M", logging_dir)
             elif enabled_websocket_name == "OKX_SPOT":
                 self.exchange_websocket_dict[enabled_websocket_name] = OkxWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "SPOT", logging_dir)
             elif enabled_websocket_name == "OKX_USD_M":
@@ -161,11 +161,11 @@ class InitCore:
             elif enabled_websocket_name == "OKX_COIN_M":
                 self.exchange_websocket_dict[enabled_websocket_name] = OkxCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "COIN_M", logging_dir)
             elif enabled_websocket_name == "BYBIT_SPOT":
-                self.exchange_websocket_dict[enabled_websocket_name] = BybitWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "SPOT", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "SPOT", logging_dir)
             elif enabled_websocket_name == "BYBIT_USD_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BybitUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "USD_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "USD_M", logging_dir)
             elif enabled_websocket_name == "BYBIT_COIN_M":
-                self.exchange_websocket_dict[enabled_websocket_name] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "COIN_M", self.info_dict, logging_dir)
+                self.exchange_websocket_dict[enabled_websocket_name] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "COIN_M", logging_dir)
             else:
                 self.logger.error(f"InitCore|{enabled_websocket_name} is not valid.")
                 self.acw_api.create_message_thread(self.admin_id, f"InitCore|{enabled_websocket_name} is not valid.", f"InitCore|{enabled_websocket_name} is not valid.")
@@ -183,12 +183,11 @@ class InitCore:
             self.wallet_funding_update_proc.start()
 
             # Start arbitrage core
-            self.arbitrage_generator = InitAbitrageCore(self.admin_id, self.node, self.info_dict, self.acw_api, self.enabled_arbitrage_markets, self.mongodb_dict, logging_dir)
+            self.arbitrage_generator = InitAbitrageCore(self.admin_id, self.node, self.acw_api, self.enabled_arbitrage_markets, self.mongodb_dict, logging_dir)
 
         # Loading convert rate
-        self.convert_rate_dict = Manager().dict()
         self.convert_rate_initialized = False
-        self.update_convert_rate_dict_thread = Thread(target=self.update_convert_rate_dict, args=(self.convert_rate_dict,), daemon=True)
+        self.update_convert_rate_dict_thread = Thread(target=self.update_convert_rate_dict, daemon=True)
         self.update_convert_rate_dict_thread.start()
         while self.convert_rate_initialized is False:
             time.sleep(0.2)
@@ -196,8 +195,6 @@ class InitCore:
         self.kline_generator = InitKlineCore(
             self.admin_id,
             node,
-            self.info_dict,
-            self.convert_rate_dict,
             self.enabled_market_klines,
             acw_api,
             self.redis_dict,
@@ -243,6 +240,29 @@ class InitCore:
                     market_name, market_type = market.split("_")
                 add_market_product(market_name, market_type, quote_asset)
         return organized_markets
+    
+    def get_enabled_data_name_list(self):
+        enabled_data_name_list = []
+        for each_market in self.enabled_websocket_list:
+            for each_data_name in self.total_data_name_list:
+                if each_market.lower() in each_data_name:
+                    enabled_data_name_list.append(each_data_name)
+            exchange_name = each_market.split('_')[0].lower()
+            if f"{exchange_name}_spot_info_df" not in enabled_data_name_list:
+                enabled_data_name_list.append(f"{exchange_name}_spot_info_df")
+            if f"{exchange_name}_spot_ticker_df" not in enabled_data_name_list:
+                enabled_data_name_list.append(f"{exchange_name}_spot_ticker_df")
+        return list(set(enabled_data_name_list))
+    
+    def store_info_dict_to_redis(self, data_name, fetched_df):
+        # First load the data from the local redis
+        fetched_info_dict = self.local_redis.get_data('info_dict')
+        if fetched_info_dict is None:
+            fetched_info_dict = {}
+        else:
+            fetched_info_dict = pickle.loads(fetched_info_dict)
+        fetched_info_dict[data_name] = fetched_df
+        self.local_redis.set_data('info_dict', pickle.dumps(fetched_info_dict))
 
     def update_exchange_info_as_df(self, data_name, error_count_limit=1, loop_time_secs=30):
         error_count = 0
@@ -262,53 +282,53 @@ class InitCore:
                     continue
                 start_time = time.time()
                 if data_name == "upbit_spot_info_df":
-                    self.info_dict[data_name] = self.upbit_adaptor.spot_exchange_info()
+                    self.store_info_dict_to_redis(data_name, self.upbit_adaptor.spot_exchange_info())
                 elif data_name == "upbit_spot_ticker_df":
-                    self.info_dict[data_name] = self.upbit_adaptor.spot_all_tickers()
+                    self.store_info_dict_to_redis(data_name, self.upbit_adaptor.spot_all_tickers())
                 elif data_name == "upbit_wallet_status_df":
-                    self.info_dict[data_name] = self.upbit_adaptor.wallet_status()
+                    self.store_info_dict_to_redis(data_name, self.upbit_adaptor.wallet_status())
                 elif data_name == "binance_spot_ticker_df":
-                    self.info_dict[data_name] = self.binance_adaptor.spot_all_tickers()
+                    self.store_info_dict_to_redis(data_name, self.binance_adaptor.spot_all_tickers())
                 elif data_name == "binance_spot_info_df":
-                    self.info_dict[data_name] = self.binance_adaptor.spot_exchange_info()
+                    self.store_info_dict_to_redis(data_name, self.binance_adaptor.spot_exchange_info())
                 elif data_name == "binance_usd_m_ticker_df":
-                    self.info_dict[data_name] = self.binance_adaptor.usd_m_all_tickers()
+                    self.store_info_dict_to_redis(data_name, self.binance_adaptor.usd_m_all_tickers())
                 elif data_name == "binance_usd_m_info_df":
-                    self.info_dict[data_name] = self.binance_adaptor.usd_m_exchange_info()
+                    self.store_info_dict_to_redis(data_name, self.binance_adaptor.usd_m_exchange_info())
                 elif data_name == "binance_coin_m_ticker_df":
-                    self.info_dict[data_name] = self.binance_adaptor.coin_m_all_tickers()
+                    self.store_info_dict_to_redis(data_name, self.binance_adaptor.coin_m_all_tickers())
                 elif data_name == "binance_coin_m_info_df":
-                    self.info_dict[data_name] = self.binance_adaptor.coin_m_exchange_info()
+                    self.store_info_dict_to_redis(data_name, self.binance_adaptor.coin_m_exchange_info())
                 elif data_name == "okx_spot_ticker_df":
-                    self.info_dict[data_name] = self.okx_adaptor.spot_all_tickers()
+                    self.store_info_dict_to_redis(data_name, self.okx_adaptor.spot_all_tickers())
                 elif data_name == "okx_spot_info_df":
-                    self.info_dict[data_name] = self.okx_adaptor.spot_exchange_info()
+                    self.store_info_dict_to_redis(data_name, self.okx_adaptor.spot_exchange_info())
                 elif data_name == "okx_usd_m_ticker_df":
-                    self.info_dict[data_name] = self.okx_adaptor.usd_m_all_tickers()
+                    self.store_info_dict_to_redis(data_name, self.okx_adaptor.usd_m_all_tickers())
                 elif data_name == "okx_usd_m_info_df":
-                    self.info_dict[data_name] = self.okx_adaptor.usd_m_exchange_info()
+                    self.store_info_dict_to_redis(data_name, self.okx_adaptor.usd_m_exchange_info())
                 elif data_name == "okx_coin_m_ticker_df":
-                    self.info_dict[data_name] = self.okx_adaptor.coin_m_all_tickers()
+                    self.store_info_dict_to_redis(data_name, self.okx_adaptor.coin_m_all_tickers())
                 elif data_name == "okx_coin_m_info_df":
-                    self.info_dict[data_name] = self.okx_adaptor.coin_m_exchange_info()
+                    self.store_info_dict_to_redis(data_name, self.okx_adaptor.coin_m_exchange_info())
                 elif data_name == "bithumb_spot_info_df":
-                    self.info_dict[data_name] = self.bithumb_adaptor.spot_exchange_info()
+                    self.store_info_dict_to_redis(data_name, self.bithumb_adaptor.spot_exchange_info())
                 elif data_name == "bithumb_spot_ticker_df":
-                    self.info_dict[data_name] = self.bithumb_adaptor.spot_all_tickers()
+                    self.store_info_dict_to_redis(data_name, self.bithumb_adaptor.spot_all_tickers())
                 elif data_name == "bithumb_wallet_status_df":
-                    self.info_dict[data_name] = self.bithumb_adaptor.wallet_status()
+                    self.store_info_dict_to_redis(data_name, self.bithumb_adaptor.wallet_status())
                 elif data_name == "bybit_spot_info_df":
-                    self.info_dict[data_name] = self.bybit_adaptor.spot_exchange_info()
+                    self.store_info_dict_to_redis(data_name, self.bybit_adaptor.spot_exchange_info())
                 elif data_name == "bybit_spot_ticker_df":
-                    self.info_dict[data_name] = self.bybit_adaptor.spot_all_tickers()
+                    self.store_info_dict_to_redis(data_name, self.bybit_adaptor.spot_all_tickers())
                 elif data_name == "bybit_usd_m_info_df":
-                    self.info_dict[data_name] = self.bybit_adaptor.usd_m_exchange_info()
+                    self.store_info_dict_to_redis(data_name, self.bybit_adaptor.usd_m_exchange_info())
                 elif data_name == "bybit_usd_m_ticker_df":
-                    self.info_dict[data_name] = self.bybit_adaptor.usd_m_all_tickers()
+                    self.store_info_dict_to_redis(data_name, self.bybit_adaptor.usd_m_all_tickers())
                 elif data_name == "bybit_coin_m_info_df":
-                    self.info_dict[data_name] = self.bybit_adaptor.coin_m_exchange_info()
+                    self.store_info_dict_to_redis(data_name, self.bybit_adaptor.coin_m_exchange_info())
                 elif data_name == "bybit_coin_m_ticker_df":
-                    self.info_dict[data_name] = self.bybit_adaptor.coin_m_all_tickers()
+                    self.store_info_dict_to_redis(data_name, self.bybit_adaptor.coin_m_all_tickers())
                 else:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name} is not valid.")
                     self.acw_api.create_message_thread(self.admin_id, f"update_exchange_info_as_df|name:{data_name} is not valid.", f"update_exchange_info_as_df|name:{data_name} is not valid.")
@@ -323,13 +343,6 @@ class InitCore:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name}, {traceback.format_exc()}")
                     self.acw_api.create_message_thread(self.admin_id, f"update_exchange_info_as_df|name:{data_name} failed.", f"update_exchange_info_as_df|name:{data_name} failed.")
                 time.sleep(loop_time_secs)
-
-    def get_market_code_list(self):
-        market_code_list = []
-        for exchange in self.exchange_websocket_dict.keys():
-            for quote_asset in self.exchange_websocket_dict[exchange].get_price_df()['quote_asset'].unique():
-                market_code_list.append(f"{exchange}/{quote_asset}")
-        return market_code_list
     
     def dollar_update_thread_status(self):
         dollar_update_alive_flag = self.update_dollar_thread.is_alive()
@@ -365,10 +378,11 @@ class InitCore:
 
         # Start compare and concat
         target_market_symbols = []
-        target_market_ticker_df = self.info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"]
+        fetched_info_dict = pickle.loads(self.local_redis.get_data('info_dict'))
+        target_market_ticker_df = fetched_info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"]
         # check if it's spot or not
         if target_market_dict['market_type'] != "SPOT":
-            target_market_info_df = self.info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_info_df"][['symbol','perpetual']]
+            target_market_info_df = fetched_info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_info_df"][['symbol','perpetual']]
             target_market_ticker_df = target_market_ticker_df.merge(target_market_info_df, on='symbol', how='inner')
             if target_market_dict['contract_type'] == "PERPETUAL":
                 target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['perpetual'] == True]
@@ -376,7 +390,7 @@ class InitCore:
                 target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['perpetual'] == False]
         target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['quote_asset']==target_market_dict['quote_asset']][['symbol','lastPrice','atp24h','base_asset','quote_asset']]
         for each_comparison_dict in comparison_list:
-            each_market_info_df = self.info_dict[f"{each_comparison_dict['exchange'].lower()}_{each_comparison_dict['market_type'].lower()}_info_df"]
+            each_market_info_df = fetched_info_dict[f"{each_comparison_dict['exchange'].lower()}_{each_comparison_dict['market_type'].lower()}_info_df"]
             if each_comparison_dict['contract_type'] is None:
                 each_market_info_df = each_market_info_df[each_market_info_df['quote_asset']==each_comparison_dict['quote_asset']]
             else: # contract_type is PERPETUAL or FUTURES
@@ -396,7 +410,7 @@ class InitCore:
             target_market_symbols += total_df['symbol'].to_list()
         
         target_market_symbols = list(set(target_market_symbols))
-        total_target_market_ticker_df = self.info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"]
+        total_target_market_ticker_df = fetched_info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"]
         total_target_market_df = total_target_market_ticker_df[total_target_market_ticker_df['symbol'].isin(target_market_symbols)]
         final_symbol_list = total_target_market_df.sort_values('atp24h', ascending=False)['symbol'].to_list()
 
@@ -439,7 +453,8 @@ class InitCore:
             target_quote_asset = "USDT"
         if origin_quote_asset == target_quote_asset:
             return 1
-        origin_market_spot_info_df = self.info_dict[f"{origin_market.lower().split('_')[0]}_spot_ticker_df"]
+        fetched_info_dict = pickle.loads(self.local_redis.get_data('info_dict'))
+        origin_market_spot_info_df = fetched_info_dict[f"{origin_market.lower().split('_')[0]}_spot_ticker_df"]
         # First try to find the rate from the info_dict
 
         def convert_between_coins(origin_market_spot_info_df, origin_quote_asset, target_quote_asset):
@@ -456,11 +471,11 @@ class InitCore:
         if convert_rate is None: # not between coins
             # print("1st convert_rate is None, Not between coins")
             if target_quote_asset == "KRW" and origin_quote_asset == "USDT":
-                convert_rate = get_dollar_dict()['price']
+                convert_rate = get_dollar_dict(self.local_redis)['price']
             elif target_quote_asset == "USDT" and origin_quote_asset == "KRW":
-                convert_rate = 1 / get_dollar_dict()['price']
+                convert_rate = 1 / get_dollar_dict(self.local_redis)['price']
             elif target_quote_asset == "KRW":
-                convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, "USDT") * get_dollar_dict()['price']
+                convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, "USDT") * get_dollar_dict(self.local_redis)['price']
             elif origin_quote_asset == "KRW":
                 temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset)
                 if temp_convert_rate is not None:
@@ -479,45 +494,26 @@ class InitCore:
                 raise Exception(f"Cannot find the convert rate for {title}")
         return convert_rate
 
-    def update_convert_rate_dict(self, convert_rate_dict, loop_time_secs=30):
+    def update_convert_rate_dict(self, loop_time_secs=30):
         while True:
             try:
                 for each_market_combi in self.enabled_market_klines:
                     target_market_code, origin_market_code = each_market_combi.split(':')
                     target_market, target_quote_asset = target_market_code.split('/')
                     origin_market, origin_quote_asset = origin_market_code.split('/')
-                    convert_rate_dict[each_market_combi] = self.convert_asset_rate(origin_market, origin_quote_asset, target_market, target_quote_asset)
+                    
+                    # First load the convert rate from the redis
+                    fetched_convert_rate_dict = self.local_redis.hgetall_dict('convert_rate_dict')
+                    fetched_convert_rate_dict[each_market_combi] = (
+                        self.convert_asset_rate(origin_market, origin_quote_asset, target_market, target_quote_asset)
+                    )
+                    # Store into the redis
+                    self.local_redis.hset_dict('convert_rate_dict', fetched_convert_rate_dict) 
                 if self.convert_rate_initialized is False:
                     self.convert_rate_initialized = True
             except Exception as e:
                 self.logger.error(f"update_convert_rate_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
                 self.acw_api.create_message_thread(self.admin_id, f"update_convert_rate_dict|Exception occured! Error: {e}", f"update_convert_rate_dict|Exception occured! Error: {e}")
-            time.sleep(loop_time_secs)
-
-    def get_shared_base_asset_list(self, origin_market_code, target_market_code):
-        origin_market = origin_market_code.split('/')[0]
-        quote_asset_one = origin_market_code.split('/')[1]
-        target_market = target_market_code.split('/')[0]
-        quote_asset_two = target_market_code.split('/')[1]
-
-        origin_market_df = self.exchange_websocket_dict[origin_market].get_price_df()
-        origin_market_df = origin_market_df[origin_market_df['quote_asset'] == quote_asset_one]
-        target_market_df = self.exchange_websocket_dict[target_market].get_price_df()
-        target_market_df = target_market_df[target_market_df['quote_asset'] == quote_asset_two]
-        shared_base_asset_list = list(set(origin_market_df['base_asset'].values).intersection(set(target_market_df['base_asset'].values)))
-        return shared_base_asset_list
-
-    def update_shared_base_asset_dict(self, loop_time_secs=1):
-        while True:
-            try:
-                for each_market_combi in self.enabled_market_klines:
-                    target_market_code, origin_market_code = each_market_combi.split(':')
-                    self.shared_base_asset_dict[each_market_combi] = self.get_shared_base_asset_list(origin_market_code, target_market_code)
-                if self.shared_base_asset_initialized is False:
-                    self.shared_base_asset_initialized = True
-            except Exception as e:
-                self.logger.error(f"update_shared_base_asset_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
-                self.acw_api.create_message_thread(self.admin_id, f"update_shared_base_asset_dict|Exception occured! Error: {e}", f"update_shared_base_asset_dict|Exception occured! Error: {e}")
             time.sleep(loop_time_secs)
         
     def fetch_dollar(self, update_dollar_logger, url='https://finance.naver.com/marketindex/exchangeDegreeCountQuote.naver?marketindexCd=FX_USDKRW', timedelta_hours=9):

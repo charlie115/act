@@ -173,8 +173,6 @@ def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict
         acw_api.create_message_thread(admin_id, 'Error in insert_kline_to_db', content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()[:1995]}")
     
 def ohlc_1T_generator(
-    info_dict,
-    convert_rate_dict,
     insert_kline_to_db,
     target_market_code,
     origin_market_code,
@@ -204,6 +202,17 @@ def ohlc_1T_generator(
         per_minute_ohlc_df[col] = np.nan  # Initialize columns with NaN
 
     remote_redis.get_redis_client().xtrim(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', maxlen=max_length)
+    
+    # Initialize info_dict and convert_rate_dict
+    while True:
+        fetched_info_dict = local_redis.get_data('info_dict')
+        fetched_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
+        if fetched_info_dict and fetched_convert_rate_dict:
+            fetched_info_dict = pickle.loads(fetched_info_dict)
+            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
+            break
+        logger.info("info_dict and convert_rate_dict are not ready yet. Waiting for 1 second...")
+        time.sleep(1)
     
     # Loop Thread for saving servercheck status
     target_market_servercheck = False
@@ -235,7 +244,7 @@ def ohlc_1T_generator(
             datetime_before = datetime_now.replace(second=0, microsecond=0)
             # datetime_now = datetime.datetime.utcnow()
             datetime_now = datetime.datetime.utcnow().replace(second=0, microsecond=0)
-            premium_df = get_premium_df(info_dict, convert_rate_dict, target_market_code, origin_market_code, logger=logger)
+            premium_df = get_premium_df(local_redis, fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, logger=logger)
             premium_df['datetime_now'] = datetime_now
 
             # Extract necessary columns and set 'base_asset' as the index
@@ -307,7 +316,7 @@ def ohlc_1T_generator(
             # Update per_minute_ohlc_df in the Redis 'now' data
             ohlc_now_df = per_minute_ohlc_df.reset_index()
             ohlc_now_df['datetime_now'] = datetime_now
-            ohlc_now_df['dollar'] = get_dollar_dict()['price']
+            ohlc_now_df['dollar'] = get_dollar_dict(local_redis)['price']
             pickled_ohlc_now_df = pickle.dumps(ohlc_now_df)
             local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_now_df)
             
@@ -327,7 +336,7 @@ def ohlc_1T_generator(
                 # Finalize the per-minute OHLC DataFrame
                 ohlc_df = per_minute_ohlc_df.reset_index()
                 ohlc_df['datetime_now'] = adjusted_datetime_now - datetime.timedelta(minutes=1)
-                ohlc_df['dollar'] = get_dollar_dict()['price']
+                ohlc_df['dollar'] = get_dollar_dict(local_redis)['price']
                 ohlc_df['closed'] = True
 
                 # Serialize and store the ohlc_df
@@ -374,6 +383,9 @@ def ohlc_1T_generator(
                 # Re-initialize columns for the new DataFrame
                 for col in ohlc_columns + other_columns:
                     per_minute_ohlc_df[col] = np.nan
+            # Reload the info_dict and convert_rate_dict
+            fetched_info_dict = pickle.loads(local_redis.get_data('info_dict'))
+            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in local_redis.hgetall_dict('convert_rate_dict').items()}
         except Exception as e:
             content = f"ohlc_1T_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_1T_loader: {traceback.format_exc()}"
             logger.error(content)
@@ -434,7 +446,7 @@ def generate_interval_kline(
         # Finalize the per-interval OHLC DataFrame
         ohlc_df = per_interval_ohlc_df.reset_index()
         ohlc_df['datetime_now'] = previous_interval_start
-        ohlc_df['dollar'] = get_dollar_dict()['price']
+        ohlc_df['dollar'] = get_dollar_dict(local_redis)['price']
         ohlc_df['closed'] = True
         
         last_ohlc_1T_kline_df = last_ohlc_1T_kline_df[last_ohlc_1T_kline_df['base_asset'].isin(ohlc_df['base_asset'].unique())]

@@ -452,17 +452,3 @@ class UpbitWebsocket:
                 content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"
                 self.logger.error(content)
                 self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
-
-    def get_price_df(self):
-        upbit_ticker_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("ticker", "UPBIT_SPOT")).T.reset_index()[['index','tp','scr','atp24h','h52wp','l52wp','ms','mw','tms']]
-        upbit_orderbook_df = pd.DataFrame(self.local_redis.get_all_exchange_stream_data("orderbook", "UPBIT_SPOT")).T.reset_index(drop=True)[['cd','tms','obu']]
-        upbit_orderbook_df['ap'] = upbit_orderbook_df['obu'].apply(lambda x: x[0]['ap'])
-        upbit_orderbook_df['bp'] = upbit_orderbook_df['obu'].apply(lambda x: x[0]['bp'])
-        upbit_orderbook_df.drop('obu', axis=1, inplace=True)
-        upbit_merged_df = pd.merge(upbit_ticker_df, upbit_orderbook_df, left_on='index', right_on='cd', how='inner')
-        upbit_merged_df['base_asset'] = upbit_merged_df['index'].apply(lambda x: x.split('-')[1])
-        upbit_merged_df['quote_asset'] = upbit_merged_df['index'].apply(lambda x: x.split('-')[0])
-        upbit_merged_df.drop('index', axis=1, inplace=True)
-        upbit_merged_df.loc[:, ['scr','atp24h','h52wp','l52wp','ap','bp']] = upbit_merged_df.loc[:, ['scr','atp24h','h52wp','l52wp','ap','bp']].astype(float)
-        upbit_merged_df.loc[:, 'scr'] = upbit_merged_df['scr'] * 100
-        return upbit_merged_df
