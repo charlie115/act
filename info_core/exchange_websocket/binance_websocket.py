@@ -19,7 +19,7 @@ from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
 # Move binance_websocket function outside the class
-def binance_websocket(stream_data_type, data, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
+def binance_websocket(stream_data_type, data, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=120):
     # Reinitialize the logger inside the function
     logger = InfoCoreLogger(f"binance_{market_type.lower()}_{stream_data_type}_websocket", logging_dir).logger
     logger.info(f"[BINANCE {market_type}] started for {data['params']}...")
