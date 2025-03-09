@@ -551,6 +551,7 @@ class InitCore:
         return self.update_dollar_return_dict
 
     def fetch_dollar_loop(self, update_dollar_logger, loop_time=30):
+        self.logger.info(f"fetch_dollar_loop|Dollar update thread has started.")
         while True:
             try:
                 self.fetch_dollar(update_dollar_logger)
