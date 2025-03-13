@@ -247,12 +247,12 @@ def ohlc_1T_generator(
             # datetime_now = datetime.datetime.utcnow()
             datetime_now = datetime.datetime.utcnow().replace(second=0, microsecond=0)
             
-            # Performance tracking - premium data fetch
-            premium_fetch_start = time.time()
+            # # Performance tracking - premium data fetch
+            # premium_fetch_start = time.time()
             premium_df = get_premium_df(local_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger=logger)
             premium_df['datetime_now'] = datetime_now
-            premium_fetch_time = time.time() - premium_fetch_start
-            logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Fetching premium data took {premium_fetch_time:.4f} seconds")
+            # premium_fetch_time = time.time() - premium_fetch_start
+            # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Fetching premium data took {premium_fetch_time:.4f} seconds")
 
             # Extract necessary columns and set 'base_asset' as the index
             # # Performance tracking - data preparation
