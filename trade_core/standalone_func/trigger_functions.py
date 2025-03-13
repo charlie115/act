@@ -185,7 +185,7 @@ def start_trigger_loop(
     postgres_client = InitPostgresDBClient(**{**postgres_db_dict, 'database': 'trade_core'})
     conn = postgres_client.pool.getconn()
     curr = conn.cursor(cursor_factory=extras.RealDictCursor)
-    logger.info(f"postgres client has been initiated for {market_code_combination}")
+    logger.info(f"postgres client has been initiated for {market_code_combination} | trade_support: {trade_support}")
     
     if not trade_support:
         user_exchange_adaptor = None
