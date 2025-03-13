@@ -166,6 +166,10 @@ def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict
                 # logger.info(f"insert_kline_to_db|database: {market_code_combination} {kline_type}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {insert_time} seconds")
                 # TEST
                 logger.info(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds")
+                if count != len(inserted_coin_list):
+                    logger.error(f"kline mismatch: {count} != {len(inserted_coin_list)}")
+                    logger.error(f"closed_kline_df: {closed_kline_df}")
+                    logger.error(f"df_to_insert: {df_to_insert}")
             # print(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds") # TEST
         # mongo_client.close()
     except:
@@ -498,7 +502,13 @@ def generate_interval_kline(
         
         # overwrite close data with the last 1T close data
         for prefix in prefixes:
-            ohlc_df[f'{prefix}_close'] = last_ohlc_1T_kline_df[f'{prefix}_close'].values
+            try:
+                ohlc_df[f'{prefix}_close'] = last_ohlc_1T_kline_df[f'{prefix}_close'].values
+            except Exception as e:
+                logger.error(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Error: {e}")
+                logger.error(f"last_ohlc_1T_kline_df: {last_ohlc_1T_kline_df}")
+                logger.error(f"ohlc_df: {ohlc_df}")
+                raise e
             
         # Compare the high and low with the last 1T high and low
         for prefix in prefixes:
