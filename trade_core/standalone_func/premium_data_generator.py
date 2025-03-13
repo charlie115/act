@@ -7,7 +7,7 @@ from standalone_func.get_dollar_dict import get_dollar_dict
 from standalone_func.price_df_generator import get_price_df
 from etc.redis_connector.redis_helper import RedisHelper
 
-def get_premium_df(redis_client, info_dict, convert_rate_dict, target_market_code, origin_market_code, logger):
+def get_premium_df(redis_client, convert_rate_dict, target_market_code, origin_market_code, logger):
     try:
         # POSSIBLE quote_assets: USDT, BUSD, BTC, KRW
         origin_market = origin_market_code.split('/')[0]
@@ -15,9 +15,9 @@ def get_premium_df(redis_client, info_dict, convert_rate_dict, target_market_cod
         target_market = target_market_code.split('/')[0]
         quote_asset_two = target_market_code.split('/')[1]
 
-        origin_market_df = get_price_df(redis_client, info_dict, origin_market)
+        origin_market_df = get_price_df(redis_client, origin_market)
         origin_market_df = origin_market_df[origin_market_df['quote_asset'] == quote_asset_one]
-        target_market_df = get_price_df(redis_client, info_dict, target_market)
+        target_market_df = get_price_df(redis_client, target_market)
         target_market_df = target_market_df[target_market_df['quote_asset'] == quote_asset_two]
 
         shared_base_asset_list = list(set(origin_market_df['base_asset'].values).intersection(set(target_market_df['base_asset'].values)))

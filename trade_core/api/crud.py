@@ -712,15 +712,12 @@ async def exit_trade(trade_uuid: UUID, db: AsyncSession):
     if market_code_combination not in ["UPBIT_SPOT/KRW:BINANCE_USD_M/USDT"]:
         raise HTTPException(status_code=400, detail=f"Invalid market code({market_code_combination}) combination for the trade")
     
-    # Fetch info_dict and convert_rate_dict
-    fetched_info_dict = remote_redis.get_data('info_dict')
-    if fetched_info_dict is None:
-        raise HTTPException(status_code=500, detail="info_dict not found in redis")
-    fetched_info_dict = pickle.loads(fetched_info_dict)
+    # Fetch convert_rate_dict
     fetched_convert_rate_dict = remote_redis.hgetall_dict('convert_rate_dict')
     if fetched_convert_rate_dict is None:
         raise HTTPException(status_code=500, detail="convert_rate_dict not found in redis")
-    fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
+    # Convert all the values to float
+    fetched_convert_rate_dict = {k.decode('utf-8'): float(v) for k, v in fetched_convert_rate_dict.items()}
     
     # Fetch trade_df from the remote redis
     fetched_trade_df = remote_redis.get_data(f"trade|trade|{market_code_combination}")
@@ -728,7 +725,7 @@ async def exit_trade(trade_uuid: UUID, db: AsyncSession):
         raise HTTPException(status_code=500, detail="trade_df not found in redis")
     trade_df = pickle.loads(fetched_trade_df)
     
-    premium_df = get_premium_df(remote_redis, fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
+    premium_df = get_premium_df(remote_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
     if premium_df.empty:
         raise HTTPException(status_code=500, detail="premium_df is empty")
     merged_df = trade_df.merge(premium_df, on='base_asset')

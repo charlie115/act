@@ -70,7 +70,6 @@ class InitCore:
         self.binance_usd_m_symbols_to_exclude = []
         # For redis connesction for server check information
         self.remote_redis = RedisHelper(**self.redis_dict)
-        # redis connection to store info_dict
         self.local_redis = RedisHelper()
 
         # Initiate server check info
@@ -118,6 +117,10 @@ class InitCore:
             "bybit_coin_m_info_df",
             "bybit_coin_m_ticker_df"
         ]
+        
+        # Remove all info data from the local redis
+        for data_name in self.total_data_name_list:
+            self.local_redis.delete_key(data_name)
 
         self.enabled_data_name_list = self.get_enabled_data_name_list()
 
@@ -131,8 +134,13 @@ class InitCore:
 
         # Wait until all info df has been updated
         while True:
-            fetched_info_dict = self.local_redis.get_data('info_dict')
-            if fetched_info_dict is not None and all([x in pickle.loads(fetched_info_dict).keys() for x in self.enabled_data_name_list]):
+            all_data_exists = True
+            for data_name in self.enabled_data_name_list:
+                if self.local_redis.get_data(data_name) is None:
+                    all_data_exists = False
+                    break
+            
+            if all_data_exists:
                 self.logger.info(f"InitCore|All info df has been updated.")
                 break
             else:
@@ -250,14 +258,8 @@ class InitCore:
         return list(set(enabled_data_name_list))
     
     def store_info_dict_to_redis(self, data_name, fetched_df):
-        # First load the data from the local redis
-        fetched_info_dict = self.local_redis.get_data('info_dict')
-        if fetched_info_dict is None:
-            fetched_info_dict = {}
-        else:
-            fetched_info_dict = pickle.loads(fetched_info_dict)
-        fetched_info_dict[data_name] = fetched_df
-        self.local_redis.set_data('info_dict', pickle.dumps(fetched_info_dict))
+        # Save the data to the local redis
+        self.local_redis.set_data(data_name, pickle.dumps(fetched_df))
 
     def update_exchange_info_as_df(self, data_name, error_count_limit=1, loop_time_secs=30):
         error_count = 0
@@ -373,11 +375,10 @@ class InitCore:
 
         # Start compare and concat
         target_market_symbols = []
-        fetched_info_dict = pickle.loads(self.local_redis.get_data('info_dict'))
-        target_market_ticker_df = fetched_info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"]
+        target_market_ticker_df = pickle.loads(self.local_redis.get_data(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"))
         # check if it's spot or not
         if target_market_dict['market_type'] != "SPOT":
-            target_market_info_df = fetched_info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_info_df"][['symbol','perpetual']]
+            target_market_info_df = pickle.loads(self.local_redis.get_data(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_info_df"))[['symbol','perpetual']]
             target_market_ticker_df = target_market_ticker_df.merge(target_market_info_df, on='symbol', how='inner')
             if target_market_dict['contract_type'] == "PERPETUAL":
                 target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['perpetual'] == True]
@@ -385,7 +386,7 @@ class InitCore:
                 target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['perpetual'] == False]
         target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['quote_asset']==target_market_dict['quote_asset']][['symbol','lastPrice','atp24h','base_asset','quote_asset']]
         for each_comparison_dict in comparison_list:
-            each_market_info_df = fetched_info_dict[f"{each_comparison_dict['exchange'].lower()}_{each_comparison_dict['market_type'].lower()}_info_df"]
+            each_market_info_df = pickle.loads(self.local_redis.get_data(f"{each_comparison_dict['exchange'].lower()}_{each_comparison_dict['market_type'].lower()}_info_df"))
             if each_comparison_dict['contract_type'] is None:
                 each_market_info_df = each_market_info_df[each_market_info_df['quote_asset']==each_comparison_dict['quote_asset']]
             else: # contract_type is PERPETUAL or FUTURES
@@ -405,7 +406,7 @@ class InitCore:
             target_market_symbols += total_df['symbol'].to_list()
         
         target_market_symbols = list(set(target_market_symbols))
-        total_target_market_ticker_df = fetched_info_dict[f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"]
+        total_target_market_ticker_df = pickle.loads(self.local_redis.get_data(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"))
         total_target_market_df = total_target_market_ticker_df[total_target_market_ticker_df['symbol'].isin(target_market_symbols)]
         final_symbol_list = total_target_market_df.sort_values('atp24h', ascending=False)['symbol'].to_list()
 
@@ -438,9 +439,8 @@ class InitCore:
             target_quote_asset = "USDT"
         if origin_quote_asset == target_quote_asset:
             return 1
-        fetched_info_dict = pickle.loads(self.local_redis.get_data('info_dict'))
-        origin_market_spot_info_df = fetched_info_dict[f"{origin_market.lower().split('_')[0]}_spot_ticker_df"]
-        # First try to find the rate from the info_dict
+        origin_market_spot_info_df = pickle.loads(self.local_redis.get_data(f"{origin_market.lower().split('_')[0]}_spot_ticker_df"))
+        # First try to find the rate from the origin_market_spot_info_df
 
         def convert_between_coins(origin_market_spot_info_df, origin_quote_asset, target_quote_asset):
             df = origin_market_spot_info_df[(origin_market_spot_info_df['base_asset']==origin_quote_asset)&(origin_market_spot_info_df['quote_asset']==target_quote_asset)]

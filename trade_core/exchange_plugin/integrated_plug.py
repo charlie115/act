@@ -41,7 +41,7 @@ class UserExchangeAdaptor:
             self.postgres_client = InitPostgresDBClient(**{**postgres_db_dict, 'database': 'trade_core'})
         else:
             self.postgres_client = None
-        # redis connection to read info_dict
+        # redis connection to read info data
         if api_server:
             self.redis_client = RedisHelper(**redis_db_dict)
         else:
@@ -224,10 +224,10 @@ class UserExchangeAdaptor:
         USD_M position columns: ["symbol", "base_asset", "qty", "margin_type", "entry_price", "liquidation_price", "leverage"]
         """
         # Load info_dict
-        fetched_info_dict = self.redis_client.get_data('info_dict')
-        if fetched_info_dict is None:
-            raise Exception("info_dict is not loaded.")
-        fetched_info_dict = pickle.loads(fetched_info_dict)
+        fetched_info_df = self.redis_client.get_data(f'{exchange.lower()}_{market_type.lower()}_info_df')
+        if fetched_info_df is None:
+            raise Exception(f"{exchange.lower()}_{market_type.lower()}_info_df is not loaded.")
+        fetched_info_df = pickle.loads(fetched_info_df)
         
         exchange = exchange.upper()
         if exchange not in self.exchange_adaptor_dict:
@@ -239,8 +239,7 @@ class UserExchangeAdaptor:
             position_df = exchange_adaptor.all_position_information(access_key, secret_key, market_type)
             if position_df.empty:
                 return position_df
-            info_df = fetched_info_dict[f'{exchange.lower()}_{market_type.lower()}_info_df']
-            position_df = position_df.merge(info_df[['symbol','base_asset']], how='left', on='symbol')
+            position_df = position_df.merge(fetched_info_df[['symbol','base_asset']], how='left', on='symbol')
             position_df = position_df.rename(columns={"positionAmt":"qty", "marginType":"margin_type", "entryPrice":"entry_price", "liquidationPrice":"liquidation_price"})
             if len(position_df) == 0:
                 position_df["ROI"] = None
@@ -252,11 +251,11 @@ class UserExchangeAdaptor:
         return position_df
     
     def get_capital(self, exchange, access_key, secret_key, market_type, passphrase=None):
-        # Load info_dict
-        fetched_info_dict = self.redis_client.get_data('info_dict')
-        if fetched_info_dict is None:
-            raise Exception("info_dict is not loaded.")
-        fetched_info_dict = pickle.loads(fetched_info_dict)
+        # Load ticker data
+        fetched_ticker_df = self.redis_client.get_data(f'{exchange.lower()}_{market_type.lower()}_ticker_df')
+        if fetched_ticker_df is None:
+            raise Exception(f"{exchange.lower()}_{market_type.lower()}_ticker_df is not loaded.")
+        fetched_ticker_df = pickle.loads(fetched_ticker_df)
         
         exchange = exchange.upper()
         if exchange not in self.exchange_adaptor_dict:
@@ -270,9 +269,8 @@ class UserExchangeAdaptor:
                 locked_krw = float(locked_krw)
             else:
                 locked_krw = 0
-            ticker_df = fetched_info_dict[f"{exchange.lower()}_{market_type.lower()}_ticker_df"]
             position_df['symbol'] = position_df['unit_currency']+'-'+position_df['asset']
-            merged_df = position_df.merge(ticker_df[['symbol','lastPrice']], how='left', on='symbol')
+            merged_df = position_df.merge(fetched_ticker_df[['symbol','lastPrice']], how='left', on='symbol')
             merged_df.loc[merged_df['asset']==currency, 'lastPrice'] = 1 # For KRW
             merged_df['entered'] = merged_df['avg_buy_price'] * merged_df['free']
             merged_df['locked'] = merged_df.apply(lambda x: x['avg_buy_price'] * x['locked'] if x['asset'] != 'KRW' else x['locked'], axis=1)
@@ -906,12 +904,6 @@ class UserExchangeAdaptor:
 
     def handle_margin_liquidation_call_trade(self):
         try:
-            # Load info_dict
-            fetched_info_dict = self.redis_client.get_data("info_dict")
-            if fetched_info_dict is None:
-                raise Exception("info_dict is None.")
-            fetched_info_dict = pickle.loads(fetched_info_dict)
-            
             # Load convert_rate_dict
             fetched_convert_rate_dict = self.redis_client.hgetall_dict("convert_rate_dict")
             # Convert all the values to float
@@ -923,7 +915,7 @@ class UserExchangeAdaptor:
             order_type = margin_liquidation_call_trade_dict.get('order_type')
                         
             target_market_code, origin_market_code = self.market_code_combination.split(':')
-            premium_df = get_premium_df(self.redis_client, fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, self.logger)
+            premium_df = get_premium_df(self.redis_client, fetched_convert_rate_dict, target_market_code, origin_market_code, self.logger)
             merged_df = trade_df.merge(premium_df, on='base_asset')
             merged_df['SL_premium_value'] = merged_df.apply(lambda x: x['SL_premium'] if x['usdt_conversion'] == False else (1+x['SL_premium']/100)*x['dollar'], axis=1)
             merged_df['LS_premium_value'] = merged_df.apply(lambda x: x['LS_premium'] if x['usdt_conversion'] == False else (1+x['LS_premium']/100)*x['dollar'], axis=1)

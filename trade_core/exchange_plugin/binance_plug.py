@@ -117,14 +117,13 @@ class InitBinanceAdaptor:
     def spot_all_tickers(self):
         df = pd.DataFrame(self.pub_client.get_ticker())
         df.loc[:, self.spot_all_tickers_columns_to_convert] = df.loc[:, self.spot_all_tickers_columns_to_convert].apply(pd.to_numeric, errors='coerce')
-        # Load info_dict
-        fetched_info_dict = self.local_redis.get_data('info_dict')
-        if fetched_info_dict is None or pickle.loads(fetched_info_dict).get('binance_spot_info_df') is None:
-            # TEST
+        # Load binance_spot_info_df
+        fetched_binance_spot_info_df = self.local_redis.get_data('binance_spot_info_df')
+        if fetched_binance_spot_info_df is None:
             spot_exchange_info_df = self.spot_exchange_info()
-            self.binance_plug_logger.info(f"fetched_info_dict is None or pickle.loads(fetched_info_dict).get('binance_spot_info_df') is None, Fetched from API")
+            self.binance_plug_logger.info(f"fetched_binance_spot_info_df is None, Fetched from API")
         else:
-            spot_exchange_info_df = pickle.loads(fetched_info_dict).get('binance_spot_info_df')
+            spot_exchange_info_df = pickle.loads(fetched_binance_spot_info_df)
         df = df.merge(spot_exchange_info_df[['symbol', 'base_asset', 'quote_asset']], on='symbol', how='inner')
         df['quote_symbol'] = df['quote_asset'] + 'USDT'
         df2 = df.copy()
@@ -152,20 +151,20 @@ class InitBinanceAdaptor:
     def usd_m_all_tickers(self):
         df = pd.DataFrame(self.pub_client.futures_ticker())
         df.loc[:, self.usd_m_all_tickers_columns_to_convert] = df.loc[:, self.usd_m_all_tickers_columns_to_convert].apply(pd.to_numeric, errors='coerce')
-        # Load info_dict
-        fetched_info_dict = self.local_redis.get_data('info_dict')
-        if fetched_info_dict is None or pickle.loads(fetched_info_dict).get('binance_usd_m_info_df') is None:
-            # TEST
+        # Load binance_usd_m_info_df
+        fetched_binance_usd_m_info_df = self.local_redis.get_data('binance_usd_m_info_df')
+        if fetched_binance_usd_m_info_df is None:
             usd_m_exchange_info_df = self.usd_m_exchange_info()
-            self.binance_plug_logger.info(f"fetched_info_dict is None or pickle.loads(fetched_info_dict).get('binance_usd_m_info_df') is None, Fetched from API")
+            self.binance_plug_logger.info(f"fetched_binance_usd_m_info_df is None, Fetched from API")
         else:
-            usd_m_exchange_info_df = pickle.loads(fetched_info_dict).get('binance_usd_m_info_df')
-        if fetched_info_dict is None or pickle.loads(fetched_info_dict).get('binance_spot_ticker_df') is None:
-            # TEST
+            usd_m_exchange_info_df = pickle.loads(fetched_binance_usd_m_info_df)
+        # Load binance_spot_ticker_df
+        fetched_binance_spot_ticker_df = self.local_redis.get_data('binance_spot_ticker_df')
+        if fetched_binance_spot_ticker_df is None:
             binance_spot_ticker_df = self.spot_all_tickers()
-            self.binance_plug_logger.info(f"fetched_info_dict is None or pickle.loads(fetched_info_dict).get('binance_spot_ticker_df') is None, Fetched from API")
+            self.binance_plug_logger.info(f"fetched_binance_spot_ticker_df is None, Fetched from API")
         else:
-            binance_spot_ticker_df = pickle.loads(fetched_info_dict).get('binance_spot_ticker_df')
+            binance_spot_ticker_df = pickle.loads(fetched_binance_spot_ticker_df)
         df = df.merge(usd_m_exchange_info_df[['symbol', 'base_asset', 'quote_asset']], on='symbol', how='inner')
         df['quote_symbol'] = df['quote_asset'] + 'USDT'
         df2 = binance_spot_ticker_df.copy()
@@ -196,13 +195,13 @@ class InitBinanceAdaptor:
     def get_fundingrate(self, futures_type="USD_M"):
         bi_client = self.pub_client
         if futures_type == "USD_M":
-            # Load info_dict
-            fetched_info_dict = self.local_redis.get_data('info_dict')
-            if fetched_info_dict is None or pickle.loads(fetched_info_dict).get('binance_usd_m_info_df') is None:
+            # Load binance_usd_m_info_df
+            fetched_binance_usd_m_info_df = self.local_redis.get_data('binance_usd_m_info_df')
+            if fetched_binance_usd_m_info_df is None:
                 usd_m_exchange_info_df = self.usd_m_exchange_info()
-                self.binance_plug_logger.info(f"fetched_info_dict is None or pickle.loads(fetched_info_dict).get('binance_usd_m_info_df') is None, Fetched from API")
+                self.binance_plug_logger.info(f"fetched_binance_usd_m_info_df is None, Fetched from API")
             else:
-                usd_m_exchange_info_df = pickle.loads(fetched_info_dict).get('binance_usd_m_info_df')
+                usd_m_exchange_info_df = pickle.loads(fetched_binance_usd_m_info_df)
             # Remove status != TRADING
             usd_m_exchange_info_df = usd_m_exchange_info_df[usd_m_exchange_info_df['status'] == 'TRADING']
             binance_fund = pd.DataFrame(bi_client.futures_mark_price())
