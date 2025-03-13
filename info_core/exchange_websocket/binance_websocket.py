@@ -236,7 +236,7 @@ class BinanceWebsocket:
                                     "params": [x.lower() + "@bookTicker" for x in symbol_list],
                                     "id": index
                                 }
-                                upbit_bookticker_proc = Process(
+                                bookticker_proc = Process(
                                     target=binance_websocket,  # Module-level function
                                     args=(
                                         "orderbook",
@@ -250,12 +250,12 @@ class BinanceWebsocket:
                                     ),
                                     daemon=True
                                 )
-                                self.websocket_proc_dict[bookticker_proc_name] = upbit_bookticker_proc
+                                self.websocket_proc_dict[bookticker_proc_name] = bookticker_proc
                                 self.websocket_symbol_dict[f"{index}th_bookticker_symbol"] = symbol_list
-                                upbit_bookticker_proc.start()
+                                bookticker_proc.start()
                                 self.logger.info(f"[BINANCE {self.market_type}] Started {bookticker_proc_name} websocket process.")
                                 if restarted:
-                                    content = f"handle_price_procs|[BINANCE {self.market_type}]{bookticker_proc_name} has been restarted. Alive status: {upbit_bookticker_proc.is_alive()}"
+                                    content = f"handle_price_procs|[BINANCE {self.market_type}]{bookticker_proc_name} has been restarted. Alive status: {bookticker_proc.is_alive()}"
                                     self.acw_api.create_message_thread(self.admin_id, "handle_price_procs", content)
                                 time.sleep(2)
 
@@ -289,7 +289,7 @@ class BinanceWebsocket:
                                 "params": [x.lower() + "@ticker" for x in symbol_list],
                                 "id": 0
                             }
-                            upbit_ticker_proc = Process(
+                            ticker_proc = Process(
                                 target=binance_websocket,  # Module-level function
                                 args=(
                                     "ticker",
@@ -303,12 +303,12 @@ class BinanceWebsocket:
                                 ),
                                 daemon=True
                             )
-                            self.websocket_proc_dict[ticker_proc_name] = upbit_ticker_proc
+                            self.websocket_proc_dict[ticker_proc_name] = ticker_proc
                             self.websocket_symbol_dict["ticker_symbol"] = symbol_list
-                            upbit_ticker_proc.start()
+                            ticker_proc.start()
                             self.logger.info(f"[BINANCE {self.market_type}] Started {ticker_proc_name} websocket process.")
                             if restarted:
-                                content = f"handle_price_procs|[BINANCE {self.market_type}] {ticker_proc_name} has been restarted. Alive status: {upbit_ticker_proc.is_alive()}"
+                                content = f"handle_price_procs|[BINANCE {self.market_type}] {ticker_proc_name} has been restarted. Alive status: {ticker_proc.is_alive()}"
                                 self.acw_api.create_message_thread(self.admin_id, "handle_price_procs", content)
                             time.sleep(2)
 

@@ -171,7 +171,7 @@ def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict
     except:
         logger.error(f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}")
         acw_api.create_message_thread(admin_id, 'Error in insert_kline_to_db', content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()[:1995]}")
-    
+
 def ohlc_1T_generator(
     insert_kline_to_db,
     target_market_code,
@@ -203,15 +203,13 @@ def ohlc_1T_generator(
 
     remote_redis.get_redis_client().xtrim(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', maxlen=max_length)
     
-    # Initialize info_dict and convert_rate_dict
+    # Initialize convert_rate_dict
     while True:
-        fetched_info_dict = local_redis.get_data('info_dict')
         fetched_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
-        if fetched_info_dict and fetched_convert_rate_dict:
-            fetched_info_dict = pickle.loads(fetched_info_dict)
+        if fetched_convert_rate_dict:
             fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
             break
-        logger.info("info_dict and convert_rate_dict are not ready yet. Waiting for 1 second...")
+        logger.info("convert_rate_dict is not ready yet. Waiting for 1 second...")
         time.sleep(1)
     
     # Loop Thread for saving servercheck status
@@ -240,14 +238,25 @@ def ohlc_1T_generator(
                 time.sleep(1)
                 continue
             time.sleep(loop_downtime_sec)
+            
+            # Performance tracking - start of iteration
+            loop_start_time = time.time()
+            
             # datetime_before = datetime_now
             datetime_before = datetime_now.replace(second=0, microsecond=0)
             # datetime_now = datetime.datetime.utcnow()
             datetime_now = datetime.datetime.utcnow().replace(second=0, microsecond=0)
-            premium_df = get_premium_df(local_redis, fetched_info_dict, fetched_convert_rate_dict, target_market_code, origin_market_code, logger=logger)
+            
+            # Performance tracking - premium data fetch
+            premium_fetch_start = time.time()
+            premium_df = get_premium_df(local_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger=logger)
             premium_df['datetime_now'] = datetime_now
+            premium_fetch_time = time.time() - premium_fetch_start
+            logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Fetching premium data took {premium_fetch_time:.4f} seconds")
 
             # Extract necessary columns and set 'base_asset' as the index
+            # Performance tracking - data preparation
+            prep_start = time.time()
             prices_df = premium_df.set_index('base_asset')[price_columns + other_columns]
 
             # Keep only base_assets that are in prices_df (remove delisted cryptos)
@@ -255,7 +264,11 @@ def ohlc_1T_generator(
 
             # Identify new base_assets (where 'LS_open' is NaN)
             mask_new = per_minute_ohlc_df['LS_open'].isna()
+            prep_time = time.time() - prep_start
+            logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Data preparation took {prep_time:.4f} seconds")
 
+            # Performance tracking - process new assets
+            new_assets_start = time.time()
             # For new base_assets, initialize OHLC values
             if mask_new.any():
                 # Extract prices for new base_assets
@@ -277,16 +290,20 @@ def ohlc_1T_generator(
                     columns=ohlc_cols
                 )
                 
-
                 # Assign the new OHLC values to per_minute_ohlc_df
                 per_minute_ohlc_df.loc[mask_new, ohlc_cols] = new_ohlc_values.astype('float64')
                 
                 # Assign other columns
                 per_minute_ohlc_df.loc[mask_new, other_columns] = prices_df.loc[mask_new, other_columns].astype('float64')
+            new_assets_time = time.time() - new_assets_start
+            if mask_new.any():
+                logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Processing {mask_new.sum()} new assets took {new_assets_time:.4f} seconds")
 
             # Update other columns for new base_assets
             per_minute_ohlc_df.loc[mask_new, other_columns] = prices_df.loc[mask_new, other_columns].astype('float64')
 
+            # Performance tracking - update OHLC values
+            update_ohlc_start = time.time()
             # Create a mapping from prefixes to price columns
             prefix_price_map = dict(zip(prefixes, price_columns))
 
@@ -312,7 +329,11 @@ def ohlc_1T_generator(
 
             # Update other columns
             per_minute_ohlc_df[other_columns] = prices_df[other_columns]
+            update_ohlc_time = time.time() - update_ohlc_start
+            logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Updating OHLC values took {update_ohlc_time:.4f} seconds")
 
+            # Performance tracking - Redis update
+            redis_update_start = time.time()
             # Update per_minute_ohlc_df in the Redis 'now' data
             ohlc_now_df = per_minute_ohlc_df.reset_index()
             ohlc_now_df['datetime_now'] = datetime_now
@@ -327,9 +348,16 @@ def ohlc_1T_generator(
                 maxlen=10,
                 approximate=True
             )
+            redis_update_time = time.time() - redis_update_start
+            logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Redis updates took {redis_update_time:.4f} seconds")
 
+            # Performance tracking - minute transition
+            minute_transition_start = None
+            minute_transition_time = 0
+            
             # Check if the minute has changed
             if datetime_before.minute != datetime_now.minute:
+                minute_transition_start = time.time()
                 adjusted_datetime_now = datetime.datetime(
                     datetime_now.year, datetime_now.month, datetime_now.day, datetime_now.hour, datetime_now.minute
                 )
@@ -362,7 +390,12 @@ def ohlc_1T_generator(
                 pickled_ohlc_df = pickle.dumps(new_ohlc_1T_kline)
                 local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
                 # TEST
+                minute_transition_time = time.time() - minute_transition_start
+                logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Minute transition processing took {minute_transition_time:.4f} seconds")
                 logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Finalized {len(ohlc_df)} klines for {ohlc_df['base_asset'].nunique()} unique base_assets")
+                
+                # Performance tracking - DB insert
+                db_insert_start = time.time()
                 # Insert into the database
                 insert_db_thread = Thread(
                     target=insert_kline_to_db,
@@ -378,14 +411,26 @@ def ohlc_1T_generator(
                     )
                 )
                 insert_db_thread.start()
+                db_insert_time = time.time() - db_insert_start
+                logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, DB insert thread creation took {db_insert_time:.4f} seconds")
+                
                 # Reset per_minute_ohlc_df for the new minute
                 per_minute_ohlc_df = pd.DataFrame()
                 # Re-initialize columns for the new DataFrame
                 for col in ohlc_columns + other_columns:
                     per_minute_ohlc_df[col] = np.nan
-            # Reload the info_dict and convert_rate_dict
-            fetched_info_dict = pickle.loads(local_redis.get_data('info_dict'))
+                    
+            # Performance tracking - info dict reload
+            convert_rate_dict_reload_start = time.time()
+            # Reload convert_rate_dict
             fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in local_redis.hgetall_dict('convert_rate_dict').items()}
+            convert_rate_dict_reload_time = time.time() - convert_rate_dict_reload_start
+            logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Info dict reload took {convert_rate_dict_reload_time:.4f} seconds")
+            
+            # Performance tracking - full iteration
+            total_loop_time = time.time() - loop_start_time
+            logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Full iteration took {total_loop_time:.4f} seconds [premium:{premium_fetch_time:.4f}, prep:{prep_time:.4f}, update:{update_ohlc_time:.4f}, redis:{redis_update_time:.4f}, minute_change:{minute_transition_time:.4f}, reload:{convert_rate_dict_reload_time:.4f}]")
+            
         except Exception as e:
             content = f"ohlc_1T_loader|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_1T_loader: {traceback.format_exc()}"
             logger.error(content)
