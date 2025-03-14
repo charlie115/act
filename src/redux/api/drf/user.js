@@ -1,6 +1,7 @@
 import drfApi from 'redux/api/drf';
 
 const FAVORITE_ASSETS_URL = '/users/favorite-assets/';
+const UNBIND_TELEGRAM_URL = '/users/users/unbind-telegram/';
 
 const api = drfApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -67,6 +68,13 @@ const api = drfApi.injectEndpoints({
      }),
       invalidatesTags: ['WithdrawalRequests'],
     }),
+    unbindTelegram: builder.mutation({
+      query: () => ({
+        url: UNBIND_TELEGRAM_URL,
+        method: 'POST',
+      }),
+      invalidatesTags: ['User'],
+    }),
   }),
 });
 
@@ -80,4 +88,5 @@ export const {
   useLazyGetDepositBalanceQuery,
   useGetWithdrawalRequestsQuery,
   usePostWithdrawalRequestMutation,
+  useUnbindTelegramMutation,
 } = api;

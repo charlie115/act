@@ -218,7 +218,7 @@ export default function PositionTable({ marketCodeCombination }) {
           origin_market_liquidation_price: Number(item.liquidation_price || 0),
           origin_market_margin_type: item.margin_type,
         };
-        const hedge = Number(data.target_market_pos) + Number(data.origin_market_pos);
+        const hedge = Math.abs(Number(data.target_market_pos) + Number(data.origin_market_pos));
         return {
           hedge_status: parseFloat((hedge || 0).toFixed(5)) <= ERROR_RATE,
           ...data,
