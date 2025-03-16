@@ -38,9 +38,10 @@ function App() {
   const { clearCookie: clearCountdown } = useCookie('dpcntdwn');
 
   useEffect(() => {
-    Settings.defaultZone = DateTime.local().zoneName;
-    dispatch(setTimezone(Settings.defaultZone.zoneName));
-  }, []);
+    const localZone = DateTime.local().zoneName;
+    Settings.defaultZone = localZone;
+    dispatch(setTimezone(localZone));
+  }, [dispatch]);
 
   useEffect(() => {
     if (!loggedin) {

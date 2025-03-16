@@ -36,6 +36,7 @@ import renderTruncatedCell from 'components/tables/common/renderTruncatedCell';
 import renderWithdrawalStatusCell from 'components/tables/deposit/renderWithdrawalStatusCell';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
+import renderDateCell from 'components/tables/common/renderDateCell';
 
 export default function WithdrawDeposit() {
   const theme = useTheme();
@@ -143,6 +144,7 @@ export default function WithdrawDeposit() {
         accessorKey: 'requested_datetime',
         size: isMobile ? 40 : 80,
         header: t('Date'),
+        cell: renderDateCell,
       },
     ],
     [isMobile, t]
@@ -153,9 +155,8 @@ export default function WithdrawDeposit() {
     () =>
       (withdrawalRequests?.results?.map((item) => ({
         ...item,
-        requested_datetime: DateTime.fromISO(item.requested_datetime, {
-          zone: 'local',
-        }).toLocaleString(DateTime.DATETIME_MED),
+        // Keep the raw ISO string for renderDateCell to process
+        requested_datetime: item.requested_datetime,
         // Keep original for sorting
         original_datetime: DateTime.fromISO(item.requested_datetime),
       })) || [])

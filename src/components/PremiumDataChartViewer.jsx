@@ -20,6 +20,8 @@ import ArrowRightAltIcon from '@mui/icons-material/ArrowRightAlt';
 import RemoveIcon from '@mui/icons-material/Remove';
 import StarIcon from '@mui/icons-material/Star';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import CandlestickChartIcon from '@mui/icons-material/CandlestickChart';
+import TimelineIcon from '@mui/icons-material/Timeline';
 
 import { useTheme } from '@mui/material/styles';
 
@@ -223,13 +225,56 @@ const PremiumDataChartViewer = forwardRef(
 
     const isFavorite = !isUndefined(favoriteAssetId);
 
+    // Initialize chart mode from localStorage if available
+    const initChartMode = () => {
+      try {
+        const storedMode = localStorage.getItem(`${baseAsset}_chart_mode`);
+        return storedMode === 'line' ? 'line' : 'candlestick'; // Default to candlestick
+      } catch (e) {
+        return 'candlestick';
+      }
+    };
+    
+    const [chartMode, setChartMode] = useState(initChartMode);
+    
+    // Effect to handle window focus/blur events to preserve chart mode
+    useEffect(() => {
+      const handleFocus = () => {
+        // Read from localStorage on focus to ensure mode is preserved
+        try {
+          const storedMode = localStorage.getItem(`${baseAsset}_chart_mode`);
+          if (storedMode && (storedMode === 'candlestick' || storedMode === 'line')) {
+            setChartMode(storedMode);
+          }
+        } catch (e) {
+          // Ignore storage errors
+        }
+      };
+      
+      window.addEventListener('focus', handleFocus);
+      
+      return () => {
+        window.removeEventListener('focus', handleFocus);
+      };
+    }, [baseAsset]);
+
     return (
       <Card
         ref={wrapperRef}
         onClick={(e) => e.stopPropagation()}
-        sx={{ borderRadius: 0 }}
+        sx={{ 
+          borderRadius: 0,
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
       >
-        <Box sx={{ bgcolor: 'background.paper' }}>
+        <Box sx={{ 
+          bgcolor: 'background.paper',
+          flexGrow: 1,
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
           {showExchangeWallets && (
             <Box>
               {(targetMarketCode?.value.includes('SPOT') ||
@@ -300,19 +345,38 @@ const PremiumDataChartViewer = forwardRef(
               item
               xs={3}
               sm={6}
-              sx={{ display: 'flex', justifyContent: 'center' }}
+              sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
             >
               {chartDataType !== 'FR' &&
                 chartDataType !== 'FRD' &&
                 chartDataType !== 'AFRD' && (
-                  <IntervalSelector
-                    defaultValue={klineInterval}
-                    disabled={!isAuthorized}
-                    onChange={(value) => {
-                      premiumKlineChartRef?.current?.reinitialize();
-                      setKlineInterval(value);
-                    }}
-                  />
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <IntervalSelector
+                      defaultValue={klineInterval}
+                      disabled={!isAuthorized}
+                      onChange={(value) => {
+                        premiumKlineChartRef?.current?.reinitialize();
+                        setKlineInterval(value);
+                      }}
+                    />
+                    {(chartDataType === 'SL' || 
+                      chartDataType === 'LS' || 
+                      chartDataType === 'tp') && (
+                      <Tooltip 
+                        title={t(chartMode === 'candlestick' ? 'Switch to Line Chart' : 'Switch to Candlestick Chart')}
+                      >
+                        <IconButton 
+                          onClick={() => setChartMode(chartMode === 'candlestick' ? 'line' : 'candlestick')}
+                          color="primary"
+                          size="small"
+                        >
+                          {chartMode === 'candlestick' ? 
+                            <TimelineIcon /> : 
+                            <CandlestickChartIcon />}
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Stack>
                 )}
             </Grid>
             <Grid
@@ -344,26 +408,34 @@ const PremiumDataChartViewer = forwardRef(
               )}
             </Grid>
           </Grid>
-          <ChartRenderer
-            triggerConfig={triggerConfig}
-            chartDataType={chartDataType}
-            klineInterval={klineInterval}
-            targetMarketCode={targetMarketCode}
-            originMarketCode={originMarketCode}
-            marketCodes={marketCodes}
-            baseAsset={baseAsset}
-            subtrahend={subtrahend}
-            isKimpExchange={isKimpExchange}
-            isTetherPriceView={isTetherPriceView}
-            queryKey={queryKey}
-            showMarketCodes={showMarketCodes}
-            premiumKlineChartRef={premiumKlineChartRef}
-            onSwapMarketCodes={() =>
-              setSubtrahend((state) =>
-                state === 'origin' ? 'target' : 'origin'
-              )
-            }
-          />
+          <Box sx={{ 
+            flexGrow: 1, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            minHeight: 0
+          }}>
+            <ChartRenderer
+              triggerConfig={triggerConfig}
+              chartDataType={chartDataType}
+              chartMode={chartMode}
+              klineInterval={klineInterval}
+              targetMarketCode={targetMarketCode}
+              originMarketCode={originMarketCode}
+              marketCodes={marketCodes}
+              baseAsset={baseAsset}
+              subtrahend={subtrahend}
+              isKimpExchange={isKimpExchange}
+              isTetherPriceView={isTetherPriceView}
+              queryKey={queryKey}
+              showMarketCodes={showMarketCodes}
+              premiumKlineChartRef={premiumKlineChartRef}
+              onSwapMarketCodes={() =>
+                setSubtrahend((state) =>
+                  state === 'origin' ? 'target' : 'origin'
+                )
+              }
+            />
+          </Box>
         </Box>
       </Card>
     );
@@ -412,6 +484,7 @@ function MarketCodesRenderer({
 function ChartRenderer({
   triggerConfig,
   chartDataType,
+  chartMode,
   klineInterval,
   targetMarketCode,
   originMarketCode,
@@ -428,7 +501,7 @@ function ChartRenderer({
   switch (chartDataType) {
     case 'FR':
       return (
-        <Grid container>
+        <Grid container sx={{ height: '100%' }}>
           {!targetMarketCode.value.includes('SPOT') && (
             <Grid
               item
@@ -463,7 +536,7 @@ function ChartRenderer({
       );
     case 'FRD':
       return (
-        <>
+        <Box sx={{ height: '100%' }}>
           <MarketCodesRenderer
             {...(chartDataType !== 'FRD'
               ? { leftMarket: targetMarketCode, rightMarket: originMarketCode }
@@ -487,11 +560,11 @@ function ChartRenderer({
             }}
             subtrahend={subtrahend}
           />
-        </>
+        </Box>
       );
     case 'AFRD':
       return (
-        <>
+        <Box sx={{ height: '100%' }}>
           <MarketCodesRenderer
             {...(chartDataType !== 'AFRD'
               ? { leftMarket: targetMarketCode, rightMarket: originMarketCode }
@@ -515,13 +588,13 @@ function ChartRenderer({
             }}
             subtrahend={subtrahend}
           />
-        </>
+        </Box>
       );
     case 'SL':
     case 'LS':
     case 'tp':
       return (
-        <>
+        <Box sx={{ height: '100%' }}>
           {showMarketCodes && (
             <MarketCodesRenderer
               {...(chartDataType !== 'FRD'
@@ -542,18 +615,24 @@ function ChartRenderer({
               onSwapMarketCodes={onSwapMarketCodes}
             />
           )}
-          <LightWeightPremiumKlineChart
-            ref={premiumKlineChartRef}
-            baseAsset={baseAsset}
-            triggerConfig={triggerConfig}
-            dataType={chartDataType}
-            interval={klineInterval}
-            marketCodes={marketCodes}
-            queryKey={queryKey}
-            isKimpExchange={isKimpExchange}
-            isTetherPriceView={isTetherPriceView}
-          />
-        </>
+          <Box sx={{ 
+            height: showMarketCodes ? 'calc(100% - 40px)' : '100%',
+            overflow: 'hidden'
+          }}>
+            <LightWeightPremiumKlineChart
+              ref={premiumKlineChartRef}
+              baseAsset={baseAsset}
+              triggerConfig={triggerConfig}
+              dataType={chartDataType}
+              chartMode={chartMode}
+              interval={klineInterval}
+              marketCodes={marketCodes}
+              queryKey={queryKey}
+              isKimpExchange={isKimpExchange}
+              isTetherPriceView={isTetherPriceView}
+            />
+          </Box>
+        </Box>
       );
     default:
       return <LinearProgress />;

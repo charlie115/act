@@ -34,6 +34,7 @@ import UpdateTriggerForm from 'components/UpdateTriggerForm';
 
 import renderCurrencyFormatCell from 'components/tables/common/renderCurrencyFormatCell';
 import renderExpandCell from 'components/tables/common/renderExpandCell';
+import renderDateCell from 'components/tables/common/renderDateCell';
 import renderSelectCell from './renderSelectCell';
 import renderStatusCell from './renderStatusCell';
 import renderValueCell from './renderValueCell';
@@ -128,6 +129,7 @@ export default function TradesTable({
       {
         accessorKey: 'created',
         header: t('Created'),
+        cell: renderDateCell,
       },
       {
         accessorKey: 'edit',
@@ -157,11 +159,7 @@ export default function TradesTable({
         baseAsset: trade.base_asset,
         entry: trade.low,
         exit: trade.high,
-        created: DateTime.fromISO(trade.registered_datetime, {
-          zone: 'local',
-        })
-          .toLocal()
-          .toLocaleString(DateTime.DATETIME_MED),
+        created: trade.registered_datetime,
         status: trade.trade_switch,
         tradeCapital: trade.trade_capital,
         isTether: trade.usdt_conversion,

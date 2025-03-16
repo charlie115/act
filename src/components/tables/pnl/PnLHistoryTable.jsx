@@ -140,10 +140,7 @@ export default function PnLHistoryTable({
     () =>
       orderBy(
         data || [],
-        (o) =>
-          DateTime.fromISO(o.registered_datetime, {
-            zone: 'local',
-          }).toMillis(),
+        (o) => o.registered_datetime,
         'desc'
       ).map((item) => ({
         ...item,
@@ -206,6 +203,7 @@ export default function PnLHistoryTable({
         accessorKey: 'created',
         header: t('Created'),
         size: isMobile ? 40 : 140,
+        cell: renderDateCell,
       },
     ],
     [i18n.language, isMobile]
@@ -220,9 +218,7 @@ export default function PnLHistoryTable({
         entry: tradeData.low,
         exit: tradeData.high,
         tradeCapital: tradeData.trade_capital,
-        created: DateTime.fromISO(tradeData.registered_datetime).toLocaleString(
-          DateTime.DATETIME_MED
-        ),
+        created: tradeData.registered_datetime,
         isTether: tradeData.usdt_conversion,
         deleted: tradeData.deleted,
         marketCodes: {

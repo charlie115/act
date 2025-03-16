@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import ReactTableUI from 'components/ReactTableUI';
 
 import renderCurrencyFormatCell from 'components/tables/common/renderCurrencyFormatCell';
+import renderDateCell from 'components/tables/common/renderDateCell';
 
 import renderDepositTypeCell from './renderDepositTypeCell';
 
@@ -52,7 +53,7 @@ export default function DepositHistoryTable({ isLoading, tableData }) {
         accessorKey: 'registered_datetime',
         size: isMobile ? 40 : 80,
         header: t('Date'),
-        // cell: renderDateCell,
+        cell: renderDateCell,
       },
     ],
     [i18n.language]

@@ -64,16 +64,22 @@ const LightWeightBaseChart = forwardRef(
     const [showForwardArrow, setShowForwardArrow] = useState(false);
 
     const onVisibleLogicalRangeChange = (newVisibleLogicalRange) => {
-      const newBarsInfo = baseSeriesRef.current.barsInLogicalRange(
-        newVisibleLogicalRange
-      );
-      if (newBarsInfo && Math.floor(newBarsInfo.barsAfter) >= 100)
-        setShowForwardArrow(true);
-      if (newBarsInfo && Math.floor(newBarsInfo.barsAfter) === 0)
-        setShowForwardArrow(false);
-      if (newBarsInfo && Math.floor(newBarsInfo.barsBefore) >= -1)
-        setBarsInfo(null);
-      else setBarsInfo(newBarsInfo);
+      if (!baseSeriesRef.current) return;
+      
+      try {
+        const newBarsInfo = baseSeriesRef.current.barsInLogicalRange(
+          newVisibleLogicalRange
+        );
+        if (newBarsInfo && Math.floor(newBarsInfo.barsAfter) >= 100)
+          setShowForwardArrow(true);
+        if (newBarsInfo && Math.floor(newBarsInfo.barsAfter) === 0)
+          setShowForwardArrow(false);
+        if (newBarsInfo && Math.floor(newBarsInfo.barsBefore) >= -1)
+          setBarsInfo(null);
+        else setBarsInfo(newBarsInfo);
+      } catch (e) {
+        console.warn('Error in onVisibleLogicalRangeChange:', e);
+      }
     };
     const debouncedOnVisibleLogicalRangeChange = useCallback(
       debounce(onVisibleLogicalRangeChange, 500, {

@@ -17,20 +17,42 @@ export default function DepositHistory() {
   const { data, isFetching } = useGetDepositHistoryQuery();
 
   const tableData = useMemo(
-    () =>
-      (data?.results?.map((item) => ({
-        ...item,
-        balance: parseFloat(item.balance || 0),
-        change: parseFloat(item.change || 0),
-        registered_datetime: DateTime.fromISO(item.registered_datetime, {
-          zone: 'local',
-        }).toLocaleString(DateTime.DATETIME_MED),
-        // Keep original datetime for sorting
-        original_datetime: DateTime.fromISO(item.registered_datetime, {
-          zone: 'local',
-        }),
-      })) || [])
-      .sort((a, b) => b.original_datetime.toMillis() - a.original_datetime.toMillis()),
+    () => {
+      try {
+        return (data?.results?.map((item) => {
+          let originalDateTime;
+          try {
+            // Convert string to DateTime object
+            originalDateTime = item.registered_datetime ? 
+              DateTime.fromISO(item.registered_datetime) : 
+              DateTime.local();
+          } catch (e) {
+            // Fallback if DateTime creation fails
+            originalDateTime = { toMillis: () => 0 };
+          }
+          
+          return {
+            ...item,
+            balance: parseFloat(item.balance || 0),
+            change: parseFloat(item.change || 0),
+            registered_datetime: item.registered_datetime,
+            // Store the DateTime object for sorting
+            original_datetime: originalDateTime,
+          };
+        }) || [])
+        .sort((a, b) => {
+          try {
+            return b.original_datetime.toMillis() - a.original_datetime.toMillis();
+          } catch (e) {
+            // Fallback sorting if toMillis fails
+            return 0;
+          }
+        });
+      } catch (error) {
+        console.error("Error processing deposit history data:", error);
+        return [];
+      }
+    },
     [data, i18n]
   );
 

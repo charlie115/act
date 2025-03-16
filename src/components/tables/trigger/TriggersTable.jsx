@@ -69,6 +69,7 @@ import renderCurrencyFormatCell from 'components/tables/common/renderCurrencyFor
 import renderExpandCell from 'components/tables/common/renderExpandCell';
 import renderFundingRateHeader from 'components/tables/common/renderFundingRateHeader';
 import renderFundingRateCell from 'components/tables/common/renderFundingRateCell';
+import renderDateCell from 'components/tables/common/renderDateCell';
 
 import renderAutoRepeatSwitchCell from './renderAutoRepeatSwitchCell';
 import renderMarketCodesCell from './renderMarketCodesCell';
@@ -343,6 +344,7 @@ export default function TriggersTable({
         accessorKey: 'created',
         size: isMobile ? 40 : 100,
         header: t('Created'),
+        cell: renderDateCell,
         props: { sx: { fontSize: 11 } },
       },
       {
@@ -422,11 +424,7 @@ export default function TriggersTable({
           entry: trade.low,
           exit: trade.high,
           tradeCapital: trade.trade_capital,
-          created: DateTime.fromISO(trade.registered_datetime, {
-            zone: 'local',
-          })
-            .toLocal()
-            .toLocaleString(DateTime.DATETIME_MED),
+          created: trade.registered_datetime,
           isTether: trade.usdt_conversion,
           isDeleteLoading,
           status: trade.trade_switch,

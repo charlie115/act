@@ -41,6 +41,7 @@ const LightWeightPremiumKlineChart = forwardRef(
       baseAsset,
       triggerConfig,
       dataType,
+      chartMode = 'candlestick',
       interval,
       marketCodes,
       queryKey,
@@ -61,6 +62,7 @@ const LightWeightPremiumKlineChart = forwardRef(
     const chartRef = useRef();
 
     const candlestickSeriesRef = useRef();
+    const premiumLineSeriesRef = useRef();
     const lineSeriesRef = useRef();
 
     const triggerEntryPriceLineRef = useRef();
@@ -78,6 +80,10 @@ const LightWeightPremiumKlineChart = forwardRef(
     const [loadedHistoricalData, setLoadedHistoricalData] = useState([]);
     const [preloadedData, setPreloadedData] = useState([]);
 
+    const prevChartMode = usePrevious(chartMode);
+
+    const [isChartReady, setIsChartReady] = useState(false);
+
     const reinitialize = () => {
       setStartTime(null);
       setEndTime(null);
@@ -86,8 +92,29 @@ const LightWeightPremiumKlineChart = forwardRef(
       setLoadedHistoricalData([]);
       setPreloadedData([]);
 
-      candlestickSeriesRef.current?.setData([]);
-      lineSeriesRef.current?.setData([]);
+      if (candlestickSeriesRef.current) {
+        try {
+          candlestickSeriesRef.current.setData([]);
+        } catch (e) {
+          console.warn('Error clearing candlestick series:', e);
+        }
+      }
+      
+      if (premiumLineSeriesRef.current) {
+        try {
+          premiumLineSeriesRef.current.setData([]);
+        } catch (e) {
+          console.warn('Error clearing premium line series:', e);
+        }
+      }
+      
+      if (lineSeriesRef.current) {
+        try {
+          lineSeriesRef.current.setData([]);
+        } catch (e) {
+          console.warn('Error clearing line series:', e);
+        }
+      }
     };
 
     useImperativeHandle(
@@ -97,8 +124,10 @@ const LightWeightPremiumKlineChart = forwardRef(
         getChart: () => chartRef.current,
         getCandlestickSeries: () => candlestickSeriesRef.current,
         getLineSeries: () => lineSeriesRef.current,
+        getPremiumLineSeries: () => premiumLineSeriesRef.current,
+        getCurrentChartMode: () => chartMode,
       }),
-      []
+      [chartMode]
     );
 
     const showTether = useMemo(
@@ -171,10 +200,12 @@ const LightWeightPremiumKlineChart = forwardRef(
             low: value.dollar * (1 + low * 0.01),
             close: value.dollar * (1 + close * 0.01),
           },
+          premiumLine: { time, value: value.dollar * (1 + close * 0.01) },
           line: value.tp !== null ? { time, value: value.tp } : undefined,
         };
       return {
         candlestick: { time, open, high, low, close },
+        premiumLine: { time, value: close },
         line: value.tp !== null ? { time, value: value.tp } : undefined,
       };
     }, [data?.[baseAsset], dataType, showTether]);
@@ -186,8 +217,9 @@ const LightWeightPremiumKlineChart = forwardRef(
 
     const chartHistoricalData = useMemo(() => {
       const candlestick = [];
+      const premiumLine = [];
       const line = [];
-      if (!dataType) return { candlestick, line };
+      if (!dataType) return { candlestick, premiumLine, line };
 
       currentData?.forEach((item, index) => {
         const time = DateTime.fromISO(item.datetime_now);
@@ -195,24 +227,38 @@ const LightWeightPremiumKlineChart = forwardRef(
         const high = item[`${dataType}_high`] || 0;
         const low = item[`${dataType}_low`] || 0;
         const close = item[`${dataType}_close`] || 0;
-        if (showTether)
+        
+        const timeMs = time.toMillis() / 1000;
+        
+        if (showTether) {
           candlestick.push({
-            time: time.toMillis() / 1000,
+            time: timeMs,
             open: item.dollar * (1 + open * 0.01),
             high: item.dollar * (1 + high * 0.01),
             low: item.dollar * (1 + low * 0.01),
             close: item.dollar * (1 + close * 0.01),
           });
-        else
+          premiumLine.push({
+            time: timeMs,
+            value: item.dollar * (1 + close * 0.01),
+          });
+        } else {
           candlestick.push({
-            time: time.toMillis() / 1000,
+            time: timeMs,
             open,
             high,
             low,
             close,
           });
+          premiumLine.push({
+            time: timeMs,
+            value: close,
+          });
+        }
+        
         if (item.tp !== null)
-          line.push({ time: time.toMillis() / 1000, value: item.tp });
+          line.push({ time: timeMs, value: item.tp });
+          
         const timeNext = currentData[index + 1]
           ? DateTime.fromISO(currentData[index + 1].datetime_now)
           : DateTime.now().minus({
@@ -223,7 +269,17 @@ const LightWeightPremiumKlineChart = forwardRef(
           to: timeNext,
           interval: intervalValue,
         });
+        
         candlestick.push(...whiteSpaceData);
+        
+        premiumLine.push(
+          ...whiteSpaceData.map((d) => ({
+            ...d,
+            color: 'transparent',
+            value: showTether ? item.dollar * (1 + close * 0.01) : close,
+          }))
+        );
+        
         line.push(
           ...whiteSpaceData.map((d) => ({
             ...d,
@@ -232,59 +288,66 @@ const LightWeightPremiumKlineChart = forwardRef(
           }))
         );
       });
-      return { candlestick, line };
+      
+      return { candlestick, premiumLine, line };
     }, [currentData, intervalValue, dataType, showTether]);
 
     useEffect(() => {
-      if (triggerEntryPriceLineRef.current)
-        candlestickSeriesRef.current?.removePriceLine(
-          triggerEntryPriceLineRef.current
-        );
-      if (triggerExitPriceLineRef.current)
-        candlestickSeriesRef.current?.removePriceLine(
-          triggerExitPriceLineRef.current
-        );
-      if (triggerConfig?.entry || triggerConfig?.exit) {
-        candlestickSeriesRef.current.applyOptions({ priceLineVisible: false });
-        lineSeriesRef.current.applyOptions({ priceLineVisible: false });
-      } else {
-        candlestickSeriesRef.current.applyOptions({ priceLineVisible: true });
-        lineSeriesRef.current.applyOptions({ priceLineVisible: true });
+      if (!isChartReady || !candlestickSeriesRef.current) return;
+      
+      try {
+        if (triggerEntryPriceLineRef.current)
+          candlestickSeriesRef.current.removePriceLine(
+            triggerEntryPriceLineRef.current
+          );
+        if (triggerExitPriceLineRef.current)
+          candlestickSeriesRef.current.removePriceLine(
+            triggerExitPriceLineRef.current
+          );
+        if (triggerConfig?.entry || triggerConfig?.exit) {
+          candlestickSeriesRef.current.applyOptions({ priceLineVisible: false });
+          lineSeriesRef.current.applyOptions({ priceLineVisible: false });
+        } else {
+          candlestickSeriesRef.current.applyOptions({ priceLineVisible: true });
+          lineSeriesRef.current.applyOptions({ priceLineVisible: true });
+        }
+        if (isNumber(triggerConfig?.entry)) {
+          triggerEntrySeriesRef.current?.setData([
+            {
+              time: DateTime.now().toMillis() / 1000,
+              value: triggerConfig.entry,
+            },
+          ]);
+          triggerEntryPriceLineRef.current =
+            candlestickSeriesRef.current.createPriceLine({
+              price: triggerConfig.entry,
+              color: theme.palette.accent.main,
+              lineWidth: 1,
+              lineStyle: 0,
+              axisLabelVisible: true,
+              title: t('ENTRY'),
+            });
+        } else {
+          triggerEntrySeriesRef.current?.setData([]);
+        }
+        if (isNumber(triggerConfig?.exit)) {
+          triggerExitSeriesRef.current?.setData([
+            { time: DateTime.now().toMillis() / 1000, value: triggerConfig.exit },
+          ]);
+          triggerExitPriceLineRef.current =
+            candlestickSeriesRef.current.createPriceLine({
+              price: triggerConfig.exit,
+              color: theme.palette.warning.main,
+              lineWidth: 1,
+              lineStyle: 0,
+              axisLabelVisible: true,
+              title: t('EXIT'),
+            });
+        } else triggerExitSeriesRef.current?.setData([]);
+      } catch (e) {
+        console.warn('Error updating trigger config:', e);
       }
-      if (isNumber(triggerConfig?.entry)) {
-        triggerEntrySeriesRef.current?.setData([
-          {
-            time: DateTime.now().toMillis() / 1000,
-            value: triggerConfig.entry,
-          },
-        ]);
-        triggerEntryPriceLineRef.current =
-          candlestickSeriesRef.current?.createPriceLine({
-            price: triggerConfig.entry,
-            color: theme.palette.accent.main,
-            lineWidth: 1,
-            lineStyle: 0,
-            axisLabelVisible: true,
-            title: t('ENTRY'),
-          });
-      } else {
-        triggerEntrySeriesRef.current?.setData([]);
-      }
-      if (isNumber(triggerConfig?.exit)) {
-        triggerExitSeriesRef.current?.setData([
-          { time: DateTime.now().toMillis() / 1000, value: triggerConfig.exit },
-        ]);
-        triggerExitPriceLineRef.current =
-          candlestickSeriesRef.current?.createPriceLine({
-            price: triggerConfig.exit,
-            color: theme.palette.warning.main,
-            lineWidth: 1,
-            lineStyle: 0,
-            axisLabelVisible: true,
-            title: t('EXIT'),
-          });
-      } else triggerExitSeriesRef.current?.setData([]);
-    }, [triggerConfig, interval, dataType, i18n.language]);
+    }, [triggerConfig, interval, dataType, i18n.language, isChartReady]);
 
     useEffect(
       () => () => {
@@ -317,8 +380,14 @@ const LightWeightPremiumKlineChart = forwardRef(
     }, [loadedHistoricalData, preloadedData]);
 
     useEffect(() => {
-      chartRef.current.timeScale().scrollToRealTime();
-    }, [interval]);
+      if (isChartReady && chartRef.current) {
+        try {
+          chartRef.current.timeScale().scrollToRealTime();
+        } catch (e) {
+          console.warn('Error scrolling to real time:', e);
+        }
+      }
+    }, [interval, isChartReady]);
 
     const prevQueryKey = usePrevious(queryKey);
     useEffect(() => {
@@ -328,20 +397,56 @@ const LightWeightPremiumKlineChart = forwardRef(
     }, [queryKey, isAuthorized]);
 
     useEffect(() => {
-      candlestickSeriesRef.current.setData(chartHistoricalData.candlestick);
-      lineSeriesRef.current.setData(chartHistoricalData.line);
-    }, [chartHistoricalData]);
+      if (!isChartReady || !candlestickSeriesRef.current || !premiumLineSeriesRef.current) return;
+      
+      try {
+        if (chartMode === 'candlestick') {
+          candlestickSeriesRef.current.applyOptions({ visible: true });
+          premiumLineSeriesRef.current.applyOptions({ visible: false });
+        } else {
+          candlestickSeriesRef.current.applyOptions({ visible: false });
+          premiumLineSeriesRef.current.applyOptions({ visible: true });
+        }
+        
+        if (prevChartMode !== chartMode && chartHistoricalData.candlestick.length > 0) {
+          if (chartRef.current && chartRef.current.timeScale) {
+            chartRef.current.timeScale().fitContent();
+          }
+        }
+      } catch (e) {
+        console.warn('Error updating chart mode:', e);
+      }
+    }, [chartMode, prevChartMode, chartHistoricalData.candlestick.length, isChartReady]);
+
+    useEffect(() => {
+      if (!isChartReady || !candlestickSeriesRef.current || !premiumLineSeriesRef.current) return;
+      
+      try {
+        candlestickSeriesRef.current.setData(chartHistoricalData.candlestick);
+        premiumLineSeriesRef.current.setData(chartHistoricalData.premiumLine);
+        lineSeriesRef.current.setData(chartHistoricalData.line);
+      } catch (e) {
+        console.warn('Error setting chart data:', e);
+      }
+    }, [chartHistoricalData, isChartReady]);
 
     useEffect(() => {
       if (
         !isFetchingInitialData &&
         !isFetchingHistoricalData &&
-        chartRealTimeData
+        chartRealTimeData &&
+        candlestickSeriesRef.current &&
+        premiumLineSeriesRef.current
       ) {
-        if (chartRealTimeData.candlestick)
+        if (chartRealTimeData.candlestick) {
           candlestickSeriesRef.current.update(chartRealTimeData.candlestick);
-        if (chartRealTimeData.line)
+        }
+        if (chartRealTimeData.premiumLine) {
+          premiumLineSeriesRef.current.update(chartRealTimeData.premiumLine);
+        }
+        if (chartRealTimeData.line) {
           lineSeriesRef.current.update(chartRealTimeData.line);
+        }
       }
     }, [chartRealTimeData, isFetchingHistoricalData, isFetchingInitialData]);
 
@@ -381,10 +486,82 @@ const LightWeightPremiumKlineChart = forwardRef(
       lineSeriesRef.current?.applyOptions({ title: t('Price') });
     }, [isMobile, showTether, i18n.language]);
 
+    useEffect(() => {
+      if (chartMode) {
+        try {
+          localStorage.setItem(`${baseAsset}_chart_mode`, chartMode);
+        } catch (error) {
+          // Ignore storage errors
+        }
+      }
+    }, [chartMode, baseAsset]);
+
+    useEffect(() => {
+      try {
+        const storedChartMode = localStorage.getItem(`${baseAsset}_chart_mode`);
+        if (storedChartMode && (storedChartMode === 'candlestick' || storedChartMode === 'line')) {
+          // We don't directly call setChartMode here to avoid conflicts
+          // The parent component (PremiumDataChartViewer) should read this and set the mode
+        }
+      } catch (error) {
+        // Ignore storage errors
+      }
+    }, [baseAsset]);
+
+    useEffect(() => () => {
+      if (refetchTimeoutRef.current) {
+        clearTimeout(refetchTimeoutRef.current);
+      }
+      
+      setIsChartReady(false);
+      
+      candlestickSeriesRef.current = null;
+      premiumLineSeriesRef.current = null;
+      lineSeriesRef.current = null;
+      triggerEntrySeriesRef.current = null;
+      triggerExitSeriesRef.current = null;
+      triggerEntryPriceLineRef.current = null;
+      triggerExitPriceLineRef.current = null;
+    }, []);
+
+    const candlestickSeriesOptions = useMemo(() => ({
+      priceScaleId: 'right',
+      downColor: theme.palette.error.main,
+      upColor: theme.palette.success.main,
+      wickDownColor: theme.palette.error.main,
+      wickUpColor: theme.palette.success.main,
+      priceLineVisible: false,
+      priceFormat: {
+        type: 'custom',
+        formatter: (price) =>
+          `${formatIntlNumber(price, 3, 3)} ${
+            showTether ? t('KRW') : '%'
+          }`,
+      },
+      visible: chartMode === 'candlestick'
+    }), [theme.palette, showTether, t, chartMode]);
+
+    const premiumLineSeriesOptions = useMemo(() => ({
+      priceScaleId: 'right',
+      color: theme.palette.accent.main,
+      crosshairMarkerVisible: true,
+      lineType: LineType.Curved,
+      lineWidth: 1.25,
+      priceFormat: {
+        type: 'custom',
+        formatter: (price) =>
+          `${formatIntlNumber(price, 3, 3)} ${
+            showTether ? t('KRW') : '%'
+          }`,
+      },
+      priceLineVisible: false,
+      visible: chartMode === 'line'
+    }), [theme.palette, showTether, t, chartMode]);
+
     return (
       <LightWeightBaseChart
         ref={chartRef}
-        baseSeriesRef={candlestickSeriesRef}
+        baseSeriesRef={chartMode === 'candlestick' ? candlestickSeriesRef : premiumLineSeriesRef}
         chartOptions={{
           leftPriceScale: { visible: true },
           rightPriceScale: { visible: true },
@@ -399,8 +576,9 @@ const LightWeightPremiumKlineChart = forwardRef(
           isFetchingHistoricalData
         }
         isUnauthorized={!isAuthorized}
+        sx={{ marginBottom: 0 }}
         onBarsInfoChanged={({ start, end }) => {
-          if (!isFetchingHistoricalData) {
+          if (!isFetchingHistoricalData && isChartReady) {
             setEndTime(end.toFormat(DATE_FORMAT_API_QUERY));
             setStartTime(
               start.startOf('minute').toFormat(DATE_FORMAT_API_QUERY)
@@ -408,44 +586,49 @@ const LightWeightPremiumKlineChart = forwardRef(
           }
         }}
         onReady={(baseChartRef) => {
-          candlestickSeriesRef.current =
-            baseChartRef.current.addCandlestickSeries({
-              priceScaleId: 'right',
-              downColor: theme.palette.error.main,
-              upColor: theme.palette.success.main,
-              wickDownColor: theme.palette.error.main,
-              wickUpColor: theme.palette.success.main,
-              priceLineVisible: false,
+          if (!baseChartRef.current) return;
+          
+          try {
+            candlestickSeriesRef.current =
+              baseChartRef.current.addCandlestickSeries(candlestickSeriesOptions);
+              
+            premiumLineSeriesRef.current = baseChartRef.current.addLineSeries(premiumLineSeriesOptions);
+            
+            lineSeriesRef.current = baseChartRef.current.addLineSeries({
+              priceScaleId: 'left',
+              color: theme.palette.primary.main,
+              crosshairMarkerVisible: false,
+              lineType: LineType.Curved,
+              lineWidth: 1,
               priceFormat: {
-                type: 'custom',
-                formatter: (price) =>
-                  `${formatIntlNumber(price, 3, 3)} ${
-                    showTether ? t('KRW') : '%'
-                  }`,
+                type: 'price',
+                precision: 2,
+                minMove: 0.01,
               },
+              priceLineVisible: false,
+              title: t('Price'),
             });
-          lineSeriesRef.current = baseChartRef.current.addLineSeries({
-            priceScaleId: 'left',
-            color: theme.palette.primary.main,
-            crosshairMarkerVisible: false,
-            lineType: LineType.Curved,
-            lineWidth: 1,
-            priceFormat: {
-              type: 'price',
-              precision: 2,
-              minMove: 0.01,
-            },
-            priceLineVisible: false,
-            title: t('Price'),
-          });
-          triggerEntrySeriesRef.current = baseChartRef.current.addLineSeries({
-            color: 'transparent',
-            lineWidth: 1,
-          });
-          triggerExitSeriesRef.current = baseChartRef.current.addLineSeries({
-            color: 'transparent',
-            lineWidth: 1,
-          });
+            
+            candlestickSeriesRef.current.applyOptions({ 
+              visible: chartMode === 'candlestick' 
+            });
+            premiumLineSeriesRef.current.applyOptions({ 
+              visible: chartMode === 'line' 
+            });
+            
+            triggerEntrySeriesRef.current = baseChartRef.current.addLineSeries({
+              color: 'transparent',
+              lineWidth: 1,
+            });
+            triggerExitSeriesRef.current = baseChartRef.current.addLineSeries({
+              color: 'transparent',
+              lineWidth: 1,
+            });
+            
+            setIsChartReady(true);
+          } catch (e) {
+            console.error('Error initializing chart:', e);
+          }
         }}
       />
     );
