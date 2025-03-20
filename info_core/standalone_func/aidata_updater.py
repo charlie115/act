@@ -129,7 +129,7 @@ def get_merged_data(market_code_combination, local_redis, mongodb_client):
     else:
         raise ValueError("Invalid market code combination. Currently only supports SPOT to Futures")
 
-def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_redis, mongodb_client, timeout=60):
+def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_redis, mongodb_client, logger,timeout=60):
     merged_df = get_merged_data(market_code_combination, local_redis, mongodb_client).head(50)
 
     origin_market_code, target_market_code = market_code_combination.split(':')
@@ -209,6 +209,7 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
         result_list = json.loads(result.replace("```json", "").replace("```", ""))
         return result_list
     except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse AI response as JSON: {e}. result: {result}...")
         raise ValueError(f"Failed to parse AI response as JSON: {e}. Response: {result[:200]}...")
 
 def store_ai_recommendation_data(market_code_combination, ai_api_key, mongo_db_dict, logger=None):
@@ -229,6 +230,7 @@ def store_ai_recommendation_data(market_code_combination, ai_api_key, mongo_db_d
                 ai_api_key, 
                 local_redis, 
                 mongodb_client,
+                logger,
                 timeout=60  # Adjust timeout as needed
             )
         except TimeoutError as e:
