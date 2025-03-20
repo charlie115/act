@@ -15,6 +15,7 @@ from etc.redis_connector.redis_helper import RedisHelper
 from etc.db_handler.mongodb_client import InitDBClient
 from kline_generator.kline_core import InitKlineCore
 from arbitrage_generator.arbitrage_core import InitAbitrageCore
+from aidata_generator.aidata_core import InitAiDataCore
 import _pickle as pickle
 from threading import Thread
 from multiprocessing import Manager
@@ -42,6 +43,7 @@ class InitCore:
                  node,
                  admin_id,
                  acw_api,
+                 ai_api_key,
                  exchange_api_key_dict,
                  enabled_market_klines,
                  enabled_arbitrage_markets,
@@ -58,6 +60,7 @@ class InitCore:
         self.monitor_websocket_switch = True
         self.exclude_outliers = True
         self.acw_api = acw_api
+        self.ai_api_key = ai_api_key
         self.exchange_api_key_dict = exchange_api_key_dict
         self.enabled_market_klines = enabled_market_klines
         self.enabled_arbitrage_markets = enabled_arbitrage_markets
@@ -193,6 +196,10 @@ class InitCore:
 
             # Start arbitrage core
             self.arbitrage_generator = InitAbitrageCore(self.admin_id, self.node, self.acw_api, self.enabled_arbitrage_markets, self.mongodb_dict, logging_dir)
+            
+            # Start ai data core
+            self.ai_data_generator = InitAiDataCore(self.admin_id, self.node, self.acw_api, self.ai_api_key, self.redis_dict, self.mongodb_dict, logging_dir)
+            self.ai_data_generator.start_aidata_generator()
 
         # Loading convert rate
         self.convert_rate_initialized = False

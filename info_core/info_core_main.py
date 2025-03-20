@@ -63,7 +63,7 @@ if __name__ == '__main__':
     BITHUMB_SECRET_KEY = os.getenv('BITHUMB_SECRET_KEY')
     BYBIT_ACCESS_KEY = os.getenv('BYBIT_ACCESS_KEY')
     BYBIT_SECRET_KEY = os.getenv('BYBIT_SECRET_KEY')
-    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+    AIENGINE_API_KEY = os.getenv('AIENGINE_API_KEY')
     ENABLED_MARKET_KLINES = [x for x in [x.strip() for x in os.getenv('ENABLED_MARKET_KLINES').split(',')] if x != ""]
     ENALBED_ARBITRAGE_MARKETS = [x for x in [x.strip() for x in os.getenv('ENALBED_ARBITRAGE_MARKETS').split(',')] if x != ""]
 
@@ -121,6 +121,7 @@ if __name__ == '__main__':
                     NODE,
                     ADMIN_TELEGRAM_ID,
                     acw_api,
+                    AIENGINE_API_KEY,
                     exchange_api_key_dict,
                     ENABLED_MARKET_KLINES,
                     ENALBED_ARBITRAGE_MARKETS,
