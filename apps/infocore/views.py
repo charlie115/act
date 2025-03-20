@@ -28,6 +28,8 @@ from infocore.serializers import (
     WalletStatusResponseSerializer,
     RankIndicatorQueryParamsSerializer,
     RankIndicatorSerializer,
+    AiRankRecommendationSerializer,
+    AiRankRecommendationQueryParamsSerializer,
 )
 from lib.filters import CharArrayFilter
 from lib.views import BaseViewSet
@@ -934,3 +936,68 @@ class RankIndicatorView(views.APIView):
             # del item["_normalized"]
 
         return combined_data
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Get AI rank recommendations",
+        description="Returns AI-generated recommendations with rank information",
+        parameters=[AiRankRecommendationQueryParamsSerializer],
+        responses={200: AiRankRecommendationSerializer(many=True)},
+        tags=["AI Recommendations"],
+    ),
+)
+class AiRankRecommendationView(views.APIView):
+    http_method_names = ["get"]
+    permission_classes = []
+    
+    def get(self, request):
+        try:
+            query_params = AiRankRecommendationQueryParamsSerializer(data=request.query_params)
+            query_params.is_valid(raise_exception=True)
+            query = query_params.validated_data
+            
+            target_market_code = query.get("target_market_code", "").replace("/", "__")
+            origin_market_code = query.get("origin_market_code", "").replace("/", "__")
+            
+            # Construct database name following the pattern in KlineDataView
+            database = f"{target_market_code}-{origin_market_code}"
+            collection_name = 'ai_recommendation_info'
+            
+            # Check if database exists
+            databases = MONGODB_CLI.list_database_names()
+            if database not in databases:
+                return response.Response(
+                    {"detail": f"Invalid market code combination: {target_market_code}-{origin_market_code}"},
+                    status=404
+                )
+            
+            db = MONGODB_CLI.get_database(database)
+            
+            # Check if collection exists
+            collections = db.list_collection_names()
+            if collection_name not in collections:
+                return response.Response(
+                    {"detail": f"Collection '{collection_name}' not found in database '{database}'."},
+                    status=404
+                )
+            
+            # Get collection
+            coll = db.get_collection(collection_name)
+            
+            # Fetch all documents from the collection
+            cursor = coll.find(
+                filter={},
+                projection={"_id": False}
+            ).sort("rank", 1)  # Sort by rank in ascending order
+            
+            # Serialize the data
+            results = [AiRankRecommendationSerializer(item).data for item in cursor]
+            
+            return response.Response(results)
+            
+        except Exception as e:
+            return response.Response(
+                {"detail": f"Error fetching AI recommendation data: {str(e)}"},
+                status=500
+            )

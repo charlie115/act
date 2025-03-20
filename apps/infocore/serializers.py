@@ -216,7 +216,24 @@ class RankIndicatorQueryParamsSerializer(serializers.Serializer):
     w_funding = serializers.FloatField(required=False)
     w_atp = serializers.FloatField(required=False)
 
+
 class RankIndicatorSerializer(serializers.Serializer):
     base_asset = serializers.CharField()
     # Rank indicator values.
     indicator_value = serializers.IntegerField()
+
+
+class AiRankRecommendationSerializer(serializers.Serializer):
+    rank = serializers.IntegerField()
+    base_asset = serializers.CharField()
+    risk_level = serializers.IntegerField()
+    explanation = serializers.CharField()
+    datetime_now = DateTimeWithTzField(
+        format=DATE_TIME_TZ_FORMAT,
+        default_timezone=TZ_UTC,
+    )
+
+
+class AiRankRecommendationQueryParamsSerializer(serializers.Serializer):
+    target_market_code = serializers.CharField(required=True)
+    origin_market_code = serializers.CharField(required=True)

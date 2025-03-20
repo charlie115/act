@@ -11,6 +11,7 @@ from infocore.views import (
     KlineVolatilityView,
     WalletStatusView,
     RankIndicatorView,
+    AiRankRecommendationView,
 )
 from lib.views import BaseAPIListView
 
@@ -75,5 +76,10 @@ urlpatterns = [
         "rank-indicator/",
         RankIndicatorView.as_view(),
         name="rank-indicator",
+    ),
+    path(
+        "ai-rank-recommendation/",
+        AiRankRecommendationView.as_view(),
+        name="ai-rank-recommendation",
     ),
 ]
