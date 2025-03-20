@@ -1,9 +1,8 @@
 import isEqual from 'lodash/isEqual';
-import memoize from 'lodash/memoize';
+// Remove memoize import since we're not using it anymore
+import websocketApi from 'redux/api/websocket';
 
 // import { DateTime } from 'luxon';
-
-import websocketApi from 'redux/api/websocket';
 
 // import { DATE_FORMAT_API_QUERY } from 'constants';
 
@@ -21,9 +20,49 @@ const api = websocketApi.injectEndpoints({
         url.searchParams.set('target_market_code', args.targetMarketCode);
         url.searchParams.set('origin_market_code', args.originMarketCode);
         url.searchParams.set('interval', args.interval);
-        const socket = new WebSocket(url.toString());
-
-        const onMessage = memoize((event) => {
+        
+        // Track connection state
+        let isConnecting = false;
+        let reconnectAttempts = 0;
+        let socket = null;
+        let heartbeatInterval = null;
+        let lastMessageTime = 0;
+        
+        // Declare connectWebSocket function first (but don't implement it yet)
+        let connectWebSocket;
+        
+        const startHeartbeat = () => {
+          // Clear any existing heartbeat interval
+          if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+          }
+          
+          // Record current time as last message time
+          lastMessageTime = Date.now();
+          
+          // Check connection health every 15 seconds
+          heartbeatInterval = setInterval(() => {
+            const currentTime = Date.now();
+            // If no message received for 45 seconds, connection is likely dead
+            if (currentTime - lastMessageTime > 45000 && socket && socket.readyState === WebSocket.OPEN) {
+              // Force close and reconnect
+              socket.close();
+            }
+          }, 15000);
+        };
+        
+        const stopHeartbeat = () => {
+          if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            heartbeatInterval = null;
+          }
+        };
+        
+        // Message handler
+        const onMessage = (event) => {
+          // Update last message time on any message
+          lastMessageTime = Date.now();
+          
           const message = JSON.parse(event.data);
           try {
             if (message.type === 'connect') return;
@@ -31,16 +70,6 @@ const api = websocketApi.injectEndpoints({
             const result = JSON.parse(message.result);
 
             updateCachedData((draft) => {
-              // result.forEach((item) => {
-              //   const dateTimeString = DateTime.fromMillis(
-              //     item.datetime_now
-              //   ).toFormat(DATE_FORMAT_API_QUERY);
-              //   item.datetime_now = DateTime.fromISO(dateTimeString).toMillis();
-
-              //   if (!(item.base_asset in draft)) draft[item.base_asset] = {};
-              //   if (!isEqual(item, draft[item.base_asset]))
-              //     draft[item.base_asset] = item;
-              // });
               result.forEach((item) => {
                 // Convert datetime_now from seconds to milliseconds
                 item.datetime_now *= 1000;
@@ -53,45 +82,82 @@ const api = websocketApi.injectEndpoints({
           } catch {
             /* empty */
           }
-        });
+        };
 
-        const onClose = memoize(() => {
-          try {
-            updateCachedData((draft) => {
-              Object.keys(draft).forEach((key) => delete draft[key]);
-              draft.disconnected = true;
-            });
-          } catch {
-            /* empty */
+        // Handle connection close with reconnection logic
+        const onClose = () => {
+          isConnecting = false;
+          
+          // Set disconnected state for UI feedback
+          updateCachedData((draft) => {
+            Object.keys(draft).forEach((key) => delete draft[key]);
+            draft.disconnected = true;
+          });
+          
+          // Implement exponential backoff
+          const maxReconnectDelay = 30000; // 30 seconds max
+          const baseDelay = 1000; // Start with 1 second
+          const delay = Math.min(
+            maxReconnectDelay,
+            baseDelay * (1.5 ** reconnectAttempts)
+          );
+          
+          reconnectAttempts += 1;
+          setTimeout(() => connectWebSocket(), delay);
+        };
+        
+        const onError = () => {
+          if (socket && socket.readyState !== WebSocket.CLOSED) {
+            socket.close(); // Will trigger the close handler with reconnection logic
           }
-        });
+        };
 
-        const onError = memoize(() => {
-          try {
-            updateCachedData((draft) => {
-              Object.keys(draft).forEach((key) => delete draft[key]);
-              draft.disconnected = true;
-            });
-          } catch {
-            /* empty */
-          }
-        });
-
-        try {
-          await cacheDataLoaded;
+        // Now implement the connectWebSocket function
+        connectWebSocket = () => {
+          if (isConnecting) return;
+          isConnecting = true;
+          
+          // Clear any "disconnected" state when attempting to connect
+          updateCachedData((draft) => {
+            if (draft.disconnected) delete draft.disconnected;
+          });
+          
+          // Create new WebSocket connection
+          socket = new WebSocket(url.toString());
+          
+          socket.addEventListener('open', () => {
+            isConnecting = false;
+            reconnectAttempts = 0; // Reset attempts on successful connection
+            startHeartbeat(); // Start heartbeat monitoring when connected
+          });
+          
           socket.addEventListener('message', onMessage);
           socket.addEventListener('close', onClose);
           socket.addEventListener('error', onError);
+        };
+        
+        // Start initial connection
+        connectWebSocket();
+        
+        try {
+          await cacheDataLoaded;
         } catch {
           // no-op in case `cacheEntryRemoved` resolves before `cacheDataLoaded`,
           // in which case `cacheDataLoaded` will throw
         }
+        
+        // Clean up on component unmount or query deactivation
         await cacheEntryRemoved;
-
-        socket.close();
-        socket.removeEventListener('message', onMessage);
-        socket.removeEventListener('close', onClose);
-        socket.removeEventListener('error', onError);
+        
+        stopHeartbeat(); // Stop heartbeat monitoring
+        if (socket) {
+          // Remove event listeners to prevent memory leaks
+          socket.removeEventListener('message', onMessage);
+          socket.removeEventListener('close', onClose);
+          socket.removeEventListener('error', onError);
+          socket.close();
+          socket = null;
+        }
       },
     }),
   }),

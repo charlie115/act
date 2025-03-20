@@ -228,10 +228,23 @@ const PremiumDataChartViewer = forwardRef(
     // Initialize chart mode from localStorage if available
     const initChartMode = () => {
       try {
+        // Check if user is on mobile first
+        const isMobile = window.matchMedia('(max-width: 900px)').matches;
+        
+        // For mobile users, default to line chart
+        if (isMobile) {
+          const storedMode = localStorage.getItem(`${baseAsset}_chart_mode`);
+          // Only use stored mode if explicitly set, otherwise default to line
+          return storedMode !== null ? storedMode : 'line';
+        }
+        
+        // For desktop, use stored preference or default to candlestick
         const storedMode = localStorage.getItem(`${baseAsset}_chart_mode`);
-        return storedMode === 'line' ? 'line' : 'candlestick'; // Default to candlestick
+        return storedMode === 'line' ? 'line' : 'candlestick';
       } catch (e) {
-        return 'candlestick';
+        // If there's an error, use candlestick for desktop, line for mobile
+        const isMobile = window.matchMedia('(max-width: 900px)').matches;
+        return isMobile ? 'line' : 'candlestick';
       }
     };
     
@@ -257,6 +270,17 @@ const PremiumDataChartViewer = forwardRef(
         window.removeEventListener('focus', handleFocus);
       };
     }, [baseAsset]);
+
+    useEffect(() => {
+      // Dispatch an event when chartDataType changes
+      try {
+        document.dispatchEvent(new CustomEvent('chartTypeChanged', {
+          detail: { type: chartDataType }
+        }));
+      } catch (e) {
+        console.warn('Error dispatching chart type change event:', e);
+      }
+    }, [chartDataType]);
 
     return (
       <Card

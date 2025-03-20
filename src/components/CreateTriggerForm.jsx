@@ -63,6 +63,7 @@ import { usePrevious } from '@uidotdev/usehooks';
 import isKoreanMarket from 'utils/isKoreanMarket';
 
 import NumberFormatWrapper from 'components/NumberFormatWrapper';
+import formatIntlNumber from 'utils/formatIntlNumber';
 
 const CreateTriggerForm = forwardRef(
   (
@@ -81,6 +82,7 @@ const CreateTriggerForm = forwardRef(
   ) => {
     const predictionSeriesRef = useRef();
     const regressionLineSeriesRef = useRef();
+    const lastPBoundaryRef = useRef(null); // Store the last successful pBoundary
 
     const { i18n, t } = useTranslation();
 
@@ -93,6 +95,18 @@ const CreateTriggerForm = forwardRef(
     const [autoRepeat, setAutoRepeat] = useState(0);
     const [disabled, setDisabled] = useState(false);
     const [setup, setSetup] = useState('manual');
+    const [pBoundaryState, setPBoundary] = useState(null);
+
+    // Add state to track chart tab changes
+    const [lastChartDataType, setLastChartDataType] = useState(null);
+
+    // Instead of trying to maintain references to chart series, store the data itself
+    const [pBoundaryData, setPBoundaryData] = useState(null);
+    const chartDataRef = useRef({
+      chartReady: false,
+      regressionSeries: null,
+      predictionSeries: null,
+    });
 
     useImperativeHandle(
       ref,
@@ -311,103 +325,261 @@ const CreateTriggerForm = forwardRef(
         }
     }, [dollar, isDollarSuccess, setup]);
 
-    useEffect(() => {
-      if (isPBoundarySuccess) {
-        const klineChartRef = premiumDataViewerRef?.current?.getKlineChartRef();
-        if (pBoundary?.regression_line?.x?.length > 0) {
-          if (!regressionLineSeriesRef.current)
-            regressionLineSeriesRef.current = klineChartRef?.current
-              ?.getChart()
-              ?.addLineSeries({
-                priceScaleId: 'right',
-                color: theme.palette.info.main,
-                axisLabelVisible: true,
-                crosshairMarkerVisible: false,
-                lastValueVisible: false,
-                lineStyle: LineStyle.Dotted,
-                lineType: LineType.Curved,
-                lineWidth: 3,
-                priceLineVisible: false,
-                title: t('Regression'),
-              });
-          regressionLineSeriesRef.current?.setData(
-            pBoundary.regression_line.x.map((date, idx) => ({
-              time:
-                DateTime.fromISO(date, {
-                  zone: 'UTC',
-                }).toMillis() / 1000,
-              value: pBoundary.regression_line.y?.[idx],
+    // Function to apply regression line and prediction points to the chart
+    const applyVisualizationsToChart = (force = false) => {
+      if (!pBoundaryData) return;
+      
+      // Get the current chart and verify it exists
+      const klineChartRef = premiumDataViewerRef?.current?.getKlineChartRef();
+      const chart = klineChartRef?.current?.getChart();
+      if (!chart) return;
+      
+      // Get current trigger values
+      const currentEntry = getValues('entry');
+      const currentExit = getValues('exit');
+      const parsedEntry = currentEntry ? parseFloat(currentEntry) : null;
+      const parsedExit = currentExit ? parseFloat(currentExit) : null;
+      
+      // Always remove old series first to prevent duplicates
+      try {
+        if (chartDataRef.current.regressionSeries) {
+          chart.removeSeries(chartDataRef.current.regressionSeries);
+          chartDataRef.current.regressionSeries = null;
+        }
+        if (chartDataRef.current.predictionSeries) {
+          chart.removeSeries(chartDataRef.current.predictionSeries);
+          chartDataRef.current.predictionSeries = null;
+        }
+      } catch (error) {
+        console.warn('Error removing old series', error);
+        // Continue even if removal failed - the chart might have been recreated
+      }
+      
+      // Create and add the regression line
+      if (pBoundaryData.regression_line?.x?.length > 0) {
+        try {
+          const regressionSeries = chart.addLineSeries({
+            priceScaleId: 'right',
+            color: theme.palette.info.main,
+            axisLabelVisible: true,
+            crosshairMarkerVisible: false,
+            lastValueVisible: false,
+            lineStyle: LineStyle.Dotted,
+            lineType: LineType.Curved,
+            lineWidth: 2,
+            priceLineVisible: false,
+            title: t('Regression'),
+            priceFormat: {
+              type: 'custom',
+              formatter: (price) =>
+                `${formatIntlNumber(price, 3, 3)} ${
+                  isTether ? t('KRW') : '%'
+                }`,
+            },
+          });
+          
+          // Set the data for the regression line
+          regressionSeries.setData(
+            pBoundaryData.regression_line.x.map((date, idx) => ({
+              time: DateTime.fromISO(date, { zone: 'UTC' }).toMillis() / 1000,
+              value: pBoundaryData.regression_line.y?.[idx],
             }))
           );
+          
+          // Store the reference to the series
+          chartDataRef.current.regressionSeries = regressionSeries;
+          
+        } catch (error) {
+          console.warn('Error creating regression line', error);
         }
-        if (pBoundary?.predicted_points?.y?.length > 0) {
-          const [entryDate] = pBoundary.predicted_points.x;
-          const [predictedEntry, predictedExit] = pBoundary.predicted_points.y;
-          setValue('entry', predictedEntry);
-          setValue('exit', predictedExit);
-          trigger('tradeCapital');
-          if (!predictionSeriesRef.current)
-            predictionSeriesRef.current = klineChartRef?.current
-              ?.getChart()
-              ?.addCandlestickSeries({
-                priceScaleId: 'right',
-                borderVisible: false,
-                downColor: 'transparent',
-                upColor: 'transparent',
-                wickDownColor: 'transparent',
-                wickUpColor: 'transparent',
-                crosshairMarkerVisible: false,
-                lastValueVisible: false,
-                priceLineVisible: false,
-              });
-          else predictionSeriesRef.current.setMarkers([]);
-          predictionSeriesRef.current.setData([
+      }
+      
+      // Create and add the prediction points - ensuring they match entry/exit values
+      if (pBoundaryData.predicted_points?.y?.length > 0) {
+        try {
+          const predictionSeries = chart.addCandlestickSeries({
+            priceScaleId: 'right',
+            borderVisible: false,
+            downColor: 'transparent',
+            upColor: 'transparent',
+            wickDownColor: 'transparent',
+            wickUpColor: 'transparent',
+            crosshairMarkerVisible: false,
+            lastValueVisible: false,
+            priceLineVisible: false,
+            priceFormat: {
+              type: 'custom',
+              formatter: (price) =>
+                `${formatIntlNumber(price, 3, 3)} ${
+                  isTether ? t('KRW') : '%'
+                }`,
+            },
+          });
+          
+          const [entryDate] = pBoundaryData.predicted_points.x;
+          // Use current entry/exit values if available, otherwise use prediction
+          const predictedEntry = parsedEntry || pBoundaryData.predicted_points.y[0];
+          const predictedExit = parsedExit || pBoundaryData.predicted_points.y[1];
+          
+          // Set the data for the prediction series
+          predictionSeries.setData([
             {
-              time:
-                DateTime.fromISO(entryDate, {
-                  zone: 'UTC',
-                }).toMillis() / 1000,
+              time: DateTime.fromISO(entryDate, { zone: 'UTC' }).toMillis() / 1000,
               open: predictedEntry,
               close: predictedExit,
               low: predictedEntry,
               high: predictedExit,
             },
           ]);
-          predictionSeriesRef.current.setMarkers(
-            pBoundary.predicted_points.x.map((date, idx) => ({
-              time:
-                DateTime.fromISO(date, {
-                  zone: 'UTC',
-                }).toMillis() / 1000,
-              position: idx === 0 ? 'belowBar' : 'aboveBar',
-              color: theme.palette.error.light,
-              shape: idx === 0 ? 'arrowUp' : 'arrowDown',
-              text: `${pBoundary.predicted_points.y?.[idx]}`,
-            }))
-          );
+          
+          // Set the markers for the prediction series
+          // Use current values for the marker text
+          predictionSeries.setMarkers([
+            {
+              time: DateTime.fromISO(entryDate, { zone: 'UTC' }).toMillis() / 1000,
+              position: 'belowBar',
+              color: theme.palette.accent.main, // Use same color as entry line
+              shape: 'arrowUp',
+              text: `${predictedEntry}`,
+            },
+            {
+              time: DateTime.fromISO(entryDate, { zone: 'UTC' }).toMillis() / 1000,
+              position: 'aboveBar',
+              color: theme.palette.warning.main, // Use same color as exit line
+              shape: 'arrowDown',
+              text: `${predictedExit}`,
+            }
+          ]);
+          
+          // Store the reference to the series
+          chartDataRef.current.predictionSeries = predictionSeries;
+          
+        } catch (error) {
+          console.warn('Error creating prediction series', error);
         }
       }
-    }, [pBoundary, isPBoundarySuccess, i18n.language]);
+      
+      // Notify that we updated triggerConfig
+      onTriggerConfigChange({
+        entry: parsedEntry,
+        exit: parsedExit,
+        isTether,
+      });
+    };
 
-    const prevIsTether = usePrevious(isTether);
+    // Handle successful pBoundary query
     useEffect(() => {
-      if (setup === 'manual') {
-        if (prevIsTether && !isTether) {
-          const entryValue = getValues('entry');
-          if (entryValue && parseFloat(entryValue) > 500)
-            setValue(
-              'entry',
-              (100 * (parseFloat(entryValue) / dollar.price - 1)).toFixed(3)
-            );
-          const exitValue = getValues('exit');
-          if (exitValue && parseFloat(exitValue) > 500)
-            setValue(
-              'exit',
-              (100 * (parseFloat(exitValue) / dollar.price - 1)).toFixed(3)
-            );
+      if (isPBoundarySuccess && pBoundary) {
+        // Store the boundary data
+        setPBoundaryData(pBoundary);
+        
+        // Set entry/exit values
+        if (pBoundary?.predicted_points?.y?.length > 0) {
+          const [predictedEntry, predictedExit] = pBoundary.predicted_points.y;
+          setValue('entry', predictedEntry);
+          setValue('exit', predictedExit);
+          trigger('tradeCapital');
+        }
+        
+        // Apply the visualizations to the chart
+        setTimeout(() => {
+          applyVisualizationsToChart(true);
+        }, 100); // Small delay to ensure chart is ready
+      }
+    }, [pBoundary, isPBoundarySuccess]);
+
+    // Listen for chart data type or tether changes
+    useEffect(() => {
+      if (pBoundaryData) {
+        // Short delay to ensure chart is updated first
+        setTimeout(() => {
+          applyVisualizationsToChart();
+        }, 200);
+      }
+    }, [isTether, i18n.language]);
+
+    // Add a listener for chart visibility changes or tab changes
+    useEffect(() => {
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible' && pBoundaryData) {
+          setTimeout(() => {
+            applyVisualizationsToChart(true);
+          }, 300);
+        }
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('focus', handleVisibilityChange);
+      
+      // Create a MutationObserver to detect chart changes
+      const observer = new MutationObserver(() => {
+        if (pBoundaryData) {
+          setTimeout(() => {
+            applyVisualizationsToChart();
+          }, 300);
+        }
+      });
+      
+      // Find the chart container element and observe changes
+      // Use a more reliable selector or wait for the element to be available
+      setTimeout(() => {
+        const chartContainer = document.querySelector('.tv-lightweight-charts') || 
+                              document.querySelector('[data-testid="chart-container"]') ||
+                              document.querySelector('.chart-container');
+        
+        if (chartContainer) {
+          observer.observe(chartContainer, { 
+            childList: true, 
+            subtree: true, 
+            attributes: true 
+          });
+        }
+      }, 500); // Give the chart time to render
+      
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('focus', handleVisibilityChange);
+        observer.disconnect();
+      };
+    }, [pBoundaryData]);
+
+    // Monitor for chart tab changes
+    useEffect(() => {
+      // Use a custom event to detect chart type changes
+      const chartTypeChangeHandler = () => {
+        if (pBoundaryData) {
+          setTimeout(() => {
+            applyVisualizationsToChart(true);
+          }, 300);
+        }
+      };
+      
+      document.addEventListener('chartTypeChanged', chartTypeChangeHandler);
+      
+      return () => {
+        document.removeEventListener('chartTypeChanged', chartTypeChangeHandler);
+      };
+    }, [pBoundaryData]);
+
+    // Add cleanup effect
+    useEffect(() => () => {
+      // Make sure to clean up any chart series when component unmounts
+      const klineChartRef = premiumDataViewerRef?.current?.getKlineChartRef();
+      const chart = klineChartRef?.current?.getChart();
+      
+      if (chart) {
+        try {
+          if (chartDataRef.current.regressionSeries) {
+            chart.removeSeries(chartDataRef.current.regressionSeries);
+          }
+          if (chartDataRef.current.predictionSeries) {
+            chart.removeSeries(chartDataRef.current.predictionSeries);
+          }
+        } catch (error) {
+          console.warn('Error cleaning up chart series', error);
         }
       }
-    }, [isTether, setup]);
+    }, []);
 
     useEffect(() => {
       autoSetupForm.reset();
@@ -450,6 +622,120 @@ const CreateTriggerForm = forwardRef(
     }, [disabled]);
 
     useEffect(() => () => onTriggerConfigChange({}), []);
+
+    // If we have previously calculated pBoundary data and isTether changes, recalculate
+    useEffect(() => {
+      if (pBoundary && setup === 'auto' && isSetupValid) {
+        const data = autoSetupForm.getValues();
+        getPBoundary({
+          baseAsset,
+          interval,
+          marketCodeCombination: `${marketCodes.targetMarketCode}:${marketCodes.originMarketCode}`,
+          tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid,
+          usdtConversion: isTether,
+          ...data,
+        });
+      }
+    }, [isTether]);
+
+    // Add a direct handler for when entry/exit values change to update visualization
+    useEffect(() => {
+      if (pBoundaryData && (entry || exit)) {
+        // This ensures arrows update when entry/exit values change
+        setTimeout(() => {
+          applyVisualizationsToChart(true);
+        }, 100);
+      }
+    }, [entry, exit]);
+
+    // Add a special effect for handling external isTether changes
+    // This will capture changes from the main table's showTether switch
+    const prevIsTetherView = usePrevious(isTetherPriceView);
+    useEffect(() => {
+      // Check if isTetherPriceView changed from external source
+      if (prevIsTetherView !== undefined && prevIsTetherView !== isTetherPriceView) {
+        // Update our local isTether state
+        setValue('isTether', isTetherPriceView);
+        
+        // If we have boundary data, refresh visualizations
+        if (pBoundaryData) {
+          setTimeout(() => {
+            applyVisualizationsToChart(true);
+          }, 200);
+        }
+        
+        // If in auto mode with calculation, recalculate
+        if (pBoundary && setup === 'auto' && isSetupValid) {
+          const data = autoSetupForm.getValues();
+          getPBoundary({
+            baseAsset,
+            interval,
+            marketCodeCombination: `${marketCodes.targetMarketCode}:${marketCodes.originMarketCode}`,
+            tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid,
+            usdtConversion: isTetherPriceView,
+            ...data,
+          });
+        }
+      }
+    }, [isTetherPriceView]);
+
+    // 4. Add a "ping" function that we'll call periodically to check for changes
+    const pingChart = () => {
+      // This function will be called periodically to check if visualizations need to be reapplied
+      const klineChartRef = premiumDataViewerRef?.current?.getKlineChartRef();
+      const chart = klineChartRef?.current?.getChart();
+      
+      if (chart && pBoundaryData) {
+        // Check if our series are visible in the chart
+        let needsRedraw = false;
+        
+        try {
+          // Simple visibility check - if these throw errors, series needs to be redrawn
+          if (chartDataRef.current.regressionSeries) {
+            const visibility = chartDataRef.current.regressionSeries.options().visible;
+            if (visibility === undefined) needsRedraw = true;
+          } else if (pBoundaryData?.regression_line?.x?.length > 0) {
+            needsRedraw = true;
+          }
+          
+          if (chartDataRef.current.predictionSeries) {
+            const visibility = chartDataRef.current.predictionSeries.options().visible;
+            if (visibility === undefined) needsRedraw = true;
+          } else if (pBoundaryData?.predicted_points?.y?.length > 0) {
+            needsRedraw = true;
+          }
+        } catch (e) {
+          // An error means the series is no longer valid - redraw needed
+          needsRedraw = true;
+        }
+        
+        if (needsRedraw) {
+          applyVisualizationsToChart(true);
+        }
+        
+        return needsRedraw; // Return whether we needed to redraw
+      }
+      
+      return false; // Return false if chart or pBoundaryData doesn't exist
+    };
+
+    // 5. Set up a more reliable periodic check for visualization state
+    useEffect(() => {
+      if (pBoundaryData) {
+        // Do initial application
+        setTimeout(() => {
+          applyVisualizationsToChart(true);
+        }, 300);
+        
+        // Set up periodic checks - rename 'interval' to 'checkInterval' to avoid name conflict
+        const checkInterval = setInterval(pingChart, 1000);
+        return () => {
+          clearInterval(checkInterval);
+          return undefined; // Explicit return to satisfy consistent-return rule
+        };
+      }
+      return undefined; // Explicit return when pBoundaryData is falsy
+    }, [pBoundaryData]);
 
     if (isFetching) return <LinearProgress />;
 
@@ -647,19 +933,70 @@ const CreateTriggerForm = forwardRef(
                         span: { paddingBottom: 0 },
                       }}
                       {...field}
-                      onChange={(e) => {
-                        field.onChange(e);
+                      onChange={(event) => {
+                        field.onChange(event);
+                        
+                        // If we have setup values, recalculate with new tether value
                         if (isSetupValid && setupSubmitCount > 0) {
                           const data = autoSetupForm.getValues();
                           getPBoundary({
                             baseAsset,
                             interval,
                             marketCodeCombination: `${marketCodes.targetMarketCode}:${marketCodes.originMarketCode}`,
-                            tradeConfigUuid:
-                              tradeConfigAllocation.trade_config_uuid,
-                            usdtConversion: e.target.checked,
+                            tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid,
+                            usdtConversion: event.target.checked,
                             ...data,
                           });
+                        } 
+                        // Otherwise if we have existing pBoundary data, reapply visualizations
+                        else if (pBoundaryData) {
+                          // When toggling tether mode, we may need to convert entry/exit values
+                          if (dollar?.price && isDollarSuccess) {
+                            try {
+                              const entryValue = getValues('entry');
+                              const exitValue = getValues('exit');
+                              
+                              if (entryValue) {
+                                const parsedEntry = parseFloat(entryValue);
+                                if (event.target.checked && parsedEntry <= 500) {
+                                  // Converting % to KRW
+                                  setValue(
+                                    'entry',
+                                    (dollar.price * (1 + parsedEntry / 100)).toFixed(3)
+                                  );
+                                } else if (!event.target.checked && parsedEntry > 500) {
+                                  // Converting KRW to %
+                                  setValue(
+                                    'entry',
+                                    (100 * (parsedEntry / dollar.price - 1)).toFixed(3)
+                                  );
+                                }
+                              }
+                              
+                              if (exitValue) {
+                                const parsedExit = parseFloat(exitValue);
+                                if (event.target.checked && parsedExit <= 500) {
+                                  // Converting % to KRW
+                                  setValue(
+                                    'exit',
+                                    (dollar.price * (1 + parsedExit / 100)).toFixed(3)
+                                  );
+                                } else if (!event.target.checked && parsedExit > 500) {
+                                  // Converting KRW to %
+                                  setValue(
+                                    'exit',
+                                    (100 * (parsedExit / dollar.price - 1)).toFixed(3)
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              console.warn('Error converting entry/exit values', e);
+                            }
+                          }
+                          
+                          setTimeout(() => {
+                            applyVisualizationsToChart(true);
+                          }, 200);
                         }
                       }}
                     />

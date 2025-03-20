@@ -117,7 +117,7 @@ function PremiumTable({
     
     const dataArray = Array.isArray(realTimeData) 
       ? realTimeData 
-      : Object.values(realTimeData);
+      : Object.values(realTimeData).filter(item => typeof item === 'object' && item !== null);
       
     return orderBy(dataArray, 'atp24h', 'desc');
   }, [realTimeData]);
@@ -323,131 +323,150 @@ function PremiumTable({
     [i18n.language, loggedin, marketCodes, isTetherPriceView, isMobile]
   );
 
-  const data = useMemo(
-    () =>
-      orderBy(
-        realTimeDataList?.map((asset) => {
-          const name = asset.base_asset;
-          let favoriteAssetId;
-          if (loggedin) favoriteAssetId = favoriteAssets?.[name];
-          else {
-            const index = localFavoriteAssets?.indexOf(name);
-            favoriteAssetId = index < 0 ? undefined : index;
-          }
-          const targetFR = targetFundingRate?.[name]?.[0];
-          const originFR = originFundingRate?.[name]?.[0];
+  const volatilityData = useMemo(() => {
+    if (!klineVolatilityData || !Array.isArray(klineVolatilityData)) return {};
+    
+    const result = {};
+    klineVolatilityData.forEach(item => {
+      if (item && item.base_asset) {
+        result[item.base_asset] = parseFloat(item.mean_diff || 0).toFixed(2);
+      }
+    });
+    
+    return result;
+  }, [klineVolatilityData]);
 
-          const target = marketCodes?.targetMarketCode.replace(
-            REGEX.spotMarketSuffix,
-            ''
-          );
-          const origin = marketCodes?.originMarketCode.replace(
-            REGEX.spotMarketSuffix,
-            ''
-          );
-          const walletStatusSummary = {
-            right: intersection(
-              walletStatus?.[name]?.[target]?.withdraw,
-              walletStatus?.[name]?.[origin]?.deposit
-            ),
-            left: intersection(
-              walletStatus?.[name]?.[target]?.deposit,
-              walletStatus?.[name]?.[origin]?.withdraw
-            ),
-            all: union(
-              walletStatus?.[name]?.[target]?.deposit,
-              walletStatus?.[name]?.[target]?.withdraw,
-              walletStatus?.[name]?.[origin]?.deposit,
-              walletStatus?.[name]?.[origin]?.withdraw
-            ),
-          };
-
-          const volatility = parseFloat(
-            klineVolatilityData?.find((o) => o.base_asset === name)?.mean_diff || 0
-          ).toFixed(2);
-
-          return {
-            name,
-            favoriteAssetId,
-            icon: assetsData?.[name]?.icon,
-            spread: asset ? asset.SL_close - asset.LS_close : '',
-            volatility,
-            ...(targetFR
-              ? {
-                  targetFundingRate: targetFR.funding_rate * 100,
-                  targetFR,
-                }
-              : {}),
-            ...(originFR
-              ? {
-                  originFundingRate: originFR.funding_rate * 100,
-                  originFR,
-                }
-              : {}),
-            ...asset,
-            walletStatus: walletStatusSummary,
-            walletNetworks: walletStatus?.[name],
-            chart: true,
-          };
-        }) ?? [],
-        (o) => !isUndefined(o.favoriteAssetId),
-        'desc'
-      ),
-    [
-      marketCodes,
-      realTimeDataList,
-      targetFundingRate,
-      originFundingRate,
-      walletStatus,
-      klineVolatilityData,
-      assetsData,
-      favoriteAssets,
-      localFavoriteAssets,
-      isWalletStatusSuccess,
-      loggedin,
-    ]
-  );
+  const data = useMemo(() => {
+    if (!realTimeDataList || realTimeDataList.length === 0) {
+      return [];
+    }
+    
+    const processedData = realTimeDataList.map((asset) => {
+      if (!asset || !asset.base_asset) return null;
+      
+      const name = asset.base_asset;
+      let favoriteAssetId;
+      
+      if (loggedin) {
+        favoriteAssetId = favoriteAssets?.[name];
+      } else {
+        const index = localFavoriteAssets?.indexOf(name) ?? -1;
+        favoriteAssetId = index >= 0 ? index : undefined;
+      }
+      
+      const targetFR = targetFundingRate?.[name]?.[0];
+      const originFR = originFundingRate?.[name]?.[0];
+      
+      let walletStatusSummary = {
+        right: [],
+        left: [],
+        all: []
+      };
+      
+      if (walletStatus && walletStatus[name] && marketCodes) {
+        const target = marketCodes.targetMarketCode.replace(
+          REGEX.spotMarketSuffix,
+          ''
+        );
+        const origin = marketCodes.originMarketCode.replace(
+          REGEX.spotMarketSuffix,
+          ''
+        );
+        
+        const targetWithdraw = walletStatus[name][target]?.withdraw || [];
+        const targetDeposit = walletStatus[name][target]?.deposit || [];
+        const originWithdraw = walletStatus[name][origin]?.withdraw || [];
+        const originDeposit = walletStatus[name][origin]?.deposit || [];
+        
+        walletStatusSummary = {
+          right: intersection(targetWithdraw, originDeposit),
+          left: intersection(targetDeposit, originWithdraw),
+          all: union(targetDeposit, targetWithdraw, originDeposit, originWithdraw)
+        };
+      }
+      
+      return {
+        name,
+        favoriteAssetId,
+        icon: assetsData?.[name]?.icon,
+        spread: asset ? asset.SL_close - asset.LS_close : '',
+        volatility: volatilityData[name] || '0.00',
+        ...(targetFR
+          ? {
+              targetFundingRate: targetFR.funding_rate * 100,
+              targetFR,
+            }
+          : {}),
+        ...(originFR
+          ? {
+              originFundingRate: originFR.funding_rate * 100,
+              originFR,
+            }
+          : {}),
+        ...asset,
+        walletStatus: walletStatusSummary,
+        walletNetworks: walletStatus?.[name] || {},
+        chart: true,
+      };
+    }).filter(Boolean);
+    
+    return orderBy(
+      processedData,
+      [(o) => !isUndefined(o.favoriteAssetId)],
+      ['desc']
+    );
+  }, [
+    realTimeDataList,
+    assetsData,
+    favoriteAssets,
+    localFavoriteAssets,
+    targetFundingRate,
+    originFundingRate,
+    walletStatus,
+    volatilityData,
+    marketCodes,
+    loggedin,
+  ]);
 
   const prevAssets = usePrevious(assets);
 
   useEffect(() => {
-    if (isSuccess) {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      
-      if (realTimeDataList.length > 0) {
-        const realTimeAssets = realTimeDataList
-          .map((item) => item.base_asset)
-          .filter(Boolean)
-          .sort();
-        
-        if (!isEqual(prevAssets, realTimeAssets)) {
-          setAssets(realTimeAssets);
-        }
-      } else if (!timeoutRef.current) {
-        timeoutRef.current = setTimeout(() => {
-          onDisconnected();
-          timeoutRef.current = null;
-        }, 2000);
-      }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
-  }, [isSuccess, realTimeDataList, prevAssets, onDisconnected]);
-
-  useEffect(() => {
+    
     if (realTimeData?.disconnected) {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      
+      console.log('WebSocket disconnected state detected');
       timeoutRef.current = setTimeout(() => {
         onDisconnected();
         timeoutRef.current = null;
       }, 3000);
+      return;
     }
-  }, [realTimeData, onDisconnected]);
+    
+    if (isSuccess && (!realTimeData || Object.keys(realTimeData).length === 0 || 
+        (Array.isArray(realTimeData) && realTimeData.length === 0))) {
+      console.log('Connection successful but no data received');
+      timeoutRef.current = setTimeout(() => {
+        onDisconnected();
+        timeoutRef.current = null;
+      }, 5000);
+    }
+  }, [realTimeData, isSuccess, onDisconnected]);
+
+  useEffect(() => {
+    if (isSuccess && realTimeDataList && realTimeDataList.length > 0) {
+      const realTimeAssets = realTimeDataList
+        .map(item => item.base_asset)
+        .filter(Boolean)
+        .sort();
+      
+      if (!isEqual(prevAssets, realTimeAssets)) {
+        setAssets(realTimeAssets);
+      }
+    }
+  }, [isSuccess, realTimeDataList, prevAssets]);
 
   useEffect(() => {
     if (!isEqual(prevAssets, assets)) {

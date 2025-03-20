@@ -112,6 +112,13 @@ const api = drfApi.injectEndpoints({
         params,
       }),
     }),
+    getAiRankRecommendation: builder.query({
+      keepUnusedDataFor: 0,
+      query: (params) => ({
+        url: '/infocore/ai-rank-recommendation/',
+        params,
+      }),
+    }),
     postAsset: builder.mutation({
       query: (body) => ({ url: '/infocore/assets/', method: 'POST', body }),
       invalidatesTags: ['Assets'],
@@ -132,6 +139,7 @@ export const {
   useGetKlineVolatilityQuery,
   useGetMarketCodesQuery,
   useGetWalletStatusQuery,
+  useGetAiRankRecommendationQuery,
   useLazyGetFundingRateQuery,
   usePostAssetMutation,
 } = api;

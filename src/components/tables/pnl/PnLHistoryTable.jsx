@@ -18,8 +18,6 @@ import {
   useGetTradeLogByUuidQuery,
 } from 'redux/api/drf/tradecore';
 
-import { DateTime } from 'luxon';
-
 import orderBy from 'lodash/orderBy';
 
 import ReactTableUI from 'components/ReactTableUI';
