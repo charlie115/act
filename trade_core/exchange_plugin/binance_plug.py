@@ -1003,6 +1003,9 @@ class UserBinanceAdaptor:
     def start_user_socket_stream(self, market_type, loop_secs=3, monitor_loop_secs=2.5):
         # A user should have at least one trade_df setting to start user socket stream.
         self.logger.info(f"start_socket_stream|start_socket_stream started.")
+        # Add a dictionary to track API key error counts
+        self.api_key_error_counts = {}
+        
         def monitor_user_stream_loop():
             input_type = 'monitor'
             title = 'monitor_user_stream stopped! restarting monitor_user_stream thread..'
@@ -1039,14 +1042,34 @@ class UserBinanceAdaptor:
                             row = row_tup[1]
                             # First check if the user has a valid api key
                             _, error_str = self.check_api_key(row['access_key'], row['secret_key'], futures=True)
+                            
                             if 'APIError' in error_str:
-                                # If the user has an invalid api key, send a message to the user and delete it from the database
-                                access_key_hidden = row['access_key'][:5] + '****' + row['access_key'][-5:]
-                                title = f"API key invalid"
-                                body = f"access_key: {access_key_hidden} 가 유효하지 않아 API키가 자동 삭제됩니다. IP 및 권한설정이 제대로 되었는지 확인하시고 다시 등록하십시오."
-                                self.acw_api.create_message_thread(row['telegram_id'], title, body, 'ERROR', send_times=1, send_term=1)
-                                # Delete the user's api key from the database
-                                self.delete_user_api_key(row['key_uuid'])
+                                # Track consecutive errors for this access key
+                                access_key = row['access_key']
+                                if access_key not in self.api_key_error_counts:
+                                    self.api_key_error_counts[access_key] = 0
+                                
+                                self.api_key_error_counts[access_key] += 1
+                                error_count = self.api_key_error_counts[access_key]
+                                
+                                access_key_hidden = access_key[:5] + '****' + access_key[-5:]
+                                self.logger.warning(f"API key validation error for {access_key_hidden}. Error count: {error_count}/10")
+                                
+                                # Only delete the API key if error count reaches 5
+                                if error_count >= 10:
+                                    title = f"API key invalid"
+                                    body = f"access_key: {access_key_hidden} 가 유효하지 않아 API키가 자동 삭제됩니다. IP 및 권한설정이 제대로 되었는지 확인하시고 다시 등록하십시오."
+                                    self.acw_api.create_message_thread(row['telegram_id'], title, body, 'ERROR', send_times=1, send_term=1)
+                                    # Delete the user's api key from the database
+                                    self.delete_user_api_key(row['key_uuid'])
+                                    # Reset error count after deletion
+                                    self.api_key_error_counts[access_key] = 0
+                                    self.logger.info(f"API key {access_key_hidden} deleted after 10 consecutive errors")
+                            else:
+                                # Reset error count if the API key is valid
+                                if row['access_key'] in self.api_key_error_counts:
+                                    self.api_key_error_counts[row['access_key']] = 0
+                            
                             if 'BINANCE' in self.market_code_combination.split(':')[0]:
                                 margin_call_mode = row['target_market_margin_call']
                             else:
