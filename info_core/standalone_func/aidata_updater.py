@@ -119,17 +119,42 @@ def get_merged_data(market_code_combination, local_redis, mongodb_client):
         kline_now_data = pd.merge(kline_now_data, funding_data, on='base_asset', how='left')
         kline_now_data['LS_close'] = kline_now_data['LS_close'].astype(float).round(3)
         kline_now_data['SL_close'] = kline_now_data['SL_close'].astype(float).round(3)
-        kline_now_data['tp'] = kline_now_data['tp'].astype(float)
+        kline_now_data['LS_z_score'] = ((kline_now_data['LS_close'] - kline_now_data['LS_close'].mean()) / kline_now_data['LS_close'].std()).round(3)
         kline_now_data['atp24h'] = kline_now_data['atp24h'].astype(float).round(0)
+        kline_now_data['atp24h_z_score'] = ((kline_now_data['atp24h'] - kline_now_data['atp24h'].mean()) / kline_now_data['atp24h'].std()).round(3)
         kline_now_data['spread'] = kline_now_data['spread'].astype(float).round(3)
+        kline_now_data['abs_spread'] = kline_now_data['spread'].abs()
+        # kline_now_data['abs_spread_z_score'] = ((kline_now_data['abs_spread'] - kline_now_data['abs_spread'].mean()) / kline_now_data['abs_spread'].std()).round(3)
         kline_now_data['mean_diff'] = kline_now_data['mean_diff'].astype(float).round(3)
+        # kline_now_data['mean_diff_z_score'] = ((kline_now_data['mean_diff'] - kline_now_data['mean_diff'].mean()) / kline_now_data['mean_diff'].std()).round(3)
         kline_now_data['funding_rate'] = (kline_now_data['funding_rate'].astype(float) * 100).round(4)
+        kline_now_data.drop(columns=['funding_time'], inplace=True)
+        # Move LS_z_score next to LS_close
+        ls_close_idx = kline_now_data.columns.get_loc('LS_close')
+        kline_now_data.insert(ls_close_idx + 1, 'LS_z_score', kline_now_data.pop('LS_z_score'))
+        
+        # Move atp24h_z_score next to atp24h
+        atp24h_idx = kline_now_data.columns.get_loc('atp24h')
+        kline_now_data.insert(atp24h_idx + 1, 'atp24h_z_score', kline_now_data.pop('atp24h_z_score'))
+        
+        # Move abs_spread next to spread
+        spread_idx = kline_now_data.columns.get_loc('spread')
+        kline_now_data.insert(spread_idx + 1, 'abs_spread', kline_now_data.pop('abs_spread'))
+        kline_now_data.drop(columns=['spread'], inplace=True)
+        
+        # # Move abs_spread_z_score next to abs_spread
+        # spread_idx = kline_now_data.columns.get_loc('abs_spread')
+        # kline_now_data.insert(spread_idx + 1, 'abs_spread_z_score', kline_now_data.pop('abs_spread_z_score'))
+        
+        # # Move mean_diff_z_score next to mean_diff
+        # mean_diff_idx = kline_now_data.columns.get_loc('mean_diff')
+        # kline_now_data.insert(mean_diff_idx + 1, 'mean_diff_z_score', kline_now_data.pop('mean_diff_z_score'))
         
         return kline_now_data
     else:
         raise ValueError("Invalid market code combination. Currently only supports SPOT to Futures")
 
-def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_redis, mongodb_client, logger,timeout=60):
+def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_redis, mongodb_client, logger, timeout=60):
     merged_df = get_merged_data(market_code_combination, local_redis, mongodb_client).head(50)
 
     origin_market_code, target_market_code = market_code_combination.split(':')
@@ -147,14 +172,16 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
     - **base_asset**: Name of the cryptocurrency
     - **LS_close**: Premium percentage for Enter trade. Premiums significantly higher than the average across all cryptocurrencies may indicate a higher risk of mean reversion, potentially reducing profitability.
     - **SL_close**: Premium percentage for Exit trade. Similarly, premiums significantly higher than the average may indicate a higher risk of mean reversion.
+    - **LS_z_score**: Z-score of `LS_close`. A higher value indicates a higher risk of mean reversion.
     - **atp24h**: 24-hour trading volume in KRW. Higher values indicate better liquidity, which is essential for efficient arbitrage trading.
-    - **spread**: Difference between `LS_close` and `SL_close`. A smaller spread (close to 0) is better, indicating less slippage.
+    - **atp24h_z_score**: Z-score of `atp24h`. A higher value indicates better liquid.
+    - **abs_spread**: Absolute difference between `LS_close` and `SL_close`. A smaller spread (close to 0) is better, indicating less slippage.
     - **mean_diff**: Standard deviation of `SL_high - SL_low` figure of the same candle over the last 180 minutes. Higher values present more arbitrage opportunities.
-    - **funding_rate**: Funding rate percentage for the origin market. A positive funding rate is preferable, as it means the short position receives payments from the long position, potentially increasing profitability. A negative funding rate is less desirable, as the short position must pay the long position.
+    - **funding_rate**: Funding rate percentage for the origin market. A positive funding rate is preferable, as it means the short position receives payments from the long position, potentially increasing profitability. A negative funding rate is less desirable, as the short position must pay the long position. If it's lower than -0.2%, it's quite risky.
 
     **Task**:
     Rank the top 10 cryptocurrencies based on their arbitrage potential, considering the following factors:
-    - Low `spread` (for minimal slippage)
+    - Low `abs_spread` (for minimal slippage)
     - High `mean_diff` (very important for arbitrage opportunities, high mean_diff doesn't necessarily mean the risk is high)
     - High `atp24h` (for liquidity)
     - Avoid too low(negative) `funding_rate` (for risk management)
@@ -173,9 +200,12 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
         }},
         ...
     ]
+    
+    **Note**:
+    - Do not include raw column names in explanation.
     """
 
-    input_data = merged_df[['base_asset','LS_close','SL_close','atp24h','spread','mean_diff','funding_rate']].to_csv()
+    input_data = merged_df.drop(columns=['tp','datetime_now']).to_csv()
 
     client = genai.Client(api_key=ai_api_key)
     
