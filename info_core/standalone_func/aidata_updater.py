@@ -160,11 +160,12 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
     origin_market_code, target_market_code = market_code_combination.split(':')
     system_prompt = f"""Below is the premium data of crypto currencies between {origin_market_code} and {target_market_code}.
 
-    You are a professional crypto analyst specializing in arbitrage trading. Analyze the provided data and generate a ranked list of the top 10 recommended cryptocurrencies for arbitrage trading, along with a brief explanation without mentioning column names for each recommendation in Korean.
+    You are a professional crypto analyst specializing in arbitrage trading. Analyze the provided data and generate a ranked list of the top 10 recommended cryptocurrencies for arbitrage trading, along with a brief explanation(3 ~ 4 sentences) without mentioning column names for each recommendation in Korean.
 
     The arbitrage trade is executed as follows:
     - **Enter trade**: Long target market (SPOT), Short origin market (FUTURES)
     - **Exit trade**: Short target market (SPOT), Long origin market (FUTURES)
+    ** Since the premium gap between Enter trade and Exit trade leads to the profit, high mean_diff(premium movement) is very important.
 
     To maximize profit, the investor should execute the Enter trade when `LS_close` is low and the Exit trade when `SL_close` is high. A higher `mean_diff` indicates more potential arbitrage opportunities.
 
@@ -181,7 +182,7 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
     **Task**:
     Rank the top 10 cryptocurrencies based on their arbitrage potential, considering the following factors:
     - Low `abs_spread` (for minimal slippage)
-    - High `mean_diff` (very important for arbitrage opportunities, high mean_diff is not a risk factor. rather, if it's too low, it's not a good opportunity.)
+    - High `mean_diff` (very important for arbitrage opportunities, high mean_diff is not a risk factor. rather, if it's too low, it's might not be profitable since there might be less premium movement)
     - High `atp24h` (for liquidity)
     - Avoid too low(lower than -0.3%) `funding_rate` (for risk management)
     - Avoid high `LS_close` and `SL_close` compared to other cryptocurrencies (for risk management)
@@ -202,6 +203,7 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
     
     **Note**:
     - Do not include raw column names in explanation.
+    - Do not forget to consider all factores.
     """
 
     input_data = merged_df.drop(columns=['tp','datetime_now']).to_csv()
