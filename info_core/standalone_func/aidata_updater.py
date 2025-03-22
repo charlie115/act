@@ -121,7 +121,7 @@ def get_merged_data(market_code_combination, local_redis, mongodb_client):
         kline_now_data['SL_close'] = kline_now_data['SL_close'].astype(float).round(3)
         kline_now_data['LS_z_score'] = ((kline_now_data['LS_close'] - kline_now_data['LS_close'].mean()) / kline_now_data['LS_close'].std()).round(3)
         kline_now_data['atp24h'] = kline_now_data['atp24h'].astype(float).round(0)
-        # kline_now_data['atp24h_z_score'] = ((kline_now_data['atp24h'] - kline_now_data['atp24h'].mean()) / kline_now_data['atp24h'].std()).round(3)
+        kline_now_data['atp24h_z_score'] = ((kline_now_data['atp24h'] - kline_now_data['atp24h'].mean()) / kline_now_data['atp24h'].std()).round(3)
         kline_now_data['spread'] = kline_now_data['spread'].astype(float).round(3)
         kline_now_data['abs_spread'] = kline_now_data['spread'].abs()
         # kline_now_data['abs_spread_z_score'] = ((kline_now_data['abs_spread'] - kline_now_data['abs_spread'].mean()) / kline_now_data['abs_spread'].std()).round(3)
@@ -133,9 +133,9 @@ def get_merged_data(market_code_combination, local_redis, mongodb_client):
         ls_close_idx = kline_now_data.columns.get_loc('LS_close')
         kline_now_data.insert(ls_close_idx + 1, 'LS_z_score', kline_now_data.pop('LS_z_score'))
         
-        # # Move atp24h_z_score next to atp24h
-        # atp24h_idx = kline_now_data.columns.get_loc('atp24h')
-        # kline_now_data.insert(atp24h_idx + 1, 'atp24h_z_score', kline_now_data.pop('atp24h_z_score'))
+        # Move atp24h_z_score next to atp24h
+        atp24h_idx = kline_now_data.columns.get_loc('atp24h')
+        kline_now_data.insert(atp24h_idx + 1, 'atp24h_z_score', kline_now_data.pop('atp24h_z_score'))
         
         # Move abs_spread next to spread
         spread_idx = kline_now_data.columns.get_loc('spread')
@@ -160,30 +160,29 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
     origin_market_code, target_market_code = market_code_combination.split(':')
     system_prompt = f"""Below is the premium data of crypto currencies between {origin_market_code} and {target_market_code}.
 
-    You are a professional crypto analyst specializing in arbitrage trading. Analyze the provided data and generate a ranked list of the top 10 recommended cryptocurrencies for arbitrage trading, along with a brief explanation(3 ~ 4 sentences) without mentioning column names for each recommendation in Korean.
+    You are a professional arbitrage trading analyst specializing in cryptocurrencies. Analyze the provided data and generate a ranked list of the top 10 recommended cryptocurrencies for arbitrage trading, along with a brief explanation(3 ~ 4 sentences) without mentioning column names for each recommendation in Korean.
 
     The arbitrage trade is executed as follows:
     - **Enter trade**: Long target market (SPOT), Short origin market (FUTURES)
     - **Exit trade**: Short target market (SPOT), Long origin market (FUTURES)
     ** Since the premium gap between Enter trade and Exit trade leads to the profit, high mean_diff(premium movement) is very important.
 
-    To maximize profit, the investor should execute the Enter trade when `LS_close` is low and the Exit trade when `SL_close` is high. A higher `mean_diff` indicates more potential arbitrage opportunities.
-
     The data includes the following columns:
     - **base_asset**: Name of the cryptocurrency
-    - **LS_close**: Premium percentage for Enter trade. Premiums significantly higher than the average across all cryptocurrencies may indicate a higher risk of mean reversion, potentially reducing profitability.
-    - **SL_close**: Premium percentage for Exit trade. Similarly, premiums significantly higher than the average may indicate a higher risk of mean reversion.
+    - **LS_close**: Premium percentage between target market's best ask price and origin market's best bid price for Enter trade. Premiums significantly higher than the average across all cryptocurrencies may indicate a higher risk of mean reversion, potentially reducing profitability.
+    - **SL_close**: Premium percentage between target market's best bid price and origin market's best ask price for Exit trade. Similarly, premiums significantly higher than the average may indicate a higher risk of mean reversion.
     - **LS_z_score**: Z-score of `LS_close`. A higher value indicates a higher risk of mean reversion.
     - **atp24h**: 24-hour trading volume in KRW. Higher values indicate better liquidity, which is essential for efficient arbitrage trading.
+    - **atp24h_z_score**: Z-score of `atp24h`. You can use this factor to analyze the liquidity of the market.
     - **abs_spread**: Absolute difference between `LS_close` and `SL_close`. A smaller spread (close to 0) is better, indicating less slippage.
     - **mean_diff**: Standard deviation of the last 180 minutes of premium movement. Higher values present more arbitrage opportunities. It's not a risk factor. Rather, if it's too low, it's not a good opportunity.
-    - **funding_rate**: Funding rate percentage for the origin market. A positive funding rate is preferable, as it means the short position receives payments from the long position, potentially increasing profitability. A negative funding rate is less desirable, as the short position must pay the long position. If it's lower than -0.3%, it's risky.
+    - **funding_rate**: Funding rate percentage for the origin market. A positive funding rate is preferable, as it means the short position receives payments from the long position, potentially increasing profitability. **A negative funding rate is less desirable, as the short position must pay the long position. If it's lower than -0.3%, it's risky.
 
     **Task**:
     Rank the top 10 cryptocurrencies based on their arbitrage potential, considering the following factors:
     - Low `abs_spread` (for minimal slippage)
-    - High `mean_diff` (very important for arbitrage opportunities, high mean_diff is not a risk factor. rather, if it's too low, it's might not be profitable since there might be less premium movement)
-    - High `atp24h` (for liquidity)
+    - High `mean_diff` (very important for arbitrage opportunities, high mean_diff is not a risk factor. rather, if it's too low(less than 0.1), it's might not be profitable since there might be less premium movement)
+    - High `atp24h_z_score` (for liquidity, if it's too low, you should recommend a user to enter trade with small amount)
     - Avoid too low(lower than -0.3%) `funding_rate` (for risk management)
     - Avoid high `LS_close` and `SL_close` compared to other cryptocurrencies (for risk management)
 
@@ -203,7 +202,6 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
     
     **Note**:
     - Do not include raw column names in explanation.
-    - Do not forget to consider all factores.
     """
 
     input_data = merged_df.drop(columns=['tp','datetime_now']).to_csv()
