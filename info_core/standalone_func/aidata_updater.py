@@ -180,11 +180,11 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
 
     **Task**:
     Rank the top 10 cryptocurrencies based on their arbitrage potential, considering the following factors:
-    - Low `abs_spread` (for minimal slippage)
-    - High `mean_diff` (very important for arbitrage opportunities, high mean_diff is not a risk factor. rather, if it's too low(less than 0.1), it's might not be profitable since there might be less premium movement)
-    - High `atp24h_z_score` (for liquidity, if it's too low, you should recommend a user to enter trade with small amount)
-    - Avoid too low(lower than -0.3%) `funding_rate` (for risk management)
-    - Avoid high `LS_close` and `SL_close` compared to other cryptocurrencies (for risk management)
+    - Low `abs_spread` is desirable for minimal slippage -> risk factor
+    - High `mean_diff` is very important for arbitrage opportunities, high mean_diff is not a risk factor. rather, if it's too low(less than 0.1), it's might not be profitable since there might be less premium movement -> profit factor
+    - High `atp24h_z_score` is desirable for liquidity, if it's too low, you should recommend a user to enter trade with small amount -> risk factor
+    - Avoid too low(lower than -0.3%) `funding_rate`. If it's lower than -1.0%, it's very risky. -> risk factor
+    - Avoid high `LS_close` and `SL_close` compared to other cryptocurrencies -> risk factor
 
     When ranking, prioritize cryptocurrencies that offer a good balance of these factors to optimize profitability while managing risk. For each recommendation, provide a brief explanation in Korean, including a mention of the risk level associated with the recommendation (e.g., due to premium levels or spread or atp24h).
     Also, the risk level should be 1~3, and all recommendations should be evenly dispersed based on each risk level.
@@ -192,9 +192,9 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
     **Output Format**:
     [
         {{
-            "rank": "rank",
+            "rank": 1,
             "base_asset": "base_asset",
-            "risk_level": "risk_level", // 1~3, all recommendations should be allocated to 1~3
+            "risk_level": 1, // 1~3, all recommendations should be allocated to 1~3
             "explanation": "explanation in Korean",
         }},
         ...
@@ -202,6 +202,8 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
     
     **Note**:
     - Do not include raw column names in explanation.
+    - Make sure your explanations are informative, focusing on the key factors that make each cryptocurrency suitable for arbitrage.
+    - Ensure your risk assessments are accurate and reflect the actual data values.
     """
 
     input_data = merged_df.drop(columns=['tp','datetime_now']).to_csv()
