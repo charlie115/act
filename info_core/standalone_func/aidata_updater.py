@@ -176,13 +176,13 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
     - **atp24h**: 24-hour trading volume in KRW. Higher values indicate better liquidity, which is essential for efficient arbitrage trading.
     - **atp24h_z_score**: Z-score of `atp24h`. A higher value indicates better liquid.
     - **abs_spread**: Absolute difference between `LS_close` and `SL_close`. A smaller spread (close to 0) is better, indicating less slippage.
-    - **mean_diff**: Standard deviation of `SL_high - SL_low` figure of the same candle over the last 180 minutes. Higher values present more arbitrage opportunities.
+    - **mean_diff**: Standard deviation of `SL_high - SL_low` figure of the same candle over the last 180 minutes. Higher values present more arbitrage opportunities. It's not a risk factor.
     - **funding_rate**: Funding rate percentage for the origin market. A positive funding rate is preferable, as it means the short position receives payments from the long position, potentially increasing profitability. A negative funding rate is less desirable, as the short position must pay the long position. If it's lower than -0.2%, it's quite risky.
 
     **Task**:
     Rank the top 10 cryptocurrencies based on their arbitrage potential, considering the following factors:
     - Low `abs_spread` (for minimal slippage)
-    - High `mean_diff` (very important for arbitrage opportunities, high mean_diff doesn't necessarily mean the risk is high)
+    - High `mean_diff` (very important for arbitrage opportunities, high mean_diff is not a risk factor)
     - High `atp24h` (for liquidity)
     - Avoid too low(negative) `funding_rate` (for risk management)
     - Avoid high `LS_close` and `SL_close` compared to other cryptocurrencies (for risk management)
