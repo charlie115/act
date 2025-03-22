@@ -176,14 +176,14 @@ def generate_ai_recommendation_data(market_code_combination, ai_api_key, local_r
     - **atp24h**: 24-hour trading volume in KRW. Higher values indicate better liquidity, which is essential for efficient arbitrage trading.
     - **abs_spread**: Absolute difference between `LS_close` and `SL_close`. A smaller spread (close to 0) is better, indicating less slippage.
     - **mean_diff**: Standard deviation of the last 180 minutes of premium movement. Higher values present more arbitrage opportunities. It's not a risk factor. Rather, if it's too low, it's not a good opportunity.
-    - **funding_rate**: Funding rate percentage for the origin market. A positive funding rate is preferable, as it means the short position receives payments from the long position, potentially increasing profitability. A negative funding rate is less desirable, as the short position must pay the long position. If it's lower than -0.3%, it's quite risky.
+    - **funding_rate**: Funding rate percentage for the origin market. A positive funding rate is preferable, as it means the short position receives payments from the long position, potentially increasing profitability. A negative funding rate is less desirable, as the short position must pay the long position. If it's lower than -0.3%, it's risky.
 
     **Task**:
     Rank the top 10 cryptocurrencies based on their arbitrage potential, considering the following factors:
     - Low `abs_spread` (for minimal slippage)
     - High `mean_diff` (very important for arbitrage opportunities, high mean_diff is not a risk factor. rather, if it's too low, it's not a good opportunity.)
     - High `atp24h` (for liquidity)
-    - Avoid too low(negative, lower than -0.3%) `funding_rate` (for risk management)
+    - Avoid too low(lower than -0.3%) `funding_rate` (for risk management)
     - Avoid high `LS_close` and `SL_close` compared to other cryptocurrencies (for risk management)
 
     When ranking, prioritize cryptocurrencies that offer a good balance of these factors to optimize profitability while managing risk. For each recommendation, provide a brief explanation in Korean, including a mention of the risk level associated with the recommendation (e.g., due to premium levels or spread or atp24h).
