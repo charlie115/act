@@ -1,6 +1,7 @@
 *.log
 *.pyc
 *.ipynb
+*.log.*
 
 # Env
 .env*
