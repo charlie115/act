@@ -239,6 +239,8 @@ class UserExchangeAdaptor:
         exchange_adaptor = self.exchange_adaptor_dict[exchange]
         if exchange == "UPBIT":
             position_df = exchange_adaptor.all_position_information(access_key, secret_key, market_type)
+        elif exchange == "BITHUMB":
+            position_df = exchange_adaptor.all_position_information(access_key, secret_key, market_type)
         elif exchange == "BINANCE":
             position_df = exchange_adaptor.all_position_information(access_key, secret_key, market_type)
             if position_df.empty:
@@ -266,6 +268,24 @@ class UserExchangeAdaptor:
             raise Exception(f'exchange {exchange} not supported')
         exchange_adaptor = self.exchange_adaptor_dict[exchange]
         if exchange == "UPBIT":
+            currency = 'KRW'
+            position_df = exchange_adaptor.get_balance(access_key, secret_key, market_type)
+            locked_krw = position_df['locked'].values[0]
+            if locked_krw:
+                locked_krw = float(locked_krw)
+            else:
+                locked_krw = 0
+            position_df['symbol'] = position_df['unit_currency']+'-'+position_df['asset']
+            merged_df = position_df.merge(fetched_ticker_df[['symbol','lastPrice']], how='left', on='symbol')
+            merged_df.loc[merged_df['asset']==currency, 'lastPrice'] = 1 # For KRW
+            merged_df['entered'] = merged_df['avg_buy_price'] * merged_df['free']
+            merged_df['locked'] = merged_df.apply(lambda x: x['avg_buy_price'] * x['locked'] if x['asset'] != 'KRW' else x['locked'], axis=1)
+            free = round(merged_df.loc[merged_df['asset']==currency, 'free'].values[0])
+            locked = round(merged_df['entered'].sum() + merged_df['locked'].sum()) 
+            before_pnl = round(free + locked)
+            after_pnl = round((((merged_df['free'] + merged_df['locked']) * merged_df['lastPrice'])).sum())
+            pnl = round(after_pnl - before_pnl)
+        elif exchange == "BITHUMB":
             currency = 'KRW'
             position_df = exchange_adaptor.get_balance(access_key, secret_key, market_type)
             locked_krw = position_df['locked'].values[0]
