@@ -58,9 +58,11 @@ class Bithumb:
         
         # Rename columns and clean up
         total_ticker_df = total_ticker_df.rename(
-            columns={'market': 'symbol',
-                     'acc_trade_value_24H': 'atp24h',
-                     "trade_price": "lastPrice"}
+            columns={
+                'market': 'symbol',
+                'acc_trade_price_24h': 'atp24h',
+                'trade_price': 'lastPrice',
+            }
         )
         # Convert numeric columns
         numeric_cols = ['opening_price','high_price','low_price','lastPrice',

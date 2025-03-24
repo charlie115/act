@@ -1,4 +1,4 @@
-from multiprocessing import Process, Manager, Event
+from multiprocessing import Process, Event
 from threading import Thread
 import pandas as pd
 import numpy as np
@@ -102,13 +102,13 @@ class BithumbWebsocket:
         self.node = node
         self.url = "wss://pubwss.bithumb.com/pub/ws"
         self.acw_api = acw_api
-        self.get_symbol_list = get_symbol_list
+        # self.get_symbol_list = get_symbol_list # e.g.["BTC-KRW", "ETH-KRW", "XRP-KRW"] New API version follows Upbit format
+        self.get_symbol_list = lambda: [f"{x.split('-')[1]}_{x.split('-')[0]}" for x in get_symbol_list()] # I need to convert it to the old format e.g.["KRW_BTC", "KRW_ETH", "KRW_XRP"]
         self.logging_dir = logging_dir
         self.local_redis = RedisHelper()
         self.local_redis.delete_all_exchange_stream_data("ticker", "BITHUMB_SPOT")
         self.local_redis.delete_all_exchange_stream_data("orderbook", "BITHUMB_SPOT")
         self.logger = TradeCoreLogger("bithumb_websocket", logging_dir).logger
-        manager = Manager()
         self.proc_n = proc_n
         self.before_symbols_list = self.get_symbol_list()
         self.sliced_symbols_list = list_slice(self.get_symbol_list(), self.proc_n)
@@ -153,7 +153,7 @@ class BithumbWebsocket:
                                 self.logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_ticker_proc terminated.")
                             elif f"{i+1}th_ticker_proc" not in self.websocket_proc_dict.keys():
                                 ticker_start_proc = True
-                                self.logger.info(f"{i+1}th bithumb ticker websocket does not exist. starting..")
+                                self.logger.info(f"{i+1}th bithumb ticker websocket does not exist. starting.. for {self.sliced_symbols_list[i]}")
                                 self.logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_ticker_proc started.")
                             if ticker_start_proc is True:
                                 error_event = Event()
