@@ -25,7 +25,7 @@ def get_bithumb_price_df(redis_client):
     merged_df[['base_asset', 'quote_asset']] = merged_df['symbol'].str.split('_', expand=True)
     merged_df = merged_df.rename(columns={'value':'atp24h', 'chgRate':'scr', 'best_ask':'ap', 'best_bid':'bp'})
     merged_df[['scr','atp24h','ap','bp']] = merged_df[['scr','atp24h','ap','bp']].astype(float)
-    merged_df['tp'] = np.nan
+    merged_df['tp'] = (merged_df['ap'] + merged_df['bp']) / 2  # Since Currently bithumb websocket does not provide trade price, we will use the average price of the orderbook
     return merged_df
 
 def get_bybit_price_df(redis_client, market_type):
