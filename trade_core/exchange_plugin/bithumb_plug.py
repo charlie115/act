@@ -600,8 +600,8 @@ class UserBithumbAdaptor:
             res = client.spot_place_order(
                 market=symbol,
                 side='bid',
-                volume=qty,
-                price=calculate_bithumb_price(price*1.25),
+                volume=str(qty),
+                price=str(calculate_bithumb_price(price*1.25)),
                 ord_type='limit'
             )
             res = {**res, 'retry_count': retry_count, 'retry_count_limit': self.trade_retry_limit, 'retry_term_sec': self.trade_retry_term_sec}
@@ -638,7 +638,7 @@ class UserBithumbAdaptor:
             res = client.spot_place_order(
                 market=symbol,
                 side='ask',
-                volume=qty,
+                volume=str(qty),
                 price=None,
                 ord_type='market'
             )
