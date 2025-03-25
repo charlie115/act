@@ -511,7 +511,7 @@ class UserBithumbAdaptor:
         retry_count = 0
         while retry_count <= self.order_info_retry_limit:
             if market_type == "SPOT":
-                res = client.spot_order_info(uuid=order_id)
+                res = client.spot_order_info(order_id=order_id)
             else:
                 raise Exception(f"market_type: {market_type} is not supported yet.")
             if res['ok']: # If it's not error -> return
