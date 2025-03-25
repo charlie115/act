@@ -357,7 +357,6 @@ class UserExchangeAdaptor:
             raise Exception(f'exchange {exchange} not supported')
 
     def long_short_trade(self, merged_row, liquidation_call=False):
-        self.logger.info(f"long_short_trade|merged_row: {merged_row}") # TEST
         # Get API key from DB
         try:
             if self.market_code_combination == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT" or self.market_code_combination == "BITHUMB_SPOT/KRW:BINANCE_USD_M/USDT":
@@ -528,7 +527,6 @@ class UserExchangeAdaptor:
                 raise e
             
     def short_long_trade(self, merged_row, liquidation_call=False):
-        self.logger.info(f"short_long_trade|merged_row: {merged_row}") # TEST
         try:
             if self.market_code_combination == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT" or self.market_code_combination == "BITHUMB_SPOT/KRW:BINANCE_USD_M/USDT":
                 target_market_name_kr = "업비트" if self.market_code_combination == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT" else "빗썸"
@@ -723,7 +721,9 @@ class UserExchangeAdaptor:
             # clean numpy type. Convert it to python native type
             trade_info_dict = {k: v.item() if isinstance(v, np.generic) else v for k, v in trade_info_dict.items()}
 
-            while target_order_history is None or origin_order_history is None:
+            start_time = time.time()
+            timeout_seconds = 5  # 5 seconds
+            while (target_order_history is None or origin_order_history is None) and time.time() - start_time < timeout_seconds:
                 # Check whether the target order history exists in the database
                 curr.execute(f"SELECT * FROM order_history WHERE order_id='{trade_info_dict['target_order_id']}'")
                 target_order_history = curr.fetchone()
@@ -733,6 +733,9 @@ class UserExchangeAdaptor:
                 if target_order_history is not None and origin_order_history is not None:
                     break
                 time.sleep(1)
+
+            if target_order_history is None or origin_order_history is None:
+                raise Exception(f"Order history retrieval timed out after 5 seconds, target order history id: {trade_info_dict['target_order_id']}, origin order history id: {trade_info_dict['origin_order_id']}")
 
             # Now both are not None
             # id SERIAL PRIMARY KEY,
@@ -852,7 +855,7 @@ class UserExchangeAdaptor:
         self.logger.info(f"handle_trade_info_queue_loop started.")
         consecutive_errors = 0
         max_consecutive_errors = 5
-        error_sleep_time = 3
+        error_sleep_time = 2
         
         # Setup watchdog thread to ensure this loop is still running
         self._trade_info_watchdog_last_heartbeat = time.time()
@@ -863,9 +866,13 @@ class UserExchangeAdaptor:
             while self._trade_info_watchdog_running:
                 time_since_last_heartbeat = time.time() - self._trade_info_watchdog_last_heartbeat
                 # If no heartbeat for 5 minutes, log a critical error
-                if time_since_last_heartbeat > 300:  # 5 minutes
+                if time_since_last_heartbeat > 60:  # 1 minute
                     self.logger.critical(f"handle_trade_info_queue_loop watchdog detected no heartbeat for {time_since_last_heartbeat} seconds!")
                     # You could implement additional alerting here (email, SMS, etc.)
+                    try:
+                        self.acw_api.create_message_thread(self.admin_id, f"handle_trade_info_queue_loop 멈춤", f"handle_trade_info_queue_loop {time_since_last_heartbeat}초 동안 멈춤", 'ERROR')
+                    except Exception as e:
+                        pass
                 time.sleep(60)  # Check every minute
         
         # Start watchdog in a daemon thread
@@ -899,7 +906,7 @@ class UserExchangeAdaptor:
                     pass
                 
                 # Implement exponential backoff for repeated errors
-                sleep_time = error_sleep_time * (2 ** min(consecutive_errors - 1, 5))  # Cap at 32x initial sleep time
+                sleep_time = error_sleep_time * (2 ** min(consecutive_errors - 1, 3))  # Cap at 8x initial sleep time
                 self.logger.warning(f"Sleeping for {sleep_time} seconds after error {consecutive_errors}/{max_consecutive_errors}")
                 
                 # If too many consecutive errors, attempt recovery
