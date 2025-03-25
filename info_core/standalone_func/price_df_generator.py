@@ -21,11 +21,11 @@ def get_bithumb_price_df(redis_client):
     ticker_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("ticker", "BITHUMB_SPOT")).T.reset_index()
     orderbook_df['best_ask'] = orderbook_df['asks'].apply(lambda x: x[0][0])
     orderbook_df['best_bid'] = orderbook_df['bids'].apply(lambda x: x[0][0])
-    merged_df = orderbook_df.merge(ticker_df[['symbol','chgRate','value']], on='symbol', how='inner')
+    merged_df = orderbook_df.merge(ticker_df[['symbol','closePrice','chgRate','value']], on='symbol', how='inner')
     merged_df[['base_asset', 'quote_asset']] = merged_df['symbol'].str.split('_', expand=True)
-    merged_df = merged_df.rename(columns={'value':'atp24h', 'chgRate':'scr', 'best_ask':'ap', 'best_bid':'bp'})
-    merged_df[['scr','atp24h','ap','bp']] = merged_df[['scr','atp24h','ap','bp']].astype(float)
-    merged_df['tp'] = (merged_df['ap'] + merged_df['bp']) / 2  # Since Currently bithumb websocket does not provide trade price, we will use the average price of the orderbook
+    merged_df = merged_df.rename(columns={'value':'atp24h', 'chgRate':'scr', 'closePrice': 'tp', 'best_ask':'ap', 'best_bid':'bp'})
+    merged_df[['scr','atp24h','tp','ap','bp']] = merged_df[['scr','atp24h','tp','ap','bp']].astype(float)
+    # merged_df['tp'] = (merged_df['ap'] + merged_df['bp']) / 2  # Since Currently bithumb websocket does not provide trade price, we will use the average price of the orderbook
     return merged_df
 
 def get_bybit_price_df(redis_client, market_type):
