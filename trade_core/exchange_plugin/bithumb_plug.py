@@ -20,6 +20,30 @@ from loggers.logger import TradeCoreLogger
 from etc.db_handler.postgres_client import InitDBClient as InitPostgresDBClient
 from api.utils import decrypt_data, MyException
 
+
+def calculate_bithumb_price(price):
+    if price >= 1000000:  # 1,000,000원 이상
+        price = int(price/1000)*1000
+    elif price >= 500000:  # 500,000원 이상 1,000,000원 미만
+        price = int(price/500)*500
+    elif price >= 100000:  # 100,000원 이상 500,000원 미만
+        price = int(price/100)*100
+    elif price >= 50000:  # 50,000원 이상 100,000원 미만
+        price = int(price/50)*50
+    elif price >= 10000:  # 10,000원 이상 50,000원 미만
+        price = int(price/10)*10
+    elif price >= 5000:  # 5,000원 이상 10,000원 미만
+        price = int(price/5)*5
+    elif price >= 100:  # 100원 이상 5,000원 미만
+        price = int(price)  # 1원 단위
+    elif price >= 10:  # 10원 이상 100원 미만
+        price = int(price*100)/100  # 0.01원 단위
+    elif price >= 1:  # 1원 이상 10원 미만
+        price = int(price*1000)/1000  # 0.001원 단위
+    elif price > 0:  # 1원 미만
+        price = int(price*10000)/10000  # 0.0001원 단위
+
+    return price
 class Bithumb:
     def __init__(self, access_key=None, secret_key=None):
         """
@@ -573,11 +597,11 @@ class UserBithumbAdaptor:
         retry_count = 0
 
         while retry_count <= self.trade_retry_limit:
-            res = client.Order.Order_new(
+            res = client.spot_place_order(
                 market=symbol,
                 side='bid',
-                volume=str(qty),
-                price=str(price*1.25),
+                volume=qty,
+                price=calculate_bithumb_price(price*1.25),
                 ord_type='limit'
             )
             res = {**res, 'retry_count': retry_count, 'retry_count_limit': self.trade_retry_limit, 'retry_term_sec': self.trade_retry_term_sec}
@@ -605,18 +629,18 @@ class UserBithumbAdaptor:
             time.sleep(self.trade_retry_term_sec)
         return res
     
-    # Using limit order
+    # Using market order
     def market_short(self, access_key, secret_key, symbol, qty, price, return_dict=None):
         client = self.load_user_client(access_key, secret_key)
         retry_count = 0
 
         while retry_count <= self.trade_retry_limit:
-            res = client.Order.Order_new(
+            res = client.spot_place_order(
                 market=symbol,
                 side='ask',
-                volume=str(qty),
-                price=str(price*0.75),
-                ord_type='limit'
+                volume=qty,
+                price=None,
+                ord_type='market'
             )
             res = {**res, 'retry_count': retry_count, 'retry_count_limit': self.trade_retry_limit, 'retry_term_sec': self.trade_retry_term_sec}
             if retry_count != 0:

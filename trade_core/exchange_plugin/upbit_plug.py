@@ -17,28 +17,34 @@ from api.utils import decrypt_data, MyException
 
 
 def calculate_upbit_price(price):
-    if price >= 2000000:
-        price = int(price/1000)*1000
-    elif price >= 1000000:
-        price = int(price/500)*500
-    elif price >= 500000:
-        price = int(price/100)*100
-    elif price >= 100000:
-        price = int(price/50)*50
-    elif price >= 10000:
-        price = int(price/10)*10
-    elif price >= 1000:
-        price = int(price/5)*5
-    elif price >= 100:
-        price = int(price)
-    elif price >= 10:
-        price = int(price*10)/10
-    elif price >= 1:
-        price = int(price*100)/100
-    elif price >= 0.1:
-        price = int(price*1000)/1000
-    elif 0.1 > price:
-        price = int(price*10000)/10000
+    if price >= 2000000:  # 2,000,000원 이상
+        price = int(price/1000)*1000 # 1000원 단위
+    elif price >= 1000000:  # 1,000,000원 이상 2,000,000원 미만
+        price = int(price/500)*500 # 500원 단위
+    elif price >= 500000:  # 500,000원 이상 1,000,000원 미만
+        price = int(price/100)*100 # 100원 단위
+    elif price >= 100000:  # 100,000원 이상 500,000원 미만
+        price = int(price/50)*50 # 50원 단위
+    elif price >= 10000:  # 10,000원 이상 100,000원 미만
+        price = int(price/10)*10 # 10원 단위
+    elif price >= 1000:  # 1,000원 이상 10,000원 미만
+        price = int(price) # 1원 단위
+    elif price >= 100:  # 100원 이상 1,000원 미만
+        price = int(price) # 1원 단위
+    elif price >= 10:  # 10원 이상 100원 미만
+        price = int(price*100)/100 # 0.01원 단위
+    elif price >= 1:  # 1원 이상 10원 미만
+        price = int(price*1000)/1000 # 0.001원 단위
+    elif price >= 0.1:  # 0.1원 이상 1원 미만
+        price = int(price*10000)/10000 # 0.0001원 단위
+    elif price >= 0.01:  # 0.01 이상 0.1 미만
+        price = int(price*100000)/100000 # 0.00001원 단위
+    elif price >= 0.001:  # 0.001 이상 0.01 미만
+        price = int(price*1000000)/1000000 # 0.000001원 단위
+    elif price >= 0.0001:  # 0.0001 이상 0.001 미만
+        price = int(price*10000000)/10000000 # 0.0000001원 단위
+    elif price > 0:  # 0.0001 미만
+        price = int(price*100000000)/100000000 # 0.00000001원 단위
 
     return price
 
