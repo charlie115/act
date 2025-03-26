@@ -6,6 +6,9 @@ const api = createApi({
   reducerPath: 'drfApi',
   baseQuery: baseQueryWithReAuth,
   endpoints: () => ({}),
+  refetchOnFocus: false,
+  refetchOnMountOrArgChange: false,
+  refetchOnReconnect: false,
 });
 
 export default api;

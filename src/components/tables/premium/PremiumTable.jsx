@@ -28,6 +28,7 @@ import {
   useGetKlineVolatilityQuery,
   useGetWalletStatusQuery,
   usePostAssetMutation,
+  useGetAiRankRecommendationQuery,
 } from 'redux/api/drf/infocore';
 import {
   useCreateFavoriteAssetMutation,
@@ -103,13 +104,21 @@ function PremiumTable({
       ]
   );
 
+  const [connectionLost, setConnectionLost] = useState(false);
+  const documentVisibilityRef = useRef(document.visibilityState);
+  const reconnectingRef = useRef(false);
+
   const {
     data: realTimeData,
-    isLoading,
+    isLoading: isRealTimeDataLoading,
     isSuccess,
   } = useGetRealTimeKlineQuery(
     { ...marketCodes, interval: '1T', queryKey, component: 'premium-table' },
-    { skip: !marketCodes }
+    { 
+      skip: !marketCodes,
+      refetchOnFocus: false,
+      refetchOnReconnect: false
+    }
   );
 
   const realTimeDataList = useMemo(() => {
@@ -123,13 +132,14 @@ function PremiumTable({
   }, [realTimeData]);
 
   const { data: assetsData, isSuccess: isAssetsDataSuccess } =
-    useGetAssetsQuery();
+    useGetAssetsQuery(undefined, { refetchOnFocus: false });
   const [postAsset] = usePostAssetMutation();
 
   const { data: favoriteAssets } = useGetFavoriteAssetsQuery(
     { marketCodes: Object.values(marketCodes ?? {}).join() },
     {
       skip: !(loggedin && marketCodes),
+      refetchOnFocus: false
     }
   );
 
@@ -145,6 +155,7 @@ function PremiumTable({
         !assetsParam ||
         !marketCodesParam ||
         marketCodesParam?.targetMarketCode.includes('SPOT'),
+      refetchOnFocus: false
     }
   );
   const { data: originFundingRate } = useGetFundingRateQuery(
@@ -159,6 +170,7 @@ function PremiumTable({
         !assetsParam ||
         !marketCodesParam ||
         marketCodesParam?.originMarketCode.includes('SPOT'),
+      refetchOnFocus: false
     }
   );
   const { data: walletStatus, isSuccess: isWalletStatusSuccess } =
@@ -174,14 +186,35 @@ function PremiumTable({
             marketCodesParam?.targetMarketCode.includes('SPOT') ||
             marketCodesParam?.originMarketCode.includes('SPOT')
           ),
+        refetchOnFocus: false
       }
     );
+  const lastMarketCodesRef = useRef();
+  const [marketCodeChangeCounter, setMarketCodeChangeCounter] = useState(0);
+  const { 
+    data: aiRankRecommendations, 
+    isError: isAiRecsError,
+    error: aiRecsError
+  } = useGetAiRankRecommendationQuery(
+    { 
+      target_market_code: marketCodesParam?.targetMarketCode,
+      origin_market_code: marketCodesParam?.originMarketCode,
+      _t: `${marketCodeChangeCounter}`,
+    },
+    { 
+      pollingInterval: 1000 * 60,
+      skip: !ready || !marketCodesParam,
+      refetchOnMountOrArgChange: true,
+      refetchOnFocus: false
+    }
+  );
 
   const { data: klineVolatilityData } = useGetKlineVolatilityQuery(
     { baseAsset: assetsParam, ...marketCodesParam },
     { 
       pollingInterval: 1000 * 60,
-      skip: !ready || !assetsParam || !marketCodesParam
+      skip: !ready || !assetsParam || !marketCodesParam,
+      refetchOnFocus: false
     }
   );
 
@@ -225,7 +258,7 @@ function PremiumTable({
       {
         accessorKey: 'name',
         enableGlobalFilter: true,
-        size: isMobile ? 40 : 45,
+        size: isMobile ? 35 : 45,
         header: t('Name'),
         cell: renderNameCell,
       },
@@ -236,7 +269,7 @@ function PremiumTable({
               accessorKey: 'walletStatus',
               enableGlobalFilter: false,
               enableSorting: false,
-              size: 25,
+              size: isMobile ? 15 : 25,
               header: <WalletIcon fontSize="small" />,
               cell: renderWalletStatusCell,
             },
@@ -336,6 +369,13 @@ function PremiumTable({
     return result;
   }, [klineVolatilityData]);
 
+  const validAiRankRecommendations = useMemo(() => {
+    if (isAiRecsError && aiRecsError?.status === 404) {
+      return null;
+    }
+    return aiRankRecommendations;
+  }, [aiRankRecommendations, isAiRecsError, aiRecsError]);
+
   const data = useMemo(() => {
     if (!realTimeDataList || realTimeDataList.length === 0) {
       return [];
@@ -356,6 +396,11 @@ function PremiumTable({
       
       const targetFR = targetFundingRate?.[name]?.[0];
       const originFR = originFundingRate?.[name]?.[0];
+      
+      // Find AI recommendation for this asset if available
+      const aiRankRecommendation = validAiRankRecommendations?.find(
+        recommendation => recommendation.base_asset === name
+      );
       
       let walletStatusSummary = {
         right: [],
@@ -406,6 +451,7 @@ function PremiumTable({
         ...asset,
         walletStatus: walletStatusSummary,
         walletNetworks: walletStatus?.[name] || {},
+        aiRankRecommendation,
         chart: true,
       };
     }).filter(Boolean);
@@ -426,6 +472,7 @@ function PremiumTable({
     volatilityData,
     marketCodes,
     loggedin,
+    validAiRankRecommendations,
   ]);
 
   const prevAssets = usePrevious(assets);
@@ -437,23 +484,49 @@ function PremiumTable({
     }
     
     if (realTimeData?.disconnected) {
-      console.log('WebSocket disconnected state detected');
-      timeoutRef.current = setTimeout(() => {
-        onDisconnected();
-        timeoutRef.current = null;
-      }, 3000);
+      if (!connectionLost) {
+        setConnectionLost(true);
+        if (!reconnectingRef.current) {
+          reconnectingRef.current = true;
+          timeoutRef.current = setTimeout(() => {
+            onDisconnected();
+            timeoutRef.current = null;
+            setTimeout(() => {
+              reconnectingRef.current = false;
+            }, 5000);
+          }, 3000);
+        }
+      }
       return;
     }
     
-    if (isSuccess && (!realTimeData || Object.keys(realTimeData).length === 0 || 
-        (Array.isArray(realTimeData) && realTimeData.length === 0))) {
-      console.log('Connection successful but no data received');
-      timeoutRef.current = setTimeout(() => {
-        onDisconnected();
-        timeoutRef.current = null;
-      }, 5000);
+    if (realTimeData && 
+       !realTimeData.disconnected && 
+       Object.keys(realTimeData).length > 0 && 
+       !Array.isArray(realTimeData)) {
+      if (connectionLost) {
+        setConnectionLost(false);
+      }
+      return;
     }
-  }, [realTimeData, isSuccess, onDisconnected]);
+    
+    if (isSuccess && (!realTimeData || 
+       Object.keys(realTimeData).length === 0 || 
+       (Array.isArray(realTimeData) && realTimeData.length === 0))) {
+      
+      if (!connectionLost && !reconnectingRef.current) {
+        setConnectionLost(true);
+        reconnectingRef.current = true;
+        timeoutRef.current = setTimeout(() => {
+          onDisconnected();
+          timeoutRef.current = null;
+          setTimeout(() => {
+            reconnectingRef.current = false;
+          }, 5000);
+        }, 5000);
+      }
+    }
+  }, [realTimeData, isSuccess, onDisconnected, connectionLost]);
 
   useEffect(() => {
     if (isSuccess && realTimeDataList && realTimeDataList.length > 0) {
@@ -577,6 +650,87 @@ function PremiumTable({
     }
   }, []);
 
+  useEffect(() => {
+    if (marketCodesParam && lastMarketCodesRef.current && 
+        (lastMarketCodesRef.current.targetMarketCode !== marketCodesParam.targetMarketCode ||
+         lastMarketCodesRef.current.originMarketCode !== marketCodesParam.originMarketCode)) {
+      
+      setMarketCodeChangeCounter(prev => prev + 1);
+    }
+    
+    lastMarketCodesRef.current = { ...marketCodesParam };
+  }, [marketCodesParam]);
+
+  useEffect(() => {
+    if (isAiRecsError) {
+      console.log("AI Recommendations error:", aiRecsError);
+    }
+  }, [validAiRankRecommendations, isAiRecsError, aiRecsError]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const wasHidden = documentVisibilityRef.current === 'hidden';
+      documentVisibilityRef.current = document.visibilityState;
+      
+      if (wasHidden && document.visibilityState === 'visible') {
+        if (connectionLost && !reconnectingRef.current) {
+          reconnectingRef.current = true;
+          onDisconnected();
+          setTimeout(() => {
+            reconnectingRef.current = false;
+          }, 5000);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [connectionLost, onDisconnected]);
+
+  // Memoize the columns to prevent unnecessary recalculations
+  const columnVisibilityMemo = useMemo(() => ({
+    chart: !isMobile,
+    spread: !isMobile,
+    favoriteAssetId: !isMobile,
+  }), [isMobile]);
+
+  // Memoize the table meta
+  const tableMeta = useMemo(() => ({
+    triggerConfig,
+    klineInterval,
+    marketCodes,
+    queryKey,
+    isMobile,
+    isKimpExchange,
+    isTetherPriceView,
+    onAddFavoriteAsset,
+    onRemoveFavoriteAsset,
+    theme,
+    expandIcon: InsightsIcon,
+  }), [
+    triggerConfig,
+    klineInterval,
+    marketCodes,
+    queryKey,
+    isMobile,
+    isKimpExchange,
+    isTetherPriceView,
+    onAddFavoriteAsset,
+    onRemoveFavoriteAsset,
+    theme,
+  ]);
+
+  useEffect(() => {
+    setColumnVisibility(columnVisibilityMemo);
+  }, [columnVisibilityMemo]);
+
+  const isTableLoading = useMemo(() => 
+    isRealTimeDataLoading || createFavoriteRes.isLoading || deleteFavoriteRes.isLoading,
+    [isRealTimeDataLoading, createFavoriteRes.isLoading, deleteFavoriteRes.isLoading]
+  );
+
   return (
     <Box sx={{ boxShadow: 2 }}>
       <ReactTableUI
@@ -594,19 +748,7 @@ function PremiumTable({
           },
           onExpandedChange,
           onPaginationChange: setPagination,
-          meta: {
-            triggerConfig,
-            klineInterval,
-            marketCodes,
-            queryKey,
-            isMobile,
-            isKimpExchange,
-            isTetherPriceView,
-            onAddFavoriteAsset,
-            onRemoveFavoriteAsset,
-            theme,
-            expandIcon: InsightsIcon,
-          },
+          meta: tableMeta,
         }}
         renderSubComponent={renderSubComponent}
         getCellProps={() => ({ sx: { height: 50 } })}
@@ -619,11 +761,7 @@ function PremiumTable({
               : {}),
           },
         })}
-        showProgressBar={
-          isLoading ||
-          createFavoriteRes.isLoading ||
-          deleteFavoriteRes.isLoading
-        }
+        showProgressBar={isTableLoading}
         isLoading={!ready}
       />
       {ready && (

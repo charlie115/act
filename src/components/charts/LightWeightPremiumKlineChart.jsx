@@ -111,7 +111,7 @@ const LightWeightPremiumKlineChart = forwardRef(
         try {
           candlestickSeriesRef.current.setData([]);
         } catch (e) {
-          console.warn('Error clearing candlestick series:', e);
+          // console.warn('Error clearing candlestick series:', e);
         }
       }
       
@@ -119,7 +119,7 @@ const LightWeightPremiumKlineChart = forwardRef(
         try {
           premiumLineSeriesRef.current.setData([]);
         } catch (e) {
-          console.warn('Error clearing premium line series:', e);
+          // console.warn('Error clearing premium line series:', e);
         }
       }
       
@@ -127,7 +127,7 @@ const LightWeightPremiumKlineChart = forwardRef(
         try {
           lineSeriesRef.current.setData([]);
         } catch (e) {
-          console.warn('Error clearing line series:', e);
+          // console.warn('Error clearing line series:', e);
         }
       }
     };
@@ -385,7 +385,7 @@ const LightWeightPremiumKlineChart = forwardRef(
           });
         }
       } catch (e) {
-        console.warn('Error updating trigger price lines:', e);
+        // console.warn('Error updating trigger price lines:', e);
       }
     };
 
@@ -492,7 +492,7 @@ const LightWeightPremiumKlineChart = forwardRef(
               prevDataTypeRef.current = dataType;
               setIsPremiumTypeChanging(false);
             } catch (e) {
-              console.warn('Error during premium type change:', e);
+              // console.warn('Error during premium type change:', e);
               setIsPremiumTypeChanging(false);
             }
           }, 100);  // Delay to ensure clean transition
@@ -525,7 +525,7 @@ const LightWeightPremiumKlineChart = forwardRef(
           });
         }
       } catch (e) {
-        console.warn('Error setting chart data:', e);
+        // console.warn('Error setting chart data:', e);
       }
     }, [chartHistoricalData, isChartReady, chartMode, dataType]);
 
@@ -561,7 +561,7 @@ const LightWeightPremiumKlineChart = forwardRef(
           setTimeout(updateTriggerPriceLines, 100);
         }
       } catch (e) {
-        console.warn('Error updating chart mode:', e);
+        // console.warn('Error updating chart mode:', e);
       }
     }, [chartMode, prevChartMode, isChartReady]);
 
@@ -633,7 +633,7 @@ const LightWeightPremiumKlineChart = forwardRef(
           lineSeriesRef.current.update(chartRealTimeData.line);
         }
       } catch (e) {
-        console.warn('Error updating real-time data:', e);
+        // console.warn('Error updating real-time data:', e);
       }
     }, [chartRealTimeData, isChartReady]);
 
@@ -672,7 +672,7 @@ const LightWeightPremiumKlineChart = forwardRef(
             });
           }
         } catch (e) {
-          console.warn('Error setting chart view:', e);
+          // console.warn('Error setting chart view:', e);
         }
       }
     }, [isChartReady, chartHistoricalData.candlestick.length]);
@@ -718,7 +718,7 @@ const LightWeightPremiumKlineChart = forwardRef(
         
         lineSeriesRef.current?.applyOptions({ title: t('Price') });
       } catch (e) {
-        console.warn('Error updating price format:', e);
+        // console.warn('Error updating price format:', e);
       }
     }, [isMobile, showTether, i18n.language, isChartReady]);
 
@@ -762,7 +762,7 @@ const LightWeightPremiumKlineChart = forwardRef(
             });
           }
         } catch (e) {
-          console.warn('Error applying right offset:', e);
+          // console.warn('Error applying right offset:', e);
         }
       };
       
@@ -911,7 +911,7 @@ const LightWeightPremiumKlineChart = forwardRef(
         lineSeriesRef.current.applyOptions({
           visible: true,
           lastValueVisible: true,
-          title: 'KRW',
+          title: t('Price'),
           priceLineVisible: true,
           color: theme.palette.primary.main,
           lineWidth: isMobile ? 0.85 : 1,
@@ -921,7 +921,7 @@ const LightWeightPremiumKlineChart = forwardRef(
           lineSeriesRef.current.setData(chartHistoricalData.line);
         }
       } catch (e) {
-        console.warn('Error updating price line options:', e);
+        // console.warn('Error updating price line options:', e);
       }
     }, [isChartReady, chartHistoricalData.line, isMobile, theme.palette]);
 
@@ -946,7 +946,7 @@ const LightWeightPremiumKlineChart = forwardRef(
             });
           }, 100);
         } catch (e) {
-          console.warn('Error resetting chart view after data type change:', e);
+          // console.warn('Error resetting chart view after data type change:', e);
         }
       }
     }, [dataType, isChartReady]);

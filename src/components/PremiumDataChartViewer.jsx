@@ -15,6 +15,9 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import Chip from '@mui/material/Chip';
+import Popover from '@mui/material/Popover';
+import Paper from '@mui/material/Paper';
 
 import ArrowRightAltIcon from '@mui/icons-material/ArrowRightAlt';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -22,6 +25,7 @@ import StarIcon from '@mui/icons-material/Star';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import CandlestickChartIcon from '@mui/icons-material/CandlestickChart';
 import TimelineIcon from '@mui/icons-material/Timeline';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 
 import { useTheme } from '@mui/material/styles';
 
@@ -75,6 +79,7 @@ const PremiumDataChartViewer = forwardRef(
       favoriteAssetId,
       walletNetworks,
       walletStatus,
+      aiRankRecommendation,
     } = baseAssetData;
 
     const { timezone: tz } = useSelector((state) => state.app);
@@ -250,6 +255,31 @@ const PremiumDataChartViewer = forwardRef(
     
     const [chartMode, setChartMode] = useState(initChartMode);
     
+    // Add isMobile detection state
+    const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches);
+    
+    // Effect to handle window resize for mobile detection
+    useEffect(() => {
+      const mediaQuery = window.matchMedia('(max-width: 900px)');
+      const handleResize = (e) => setIsMobile(e.matches);
+      
+      // Modern browsers
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handleResize);
+      } else {
+        // Older browsers
+        mediaQuery.addListener(handleResize);
+      }
+      
+      return () => {
+        if (mediaQuery.removeEventListener) {
+          mediaQuery.removeEventListener('change', handleResize);
+        } else {
+          mediaQuery.removeListener(handleResize);
+        }
+      };
+    }, []);
+    
     // Effect to handle window focus/blur events to preserve chart mode
     useEffect(() => {
       const handleFocus = () => {
@@ -278,9 +308,43 @@ const PremiumDataChartViewer = forwardRef(
           detail: { type: chartDataType }
         }));
       } catch (e) {
-        console.warn('Error dispatching chart type change event:', e);
+        // console.warn('Error dispatching chart type change event:', e);
       }
     }, [chartDataType]);
+
+    // Add helper function for AI recommendation tooltip
+    const getAiTooltipContent = () => {
+      if (!aiRankRecommendation) return '';
+      
+      return (
+        <>
+          <div><strong>{t('Rank')}: {aiRankRecommendation.rank}</strong></div>
+          <div><strong>{t('Risk Level')}: {aiRankRecommendation.risk_level}</strong></div>
+          <div>{aiRankRecommendation.explanation}</div>
+        </>
+      );
+    };
+
+    // Add helper function for AI risk level color
+    const getRiskLevelColor = (riskLevel) => {
+      switch(riskLevel) {
+        case 1: return theme.palette.success.main; // Low risk
+        case 2: return theme.palette.warning.main; // Medium risk
+        case 3: return theme.palette.error.main;   // High risk
+        default: return theme.palette.info.main;
+      }
+    };
+
+    // Add popover state for mobile AI recommendation
+    const [aiInfoAnchorEl, setAiInfoAnchorEl] = useState(null);
+    const handleAiInfoClick = (event) => {
+      setAiInfoAnchorEl(event.currentTarget);
+    };
+    const handleAiInfoClose = () => {
+      setAiInfoAnchorEl(null);
+    };
+    const aiInfoOpen = Boolean(aiInfoAnchorEl);
+    const aiInfoId = aiInfoOpen ? 'ai-info-popover' : undefined;
 
     return (
       <Card
@@ -363,7 +427,88 @@ const PremiumDataChartViewer = forwardRef(
                   />
                 </Tooltip>
               )}
-              <Typography sx={{ fontWeight: 700, ml: 2 }}>{title}</Typography>
+              <Typography sx={{ 
+                fontWeight: 500, 
+                ml: 1, 
+                fontSize: isMobile ? '0.6rem' : '1rem'  // Smaller font on mobile
+              }}>
+                {title}
+              </Typography>
+              
+              {/* Display AI recommendation next to title */}
+              {aiRankRecommendation && (
+                isMobile ? (
+                  // For mobile: Make chip/icon clickable to show info via popover
+                  <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
+                    <Chip 
+                      aria-describedby={aiInfoId}
+                      icon={<SmartToyIcon fontSize="small" />}
+                      label={t('Recommended')}
+                      size="small"
+                      onClick={handleAiInfoClick}
+                      sx={{ 
+                        fontSize: 9,  // Even smaller on mobile
+                        height: 16,
+                        bgcolor: getRiskLevelColor(aiRankRecommendation.risk_level),
+                        color: '#fff',
+                        '& .MuiChip-icon': {
+                          fontSize: 13,
+                          color: '#fff',
+                        }
+                      }}
+                      variant="filled"
+                    />
+                    <Popover
+                      id={aiInfoId}
+                      open={aiInfoOpen}
+                      anchorEl={aiInfoAnchorEl}
+                      onClose={handleAiInfoClose}
+                      anchorOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'center',
+                      }}
+                      transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'center',
+                      }}
+                    >
+                      <Paper sx={{ p: 2, maxWidth: 300 }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          <strong>{t('Rank')}: {aiRankRecommendation.rank}</strong>
+                        </Typography>
+                        <Typography variant="subtitle2" gutterBottom>
+                          <strong>{t('Risk Level')}: {aiRankRecommendation.risk_level}</strong>
+                        </Typography>
+                        <Typography variant="body2">
+                          {aiRankRecommendation.explanation}
+                        </Typography>
+                      </Paper>
+                    </Popover>
+                  </Box>
+                ) : (
+                  // For desktop: Keep hover tooltip
+                  <Tooltip title={getAiTooltipContent()} arrow placement="right">
+                    <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
+                      <Chip 
+                        icon={<SmartToyIcon fontSize="small" />}
+                        label={t('Recommended')}
+                        size="small"
+                        sx={{ 
+                          fontSize: 10,
+                          height: 16,
+                          bgcolor: getRiskLevelColor(aiRankRecommendation.risk_level),
+                          color: '#fff',
+                          '& .MuiChip-icon': {
+                            fontSize: 14,
+                            color: '#fff',
+                          }
+                        }}
+                        variant="filled"
+                      />
+                    </Box>
+                  </Tooltip>
+                )
+              )}
             </Grid>
             <Grid
               item

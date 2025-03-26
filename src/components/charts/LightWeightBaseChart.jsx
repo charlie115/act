@@ -78,7 +78,7 @@ const LightWeightBaseChart = forwardRef(
           setBarsInfo(null);
         else setBarsInfo(newBarsInfo);
       } catch (e) {
-        console.warn('Error in onVisibleLogicalRangeChange:', e);
+        // console.warn('Error in onVisibleLogicalRangeChange:', e);
       }
     };
     const debouncedOnVisibleLogicalRangeChange = useCallback(

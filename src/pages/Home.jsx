@@ -82,51 +82,44 @@ function Home() {
 
   const renderTetherToggle = () =>
     marketCodes ? (
-      <Tooltip title={t('View Tether conversion')}>
+      <Tooltip title={isTetherPriceView ? t('View kimp percentage') : t('View Tether conversion')}>
         <Button
           variant={isTetherPriceView ? "contained" : "outlined"}
-          color="info"
+          color="primary"
           size="small"
           onClick={() => dispatch(togglePriceView(isTetherPriceView ? 'gimp' : 'tether'))}
           disabled={!isKimpExchange}
           sx={{
             minWidth: { xs: '40px', sm: '60px' },
-            height: { xs: '28px', sm: '32px' },
-            p: { xs: '2px 0px', sm: '4px 8px' },
-            borderRadius: '5px',
+            height: { xs: '26px', sm: '32px' },
+            p: { xs: '2px 6px', sm: '4px 10px' },
+            borderRadius: '16px',
             textTransform: 'none',
             opacity: isKimpExchange ? 1 : 0.5,
-            boxShadow: isTetherPriceView ? '0 2px 5px rgba(0, 150, 255, 0.3)' : 'none',
-            transition: 'all 0.2s ease-in-out',
+            boxShadow: isTetherPriceView ? '0 1px 3px rgba(0, 0, 0, 0.12)' : 'none',
+            transition: 'all 0.15s ease',
+            backgroundColor: isTetherPriceView ? theme.palette.primary.main : 'transparent',
+            borderColor: theme.palette.primary.main,
             '&:hover': {
-              boxShadow: '0 3px 8px rgba(0, 150, 255, 0.4)',
-              transform: 'translateY(-1px)',
+              backgroundColor: isTetherPriceView 
+                ? theme.palette.primary.dark 
+                : theme.palette.action.hover,
+              boxShadow: '0 2px 5px rgba(0, 0, 0, 0.08)',
             },
-            position: 'relative',
-            overflow: 'hidden',
-            '&::before': isTetherPriceView ? {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
-              zIndex: 1,
-            } : {},
           }}
         >
           <Box
             component="span"
             sx={{
-              fontSize: { xs: '0.8rem', sm: '0.9rem' },
+              fontSize: { xs: '0.7rem', sm: '0.85rem' },
               fontWeight: 600,
               letterSpacing: '0.02em',
               display: 'flex',
               alignItems: 'center',
+              color: isTetherPriceView ? '#fff' : theme.palette.primary.main,
             }}
           >
-            %/₮
+            {isTetherPriceView ? '₮' : '%'}
           </Box>
         </Button>
       </Tooltip>

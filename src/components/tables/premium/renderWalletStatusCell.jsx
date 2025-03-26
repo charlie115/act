@@ -8,7 +8,7 @@ import ArrowRightAltIcon from '@mui/icons-material/ArrowRightAlt';
 import { MARKET_CODE_LIST } from 'constants/lists';
 
 export default function renderWalletStatusCell({ cell, table }) {
-  const { marketCodes } = table.options.meta;
+  const { marketCodes, isMobile } = table.options.meta;
   const targetMarketCode = MARKET_CODE_LIST.find(
     (o) => o.value === marketCodes?.targetMarketCode
   );
@@ -16,6 +16,11 @@ export default function renderWalletStatusCell({ cell, table }) {
     (o) => o.value === marketCodes?.originMarketCode
   );
   const walletStatus = cell.getValue();
+
+  const iconSx = isMobile ? { fontSize: '0.8rem' } : {};
+  const reverseIconSx = isMobile 
+    ? { fontSize: '0.8rem', transform: 'scaleX(-1)' } 
+    : { transform: 'scaleX(-1)' };
 
   if (!walletStatus) return '...';
 
@@ -31,6 +36,7 @@ export default function renderWalletStatusCell({ cell, table }) {
         >
           <ArrowRightAltIcon
             color={walletStatus.right.length ? 'success' : 'error'}
+            sx={iconSx}
           />
         </Tooltip>
         <Tooltip
@@ -39,7 +45,7 @@ export default function renderWalletStatusCell({ cell, table }) {
         >
           <ArrowRightAltIcon
             color={walletStatus.left.length ? 'success' : 'error'}
-            sx={{ transform: 'scaleX(-1)' }}
+            sx={reverseIconSx}
           />
         </Tooltip>
       </Stack>
@@ -49,10 +55,11 @@ export default function renderWalletStatusCell({ cell, table }) {
     <Stack direction="column" spacing={-1}>
       <ArrowRightAltIcon
         color={walletStatus.all.length ? 'success' : 'error'}
+        sx={iconSx}
       />
       <ArrowRightAltIcon
         color={walletStatus.all.length ? 'success' : 'error'}
-        sx={{ transform: 'scaleX(-1)' }}
+        sx={reverseIconSx}
       />
     </Stack>
   );

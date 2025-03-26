@@ -27,6 +27,8 @@ const api = websocketApi.injectEndpoints({
         let socket = null;
         let heartbeatInterval = null;
         let lastMessageTime = 0;
+        let lastConnectionState = null;
+        let activelyClosing = false;
         
         // Declare connectWebSocket function first (but don't implement it yet)
         let connectWebSocket;
@@ -46,6 +48,7 @@ const api = websocketApi.injectEndpoints({
             // If no message received for 45 seconds, connection is likely dead
             if (currentTime - lastMessageTime > 45000 && socket && socket.readyState === WebSocket.OPEN) {
               // Force close and reconnect
+              activelyClosing = true;
               socket.close();
             }
           }, 15000);
@@ -70,6 +73,11 @@ const api = websocketApi.injectEndpoints({
             const result = JSON.parse(message.result);
 
             updateCachedData((draft) => {
+              // Clear the disconnected flag if it exists
+              if (draft.disconnected) {
+                delete draft.disconnected;
+              }
+              
               result.forEach((item) => {
                 // Convert datetime_now from seconds to milliseconds
                 item.datetime_now *= 1000;
@@ -88,27 +96,61 @@ const api = websocketApi.injectEndpoints({
         const onClose = () => {
           isConnecting = false;
           
-          // Set disconnected state for UI feedback
-          updateCachedData((draft) => {
-            Object.keys(draft).forEach((key) => delete draft[key]);
-            draft.disconnected = true;
-          });
-          
-          // Implement exponential backoff
-          const maxReconnectDelay = 30000; // 30 seconds max
-          const baseDelay = 1000; // Start with 1 second
-          const delay = Math.min(
-            maxReconnectDelay,
-            baseDelay * (1.5 ** reconnectAttempts)
-          );
-          
-          reconnectAttempts += 1;
-          setTimeout(() => connectWebSocket(), delay);
+          // Only set disconnected state if this wasn't a clean close during cleanup
+          if (!activelyClosing) {
+            // Set disconnected state for UI feedback
+            updateCachedData((draft) => {
+              Object.keys(draft).forEach((key) => {
+                if (key !== 'disconnected') delete draft[key];
+              });
+              draft.disconnected = true;
+            });
+            
+            // Implement exponential backoff
+            const maxReconnectDelay = 30000; // 30 seconds max
+            const baseDelay = 500; // Start with 0.5 seconds
+            const delay = Math.min(
+              maxReconnectDelay,
+              baseDelay * (1.5 ** reconnectAttempts)
+            );
+            
+            reconnectAttempts += 1;
+            setTimeout(() => connectWebSocket(), delay);
+          }
+          activelyClosing = false;
         };
         
         const onError = () => {
           if (socket && socket.readyState !== WebSocket.CLOSED) {
+            activelyClosing = true;
             socket.close(); // Will trigger the close handler with reconnection logic
+          }
+        };
+
+        // Handle visibility change
+        const handleVisibilityChange = () => {
+          if (document.visibilityState === 'hidden') {
+            lastConnectionState = socket?.readyState || null;
+            // Don't close the websocket when page is hidden
+          } else if (document.visibilityState === 'visible') {
+            // Only reconnect if the connection was actually lost
+            // We check if the socket is closed/closing OR if it's been more than 45s since we got a message
+            const currentTime = Date.now();
+            const needsReconnect = 
+              !socket || 
+              socket.readyState === WebSocket.CLOSED || 
+              socket.readyState === WebSocket.CLOSING ||
+              (currentTime - lastMessageTime > 45000);
+            
+            if (needsReconnect) {
+              // If we still have a socket, close it properly first
+              if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+                activelyClosing = true;
+                socket.close();
+              }
+              // Then reconnect
+              connectWebSocket();
+            }
           }
         };
 
@@ -136,6 +178,9 @@ const api = websocketApi.injectEndpoints({
           socket.addEventListener('error', onError);
         };
         
+        // Set up visibility change listener
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        
         // Start initial connection
         connectWebSocket();
         
@@ -149,8 +194,13 @@ const api = websocketApi.injectEndpoints({
         // Clean up on component unmount or query deactivation
         await cacheEntryRemoved;
         
+        // Remove visibility change listener
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        
         stopHeartbeat(); // Stop heartbeat monitoring
         if (socket) {
+          // Set flag to indicate we're actively closing this connection
+          activelyClosing = true;
           // Remove event listeners to prevent memory leaks
           socket.removeEventListener('message', onMessage);
           socket.removeEventListener('close', onClose);

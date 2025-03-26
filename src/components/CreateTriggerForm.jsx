@@ -82,7 +82,6 @@ const CreateTriggerForm = forwardRef(
   ) => {
     const predictionSeriesRef = useRef();
     const regressionLineSeriesRef = useRef();
-    const lastPBoundaryRef = useRef(null); // Store the last successful pBoundary
 
     const { i18n, t } = useTranslation();
 
@@ -95,10 +94,6 @@ const CreateTriggerForm = forwardRef(
     const [autoRepeat, setAutoRepeat] = useState(0);
     const [disabled, setDisabled] = useState(false);
     const [setup, setSetup] = useState('manual');
-    const [pBoundaryState, setPBoundary] = useState(null);
-
-    // Add state to track chart tab changes
-    const [lastChartDataType, setLastChartDataType] = useState(null);
 
     // Instead of trying to maintain references to chart series, store the data itself
     const [pBoundaryData, setPBoundaryData] = useState(null);
@@ -351,7 +346,7 @@ const CreateTriggerForm = forwardRef(
           chartDataRef.current.predictionSeries = null;
         }
       } catch (error) {
-        console.warn('Error removing old series', error);
+        // console.warn('Error removing old series', error);
         // Continue even if removal failed - the chart might have been recreated
       }
       
@@ -390,7 +385,7 @@ const CreateTriggerForm = forwardRef(
           chartDataRef.current.regressionSeries = regressionSeries;
           
         } catch (error) {
-          console.warn('Error creating regression line', error);
+          // console.warn('Error creating regression line', error);
         }
       }
       
@@ -455,7 +450,7 @@ const CreateTriggerForm = forwardRef(
           chartDataRef.current.predictionSeries = predictionSeries;
           
         } catch (error) {
-          console.warn('Error creating prediction series', error);
+          // console.warn('Error creating prediction series', error);
         }
       }
       
@@ -576,7 +571,7 @@ const CreateTriggerForm = forwardRef(
             chart.removeSeries(chartDataRef.current.predictionSeries);
           }
         } catch (error) {
-          console.warn('Error cleaning up chart series', error);
+          // console.warn('Error cleaning up chart series', error);
         }
       }
     }, []);
@@ -990,7 +985,7 @@ const CreateTriggerForm = forwardRef(
                                 }
                               }
                             } catch (e) {
-                              console.warn('Error converting entry/exit values', e);
+                              // console.warn('Error converting entry/exit values', e);
                             }
                           }
                           

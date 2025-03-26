@@ -124,6 +124,21 @@ export default function ChatMessage({
     if (isNewMessage && inView && onIsSeen) onIsSeen(id);
   }, [isNewMessage, inView, entry]);
 
+  // Format the datetime string based on message type
+  const formatDatetime = (datetimeStr) => {
+    // For Telegram messages only (identified by disableBlocking), convert to local time
+    if (disableBlocking) {
+      const date = new Date(datetimeStr);
+      const offsetMinutes = date.getTimezoneOffset();
+      const localDate = new Date(date.getTime() - offsetMinutes * 60000);
+      
+      return DateTime.fromJSDate(localDate).toLocaleString(DateTime.DATETIME_SHORT);
+    }
+    
+    // For Community messages, use the original formatting
+    return DateTime.fromISO(datetimeStr).toLocaleString(DateTime.DATETIME_SHORT);
+  };
+
   return (
     <Stack
       id={`m-${id}`}
@@ -198,9 +213,7 @@ export default function ChatMessage({
                 color: isOwnMessage ? 'grey.200' : 'secondary.main',
               }}
             >
-              {DateTime.fromISO(datetime).toLocaleString(
-                DateTime.DATETIME_SHORT
-              )}
+              {formatDatetime(datetime)}
             </Box>
           </MessageBox>
         </Stack>

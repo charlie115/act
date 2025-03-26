@@ -114,9 +114,13 @@ const api = drfApi.injectEndpoints({
     }),
     getAiRankRecommendation: builder.query({
       keepUnusedDataFor: 0,
+      providesTags: ['AiRankRecommendation'],
       query: (params) => ({
         url: '/infocore/ai-rank-recommendation/',
         params,
+        validateStatus(response, result) {
+          return response.status === 200; // Only consider 200 responses as success
+        }
       }),
     }),
     postAsset: builder.mutation({
