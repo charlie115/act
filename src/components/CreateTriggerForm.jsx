@@ -584,6 +584,57 @@ const CreateTriggerForm = forwardRef(
     }, [setup]);
 
     useEffect(() => {
+      // We want to preserve entry/exit values when interval changes
+      const currentEntry = getValues('entry');
+      const currentExit = getValues('exit');
+      const currentIsTether = getValues('isTether');
+      const hasValues = currentEntry || currentExit;
+      
+      // Create a ref object to store the current values
+      const valuesRef = {
+        entry: currentEntry,
+        exit: currentExit,
+        isTether: currentIsTether
+      };
+      
+      // Only reset auto setup form fields - don't touch main form values
+      autoSetupForm.reset({ klineNum: 200, interval, percentGap: 1 });
+      
+      // Reset chart visualization references without affecting form values
+      predictionSeriesRef.current = null;
+      regressionLineSeriesRef.current = null;
+      
+      // Use a more reliable approach to preserve values through any potential component updates
+      if (hasValues) {
+        // First immediate application of saved values
+        if (valuesRef.entry) setValue('entry', valuesRef.entry);
+        if (valuesRef.exit) setValue('exit', valuesRef.exit);
+        setValue('isTether', valuesRef.isTether);
+        
+        // Second attempt with delay to ensure values persist
+        setTimeout(() => {
+          if (valuesRef.entry) setValue('entry', valuesRef.entry);
+          if (valuesRef.exit) setValue('exit', valuesRef.exit);
+          setValue('isTether', valuesRef.isTether);
+          
+          // Trigger validation to enable submit button if values are valid
+          if (valuesRef.entry && valuesRef.exit) {
+            trigger(['entry', 'exit']);
+          }
+          
+          // Make sure trigger config is updated
+          if (valuesRef.entry || valuesRef.exit) {
+            onTriggerConfigChange({
+              entry: valuesRef.entry ? parseFloat(valuesRef.entry) : null,
+              exit: valuesRef.exit ? parseFloat(valuesRef.exit) : null,
+              isTether: valuesRef.isTether,
+            });
+          }
+        }, 100);
+      }
+    }, [interval]);
+
+    useEffect(() => {
       const target = exchangeApiKey?.find(
         (o) => o.market_code === tradeConfigAllocation?.target_market_code
       );
@@ -594,25 +645,26 @@ const CreateTriggerForm = forwardRef(
     }, [exchangeApiKey, tradeConfigAllocation]);
 
     useEffect(() => {
-      reset();
-      autoSetupForm.reset(
-        { klineNum: 200, interval, percentGap: 1 }
-        // { keepDirtyValues: true }
-      );
-      predictionSeriesRef.current = null;
-      regressionLineSeriesRef.current = null;
-    }, [interval]);
-
-    useEffect(() => {
       if (tradeType === 'alarm') setAutoRepeat(0);
     }, [tradeType]);
 
     useEffect(() => {
       if (disabled) {
+        // When form is disabled (chart dropdown closed), do a full reset
         reset();
         autoSetupForm.reset();
         predictionSeriesRef.current?.setData([]);
         regressionLineSeriesRef.current?.setData([]);
+        
+        // Clear any stored values to prevent them from being restored when reopening
+        try {
+          sessionStorage.removeItem('triggerFormValues');
+        } catch (e) {
+          // Ignore storage errors
+        }
+        
+        // Reset trigger config to clear chart markers
+        onTriggerConfigChange({});
       }
     }, [disabled]);
 
@@ -731,6 +783,79 @@ const CreateTriggerForm = forwardRef(
       }
       return undefined; // Explicit return when pBoundaryData is falsy
     }, [pBoundaryData]);
+
+    // Add this effect to avoid data loss during chart reload/type changes
+    useEffect(() => {
+      // Create a closure with the current values
+      const preserveFormValues = () => {
+        const currentValues = {
+          entry: getValues('entry'),
+          exit: getValues('exit'),
+          isTether: getValues('isTether'),
+          baseAsset
+        };
+        
+        // Store values in sessionStorage if they exist (and form is not disabled)
+        if (!disabled && (currentValues.entry || currentValues.exit)) {
+          try {
+            sessionStorage.setItem('triggerFormValues', JSON.stringify(currentValues));
+          } catch (e) {
+            // Ignore storage errors
+          }
+        }
+      };
+      
+      // Handle page visibility changes (tab switching, minimizing)
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          preserveFormValues();
+        }
+      };
+      
+      // Listen to visibility change events
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      // Try to restore values on mount
+      try {
+        const storedValues = sessionStorage.getItem('triggerFormValues');
+        if (storedValues && !disabled) {
+          const parsedValues = JSON.parse(storedValues);
+          
+          // Only restore if it's the same asset
+          if (parsedValues.baseAsset === baseAsset) {
+            if (parsedValues.entry) setValue('entry', parsedValues.entry);
+            if (parsedValues.exit) setValue('exit', parsedValues.exit);
+            if (parsedValues.isTether !== undefined) setValue('isTether', parsedValues.isTether);
+            
+            // Trigger validation
+            if (parsedValues.entry && parsedValues.exit) {
+              trigger(['entry', 'exit']);
+            }
+            
+            // Update trigger config
+            onTriggerConfigChange({
+              entry: parsedValues.entry ? parseFloat(parsedValues.entry) : null,
+              exit: parsedValues.exit ? parseFloat(parsedValues.exit) : null,
+              isTether: parsedValues.isTether,
+            });
+          }
+          
+          // Clear storage after using it
+          sessionStorage.removeItem('triggerFormValues');
+        }
+      } catch (e) {
+        // Ignore storage errors
+      }
+      
+      // Cleanup listener
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        // Save values on unmount only if not disabled
+        if (!disabled) {
+          preserveFormValues();
+        }
+      };
+    }, [baseAsset, disabled]);
 
     if (isFetching) return <LinearProgress />;
 
