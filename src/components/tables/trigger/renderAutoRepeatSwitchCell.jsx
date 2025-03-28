@@ -9,7 +9,7 @@ export default function renderAutoRepeatSwitchCell({ cell, row, table }) {
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center' }}>
       <Switch
-        disabled={row.original.trade_capital === null}
+        disabled={row.original.trade_capital === null || row.original.trade_capital === undefined}
         edge="end"
         checked={cell.getValue()}
         // checked={cell.getValue()}

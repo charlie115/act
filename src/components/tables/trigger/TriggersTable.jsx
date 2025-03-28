@@ -361,41 +361,73 @@ export default function TriggersTable({
 
   const tableData = useMemo(() => {
     if (!data) return [];
-    if (selectedAsset)
+    if (selectedAsset) {
+      // --- Add Row Configuration ---
+      // Still extract from element.props.src for the Add row, as this works
+      const targetIconElement = marketCodeCombination?.target?.icon;
+      const originIconElement = marketCodeCombination?.origin?.icon;
+      const targetIconUrl = targetIconElement?.props?.src;
+      const originIconUrl = originIconElement?.props?.src;
+
       return [
         {
           uuid: `add-${selectedAsset}`,
+          add: true,
           baseAsset: selectedAsset,
           name: selectedAsset,
           icon: assetsData?.[selectedAsset]?.icon,
           marketCodes: {
-            targetMarketCode: marketCodeCombination?.target.value,
-            originMarketCode: marketCodeCombination?.origin.value,
+            targetMarketCode: marketCodeCombination?.target?.value,
+            originMarketCode: marketCodeCombination?.origin?.value,
           },
+          targetMarketIcon: targetIconUrl, // Use extracted URL
+          originMarketIcon: originIconUrl, // Use extracted URL
           status: null,
-          add: true,
+          entry: null,
+          exit: null,
+          tradeCapital: null,
+          created: null,
+          autoRepeatSwitch: null,
+          autoRepeatStatus: '-',
+          isTether: null,
+          targetFundingRate: null,
+          originFundingRate: null,
         },
       ];
+    }
 
+    // --- Existing Row Mapping Logic ---
     return data
       ?.filter((item) => {
         if (!item) return false;
 
-        let flag = marketCodeCombination?.value === 'ALL';
-        if (marketCodeCombination?.value !== 'ALL')
-          flag =
-            marketCodeCombination?.tradeConfigUuid === item.trade_config_uuid;
-        if (selectedTriggerType?.value !== 'ALL')
-          flag =
-            flag && selectedTriggerType?.value === 'alarms'
-              ? item.trade_capital === null
-              : item.trade_capital !== null;
-        return flag;
+        // 1. Check if the item matches the selected market code combination
+        const marketMatch = marketCodeCombination?.value === 'ALL' || 
+                            marketCodeCombination?.tradeConfigUuid === item.trade_config_uuid;
+        
+        // If the market doesn't match, filter out this item immediately
+        if (!marketMatch) {
+          return false;
+        }
+
+        // 2. If market matches, THEN filter by selected trigger type (if not 'ALL')
+        if (selectedTriggerType?.value === 'ALL') {
+          return true; // Keep item if type filter is 'ALL'
+        } 
+
+        // If type is 'alarms', check the trade_capital
+        if (selectedTriggerType?.value === 'alarms') {
+          return item.trade_capital === null; // Keep item if it's an Alarm
+        } 
+        
+        // Otherwise (type must be 'autoTrade'), check the trade_capital
+        return item.trade_capital !== null; // Keep item if it's an Auto Trade
       })
       .map((trade) => {
         const tradeConfig = tradeConfigAllocations.find(
           (o) => o.uuid === trade.trade_config_uuid
         );
+        if (!tradeConfig) return null; 
 
         const targetFR =
           fundingRate?.[tradeConfig?.target.value]?.[trade.base_asset]?.[0];
@@ -405,16 +437,23 @@ export default function TriggersTable({
         const autoRepeat = repeatTrades?.find(
           (item) => item.trade_uuid === trade.uuid
         );
-        let autoRepeatStatus = '-';
-        let autoRepeatSwitch = null;
-        if (trade.trade_capital !== null) {
-          if (autoRepeat?.status) autoRepeatStatus = autoRepeat.status;
-          else
-            autoRepeatStatus = autoRepeat?.auto_repeat_switch
-              ? t('Normal')
-              : t('Operable');
-          autoRepeatSwitch = !!autoRepeat?.auto_repeat_switch;
+
+        // --- Refactor autoRepeatStatus calculation ---
+        let calculatedAutoRepeatStatus = '-'; // Default value
+        const autoRepeatSwitchValue = !!autoRepeat?.auto_repeat_switch; // Convert to boolean for clarity
+
+        if (trade.trade_capital !== null) { // Only for Auto Trades
+          if (autoRepeat?.status) {
+            calculatedAutoRepeatStatus = autoRepeat.status; // Use status if available
+          } else {
+             // If no specific status, determine based on the switch
+             calculatedAutoRepeatStatus = autoRepeatSwitchValue ? t('Normal') : t('Operable');
+          }
         }
+        // --- End Refactor ---
+
+        const targetIconUrl = typeof tradeConfig.target?.icon === 'string' ? tradeConfig.target.icon : null;
+        const originIconUrl = typeof tradeConfig.origin?.icon === 'string' ? tradeConfig.origin.icon : null;
 
         return {
           ...trade,
@@ -432,7 +471,7 @@ export default function TriggersTable({
                 targetFundingRate: targetFR.funding_rate * 100,
                 targetFundingRateIcon:
                   marketCodeCombination?.value === 'ALL'
-                    ? tradeConfig.target.icon
+                    ? tradeConfig.target?.icon // Pass element or URL based on what it is
                     : null,
                 targetFR,
               }
@@ -442,23 +481,25 @@ export default function TriggersTable({
                 originFundingRate: originFR.funding_rate * 100,
                 originFundingRateIcon:
                   marketCodeCombination?.value === 'ALL'
-                    ? tradeConfig.origin.icon
+                    ? tradeConfig.origin?.icon // Pass element or URL based on what it is
                     : null,
                 originFR,
               }
             : { originFundingRate: !fundingRate ? undefined : null }),
           marketCodes: {
-            targetMarketCode: tradeConfig.target.value,
-            originMarketCode: tradeConfig.origin.value,
+            targetMarketCode: tradeConfig.target?.value,
+            originMarketCode: tradeConfig.origin?.value, 
           },
-          targetMarketIcon: tradeConfig.target.icon,
-          originMarketIcon: tradeConfig.origin.icon,
+          targetMarketIcon: targetIconUrl, 
+          originMarketIcon: originIconUrl,
           icon: assetsData?.[trade.base_asset]?.icon,
-          autoRepeatSwitch,
-          autoRepeatStatus,
+          autoRepeatSwitch: trade.trade_capital !== null ? autoRepeatSwitchValue : null, 
+          autoRepeatStatus: calculatedAutoRepeatStatus, 
           autoRepeat,
         };
-      });
+      })
+      // Filter out any null results from the map if tradeConfig was somehow missing
+      .filter(Boolean);
   }, [
     data,
     fundingRate,
@@ -549,19 +590,34 @@ export default function TriggersTable({
 
   const getRowId = useCallback((row) => row.uuid, []);
   const onExpandedChange = useCallback((newExpanded) => {
+    // Calculate the new state object, handling potential updater functions
     const newExpandedObj = isFunction(newExpanded)
       ? newExpanded()
       : newExpanded;
-    setExpanded(newExpandedObj);
+      
+    // Get the ID of the row that WAS expanded (safe access to current state)
+    const currentExpandedId = Object.keys(expanded || {})?.[0]; 
+    
+    // Ensure the new state object is safe before getting keys
+    const safeNewExpandedObj = newExpandedObj || {};
+    const newExpandedId = Object.keys(safeNewExpandedObj)?.[0];
 
-    const rowId = Object.keys(newExpandedObj || {})?.[0];
+    // If the 'add' row was expanded but now no row is expanded, clear selectedAsset
+    if (currentExpandedId?.startsWith('add-') && !newExpandedId) {
+         setSelectedAsset(''); 
+    }
+    
+    // Ensure we always set an object to the state
+    setExpanded(safeNewExpandedObj); 
+
+    // Update selectedTrade based on the new expanded state
     setSelectedTrade(
-      rowId && !rowId.startsWith('add-')
-        ? tableRef.current.getRow(rowId)?.original
+      newExpandedId && !newExpandedId.startsWith('add-')
+        ? tableRef.current.getRow(newExpandedId)?.original
         : undefined
     );
     setDisplayTradeHistory(false);
-  }, []);
+  }, [expanded]); // Dependency array remains correct
 
   const renderSubComponent = useCallback(
     ({ row: { original, toggleExpanded }, meta }) => (

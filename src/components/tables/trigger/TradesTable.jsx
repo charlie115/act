@@ -68,7 +68,7 @@ export default function TradesTable({
       baseAsset,
       tradeConfigUuid: tradeConfigAllocation?.trade_config_uuid,
     },
-    { skip: !tradeConfigAllocation, pollingInterval: 1000 * 60 }
+    { skip: !tradeConfigAllocation, pollingInterval: 1000 * 1 }
   );
 
   const [
@@ -220,7 +220,6 @@ export default function TradesTable({
         columns={columns}
         data={data}
         isLoading={isLoading}
-        showProgressBar={isFetching}
         options={{
           getRowId,
           enableRowSelection: true,

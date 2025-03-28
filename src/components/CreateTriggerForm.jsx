@@ -234,7 +234,7 @@ const CreateTriggerForm = forwardRef(
             trade = await postTrade({
               base_asset: baseAsset,
               trade_config_uuid: results.uuid,
-              usdt_conversion: data.isTether,
+              usdt_conversion: !!data.isTether,
               low: parseFloat(data.entry),
               high: parseFloat(data.exit),
               trade_capital:
@@ -247,7 +247,7 @@ const CreateTriggerForm = forwardRef(
             trade = await postTrade({
               base_asset: baseAsset,
               trade_config_uuid: tradeConfigAllocation.trade_config_uuid,
-              usdt_conversion: data.isTether,
+              usdt_conversion: !!data.isTether,
               low: parseFloat(data.entry),
               high: parseFloat(data.exit),
               trade_capital:
@@ -701,8 +701,8 @@ const CreateTriggerForm = forwardRef(
     useEffect(() => {
       // Check if isTetherPriceView changed from external source
       if (prevIsTetherView !== undefined && prevIsTetherView !== isTetherPriceView) {
-        // Update our local isTether state
-        setValue('isTether', isTetherPriceView);
+        // Update our local isTether state, ensuring it's a boolean
+        setValue('isTether', !!isTetherPriceView);
         
         // If we have boundary data, refresh visualizations
         if (pBoundaryData) {
