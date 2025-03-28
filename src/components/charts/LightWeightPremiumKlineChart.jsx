@@ -391,11 +391,36 @@ const LightWeightPremiumKlineChart = forwardRef(
 
     // Replace the trigger config effect
     useEffect(() => {
-      if (triggerConfig?.entry || triggerConfig?.exit) {
-        // Short delay to ensure chart is rendered
-        setTimeout(updateTriggerPriceLines, 50);
+      // Check if chart is ready and trigger config actually has values to draw lines
+      if (isChartReady && (isNumber(triggerConfig?.entry) || isNumber(triggerConfig?.exit))) {
+        // Update the price lines first
+        updateTriggerPriceLines();
+        
+        // Explicitly ensure the right price scale autoscales after updating lines.
+        // This helps when manually entered values are outside the current data range.
+        // Use a short delay to allow the chart to process the line creation first.
+        setTimeout(() => {
+          if (chartRef.current) {
+            try {
+              // Get the right price scale (where premium %/KRW is shown)
+              const priceScale = chartRef.current.priceScale('right');
+              
+              // Re-apply autoScale: true to potentially force a rescale
+              priceScale.applyOptions({
+                autoScale: true, 
+              });
+            } catch (e) {
+              // console.warn('Error ensuring price scale autoscale:', e);
+            }
+          }
+        }, 100); // 100ms delay, might need slight adjustment
+      } else if (isChartReady && !triggerConfig?.entry && !triggerConfig?.exit) {
+        // If triggerConfig is cleared (e.g., form reset), ensure lines are removed
+        updateTriggerPriceLines(); 
       }
-    }, [triggerConfig, chartMode, i18n.language, isChartReady]);
+      // Keep dependencies: triggerConfig drives the update, chartMode affects which series the lines attach to,
+      // i18n for potential label changes, isChartReady ensures chart exists.
+    }, [triggerConfig, chartMode, i18n.language, isChartReady]); 
 
     // Update chart data effect - make sure we reapply trigger lines
     useEffect(() => {
@@ -952,8 +977,8 @@ const LightWeightPremiumKlineChart = forwardRef(
     }, [dataType, isChartReady]);
 
     const chartOptions = {
-      leftPriceScale: { visible: true },
-      rightPriceScale: { visible: true },
+      leftPriceScale: { visible: true, autoScale: true },
+      rightPriceScale: { visible: true, autoScale: true },
       handleScale: isAuthorized,
       handleScroll: isAuthorized,
       // Ensure consistent font styling with explicit sizing
@@ -966,6 +991,7 @@ const LightWeightPremiumKlineChart = forwardRef(
         borderColor: theme.palette.divider,
         timeVisible: true,
         secondsVisible: false,
+        rightBarStaysOnScroll: true,
       },
       grid: {
         vertLines: {
