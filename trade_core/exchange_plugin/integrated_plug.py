@@ -722,7 +722,7 @@ class UserExchangeAdaptor:
             trade_info_dict = {k: v.item() if isinstance(v, np.generic) else v for k, v in trade_info_dict.items()}
 
             start_time = time.time()
-            timeout_seconds = 5  # 5 seconds
+            timeout_seconds = 30  # 30 seconds
             while (target_order_history is None or origin_order_history is None) and time.time() - start_time < timeout_seconds:
                 # Check whether the target order history exists in the database
                 curr.execute(f"SELECT * FROM order_history WHERE order_id='{trade_info_dict['target_order_id']}'")
