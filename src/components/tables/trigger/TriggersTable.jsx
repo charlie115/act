@@ -89,6 +89,9 @@ export default function TriggersTable({
   const premiumDataViewerRef = useRef();
   const tableRef = useRef();
 
+  console.log('marketCodeCombination', marketCodeCombination);
+  console.log('tradeConfigAllocations', tradeConfigAllocations);
+
   const { i18n, t } = useTranslation();
 
   const theme = useTheme();
@@ -161,6 +164,9 @@ export default function TriggersTable({
   const { data: assetsData } = useGetAssetsQuery();
 
   const marketCodes = useMemo(() => {
+    // console.log('marketCodeCombination', marketCodeCombination);
+    // console.log('targetMarketCode', marketCodeCombination?.target?.value);
+    // console.log('originMarketCode', marketCodeCombination?.origin?.value);
     if (!marketCodeCombination?.value || marketCodeCombination.value === 'ALL')
       return null;
     return {
@@ -402,8 +408,8 @@ export default function TriggersTable({
         if (!item) return false;
 
         // 1. Check if the item matches the selected market code combination
-        const marketMatch = marketCodeCombination?.value === 'ALL' || 
-                            marketCodeCombination?.tradeConfigUuid === item.trade_config_uuid;
+        const marketMatch = !marketCodeCombination || marketCodeCombination.value === 'ALL' || 
+                            marketCodeCombination.tradeConfigUuid === item.trade_config_uuid;
         
         // If the market doesn't match, filter out this item immediately
         if (!marketMatch) {
@@ -411,12 +417,12 @@ export default function TriggersTable({
         }
 
         // 2. If market matches, THEN filter by selected trigger type (if not 'ALL')
-        if (selectedTriggerType?.value === 'ALL') {
+        if (!selectedTriggerType || selectedTriggerType.value === 'ALL') {
           return true; // Keep item if type filter is 'ALL'
         } 
 
         // If type is 'alarms', check the trade_capital
-        if (selectedTriggerType?.value === 'alarms') {
+        if (selectedTriggerType.value === 'alarms') {
           return item.trade_capital === null; // Keep item if it's an Alarm
         } 
         
