@@ -167,11 +167,11 @@ export default function TriggersTable({
     // console.log('marketCodeCombination', marketCodeCombination);
     // console.log('targetMarketCode', marketCodeCombination?.target?.value);
     // console.log('originMarketCode', marketCodeCombination?.origin?.value);
-    if (!marketCodeCombination?.value || marketCodeCombination.value === 'ALL')
+    if (!marketCodeCombination?.value || marketCodeCombination?.value === 'ALL')
       return null;
     return {
-      targetMarketCode: marketCodeCombination?.target.value,
-      originMarketCode: marketCodeCombination?.origin.value,
+      targetMarketCode: marketCodeCombination?.target?.value,
+      originMarketCode: marketCodeCombination?.origin?.value,
     };
   }, [marketCodeCombination?.value]);
 
@@ -294,7 +294,7 @@ export default function TriggersTable({
         header: t('Status'),
         cell: renderStatusCell,
       },
-      ...(marketCodeCombination.value === 'ALL' && !isMobile
+      ...(marketCodeCombination?.value === 'ALL' && !isMobile
         ? [
             {
               accessorKey: 'targetFundingRate',
@@ -310,8 +310,8 @@ export default function TriggersTable({
             },
           ]
         : []),
-      ...(marketCodeCombination.target &&
-      !marketCodeCombination.target.isSpot &&
+      ...(marketCodeCombination?.target &&
+      !marketCodeCombination?.target?.isSpot &&
       !isMobile
         ? [
             {
@@ -322,8 +322,8 @@ export default function TriggersTable({
             },
           ]
         : []),
-      ...(marketCodeCombination.origin &&
-      !marketCodeCombination.origin.isSpot &&
+      ...(marketCodeCombination?.origin &&
+      !marketCodeCombination?.origin?.isSpot &&
       !isMobile
         ? [
             {
@@ -409,7 +409,7 @@ export default function TriggersTable({
 
         // 1. Check if the item matches the selected market code combination
         const marketMatch = !marketCodeCombination || marketCodeCombination.value === 'ALL' || 
-                            marketCodeCombination.tradeConfigUuid === item.trade_config_uuid;
+                            marketCodeCombination?.tradeConfigUuid === item.trade_config_uuid;
         
         // If the market doesn't match, filter out this item immediately
         if (!marketMatch) {
@@ -524,8 +524,8 @@ export default function TriggersTable({
     if (
       !tableData ||
       !marketCodeCombination ||
-      marketCodeCombination.value === 'ALL' ||
-      !marketCodeCombination.tradeConfigUuid
+      marketCodeCombination?.value === 'ALL' ||
+      !marketCodeCombination?.tradeConfigUuid
     ) {
       return null;
     }
@@ -537,7 +537,7 @@ export default function TriggersTable({
     tableData.forEach((trade) => {
       if (
         trade.trade_capital !== null &&
-        trade.trade_config_uuid === marketCodeCombination.tradeConfigUuid
+        trade.trade_config_uuid === marketCodeCombination?.tradeConfigUuid
       ) {
         if (trade.status === -1) {
           totalWaitingExit += trade.trade_capital;
@@ -730,7 +730,7 @@ export default function TriggersTable({
         />
         {/* --- START: Display Capital Totals --- */}
         {/* Only display if totals are calculated AND the selected type is NOT ALARM */}
-        {capitalTotals && selectedTriggerType.value !== 'alarms' && (
+        {capitalTotals && selectedTriggerType?.value !== 'alarms' && (
           <Box sx={{ 
             ml: 1, 
             mr: 1, 
