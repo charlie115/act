@@ -967,6 +967,10 @@ class UserExchangeAdaptor:
         except Exception as e:
             self.logger.error(f"handle_margin_liquidation_call_trade|{e}")
             self.logger.error(traceback.format_exc())
+            try:
+                self.acw_api.create_message_thread(self.admin_id, f"handle_margin_liquidation_call_trade 에러", f"handle_margin_liquidation_call_trade 에러: {e}", 'ERROR')
+            except Exception as e:
+                pass
                 
     def handle_margin_liquidation_call_trade_queue_loop(self):
         self.logger.info(f"handle_margin_liquidation_call_trade_queue_loop started.")
@@ -976,6 +980,10 @@ class UserExchangeAdaptor:
             except Exception as e:
                 self.logger.error(f"handle_margin_liquidation_call_trade_queue_loop|{e}")
                 self.logger.error(traceback.format_exc())
+                try:
+                    self.acw_api.create_message_thread(self.admin_id, f"handle_margin_liquidation_call_trade_queue_loop 에러", f"handle_margin_liquidation_call_trade_queue_loop 에러: {e}", 'ERROR')
+                except Exception as e:
+                    pass
                 time.sleep(3)
         
     def generate_pnl_history(self, trade_info_dict):
