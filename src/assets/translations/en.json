@@ -355,7 +355,7 @@
   "Total Forwarding Commission": "Total Forwarding Commission",
   "Total PnL": "Total PnL",
   "Total PnL After Fee": "Total PnL After Fee",
-  "Total PnL After Fee KIMP": "Total PnL After Fee KIMP",
+  "Total PnL After Fee KIMP": "Total PnL After Fee (KIMP)",
   "Total before PnL (USD/KRW applied)": "Total before PnL (USD/KRW applied)",
   "Total after PnL (USD/KRW applied)": "Total after PnL (USD/KRW applied)",
   "Total before PnL (USDT/KRW applied)": "Total before PnL (USDT/KRW applied)",
@@ -445,5 +445,8 @@
   "{{selected}} of {{total}} selected": "{{selected}} of {{total}} selected",
   "{{value}}D": "{{value}}D",
   "{{value}}h": "{{value}}h",
-  "{{value}}m": "{{value}}m"
+  "{{value}}m": "{{value}}m",
+  "Total Waiting Entry/Exit": "Total Waiting Entry/Exit",
+  "Total Waiting Exit": "Total Waiting Exit",
+  "Total Waiting Entry": "Total Waiting Entry"
 }

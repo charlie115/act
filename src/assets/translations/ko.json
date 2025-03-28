@@ -442,5 +442,8 @@
   "{{selected}} of {{total}} selected": "{{total}} 중 {{selected}} 선택됨",
   "{{value}}D": "",
   "{{value}}h": "{{value}}시간",
-  "{{value}}m": "{{value}}분"
+  "{{value}}m": "{{value}}분",
+  "Total Waiting Entry/Exit": "진입/탈출 대기 합계",
+  "Total Waiting Exit": "탈출 대기 합계",
+  "Total Waiting Entry": "진입 대기 합계"
 }

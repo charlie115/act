@@ -4,7 +4,9 @@ import Box from '@mui/material/Box';
 
 import BlockIcon from '@mui/icons-material/Block';
 
-export default function renderAssetIconCell({ cell }) {
+export default function renderAssetIconCell({ cell, table }) {
+  const isMobile = table.options.meta?.isMobile;
+
   return (
     <Box
       sx={{
@@ -19,10 +21,10 @@ export default function renderAssetIconCell({ cell }) {
           loading="lazy"
           src={cell.getValue()}
           alt=""
-          sx={{ width: { xs: 14, md: 20 } }}
+          sx={{ width: isMobile ? '0.7rem' : 20 }}
         />
       ) : (
-        <BlockIcon color="secondary" sx={{ fontSize: { xs: 14, md: 20 } }} />
+        <BlockIcon color="secondary" sx={{ fontSize: isMobile ? '0.7rem' : 20 }} />
       )}
     </Box>
   );

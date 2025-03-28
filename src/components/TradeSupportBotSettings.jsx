@@ -19,6 +19,7 @@ import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
 
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
@@ -350,7 +351,7 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
                       >
                         <FormLabel>
                           {t('Repetitive Trade Condition')}{' '}
-                          <small>[-20 ~ 30]</small>
+                          <small>[-20% ~ 30%]</small>
                         </FormLabel>
                         <Input
                           inputProps={{
@@ -365,15 +366,19 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
                             field.onChange(value);
                           }}
                           sx={{ width: '5em' }}
+                          endAdornment={
+                            <InputAdornment position="end">%</InputAdornment>
+                          }
                         />
                       </Stack>
                       <Slider
-                        // marks
+                        marks
                         min={-20}
                         max={30}
                         step={0.1}
                         color={fieldState.error ? 'error' : 'info'}
                         valueLabelDisplay="auto"
+                        valueLabelFormat={(value) => `${value}% 이하에서만 반복거래 작동`}
                         {...field}
                       />
                       <FormHelperText>

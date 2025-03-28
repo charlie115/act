@@ -4,7 +4,13 @@ import Typography from '@mui/material/Typography';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
 
-export default function renderCurrencyFormatCell({ cell }) {
+export default function renderCurrencyFormatCell({ cell, table }) {
+  const isMobile = table.options.meta?.isMobile;
+
   if (cell.getValue() === null) return '-';
-  return <Typography>{formatIntlNumber(cell.getValue(), 2)}</Typography>;
+  return (
+    <Typography sx={{ fontSize: isMobile ? 7 : 'inherit' }}>
+      {formatIntlNumber(cell.getValue(), 2)}
+    </Typography>
+  );
 }

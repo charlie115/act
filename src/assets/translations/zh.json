@@ -354,12 +354,12 @@
   "Total PnL": "",
   "Total PnL After Fee": "",
   "Total PnL After Fee KIMP": "",
-  "Total before PnL (USD/KRW applied)": "",
-  "Total after PnL (USD/KRW applied)": "",
-  "Total before PnL (USDT/KRW applied)": "",
-  "Total after PnL (USDT/KRW applied)": "",
-  "Trade Support": "",
-  "Trade": "",
+  "Total before PnL (USD/KRW applied)": "PnL应用前总资产（美元/韩元汇率）",
+  "Total after PnL (USD/KRW applied)": "PnL应用后总资产（美元/韩元汇率）",
+  "Total before PnL (USDT/KRW applied)": "PnL应用前总资产（USDT/韩元汇率）",
+  "Total after PnL (USDT/KRW applied)": "PnL应用后总资产（USDT/韩元汇率）",
+  "Trade Support": "交易支持",
+  "Trade": "触发器",
   "Trade Capital": "",
   "Trade Failsafe": "",
   "Trade History": "",
@@ -442,5 +442,8 @@
   "{{selected}} of {{total}} selected": "",
   "{{value}}D": "",
   "{{value}}h": "",
-  "{{value}}m": ""
+  "{{value}}m": "",
+  "Total Waiting Entry/Exit": "等待入场/出场总计",
+  "Total Waiting Exit": "等待出场总计",
+  "Total Waiting Entry": "等待入场总计"
 }

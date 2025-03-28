@@ -48,6 +48,7 @@ import { useSelector } from 'react-redux';
 import isFunction from 'lodash/isFunction';
 
 import isKoreanMarket from 'utils/isKoreanMarket';
+import formatIntlNumber from 'utils/formatIntlNumber';
 
 import AssetSearchInput from 'components/AssetSearchInput';
 import AssetTradeConfig from 'components/AssetTradeConfig';
@@ -251,32 +252,33 @@ export default function TriggersTable({
       },
       {
         accessorKey: 'baseAsset',
-        size: isMobile ? 30 : 50,
+        size: isMobile ? 25 : 50,
         header: t('Base Asset'),
       },
       {
         accessorKey: 'marketCodes',
         enableGlobalFilter: false,
         enableSorting: false,
-        size: isMobile ? 45 : 150,
-        header: <SyncAltIcon />,
+        size: isMobile ? 40 : 70,
+        header: <SyncAltIcon sx={{ fontSize: isMobile ? '0.8rem' : '1rem' }} />,
         cell: renderMarketCodesCell,
+        props: { sx: { textAlign: 'center' } },
       },
       {
         accessorKey: 'entry',
-        size: isMobile ? 25 : 80,
+        size: isMobile ? 27 : 80,
         header: t('Entry'),
         cell: renderValueCell,
       },
       {
         accessorKey: 'exit',
-        size: isMobile ? 25 : 80,
+        size: isMobile ? 27 : 80,
         header: t('Exit'),
         cell: renderValueCell,
       },
       {
         accessorKey: 'tradeCapital',
-        size: isMobile ? 25 : 80,
+        size: isMobile ? 29 : 80,
         header: t('Trade Capital'),
         cell: renderCurrencyFormatCell,
       },
@@ -328,23 +330,21 @@ export default function TriggersTable({
         : []),
       {
         accessorKey: 'autoRepeatStatus',
-        size: isMobile ? 30 : 60,
+        size: isMobile ? 25 : 60,
         header: t('Repeat Transaction Status'),
-        slotProps: { cell: { sx: { fontSize: 12 } } },
       },
       {
         accessorKey: 'autoRepeatSwitch',
-        size: isMobile ? 30 : 60,
+        size: isMobile ? 35 : 60,
         header: t('Auto Repeat'),
         cell: renderAutoRepeatSwitchCell,
         props: { sx: { textAlign: 'center' } },
       },
       {
         accessorKey: 'created',
-        size: isMobile ? 40 : 100,
+        size: isMobile ? 30 : 100,
         header: t('Created'),
         cell: renderDateCell,
-        props: { sx: { fontSize: 11 } },
       },
       {
         accessorKey: 'edit',
@@ -451,6 +451,8 @@ export default function TriggersTable({
             targetMarketCode: tradeConfig.target.value,
             originMarketCode: tradeConfig.origin.value,
           },
+          targetMarketIcon: tradeConfig.target.icon,
+          originMarketIcon: tradeConfig.origin.icon,
           icon: assetsData?.[trade.base_asset]?.icon,
           autoRepeatSwitch,
           autoRepeatStatus,
@@ -470,6 +472,42 @@ export default function TriggersTable({
     isExitTradeLoading,
     i18n.language,
   ]);
+
+  const capitalTotals = useMemo(() => {
+    if (
+      !tableData ||
+      !marketCodeCombination ||
+      marketCodeCombination.value === 'ALL' ||
+      !marketCodeCombination.tradeConfigUuid
+    ) {
+      return null;
+    }
+
+    let totalWaitingExitEntry = 0;
+    let totalWaitingExit = 0;
+    let totalWaitingEntry = 0;
+
+    tableData.forEach((trade) => {
+      if (
+        trade.trade_capital !== null &&
+        trade.trade_config_uuid === marketCodeCombination.tradeConfigUuid
+      ) {
+        if (trade.status === -1) {
+          totalWaitingExit += trade.trade_capital;
+          totalWaitingExitEntry += trade.trade_capital;
+        } else if (trade.status === 0) {
+          totalWaitingEntry += trade.trade_capital;
+          totalWaitingExitEntry += trade.trade_capital;
+        }
+      }
+    });
+
+    return {
+      exitEntry: formatIntlNumber(totalWaitingExitEntry, 0),
+      exit: formatIntlNumber(totalWaitingExit, 0),
+      entry: formatIntlNumber(totalWaitingEntry, 0),
+    };
+  }, [tableData, marketCodeCombination]);
 
   const assetSearchProps = useMemo(
     () => ({
@@ -615,9 +653,9 @@ export default function TriggersTable({
     <Box sx={{ mx: { xs: 0, md: 1 }, p: { xs: 0, md: 1 } }}>
       <Stack
         direction="row"
-        justifyContent="space-between"
+        alignItems="flex-start"
         spacing={1}
-        sx={{ mb: 2 }}
+        sx={{ mb: 2, flexWrap: 'wrap' }}
       >
         <DropdownMenu
           value={selectedTriggerType}
@@ -625,9 +663,62 @@ export default function TriggersTable({
           onSelectItem={setSelectedTriggerType}
           buttonStyle={{
             justifyContent: 'flex-start',
-            minWidth: isMobile ? 190 : 220,
+            minWidth: isMobile ? 100 : 220,
           }}
         />
+        {/* --- START: Display Capital Totals --- */}
+        {/* Only display if totals are calculated AND the selected type is NOT ALARM */}
+        {capitalTotals && selectedTriggerType.value !== 'alarms' && (
+          <Box sx={{ 
+            ml: 1, 
+            mr: 1, 
+            mt: { xs: 1, md: 0 }, 
+            flexShrink: 0, 
+            border: 1,
+            borderColor: 'divider',
+            borderRadius: 1,
+            p: { xs: 0.5, md: 1 },
+            bgcolor: 'background.paper'
+          }}>
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                display: 'block', 
+                fontSize: { xs: '0.53rem', md: '0.7rem' },
+                fontWeight: 500, 
+                textAlign: 'right',
+                mb: 0.2
+              }}
+            >
+              {t('Total Waiting Entry/Exit')}: {capitalTotals.exitEntry} {t('KRW')}
+            </Typography>
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                display: 'block', 
+                fontSize: { xs: '0.5rem', md: '0.7rem' },
+                fontWeight: 500, 
+                textAlign: 'right',
+                mb: 0.2
+              }}
+            >
+              {t('Total Waiting Exit')}: {capitalTotals.exit} {t('KRW')}
+            </Typography>
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                display: 'block', 
+                fontSize: { xs: '0.5rem', md: '0.7rem' },
+                fontWeight: 500, 
+                textAlign: 'right' 
+              }}
+            >
+              {t('Total Waiting Entry')}: {capitalTotals.entry} {t('KRW')}
+            </Typography>
+          </Box>
+        )}
+        {/* --- END: Display Capital Totals --- */}
+        <Box sx={{ flexGrow: 1, minWidth: { xs: 0, sm: '10px'} }} />
         <Box
           className={
             marketCodeCombination &&
@@ -636,6 +727,7 @@ export default function TriggersTable({
               ? 'animate__animated animate__pulse animate__repeat-2'
               : undefined
           }
+          sx={{ ml: 'auto', mt: { xs: 1, md: 0 } }}
         >
           <AssetSearchInput
             showSelect
@@ -687,7 +779,6 @@ export default function TriggersTable({
         columns={columns}
         data={tableData}
         isLoading={isLoading}
-        // showProgressBar={isFetching}
         options={{
           getRowId,
           enableRowSelection: true,
@@ -715,6 +806,7 @@ export default function TriggersTable({
         getHeaderProps={() => ({
           sx: {
             bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+            fontSize: isMobile ? '0.6em' : '0.7em',
           },
         })}
         getCellProps={() => ({ sx: { height: 30 } })}
