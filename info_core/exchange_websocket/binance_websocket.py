@@ -527,7 +527,7 @@ class BinanceWebsocket:
                         # Compare difference in microseconds
                         diff_us = now_us - last_update_us
                         if diff_us > stale_threshold_secs * 1_000_000:
-                            self.logger.info(f"Stale sym: {sym}, data: {symbol_data}")
+                            # self.logger.info(f"Stale sym: {sym}, data: {symbol_data}")
                             # It's stale
                             stale_count += 1
 
