@@ -780,7 +780,7 @@ class UserBinanceAdaptor:
                     waiting_df = trade_df[(trade_df['trade_config_uuid']==trade_config_uuid)&(trade_df['base_asset']==base_asset)&(trade_df['trade_switch']==-1)]
                     self.logger.info(f"청산자동정리 실행|trade_config_uuid: {trade_config_uuid}, symbol: {base_asset}, symbol: {base_asset}") # test
                     if len(waiting_df) == 0:
-                        body = f"{base_asset}USDT는 차익거래에 진입되어있는 상태가 아닙니다.\n"
+                        body = f"{base_asset}USDT는 {self.counterpart_exchange}와 BINANCE_USD_M 간의 차익거래에 진입되어있는 상태가 아닙니다.\n"
                         body += f"포지션 자동정리를 취소합니다."
                         self.acw_api.create_message_thread(telegram_id, "마진콜 자동정리 취소", body, 'INFO')
                         return                    
