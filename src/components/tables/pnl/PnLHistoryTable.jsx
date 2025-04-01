@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -52,6 +52,10 @@ export default function PnLHistoryTable({
     tradeConfigUuid,
     tradeUuid,
   });
+
+  const { data: assetsData } = useGetAssetsQuery();
+  
+  // Keep original trade data query for expanded view
   const { data: tradeData } = useGetTradeLogByUuidQuery(
     {
       tradeConfigUuid,
@@ -60,10 +64,65 @@ export default function PnLHistoryTable({
     { skip: !selectedUuid?.trade_uuid }
   );
 
-  const { data: assetsData } = useGetAssetsQuery();
+  // Instead of trying to create hooks dynamically, use one query with a skipToken pattern
+  const [currentTradeUuid, setCurrentTradeUuid] = useState(null);
+  const { data: currentTradeLogData } = useGetTradeLogByUuidQuery(
+    {
+      tradeConfigUuid,
+      uuid: currentTradeUuid,
+    },
+    { skip: !currentTradeUuid }
+  );
+
+  // Store fetched trade log data
+  const [tradeLogCache, setTradeLogCache] = useState({});
+
+  // When currentTradeLogData changes, update the cache
+  useEffect(() => {
+    if (currentTradeLogData && currentTradeUuid) {
+      setTradeLogCache(prev => ({
+        ...prev,
+        [currentTradeUuid]: currentTradeLogData
+      }));
+      // Reset currentTradeUuid to allow next fetch
+      setCurrentTradeUuid(null);
+    }
+  }, [currentTradeLogData, currentTradeUuid]);
+
+  // Trigger fetching for any trade_uuid not in cache yet, prioritizing by datetime (newest first)
+  useEffect(() => {
+    if (data && !currentTradeUuid) {
+      // Sort data by registered_datetime in descending order
+      const sortedData = [...data].sort((a, b) => 
+        new Date(b.registered_datetime) - new Date(a.registered_datetime)
+      );
+      
+      // Find first trade_uuid not in cache from the sorted data
+      const unfetchedTrade = sortedData.find(item => 
+        item.trade_uuid && !tradeLogCache[item.trade_uuid]
+      );
+      
+      if (unfetchedTrade) {
+        setCurrentTradeUuid(unfetchedTrade.trade_uuid);
+      }
+    }
+  }, [data, tradeLogCache, currentTradeUuid]);
 
   const columns = useMemo(
     () => [
+      {
+        accessorKey: 'icon',
+        enableGlobalFilter: false,
+        enableSorting: false,
+        size: 5,
+        header: <span />,
+        cell: renderAssetIconCell,
+      },
+      {
+        accessorKey: 'baseAsset',
+        size: isMobile ? 25 : 45,
+        header: t('Base Asset'),
+      },
       {
         accessorKey: 'datetime',
         size: isMobile ? 30 : 100,
@@ -74,6 +133,8 @@ export default function PnLHistoryTable({
         accessorKey: 'uuid',
         size: isMobile ? 40 : 120,
         header: t('ID'),
+        enableHiding: true,
+        hidden: isMobile,
       },
       {
         accessorKey: 'trade_uuid',
@@ -117,11 +178,6 @@ export default function PnLHistoryTable({
         cell: renderColoredSignedNumberCell,
       },
       {
-        accessorKey: 'total_pnl_after_fee_kimp',
-        size: isMobile ? 30 : 80,
-        header: t('Total PnL After Fee KIMP'),
-      },
-      {
         accessorKey: 'more_info',
         enableGlobalFilter: false,
         enableSorting: false,
@@ -135,41 +191,33 @@ export default function PnLHistoryTable({
   );
 
   const tableData = useMemo(
-    () =>
-      orderBy(
-        data || [],
+    () => {
+      if (!data) return [];
+      
+      return orderBy(
+        data,
         (o) => o.registered_datetime,
         'desc'
-      ).map((item) => ({
-        ...item,
-        datetime: item.registered_datetime,
-      })),
-    [data]
+      ).map((item) => {
+        const tradeLogData = tradeLogCache[item.trade_uuid];
+        
+        return {
+          ...item,
+          datetime: item.registered_datetime,
+          baseAsset: tradeLogData?.base_asset || '',
+          name: tradeLogData?.base_asset || '',
+          icon: tradeLogData?.base_asset ? assetsData?.[tradeLogData.base_asset]?.icon : null,
+        };
+      });
+    },
+    [data, tradeLogCache, assetsData]
   );
+
+  // Filter out columns that should be hidden on mobile
+  const visibleColumns = useMemo(() => columns.filter(column => !(isMobile && column.hidden)), [columns, isMobile]);
 
   const tradeColumns = useMemo(
     () => [
-      {
-        accessorKey: 'icon',
-        enableGlobalFilter: false,
-        enableSorting: false,
-        size: 5,
-        header: <span />,
-        cell: renderAssetIconCell,
-      },
-      {
-        accessorKey: 'baseAsset',
-        size: isMobile ? 25 : 50,
-        header: t('Base Asset'),
-      },
-      {
-        accessorKey: 'marketCodes',
-        enableGlobalFilter: false,
-        enableSorting: false,
-        size: isMobile ? 65 : 180,
-        header: <SyncAltIcon />,
-        cell: renderMarketCodesCell,
-      },
       {
         accessorKey: 'entry',
         size: isMobile ? 25 : 120,
@@ -220,8 +268,8 @@ export default function PnLHistoryTable({
         isTether: tradeData.usdt_conversion,
         deleted: tradeData.deleted,
         marketCodes: {
-          targetMarketCode: marketCodeCombination.target.value,
-          originMarketCode: marketCodeCombination.origin.value,
+          targetMarketCode: marketCodeCombination?.target?.value,
+          originMarketCode: marketCodeCombination?.origin?.value,
         },
         icon: assetsData?.[tradeData.base_asset]?.icon,
       },
@@ -293,7 +341,7 @@ export default function PnLHistoryTable({
   return (
     <ReactTableUI
       enableTablePaginationUI
-      columns={columns}
+      columns={visibleColumns}
       data={tableData}
       options={{
         getRowId,
