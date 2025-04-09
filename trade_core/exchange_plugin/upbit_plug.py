@@ -449,6 +449,7 @@ class UserUpbitAdaptor:
                     return
                 return res
             retry_error_case = False
+            self.logger.error(f"market_short|res: {res}, symbol: {symbol}") # TEST
             if '알수없는' in res['result']['error']['message']:
                 retry_error_case = True
             if '일시적인 거래량 급증' in res['result']['error']['message']:

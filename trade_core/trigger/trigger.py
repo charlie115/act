@@ -91,7 +91,7 @@ class InitTrigger:
                         acw_api,
                         logging_dir,
                         'trade',
-                        0.025
+                        0.04
                     ),
                     daemon=True)
                 self.trade_proc_dict[f"trade|{market_code_combination_name}"].start()
