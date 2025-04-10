@@ -545,7 +545,7 @@ class InitCore:
 
             # Basic validation of response structure
             countries = response_dict.get('country')
-            if not isinstance(countries, list) or len(countries) < 2: # Added length check
+            if not isinstance(countries, list):
                 update_dollar_logger.error(f"Unexpected response format from Naver API. 'country' list invalid or too short. response_dict: {response_dict}")
                 self.acw_api.create_message_thread(self.admin_id, "Naver 환율 API 응답 형식 오류", f"Naver 환율 API에서 예상치 못한 응답 형식을 받았습니다. response_dict: {response_dict}")
                 return self.update_dollar_return_dict # Return previous state or handle error appropriately
