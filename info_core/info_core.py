@@ -524,32 +524,140 @@ class InitCore:
                 self.acw_api.create_message_thread(self.admin_id, f"update_convert_rate_dict|Exception occured! Error: {e}", f"update_convert_rate_dict|Exception occured! Error: {e}")
             time.sleep(loop_time_secs)
         
-    def fetch_dollar(self, update_dollar_logger, url='https://finance.naver.com/marketindex/exchangeDegreeCountQuote.naver?marketindexCd=FX_USDKRW', timedelta_hours=9):
+        
+    def fetch_dollar(self, update_dollar_logger, url='https://m.search.naver.com/p/csearch/content/qapirender.nhn?key=calculator&pkid=141&q=환율&where=m&u1=keb&u6=standardUnit&u7=0&u3=USD&u4=KRW&u8=down&u2=1', timeout=10):
+        current_time_utc = datetime.datetime.utcnow()
+
+        # Calculate KST time
+        kst_tz = datetime.timezone(datetime.timedelta(hours=9))
+        current_kst_time = current_time_utc.replace(tzinfo=datetime.timezone.utc).astimezone(kst_tz)
+        current_kst_time_only = current_kst_time.time()
+
+        # Define restricted time window (8:20 AM to 9:00 AM KST)
+        start_time_kst = datetime.time(8, 20)
+        end_time_kst = datetime.time(9, 00)
+        is_restricted_time = start_time_kst <= current_kst_time_only < end_time_kst
+        
         try:
-            resp = requests.get(url)
-            content = resp.content.decode('EUC-KR', errors='replace')
-            exchange_rate = pd.read_html(StringIO(content))[0]
-            self.update_dollar_return_dict['price'] = exchange_rate.iloc[0,1]
-            self.update_dollar_return_dict['change'] = exchange_rate.iloc[0,2]
-            self.update_dollar_return_dict['last_updated_time'] = datetime.datetime.utcnow()
-            dict_for_redis = {
-                "price": self.update_dollar_return_dict['price'],
-                "change": self.update_dollar_return_dict['change'],
-                "last_updated_time": self.update_dollar_return_dict['last_updated_time'].strftime("%Y-%m-%d %H:%M:%S")
-            }
-            self.local_redis.set_dict('INFO_CORE|dollar', dict_for_redis)
+            resp = requests.get(url, timeout=timeout)
+            resp.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+            response_dict = resp.json()
+
+            # Basic validation of response structure
+            countries = response_dict.get('country')
+            if not isinstance(countries, list) or len(countries) < 2: # Added length check
+                update_dollar_logger.error(f"Unexpected response format from Naver API. 'country' list invalid or too short. response_dict: {response_dict}")
+                self.acw_api.create_message_thread(self.admin_id, "Naver 환율 API 응답 형식 오류", f"Naver 환율 API에서 예상치 못한 응답 형식을 받았습니다. response_dict: {response_dict}")
+                return self.update_dollar_return_dict # Return previous state or handle error appropriately
+
+            fetched_value_str = countries[1].get('value')
+            if not fetched_value_str:
+                update_dollar_logger.warning(f'환율 정보를 가져오지 못했습니다 (value missing). url: {url}, response_dict: {response_dict}')
+                self.acw_api.create_message_thread(self.admin_id, f"환율 정보를 가져오지 못했습니다 (value missing).", f"환율 정보를 가져오지 못했습니다., url: {url}, response_dict: {response_dict}")
+                return self.update_dollar_return_dict
+
+            fetched_dollar = float(fetched_value_str.replace(',', ''))
             
-            # Generate log once every 10 times
-            self.update_dollar_return_dict['log_counter'] = self.update_dollar_return_dict.get('log_counter', 0) + 1
-            if self.update_dollar_return_dict['log_counter'] % 10 == 0:
-                update_dollar_logger.info(f"fetch_dollar|Dollar price ({self.update_dollar_return_dict['price']} KRW) has been updated.")
+            if is_restricted_time:
+                # Only log during restricted time, do not update redis or internal state
+                update_dollar_logger.info(f"fetch_dollar|Time restriction ({start_time_kst}-{end_time_kst} KST). Fetched dollar: {fetched_dollar:.2f}. Not updating Redis.")
+            else:
+                # --- Update logic only runs outside restricted time ---
+                redis_key = 'INFO_CORE|dollar'
+                existing_dollar_data = self.local_redis.get_dict(redis_key)
+                
+                price_to_store = fetched_dollar
+                difference_count_to_store = 0
+                last_updated_time_to_store = current_time_utc # Use the fetched UTC time
+                update_occurred = True # Flag to indicate if price/timestamp should be updated
+
+                if existing_dollar_data is not None:                
+                    existing_price = existing_dollar_data['price']
+                    existing_diff_count = existing_dollar_data.get('difference_count', 0)
+                    existing_time_str = existing_dollar_data.get('last_updated_time')
+
+                    # Check whether the newly updated dollar price is too different
+                    if abs(fetched_dollar - existing_price) / existing_price > 0.005:
+                        update_dollar_logger.warning(f"fetch_dollar|Large price difference detected. (existing: {existing_price}, new: {fetched_dollar})")
+                        difference_count_to_store = existing_diff_count + 1
+                        
+                        # Accept the new price if count is >= 2
+                        if difference_count_to_store >= 2:
+                            update_dollar_logger.warning(f"fetch_dollar|Accepting new price {fetched_dollar} due to sustained difference (count: {difference_count_to_store}).")
+                            price_to_store = fetched_dollar
+                            last_updated_time_to_store = current_time_utc
+                            update_occurred = True
+                        else:
+                             # Keep existing price and time if difference is large but count < 2
+                            price_to_store = existing_price
+                            # Use existing time string directly or parsed datetime
+                            try:
+                                # Use existing time string directly or parsed datetime if available
+                                if existing_time_str:
+                                    last_updated_time_to_store = datetime.datetime.strptime(existing_time_str, "%Y-%m-%d %H:%M:%S")
+                                else: # Fallback if time string is missing for some reason
+                                    last_updated_time_to_store = current_time_utc 
+                            except (ValueError, TypeError): # Handle potential parsing errors
+                                 update_dollar_logger.warning(f"fetch_dollar|Could not parse existing timestamp '{existing_time_str}'. Using current time as fallback.")
+                                 last_updated_time_to_store = current_time_utc
+                            update_occurred = False # Only count was updated
+                    else:
+                        # Difference is small, accept new price and reset count
+                        price_to_store = fetched_dollar
+                        difference_count_to_store = 0 
+                        last_updated_time_to_store = current_time_utc
+                        update_occurred = True
+
+                else:
+                    # No existing data, use fetched values
+                    update_dollar_logger.info("fetch_dollar|No existing dollar data found in Redis. Initializing.")
+                    # Variables price_to_store, difference_count_to_store, last_updated_time_to_store, update_occurred are already initialized correctly above
+
+                # Update the class member dictionary
+                self.update_dollar_return_dict['price'] = price_to_store
+                self.update_dollar_return_dict['difference_count'] = difference_count_to_store
+                # Store datetime object in the class member for internal use
+                self.update_dollar_return_dict['last_updated_time'] = last_updated_time_to_store 
+                
+                # Prepare data for Redis (store time as string)
+                dict_for_redis = {
+                    "price": price_to_store,
+                    "difference_count": difference_count_to_store,
+                    # Ensure we store the correct timestamp string (which might be the old one if update_occurred is False)
+                    "last_updated_time": last_updated_time_to_store.strftime("%Y-%m-%d %H:%M:%S")
+                }
+                self.local_redis.set_dict(redis_key, dict_for_redis)
+                
+                # Generate log once every 10 times (only if an actual price update occurred or it's the first time)
+                self.update_dollar_return_dict['log_counter'] = self.update_dollar_return_dict.get('log_counter', 0) + 1
+                if self.update_dollar_return_dict['log_counter'] % 10 == 1: # Log on the 1st, 11th, 21st... call
+                    if update_occurred:
+                        update_dollar_logger.info(f"fetch_dollar|Dollar price updated to {price_to_store:.2f} KRW. Diff count: {difference_count_to_store}.")
+                    else: # Log when price is kept due to large diff but low count
+                        update_dollar_logger.info(f"fetch_dollar|Dollar price check. Price kept at {price_to_store:.2f} KRW. Diff count incremented to {difference_count_to_store}.")
+            # --- End of update logic block ---
+
+        except requests.exceptions.Timeout:
+            update_dollar_logger.error(f"fetch_dollar|Request timed out after {timeout} seconds for URL: {url}")
+            self.acw_api.create_message_thread(self.admin_id, f"fetch_dollar|Request Timeout", f"fetch_dollar|Request timed out for URL: {url}")
+        except requests.exceptions.RequestException as e:
+            update_dollar_logger.error(f"fetch_dollar|Request failed: {e}")
+            self.acw_api.create_message_thread(self.admin_id, f"fetch_dollar|Request Exception", f"fetch_dollar|Request failed: {e}")
+        except (ValueError, TypeError) as e:
+            # Ensure fetched_value_str is defined for the error message
+            fetched_value_str_for_error = 'N/A'
+            try:
+                # Try to access it if it was assigned
+                fetched_value_str_for_error = fetched_value_str
+            except NameError:
+                pass # It wasn't assigned, keep 'N/A'
+            update_dollar_logger.error(f"fetch_dollar|Error processing fetched value: {e}. Value string: '{fetched_value_str_for_error}'")
+            self.acw_api.create_message_thread(self.admin_id, f"fetch_dollar|Value Processing Error", f"fetch_dollar|Error processing value: {e}. String: '{fetched_value_str_for_error}'")
         except Exception as e:
-            self.acw_api.create_message_thread(self.admin_id, f"fetch_dollar|Exception occured! Error: {e}", f"fetch_dollar|Exception occured! Error: {e}")
-            update_dollar_logger.warning(f"fetch_dollar|Exception occured! Error: {e}, pd.read_html(url): {pd.read_html(url)}")
-            exchange_rate = pd.read_html(url)[1]
-            self.update_dollar_return_dict['price'] = exchange_rate.iloc[0,1]
-            self.update_dollar_return_dict['change'] = exchange_rate.iloc[0,2]
-            self.update_dollar_return_dict['last_updated_time'] = datetime.datetime.utcnow()
+            update_dollar_logger.exception(f"fetch_dollar|An unexpected error occurred: {e}") # Use logger.exception to include traceback
+            self.acw_api.create_message_thread(self.admin_id, f"fetch_dollar|Unexpected Exception", f"fetch_dollar|An unexpected error occurred: {e}")
+            
+        # Always return the current state of the class member dict (which won't be updated during restricted time)
         return self.update_dollar_return_dict
 
     def fetch_dollar_loop(self, update_dollar_logger, loop_time=30):
