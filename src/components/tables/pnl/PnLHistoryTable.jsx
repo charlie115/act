@@ -16,6 +16,7 @@ import {
   useGetPnlHistoryQuery,
   // useGetTradeByUuidQuery,
   useGetTradeLogByUuidQuery,
+  useLazyGetTradeLogByUuidQuery,
 } from 'redux/api/drf/tradecore';
 
 import orderBy from 'lodash/orderBy';
@@ -46,17 +47,18 @@ export default function PnLHistoryTable({
   const { i18n, t } = useTranslation();
 
   const [expanded, setExpanded] = useState({});
-
   const [selectedUuid, setSelectedUuid] = useState({});
+  
+  // Get PnL history data
   const { data, isFetching } = useGetPnlHistoryQuery({
     tradeConfigUuid,
     tradeUuid,
   });
 
   const { data: assetsData } = useGetAssetsQuery();
-  
-  // Keep original trade data query for expanded view
-  const { data: tradeData } = useGetTradeLogByUuidQuery(
+
+  // Selected trade data for expanded view
+  const { data: selectedTradeData } = useGetTradeLogByUuidQuery(
     {
       tradeConfigUuid,
       uuid: selectedUuid.trade_uuid,
@@ -64,49 +66,72 @@ export default function PnLHistoryTable({
     { skip: !selectedUuid?.trade_uuid }
   );
 
-  // Instead of trying to create hooks dynamically, use one query with a skipToken pattern
-  const [currentTradeUuid, setCurrentTradeUuid] = useState(null);
-  const { data: currentTradeLogData } = useGetTradeLogByUuidQuery(
-    {
-      tradeConfigUuid,
-      uuid: currentTradeUuid,
-    },
-    { skip: !currentTradeUuid }
-  );
+  // Store base asset data for PnL entries
+  const [baseAssetMap, setBaseAssetMap] = useState({});
+  
+  // Get a function to trigger trade log queries on demand
+  const [getTradeLog] = useLazyGetTradeLogByUuidQuery();
 
-  // Store fetched trade log data
-  const [tradeLogCache, setTradeLogCache] = useState({});
+  // Track which trade UUIDs we've processed
+  const [processedTrades, setProcessedTrades] = useState({});
 
-  // When currentTradeLogData changes, update the cache
+  // Fetch trade logs when PnL data changes
   useEffect(() => {
-    if (currentTradeLogData && currentTradeUuid) {
-      setTradeLogCache(prev => ({
+    if (!data) return;
+
+    // Get trades that need to be processed
+    const tradesToProcess = data.filter((item) => (
+      item.trade_uuid && 
+      !processedTrades[item.trade_uuid] && 
+      !baseAssetMap[item.trade_uuid]
+    ));
+
+    // Sort by datetime descending to process newest first
+    const sortedTrades = orderBy(
+      tradesToProcess,
+      (item) => item.registered_datetime,
+      'desc'
+    );
+
+    // Process the first unprocessed trade
+    if (sortedTrades.length > 0) {
+      const tradeToProcess = sortedTrades[0];
+      
+      // Mark as being processed
+      setProcessedTrades((prev) => ({
         ...prev,
-        [currentTradeUuid]: currentTradeLogData
+        [tradeToProcess.trade_uuid]: 'processing'
       }));
-      // Reset currentTradeUuid to allow next fetch
-      setCurrentTradeUuid(null);
-    }
-  }, [currentTradeLogData, currentTradeUuid]);
 
-  // Trigger fetching for any trade_uuid not in cache yet, prioritizing by datetime (newest first)
-  useEffect(() => {
-    if (data && !currentTradeUuid) {
-      // Sort data by registered_datetime in descending order
-      const sortedData = [...data].sort((a, b) => 
-        new Date(b.registered_datetime) - new Date(a.registered_datetime)
-      );
-      
-      // Find first trade_uuid not in cache from the sorted data
-      const unfetchedTrade = sortedData.find(item => 
-        item.trade_uuid && !tradeLogCache[item.trade_uuid]
-      );
-      
-      if (unfetchedTrade) {
-        setCurrentTradeUuid(unfetchedTrade.trade_uuid);
-      }
+      // Fetch trade log data
+      getTradeLog({
+        tradeConfigUuid,
+        uuid: tradeToProcess.trade_uuid
+      }).unwrap()
+        .then((result) => {
+          if (result && result.base_asset) {
+            // Update base asset map with the result
+            setBaseAssetMap((prev) => ({
+              ...prev,
+              [tradeToProcess.trade_uuid]: result.base_asset
+            }));
+          }
+          
+          // Mark as processed
+          setProcessedTrades((prev) => ({
+            ...prev,
+            [tradeToProcess.trade_uuid]: 'complete'
+          }));
+        })
+        .catch((error) => {
+          console.error('Error fetching trade log:', error);
+          setProcessedTrades((prev) => ({
+            ...prev,
+            [tradeToProcess.trade_uuid]: 'error'
+          }));
+        });
     }
-  }, [data, tradeLogCache, currentTradeUuid]);
+  }, [data, baseAssetMap, processedTrades, getTradeLog, tradeConfigUuid]);
 
   const columns = useMemo(
     () => [
@@ -187,8 +212,13 @@ export default function PnLHistoryTable({
         header: <span />,
       },
     ],
-    [i18n.language, isMobile]
+    [i18n.language, isMobile, t]
   );
+
+  // Filter out columns that should be hidden on mobile
+  const visibleColumns = useMemo(() => (
+    columns.filter((column) => !(isMobile && column.hidden))
+  ), [columns, isMobile]);
 
   const tableData = useMemo(
     () => {
@@ -199,25 +229,35 @@ export default function PnLHistoryTable({
         (o) => o.registered_datetime,
         'desc'
       ).map((item) => {
-        const tradeLogData = tradeLogCache[item.trade_uuid];
+        const baseAsset = baseAssetMap[item.trade_uuid] || '';
         
         return {
           ...item,
           datetime: item.registered_datetime,
-          baseAsset: tradeLogData?.base_asset || '',
-          name: tradeLogData?.base_asset || '',
-          icon: tradeLogData?.base_asset ? assetsData?.[tradeLogData.base_asset]?.icon : null,
+          baseAsset,
+          name: baseAsset,
+          icon: baseAsset && assetsData ? assetsData[baseAsset]?.icon : null,
         };
       });
     },
-    [data, tradeLogCache, assetsData]
+    [data, baseAssetMap, assetsData]
   );
-
-  // Filter out columns that should be hidden on mobile
-  const visibleColumns = useMemo(() => columns.filter(column => !(isMobile && column.hidden)), [columns, isMobile]);
 
   const tradeColumns = useMemo(
     () => [
+      {
+        accessorKey: 'icon',
+        enableGlobalFilter: false,
+        enableSorting: false,
+        size: 5,
+        header: <span />,
+        cell: renderAssetIconCell,
+      },
+      {
+        accessorKey: 'baseAsset',
+        size: isMobile ? 25 : 45,
+        header: t('Base Asset'),
+      },
       {
         accessorKey: 'entry',
         size: isMobile ? 25 : 120,
@@ -252,31 +292,35 @@ export default function PnLHistoryTable({
         cell: renderDateCell,
       },
     ],
-    [i18n.language, isMobile]
+    [i18n.language, isMobile, t]
   );
+  
   const tradeTableData = useMemo(() => {
-    if (!tradeData) return [];
+    if (!selectedTradeData) return [];
     return [
       {
-        ...tradeData,
-        baseAsset: tradeData.base_asset,
-        name: tradeData.base_asset,
-        entry: tradeData.low,
-        exit: tradeData.high,
-        tradeCapital: tradeData.trade_capital,
-        created: tradeData.registered_datetime,
-        isTether: tradeData.usdt_conversion,
-        deleted: tradeData.deleted,
+        ...selectedTradeData,
+        baseAsset: selectedTradeData.base_asset,
+        name: selectedTradeData.base_asset,
+        entry: selectedTradeData.low,
+        exit: selectedTradeData.high,
+        tradeCapital: selectedTradeData.trade_capital,
+        created: selectedTradeData.registered_datetime,
+        isTether: selectedTradeData.usdt_conversion,
+        deleted: selectedTradeData.deleted,
         marketCodes: {
-          targetMarketCode: marketCodeCombination?.target?.value,
-          originMarketCode: marketCodeCombination?.origin?.value,
+          targetMarketCode: marketCodeCombination?.target?.value || '',
+          originMarketCode: marketCodeCombination?.origin?.value || '',
         },
-        icon: assetsData?.[tradeData.base_asset]?.icon,
+        icon: selectedTradeData.base_asset && assetsData 
+          ? assetsData[selectedTradeData.base_asset]?.icon 
+          : null,
       },
     ];
-  }, [tradeData, assetsData, marketCodeCombination]);
+  }, [selectedTradeData, assetsData, marketCodeCombination]);
 
   const getRowId = useCallback((row) => row.uuid, []);
+  
   const onUuidClick = useCallback(({ row, column, cell }) => {
     if (!row) {
       setSelectedUuid({});
@@ -290,10 +334,10 @@ export default function PnLHistoryTable({
 
   const renderSubComponent = useCallback(
     ({ row, meta }) => {
-      const [target, origin] = row.original.market_code_combination.split(':');
+      const [target, origin] = (row.original.market_code_combination || '').split(':');
       const marketCodes = {
-        targetMarketCode: target,
-        originMarketCode: origin,
+        targetMarketCode: target || '',
+        originMarketCode: origin || '',
       };
 
       const [[key, uuid]] = Object.entries(meta.selectedUuid);
@@ -335,7 +379,7 @@ export default function PnLHistoryTable({
         </Box>
       );
     },
-    [tradeColumns, tradeTableData]
+    [t, theme, tradeColumns, tradeTableData]
   );
 
   return (
