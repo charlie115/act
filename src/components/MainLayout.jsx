@@ -117,7 +117,7 @@ export default function MainLayout() {
                 <CSSTransition
                   unmountOnExit
                   key={location.pathname}
-                  nodeRef={currentRoute?.ref}
+                  nodeRef={currentRoute?.ref || undefined}
                   timeout={3000}
                   classNames="pages"
                 >
