@@ -17,7 +17,6 @@ import _pickle as pickle
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from loggers.logger import TradeCoreLogger
-from etc.acw_api import AcwApi
 from etc.db_handler.postgres_client import InitDBClient as InitPostgresDBClient
 from etc.redis_connector.redis_helper import RedisHelper
 from etc.utils import get_trade_df
@@ -762,6 +761,7 @@ class UserBinanceAdaptor:
                 position_side = res['p'][0]['ps']
                 mark_price = float(res['p'][0]['mp'])
                 position_amount = float(res['p'][0]['pa'])
+                open_position_side = 'LONG' if position_amount > 0 else 'SHORT'
                 unrealized_pnl = float(res['p'][0]['up'])
                 # Send margin call message
                 title = f"마진콜 경고! 바이낸스 {base_asset}USDT 의 미실현손익이 위험수위에 도달했습니다.\n"
@@ -859,7 +859,8 @@ class UserBinanceAdaptor:
                         origin_order_executed_qty = origin_order_history_df['qty'].values[0]
                         
                         margin_liquidation_call_trade_dict = {
-                            "trade_type": "short_long_trade",
+                            "open_position_side": open_position_side,
+                            "market_code": self.market_code,
                             "trade_df": row.to_frame().T,
                             "order_type": "margin_call"
                         }
@@ -887,13 +888,14 @@ class UserBinanceAdaptor:
                 symbol = res['o']['s'] # EX: BTCUSDT
                 symbol = symbol.replace('USDT', '')
                 side = res['o']['S'] # BUY or SELL
+                open_position_side = 'SHORT' if side == 'BUY' else 'LONG'
                 qty = res['o']['q']
                 # Send Liquidation message
                 body = f"청산 알람! 바이낸스 {symbol}USDT {qty}개가 강제청산되었습니다.\n"
                 self.acw_api.create_message_thread(telegram_id, "청산 알람", body, 'WARNING',  send_times=5, send_term=5)
                 # If margin_call_mode == 2, execute auto exit
                 if margin_call_mode == 2:
-                    body = f"마진콜 모니터링 설정에 따라, 자동거래에 진입되어 있는 {self.counterpart_exchange}의 포지션을 자동정리합니다."
+                    body = f"청산 모니터링 설정에 따라, 자동거래에 진입되어 있는 {self.counterpart_exchange}의 포지션을 자동정리합니다."
                     self.acw_api.create_message_thread(telegram_id, "청산 자동정리", body, 'INFO')
                     trade_df = get_trade_df(self.market_code_combination, trade_support=True)
                     waiting_df = trade_df[(trade_df['trade_config_uuid']==trade_config_uuid)&(trade_df['base_asset']==symbol)&(trade_df['trade_switch']==-1)]
@@ -954,9 +956,10 @@ class UserBinanceAdaptor:
                         origin_order_id = trade_history_df['origin_order_id'].values[0]
                         
                         margin_liquidation_call_trade_dict = {
-                            "trade_type": "short_long_trade",
+                            "open_position_side": open_position_side,
+                            "market_code": self.market_code,
                             "trade_df": row.to_frame().T,
-                            "order_type": "liquidation"
+                            "order_type": "liquidation",
                         }
                         
                         self.margin_liquidation_call_trade_queue.put(margin_liquidation_call_trade_dict)
@@ -1121,27 +1124,40 @@ class UserBinanceAdaptor:
         self.start_socket_stream_thread.start()
 
     def calculate_enter_qty(self, base_asset, dollar, bp, LS_premium, SL_premium, trade_capital, market_type, capital_currency='KRW'):
-        if capital_currency not in ["KRW"]:
-            raise Exception(f"Invalid currency: {capital_currency}")
         if market_type not in ["USD_M"]:
             raise Exception(f"Invalid market_type: {market_type}")
-        usdt_converted_dollar = (100+(LS_premium+SL_premium)/2)/100 * dollar
-        value_usd = trade_capital/(usdt_converted_dollar*1.005) # 0.5% margin for the enter amount of KRW
         
-        bp_usd = bp / usdt_converted_dollar
+        if capital_currency == "KRW":
+            usdt_converted_dollar = (100+(LS_premium+SL_premium)/2)/100 * dollar
+            value_usd = trade_capital/(usdt_converted_dollar*1.005) # 0.5% margin for the enter amount of KRW
+            
+            bp_usd = bp / usdt_converted_dollar
 
-        # BTC, ETH, BCH, LTC -> 0.001 까지 가능
-        if base_asset in ['BTC','ETH','BCH','LTC']:
-            enter_quantity = round(value_usd / bp_usd, 3)
-            if enter_quantity*bp_usd > value_usd:
-                enter_quantity = round((enter_quantity - 0.001), 3)
+            # BTC, ETH, BCH, LTC -> 0.001 까지 가능
+            if base_asset in ['BTC','ETH','BCH','LTC']:
+                enter_quantity = round(value_usd / bp_usd, 3)
+                if enter_quantity*bp_usd > value_usd:
+                    enter_quantity = round((enter_quantity - 0.001), 3)
 
-        # ETC, NEO, LINK -> 0.01 까지 가능
-        elif base_asset in ['ETC','NEO', 'LINK']:
-            enter_quantity = round(value_usd / bp_usd, 2)
-            if enter_quantity*bp_usd > value_usd:
-                enter_quantity = round((enter_quantity - 0.01), 2)
+            # ETC, NEO, LINK -> 0.01 까지 가능
+            elif base_asset in ['ETC','NEO', 'LINK']:
+                enter_quantity = round(value_usd / bp_usd, 2)
+                if enter_quantity*bp_usd > value_usd:
+                    enter_quantity = round((enter_quantity - 0.01), 2)
+            else:
+                enter_quantity = value_usd // bp_usd
+            return enter_quantity
+        elif capital_currency == "USD":
+            if base_asset in ['BTC','ETH','BCH','LTC']:
+                enter_quantity = round(trade_capital / bp, 3)
+                if enter_quantity*bp > trade_capital:
+                    enter_quantity = round((enter_quantity - 0.001), 3)
+            elif base_asset in ['ETC','NEO', 'LINK']:
+                enter_quantity = round(trade_capital / bp, 2)
+                if enter_quantity*bp > trade_capital:
+                    enter_quantity = round((enter_quantity - 0.01), 2)
+            else:
+                enter_quantity = trade_capital // bp
+            return enter_quantity
         else:
-            enter_quantity = value_usd // bp_usd
-                        
-        return enter_quantity
+            raise Exception(f"Invalid currency: {capital_currency}")

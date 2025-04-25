@@ -239,18 +239,6 @@ async def create_trade(trade: schemas.TradeCreate, db: AsyncSession):
     db_trade = models.Trade(**{**trade.dict(), "uuid": new_uuid})
     db.add(db_trade)
 
-    # Add trade to the trade_log table
-    # trade_log = models.TradeLog(
-    #     trade_uuid=db_trade.uuid,
-    #     trade_config_uuid=db_trade.trade_config_uuid,
-    #     base_asset=db_trade.base_asset,
-    #     usdt_conversion=db_trade.usdt_conversion,
-    #     low=db_trade.low,
-    #     high=db_trade.high,
-    #     trade_capital=db_trade.trade_capital,
-    #     status=db_trade.status,
-    #     remark=db_trade.remark
-    # )
     # create trade_log with the same uuid as trade
     trade_log_schema = schemas.TradeLogCreate(
         trade_uuid=db_trade.uuid,
@@ -709,7 +697,7 @@ async def exit_trade(trade_uuid: UUID, db: AsyncSession):
     target_market_code = trade_config.target_market_code
     origin_market_code = trade_config.origin_market_code
     market_code_combination = target_market_code + ':' + origin_market_code
-    if market_code_combination not in ["UPBIT_SPOT/KRW:BINANCE_USD_M/USDT", "BITHUMB_SPOT/KRW:BINANCE_USD_M/USDT"]:
+    if market_code_combination not in ["UPBIT_SPOT/KRW:BINANCE_USD_M/USDT", "BITHUMB_SPOT/KRW:BINANCE_USD_M/USDT", "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT"]:
         raise HTTPException(status_code=400, detail=f"Invalid market code({market_code_combination}) combination for the trade")
     
     # Fetch convert_rate_dict

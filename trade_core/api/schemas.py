@@ -63,7 +63,7 @@ class TradeBase(BaseModel):
     registered_datetime: datetime
     last_updated_datetime: datetime
     base_asset: str
-    usdt_conversion: bool
+    usdt_conversion: Optional[bool] = False
     low: Decimal
     high: Decimal
     trigger_switch: Optional[int] = None

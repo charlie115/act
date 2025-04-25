@@ -219,6 +219,7 @@ def start_trigger_loop(
         
     # Loop Thread for saving servercheck status
     target_market_code, origin_market_code = market_code_combination.split(':')
+    between_futures = True if 'SPOT' not in target_market_code and 'SPOT' not in origin_market_code else False
     target_market_servercheck = False
     origin_market_servercheck = False
     def save_servercheck_status():
@@ -283,18 +284,18 @@ def start_trigger_loop(
                 high_break_params = tuple(high_break_trigger_uuid_list)
                 # UPDATE database
                 if trade_support: # trade triggers only
-                    # sql = f"""
-                    #         UPDATE {table_name}
-                    #         SET trigger_switch = 1,
-                    #             trade_switch = CASE
-                    #                 WHEN trade_switch = -1 THEN 3
-                    #                 WHEN trade_switch = 0 THEN trade_switch
-                    #                 ELSE trade_switch
-                    #             END
-                    #         WHERE uuid IN ({high_break_placeholders})
-                    #         AND (trade_switch = -1 OR trade_switch = 0);
-                    #         """
-                    sql = f"""
+                    if between_futures:
+                        sql = f"""
+                            UPDATE {table_name}
+                            SET trigger_switch = 1,
+                                trade_switch = CASE
+                                    WHEN trade_switch IN (-1, 0) THEN 3
+                                    ELSE trade_switch
+                                END
+                            WHERE uuid IN ({high_break_placeholders});
+                            """
+                    else:
+                        sql = f"""
                             UPDATE {table_name}
                             SET trigger_switch = 1,
                                 trade_switch = CASE
@@ -309,7 +310,7 @@ def start_trigger_loop(
                 conn.commit()
                 if curr.rowcount == 0:
                     logger.error(f"No row has been updated for high_break_trade_df even though there are {len(high_break_trade_df)} rows")
-                high_break(high_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, logger)
+                high_break(high_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures, logger)
 
             if not low_break_trade_df.empty:
                 low_break_trigger_uuid_list = low_break_trade_df['uuid'].to_list()
@@ -317,17 +318,18 @@ def start_trigger_loop(
                 low_break_params = tuple(low_break_trigger_uuid_list)
                 # UPDATE database
                 if trade_support:
-                    # sql = f"""
-                    #         UPDATE {table_name}
-                    #         SET trigger_switch = 0,
-                    #             trade_switch = CASE
-                    #                 WHEN trade_switch = 0 THEN 3
-                    #                 ELSE trade_switch
-                    #             END
-                    #         WHERE uuid IN ({low_break_placeholders})
-                    #         AND (trade_switch = 1 OR trade_switch = 0);
-                    #         """
-                    sql = f"""
+                    if between_futures:
+                        sql = f"""
+                            UPDATE {table_name}
+                            SET trigger_switch = 0,
+                                trade_switch = CASE
+                                    WHEN trade_switch IN (-1, 0) THEN 3
+                                    ELSE trade_switch
+                                END
+                            WHERE uuid IN ({low_break_placeholders});
+                            """
+                    else:
+                        sql = f"""
                             UPDATE {table_name}
                             SET trigger_switch = 0,
                                 trade_switch = CASE
@@ -342,7 +344,7 @@ def start_trigger_loop(
                 conn.commit()
                 if curr.rowcount == 0:
                     logger.error(f"No row has been updated for low_break_trade_df even though there are {len(low_break_trade_df)} rows")
-                low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, logger)
+                low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures, logger)
             # Reload convert_rate_dict
             fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in local_redis.hgetall_dict('convert_rate_dict').items()}
             time.sleep(loop_interval_secs)
@@ -358,7 +360,8 @@ def start_trigger_loop(
             acw_api.create_message_thread(admin_id, title, full_content)
             time.sleep(10)
             
-def high_break(high_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, logger):
+def high_break(high_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures=False, logger=None):
+    high_str = '상방' if between_futures else '탈출'
     for row_tup in high_break_trade_df.iterrows():
         def row_thread(row_tup):
             try:
@@ -373,7 +376,7 @@ def high_break(high_break_trade_df, user_exchange_adaptor, market_code_combinati
 
                 msg_title = f"거래ID: {trade_uuid_to_display_id(local_redis, market_code_combination, row['uuid'], logger)}({row['base_asset']}/{row['quote_asset']}) 프리미엄 상향돌파"
                 msg_content = f"{row['target_market_code']}:{row['origin_market_code']}\n"
-                msg_content += f"현재 SL:{round(row['SL_premium_value'], 3)}, 설정된 탈출값: {row['high']}\n"
+                msg_content += f"현재 SL:{round(row['SL_premium_value'], 3)}, 설정된 {high_str}값: {row['high']}\n"
                 if pd.isnull(row['tp']):
                     current_price = (row['ap'] + row['bp'])/2
                 else:
@@ -389,7 +392,8 @@ def high_break(high_break_trade_df, user_exchange_adaptor, market_code_combinati
         row_thread = Thread(target=row_thread, args=(row_tup,), daemon=True)
         row_thread.start()
         
-def low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, logger):
+def low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures=False, logger=None):
+    low_str = '하방' if between_futures else '진입'
     for row_tup in low_break_trade_df.iterrows():
         def row_thread(row_tup):
             try:
@@ -406,7 +410,7 @@ def low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination
                 
                 msg_title = f"거래ID: {trade_uuid_to_display_id(local_redis, market_code_combination, row['uuid'], logger)}({row['base_asset']}/{row['quote_asset']}) 프리미엄 하향돌파"
                 msg_content = f"{row['target_market_code']}:{row['origin_market_code']}\n"
-                msg_content += f"현재 LS:{round(row['LS_premium_value'], 3)}, 설정된 진입값: {row['low']}\n"
+                msg_content += f"현재 LS:{round(row['LS_premium_value'], 3)}, 설정된 {low_str}값: {row['low']}\n"
                 if pd.isnull(row['tp']):
                     current_price = (row['ap'] + row['bp'])/2
                 else:
@@ -531,13 +535,18 @@ def handle_repeat_trade(postgres_client,
                         print_update=False,
                         update_low_high_interval_secs=180):
     try:
+        target_market_code, origin_market_code = market_code_combination.split(':')
+        between_futures = True if 'SPOT' not in target_market_code and 'SPOT' not in origin_market_code else False
         conn = postgres_client.pool.getconn()
         curr = conn.cursor(cursor_factory=extras.RealDictCursor)
         merged_df = merged_repeat_df.merge(simple_premium_df, on='base_asset')
         # merged_df = merged_df[merged_df['trade_switch'].isin([0, 1])]
         # df to deactivate
-        repeat_limit_violated_df = merged_df[merged_df['repeat_limit_p']<=merged_df['tp_premium']]
-        repeat_limit_violated_repeat_uuid_list = repeat_limit_violated_df['uuid_y'].to_list()
+        if between_futures:
+            repeat_limit_violated_repeat_uuid_list = []
+        else:
+            repeat_limit_violated_df = merged_df[merged_df['repeat_limit_p']<=merged_df['tp_premium']]
+            repeat_limit_violated_repeat_uuid_list = repeat_limit_violated_df['uuid_y'].to_list()
         repeat_num_limit_violated_df = merged_df[merged_df['repeat_num_limit']<=merged_df['auto_repeat_num']]
         repeat_num_limit_violated_repeat_uuid_list = repeat_num_limit_violated_df['uuid_y'].to_list()
         # Find users whose deposit balance is below 0
@@ -588,9 +597,9 @@ def handle_repeat_trade(postgres_client,
             sql = "UPDATE repeat_trade SET last_updated_datetime = %s, auto_repeat_switch = 1, status=%s WHERE uuid = %s"
             val = (datetime.datetime.utcnow(), None, row['uuid_y'])
             curr.execute(sql, val)
-            conn.commit()
+            conn.commit()            
             if row['trade_switch'] == 0: # 진입대기
-                if pd.isnull(row['pauto_num']):
+                if pd.isnull(row['pauto_num']) or between_futures:
                     pass
                 else:
                     if (datetime.datetime.utcnow() - row['last_updated_datetime_x'] < datetime.timedelta(seconds=update_low_high_interval_secs)):
@@ -626,7 +635,7 @@ def handle_repeat_trade(postgres_client,
                         acw_api.create_message_thread(row['telegram_id'], title, full_content, 'INFO')
                 
             elif row['trade_switch'] == 1: # 탈출완료
-                if pd.isnull(row['pauto_num']):
+                if pd.isnull(row['pauto_num']) or between_futures:
                     # read the trade log based on the uuid_x from trade_log table
                     sql = "SELECT * FROM trade_log WHERE uuid = %s"
                     val = (row['uuid_x'],)
@@ -640,7 +649,7 @@ def handle_repeat_trade(postgres_client,
                     high_to_apply = trade_log_df['high'].iloc[0]
                     # apply it to the trade table
                     sql = "UPDATE trade SET last_updated_datetime = %s, low = %s, high = %s, trigger_switch = %s, trade_switch = %s, status = %s WHERE uuid = %s"
-                    val = (datetime.datetime.utcnow(), low_to_apply, high_to_apply, 1, 0, None, row['uuid_x'])
+                    val = (datetime.datetime.utcnow(), low_to_apply, high_to_apply, None if between_futures else 1, 0, None, row['uuid_x'])
                     curr.execute(sql, val)
                     conn.commit()
                 else:

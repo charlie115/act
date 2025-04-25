@@ -19,6 +19,7 @@ from loggers.logger import TradeCoreLogger
 from exchange_plugin.upbit_plug import UserUpbitAdaptor
 from exchange_plugin.binance_plug import UserBinanceAdaptor
 from exchange_plugin.bithumb_plug import UserBithumbAdaptor
+from exchange_plugin.bybit_plug import UserBybitAdaptor
 from etc.redis_connector.redis_helper import RedisHelper
 from etc.db_handler.postgres_client import InitDBClient as InitPostgresDBClient
 from etc.utils import get_trade_df
@@ -52,7 +53,8 @@ class UserExchangeAdaptor:
         self.available_exchange_adaptor_dict = {
             "UPBIT": UserUpbitAdaptor,
             "BINANCE": UserBinanceAdaptor,
-            "BITHUMB": UserBithumbAdaptor
+            "BITHUMB": UserBithumbAdaptor,
+            "BYBIT": UserBybitAdaptor,
         }
         if self.market_code_combination is None: # If market_code_combination is not given, initialize all exchange adaptors since it will be used for crud.py in api
             self.logger = TradeCoreLogger("integrated_plug", logging_dir=logging_dir).logger
@@ -132,9 +134,9 @@ class UserExchangeAdaptor:
             return 'KRW-'+base_asset
         elif market_code == "BITHUMB_SPOT/KRW":
             return 'KRW-'+base_asset
-        elif market_code == "BINANCE_USD_M/USDT":
+        elif market_code in ["BINANCE_USD_M/USDT", "BYBIT_USD_M/USDT"]:
             return base_asset+'USDT'
-        elif market_code == "BINANCE_SPOT/USDT":
+        elif market_code in ["BINANCE_SPOT/USDT", "BYBIT_SPOT/USDT"]:
             return base_asset+'USDT'
         else:
             raise Exception(f'market_code {market_code} not supported yet.')
@@ -252,6 +254,16 @@ class UserExchangeAdaptor:
             else:
                 position_df["ROI"] = position_df.apply(lambda x: (x['entry_price']-x['markPrice'])/x['markPrice']*x['leverage']*100 if x['qty']<0 else 
                                                    (x['markPrice']-x['entry_price'])/x['entry_price']*x['leverage']*100, axis=1)
+        elif exchange == 'BYBIT':
+            position_df = exchange_adaptor.get_positions(access_key, secret_key, market_type)
+            if position_df.empty:
+                return position_df
+            position_df = position_df.merge(fetched_info_df[['symbol','base_asset']], how='left', on='symbol')
+            if len(position_df) == 0:
+                position_df["ROI"] = None
+            else:
+                position_df["ROI"] = position_df.apply(lambda x: (x['avgPrice']-x['markPrice'])/x['markPrice']*x['leverage']*100 if x['qty']<0 else 
+                                                   (x['markPrice']-x['avgPrice'])/x['avgPrice']*x['leverage']*100, axis=1)
         else:
             raise Exception(f'exchange {exchange} not supported')
         return position_df
@@ -312,6 +324,15 @@ class UserExchangeAdaptor:
             before_pnl = round(currency_df['walletBalance'].values[0],1)
             pnl = round(currency_df['unrealizedProfit'].values[0],1)
             after_pnl = round(currency_df['walletBalance'].values[0] + pnl,1)
+        elif exchange == 'BYBIT':
+            currency = 'USDT'
+            balance_df = self.exchange_adaptor_dict[exchange].get_balance(access_key, secret_key, market_type)
+            currency_df = balance_df[balance_df['asset']==currency]
+            free = round(currency_df['free'].values[0], 1)
+            locked = round(currency_df['locked'].values[0], 1)
+            before_pnl = round(currency_df['before_pnl'].values[0], 1)
+            pnl = round(currency_df['pnl'].values[0], 1)
+            after_pnl = round(currency_df['after_pnl'].values[0], 1)
         else:
             raise Exception(f'exchange {exchange} not supported')
 
@@ -340,6 +361,12 @@ class UserExchangeAdaptor:
             else:
                 margin_type = 'ISOLATED'
             self.exchange_adaptor_dict[exchange].change_margin_type(access_key, secret_key, market_type, symbol, margin_type)
+        elif exchange == "BYBIT":
+            if margin_type_cross:
+                margin_type = 'CROSS'
+            else:
+                margin_type = 'ISOLATED'
+            self.exchange_adaptor_dict[exchange].change_margin_type(access_key, secret_key, market_type, margin_type)
         else:
             # not supported yet
             raise Exception(f'exchange {exchange} not supported')
@@ -352,15 +379,298 @@ class UserExchangeAdaptor:
             raise Exception(f'exchange {exchange} not supported')
         if exchange == "BINANCE":
             self.exchange_adaptor_dict[exchange].change_leverage(access_key, secret_key, market_type, symbol, leverage)
+        elif exchange == "BYBIT":
+            self.exchange_adaptor_dict[exchange].change_leverage(access_key, secret_key, market_type, symbol, leverage)
         else:
             # not supported yet
             raise Exception(f'exchange {exchange} not supported')
 
-    def long_short_trade(self, merged_row, liquidation_call=False):
+    def long_short_trade(self, merged_row, liquidation_call=False, liquidation_market_code=None): # Long target market, Short origin market
         # Get API key from DB
         try:
+            if self.market_code_combination == "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT":
+                target_market_name_kr = '바이비트'
+                origin_market_name_kr = '바이낸스'                    
+                
+                if merged_row['trade_switch'] == 0:
+                    trade_side = "ENTER"
+                elif merged_row['trade_switch'] == -1:
+                    trade_side = "EXIT"
+                else:
+                    return
+                
+                if trade_side == "ENTER":
+                    qty = self.origin_exchange_adaptor.calculate_enter_qty(
+                        merged_row['base_asset'],
+                        None,
+                        merged_row['bp'],
+                        None,
+                        None,
+                        merged_row['trade_capital'],
+                        self.origin_market_type,
+                        'USD'
+                        )
+                    if qty == 0:
+                        body = f"투입금액이 {merged_row['base_asset']}USDT 1계약의 최소주문가능수량보다 낮습니다. \n주문을 취소합니다."
+                        # self.acw_api.create_message(merged_row['telegram_id'], "주문취소", self.node, 'WARNING', body)
+                        raise Exception(body)
+                    modified_input_usd = qty * merged_row['bp']
+                    target_symbol = self.symbol_converter(self.target_market_code, merged_row['base_asset'])
+                    target_qty = qty
+                    origin_symbol = self.symbol_converter(self.origin_market_code, merged_row['base_asset'])
+                    origin_qty = qty
+                else:
+                    last_trade_history_uuid = merged_row['last_trade_history_uuid']
+                    if last_trade_history_uuid is None:
+                        raise Exception("trade_uuid: {merged_row['uuid']}, last_trade_history_uuid is None. It's impossible to do long_short_trade.")
+                    # Check whether the trade_side of last_trade_history is "ENTER"
+                    last_trade_history_series = self.trade_history_df[self.trade_history_df['uuid']==last_trade_history_uuid]
+                    if len(last_trade_history_series) == 0:
+                        raise Exception(f"trade_uuid: {merged_row['uuid']}, last_trade_history_uuid: {last_trade_history_uuid} does not exist in the trade_history. It's impossible to do long_short_trade.")
+                    if last_trade_history_series['trade_side'].values[0] != "ENTER":
+                        raise Exception(f"trade_uuid: {merged_row['uuid']}, last_trade_history_uuid's trade_side is not 'ENTER'. It's impossible to do long_short_trade.")
+                    # Passed validation for trade_history
+                    target_order_id = last_trade_history_series['target_order_id'].values[0]
+                    origin_order_id = last_trade_history_series['origin_order_id'].values[0]
+                    # Get order_history_series
+                    target_order_history_series = self.order_history_df[self.order_history_df['order_id']==target_order_id]
+                    origin_order_history_series = self.order_history_df[self.order_history_df['order_id']==origin_order_id]
+                    # Get entered qty and symbol
+                    target_symbol = target_order_history_series['symbol'].values[0]
+                    target_qty = target_order_history_series['qty'].values[0]
+                    origin_symbol = origin_order_history_series['symbol'].values[0]
+                    origin_qty = origin_order_history_series['qty'].values[0]
+                    modified_input_usd = None
+                    
+                origin_market_liquidation = trade_side == "EXIT" and liquidation_call and liquidation_market_code == self.origin_market_code
+                target_market_liquidation = trade_side == "EXIT" and liquidation_call and liquidation_market_code == self.target_market_code
+                
+                if origin_market_liquidation: # BINANCE_USD_M LONG position liquidation. Skip the origin market trade
+                    # Get BYBIT API keys
+                    key_uuid, target_access_key, target_secret_key = self.target_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=True)
+                    # BYBIT USD_M LONG trade + response validation
+                    try:
+                        target_res = self.target_exchange_adaptor.market_long(target_access_key, target_secret_key, target_symbol, target_qty, self.target_market_type)
+                        title = f"{target_market_name_kr} LONG 성공"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {target_market_name_kr} {target_symbol} LONG거래({float(target_qty)}개, {round(merged_row['trade_capital'])}USDT)가 정상적으로 진행되었습니다."
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        target_order_id = target_res['orderId']
+                        # put order info to the queue
+                        target_order_info_dict = {
+                            "trade_config_uuid": merged_row['trade_config_uuid'],
+                            "trade_uuid": merged_row['uuid'],
+                            "symbol": target_symbol,
+                            "order_id": target_order_id,
+                            "market_type": self.target_market_type
+                        }
+                        self.target_exchange_adaptor.order_info_dict_queue.put(target_order_info_dict)
+                        # reflect the error to the trade to db
+                        conn = self.postgres_client.pool.getconn()
+                        curr = conn.cursor()
+                        sql = f"""UPDATE trade SET trade_switch = %s WHERE uuid = %s"""
+                        val = (-2 if trade_side == "ENTER" else 2, merged_row['uuid'])
+                        curr.execute(sql, val)
+                        conn.commit()
+                        self.postgres_client.pool.putconn(conn)
+                        return
+                    except Exception as e:
+                        title = f"{target_market_name_kr} LONG 실패"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {target_market_name_kr} {target_symbol} LONG거래({float(target_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다. {e}"
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                        self.logger.error(error_log + '\n' + traceback.format_exc())
+                        # Monitoring purpose
+                        self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
+                        return               
+                elif target_market_liquidation: # BYBIT_USD_M SHORT position liquidation. Skip the target market trade
+                    # GET BINANCE API keys
+                    key_uuid, origin_access_key, origin_secret_key = self.origin_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=True)
+                    # BINANCE USD_M SHORT trade + response validation
+                    try:
+                        origin_res = self.origin_exchange_adaptor.market_short(origin_access_key, origin_secret_key, origin_symbol, origin_qty, self.origin_market_type, False)
+                        title = f"{origin_market_name_kr} SHORT 성공"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {origin_symbol} SHORT거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}USDT)가 정상적으로 진행되었습니다."
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        origin_order_id = str(origin_res['orderId'])
+                        # put order info to the queue
+                        origin_order_info_dict =  {
+                            "trade_config_uuid": merged_row['trade_config_uuid'],
+                            "trade_uuid": merged_row['uuid'],
+                            "symbol": origin_symbol,
+                            "order_id": origin_order_id,
+                            "market_type": self.origin_market_type
+                        }
+                        self.origin_exchange_adaptor.order_info_dict_queue.put(origin_order_info_dict)
+                        # reflect the error to the trade to db
+                        conn = self.postgres_client.pool.getconn()
+                        curr = conn.cursor()
+                        sql = f"""UPDATE trade SET trade_switch = %s WHERE uuid = %s"""
+                        val = (-2 if trade_side == "ENTER" else 2, merged_row['uuid'])
+                        curr.execute(sql, val)
+                        conn.commit()
+                        self.postgres_client.pool.putconn(conn)
+                        return
+                    except Exception as e:
+                        title = f"{origin_market_name_kr} SHORT 실패"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {origin_market_name_kr} {origin_symbol} SHORT거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다. {e}"
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                        self.logger.error(error_log + '\n' + traceback.format_exc())
+                        # Monitoring purpose
+                        self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
+                        return
+                elif not origin_market_liquidation and not target_market_liquidation:
+                    # Get Binance API keys
+                    key_uuid, origin_access_key, origin_secret_key = self.origin_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=True)
+                    # Binance USD_M Short
+                    origin_return_dict = {}
+                    origin_trade_thread = Thread(target=self.origin_exchange_adaptor.market_short, args=(origin_access_key, origin_secret_key,
+                        origin_symbol, origin_qty, self.origin_market_type, False, origin_return_dict))
+                    origin_trade_thread.start()
+                    # Get BYBIT API keys
+                    key_uuid, target_access_key, target_secret_key = self.target_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=True)
+                    # BYBIT USD_M LONG trade + response validation
+                    target_trade_error = False
+                    try:
+                        target_res = self.target_exchange_adaptor.market_long(target_access_key, target_secret_key, target_symbol, target_qty, self.target_market_type)
+                        if not origin_market_liquidation:
+                            origin_trade_thread.join()
+                        title = f"{target_market_name_kr} LONG 성공"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {target_market_name_kr} {target_symbol} LONG거래({float(target_qty)}개, {round(merged_row['trade_capital'])}USDT)가 정상적으로 진행되었습니다."
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        target_order_id = target_res['orderId']
+                        # put order info to the queue
+                        target_order_info_dict = {
+                            "trade_config_uuid": merged_row['trade_config_uuid'],
+                            "trade_uuid": merged_row['uuid'],
+                            "symbol": target_symbol,
+                            "order_id": target_order_id,
+                            "market_type": self.target_market_type
+                        }
+                        self.target_exchange_adaptor.order_info_dict_queue.put(target_order_info_dict)
+                    except Exception as e:
+                        target_trade_error = True
+                        origin_trade_thread.join()
+                        title = f"{target_market_name_kr} LONG 실패"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {target_market_name_kr} {target_symbol} LONG거래({float(target_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다. {e}"
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                        self.logger.error(error_log + '\n' + traceback.format_exc())
+                        # Monitoring purpose
+                        self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
+                    # Binance response validation
+                    origin_trade_error = False
+                    if origin_return_dict['error_code'] is None:
+                        title = f"{origin_market_name_kr} SHORT 성공"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {origin_symbol} SHORT거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}USDT)가 정상적으로 진행되었습니다."
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        origin_res = origin_return_dict['res']
+                        origin_order_id = str(origin_res['orderId'])
+                        
+                        # put order info to the queue
+                        origin_order_info_dict =  {
+                            "trade_config_uuid": merged_row['trade_config_uuid'],
+                            "trade_uuid": merged_row['uuid'],
+                            "symbol": origin_symbol,
+                            "order_id": origin_order_id,
+                            "market_type": self.origin_market_type
+                        }
+                        self.origin_exchange_adaptor.order_info_dict_queue.put(origin_order_info_dict)
+                    else:
+                        origin_trade_error = True
+                        title = f"{origin_market_name_kr} SHORT 실패"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {origin_market_name_kr} {origin_symbol} SHORT거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다."
+                        body += f"\n{origin_market_name_kr} 에러내용: {origin_return_dict['res']}, 에러코드: {origin_return_dict['error_code']}"
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\n{body}"
+                        self.logger.error(error_log)
+                        # Monitoring purpose
+                        self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
+                        
+                    # raise exception according to the result of the trade
+                    if origin_trade_error and target_trade_error:
+                        raise MyException(f"{target_market_name_kr} LONG과 {origin_market_name_kr} SHORT 모두 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=4)
+                    elif origin_trade_error:
+                        # Check whether the trade_config's safe_reverse is set to True, if True, do the reverse trade for the target market
+                        if merged_row['safe_reverse']:
+                            title = f"{origin_market_name_kr} SHORT 실패로 인한 {target_market_name_kr} 역매매(SHORT) 거래"
+                            body = ""
+                            body += f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)} 의 {origin_market_name_kr} {origin_symbol} SHORT 거래가 실패하여"
+                            body += f"\n{target_market_name_kr} {target_symbol} 역매매(SHORT, {target_qty}개) 거래를 진행합니다."
+                            self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
+                            try:
+                                target_reverse_res = self.target_exchange_adaptor.market_short(target_access_key, target_secret_key, target_symbol, target_qty)
+                                target_reverse_order_id = target_reverse_res['orderId']
+                                title = f"{target_market_name_kr} 역매매(SHORT) 성공"
+                                body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {target_market_name_kr} {target_symbol} 역매매(SHORT, {target_qty}개) 거래가 정상적으로 진행되었습니다."""
+                                self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
+                                
+                                # put order info to the queue
+                                target_order_info_dict =  {
+                                    "trade_config_uuid": merged_row['trade_config_uuid'], 
+                                    "trade_uuid": merged_row['uuid'],
+                                    "symbol": target_symbol,
+                                    "order_id": target_reverse_order_id,
+                                    "market_type": self.target_market_type
+                                }
+                                self.target_exchange_adaptor.order_info_dict_queue.put(target_order_info_dict)
+                            except Exception as e:
+                                title = f"{target_market_name_kr} 역매매(SHORT) 거래 실패"
+                                body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 
+                                {target_market_name_kr} {target_symbol} 역매매(SHORT, {target_qty}개) 거래가 실패하였습니다. {e}"""
+                                self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR')
+                                error_log = f"{title}|trade uuid:{merged_row['uuid']}\n{body}\n{traceback.format_exc()}"
+                                self.logger.error(error_log)
+                                # Monitoring purpose
+                                self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
+                        raise MyException(f"{origin_market_name_kr} SHORT 거래가 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=2)
+                    elif target_trade_error:
+                        # Check whether the trade_config's safe_reverse is set to True, if True, do the reverse trade for the origin market
+                        if merged_row['safe_reverse']:
+                            title = f"{target_market_name_kr} LONG 실패로 인한 {origin_market_name_kr} 역매매(LONG) 거래"
+                            body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {target_market_name_kr} {target_symbol} LONG 거래가 실패하여 {origin_market_name_kr} {origin_symbol} 역매매(LONG, {float(origin_qty)}개) 거래를 진행합니다."""
+                            self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
+                            try:
+                                origin_reverse_res = self.origin_exchange_adaptor.market_long(origin_access_key, origin_secret_key, origin_symbol, origin_qty, self.origin_market_type, True)
+                                origin_reverse_order_id = str(origin_reverse_res['orderId'])
+                                title = f"{origin_market_name_kr} 역매매(LONG) 성공"
+                                body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {origin_symbol} 역매매(LONG, {float(origin_qty)}개) 거래가 정상적으로 진행되었습니다."""
+                                self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
+                                
+                                # put order info to the queue
+                                origin_order_info_dict =  {"trade_config_uuid": merged_row['trade_config_uuid'],
+                                                            "trade_uuid": merged_row['uuid'],
+                                                            "symbol": origin_symbol,
+                                                            "order_id": origin_reverse_order_id,
+                                                            "market_type": self.origin_market_type}
+                                self.origin_exchange_adaptor.order_info_dict_queue.put(origin_order_info_dict)
+                            except Exception as e:
+                                title = f"{origin_market_name_kr} 역매매(LONG) 거래 실패"
+                                body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {origin_symbol} 역매매(LONG, {float(origin_qty)}개) 거래가 실패하였습니다. {e}"""
+                                self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR')
+                                error_log = f"{title}|trade uuid:{merged_row['uuid']}\n{body}\n{traceback.format_exc()}"
+                                self.logger.error(error_log)
+                                # Monitoring purpose
+                                self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
+                        raise MyException(f"{target_market_name_kr} LONG 거래가 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=3)
+                    
+                else:
+                    raise Exception(f"Unexpected case. It's impossible to do long_short_trade. origin_market_liquidation: {origin_market_liquidation}, target_market_liquidation: {target_market_liquidation}")
+                
+                # generate trade info dict
+                trade_info_dict = {"user": merged_row['user'], "trade_config_uuid": merged_row['trade_config_uuid'], "trade_uuid": merged_row['uuid'], "base_asset": merged_row['base_asset'],
+                                "target_order_id": target_order_id, "origin_order_id": origin_order_id, "target_premium_value": merged_row['low'], "dollar": merged_row['dollar'], "trade_side": trade_side,
+                                "modified_input_usd": modified_input_usd, "modified_input_krw": None, "last_trade_history_uuid": merged_row['last_trade_history_uuid'],
+                                "telegram_id": merged_row['telegram_id'], "send_times": merged_row['send_times'], "send_term": merged_row['send_term'], "usdt_conversion": None,
+                                "trade_capital": merged_row['trade_capital'], "trade_execution": "long_short_trade"}
+                # put trade info to the queue
+                self.trade_info_dict_queue.put(trade_info_dict)
+                return trade_info_dict
+            
+            #########################################################
             if self.market_code_combination == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT" or self.market_code_combination == "BITHUMB_SPOT/KRW:BINANCE_USD_M/USDT":
                 target_market_name_kr = "업비트" if self.market_code_combination == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT" else "빗썸"
+                origin_market_name_kr = "바이낸스"
                 trade_side = "ENTER"
                 # Check whether the trade_switch is 0 // trade_switch 0: 진입대기, -1: 탈출대기, -2: 진입에러, 1:탈출완료, 2:탈출에러, 3: 거래 진행 중
                 if merged_row['trade_switch'] != 0:
@@ -368,7 +678,7 @@ class UserExchangeAdaptor:
                 # first calculate the qty based on the KRW capital
                 qty = self.origin_exchange_adaptor.calculate_enter_qty(merged_row['base_asset'], merged_row['dollar'], merged_row['bp'], merged_row['LS_premium'], merged_row['SL_premium'], merged_row['trade_capital'], self.origin_market_type)
                 if qty == 0:
-                    body = f"투입금액이 {merged_row['base_asset']}USDT 1개의 최소주문가능수량보다 낮습니다. \n주문을 취소합니다."
+                    body = f"투입금액이 {merged_row['base_asset']}USDT 1계약의 최소주문가능수량보다 낮습니다. \n주문을 취소합니다."
                     # self.acw_api.create_message(merged_row['telegram_id'], "주문취소", self.node, 'WARNING', body)
                     raise Exception(body)
                 modified_input_usd = qty * merged_row['bp']/merged_row['dollar'] # Binance USD_M bid price in USDT
@@ -395,10 +705,13 @@ class UserExchangeAdaptor:
                     target_order_id = target_res['result']['uuid']
                     
                     # put order info to the queue
-                    target_order_info_dict =  {"trade_config_uuid": merged_row['trade_config_uuid'],
-                                               "trade_uuid": merged_row['uuid'],
-                                               "symbol": self.symbol_converter(self.target_market_code, merged_row['base_asset']),
-                                               "order_id": target_order_id, "market_type": self.target_market_type}
+                    target_order_info_dict =  {
+                        "trade_config_uuid": merged_row['trade_config_uuid'],
+                        "trade_uuid": merged_row['uuid'],
+                        "symbol": self.symbol_converter(self.target_market_code, merged_row['base_asset']),
+                        "order_id": target_order_id,
+                        "market_type": self.target_market_type
+                    }
                     self.target_exchange_adaptor.order_info_dict_queue.put(target_order_info_dict)
                 except Exception as e:
                     target_trade_error = True
@@ -414,24 +727,26 @@ class UserExchangeAdaptor:
                 # Binance response validation
                 origin_trade_error = False
                 if origin_return_dict['error_code'] is None:
-                    title = "바이낸스 SHORT 성공"
-                    body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 바이낸스 {self.symbol_converter(self.origin_market_code, merged_row['base_asset'])} SHORT거래({float(qty)}개, {round(merged_row['trade_capital'])}원)가 정상적으로 진행되었습니다."
+                    title = f"{origin_market_name_kr} SHORT 성공"
+                    body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {self.symbol_converter(self.origin_market_code, merged_row['base_asset'])} SHORT거래({float(qty)}개, {round(merged_row['trade_capital'])}원)가 정상적으로 진행되었습니다."
                     self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
                     origin_res = origin_return_dict['res']
                     origin_order_id = str(origin_res['orderId'])
                     
                     # put order info to the queue
-                    origin_order_info_dict =  {"trade_config_uuid": merged_row['trade_config_uuid'],
-                                               "trade_uuid": merged_row['uuid'],
-                                               "symbol": self.symbol_converter(self.origin_market_code, merged_row['base_asset']),
-                                               "order_id": origin_order_id,
-                                               "market_type": self.origin_market_type}
+                    origin_order_info_dict =  {
+                        "trade_config_uuid": merged_row['trade_config_uuid'],
+                        "trade_uuid": merged_row['uuid'],
+                        "symbol": self.symbol_converter(self.origin_market_code, merged_row['base_asset']),
+                        "order_id": origin_order_id,
+                        "market_type": self.origin_market_type
+                    }
                     self.origin_exchange_adaptor.order_info_dict_queue.put(origin_order_info_dict)
                 else:
                     origin_trade_error = True
-                    title = "바이낸스 SHORT 실패"
-                    body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 바이낸스 {self.symbol_converter(self.origin_market_code, merged_row['base_asset'])} SHORT거래({float(qty)}개, {round(merged_row['trade_capital'])}원)가 실패하였습니다."
-                    body += f"\n바이낸스 에러내용: {origin_return_dict['res']}, 에러코드: {origin_return_dict['error_code']}"
+                    title = f"{origin_market_name_kr} SHORT 실패"
+                    body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {origin_market_name_kr} {self.symbol_converter(self.origin_market_code, merged_row['base_asset'])} SHORT거래({float(qty)}개, {round(merged_row['trade_capital'])}원)가 실패하였습니다."
+                    body += f"\n{origin_market_name_kr} 에러내용: {origin_return_dict['res']}, 에러코드: {origin_return_dict['error_code']}"
                     self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
                     error_log = f"{title}|trade uuid:{merged_row['uuid']}\n{body}"
                     self.logger.error(error_log)
@@ -440,14 +755,14 @@ class UserExchangeAdaptor:
                 
                 # raise exception according to the result of the trade
                 if origin_trade_error and target_trade_error:
-                    raise MyException(f"{target_market_name_kr} 매수와 바이낸스 SHORT 모두 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=4)
+                    raise MyException(f"{target_market_name_kr} 매수와 {origin_market_name_kr} SHORT 모두 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=4)
                 elif origin_trade_error:
                     # Check whether the trade_config's safe_reverse is set to True, if True, do the reverse trade for the target market
                     if merged_row['safe_reverse']:
                         target_ordered_qty = float(target_res['result']['volume'])
-                        title = f"바이낸스 SHORT 실패로 인한 {target_market_name_kr} 역매매(매도) 거래"
+                        title = f"{origin_market_name_kr} SHORT 실패로 인한 {target_market_name_kr} 역매매(매도) 거래"
                         body = ""
-                        body += f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)} 의 바이낸스 {self.symbol_converter(self.origin_market_code, merged_row['base_asset'])} SHORT 거래가 실패하여"
+                        body += f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)} 의 {origin_market_name_kr} {self.symbol_converter(self.origin_market_code, merged_row['base_asset'])} SHORT 거래가 실패하여"
                         body += f"\n{target_market_name_kr} {self.symbol_converter(self.target_market_code, merged_row['base_asset'])} 역매매(매도, {target_ordered_qty}개) 거래를 진행합니다."
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
                         try:
@@ -472,18 +787,18 @@ class UserExchangeAdaptor:
                             self.logger.error(error_log)
                             # Monitoring purpose
                             self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
-                    raise MyException(f"바이낸스 SHORT 거래가 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=2)
+                    raise MyException(f"{origin_market_name_kr} SHORT 거래가 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=2)
                 elif target_trade_error:
                     # Check whether the trade_config's safe_reverse is set to True, if True, do the reverse trade for the origin market
                     if merged_row['safe_reverse']:
-                        title = f"{target_market_name_kr} 매수 실패로 인한 바이낸스 역매매(LONG) 거래"
-                        body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {target_market_name_kr} {self.symbol_converter(self.target_market_code, merged_row['base_asset'])} 매수 거래가 실패하여 바이낸스 {self.symbol_converter(self.origin_market_code, merged_row['base_asset'])} 역매매(LONG, {float(qty)}개) 거래를 진행합니다."""
+                        title = f"{target_market_name_kr} 매수 실패로 인한 {origin_market_name_kr} 역매매(LONG) 거래"
+                        body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {target_market_name_kr} {self.symbol_converter(self.target_market_code, merged_row['base_asset'])} 매수 거래가 실패하여 {origin_market_name_kr} {self.symbol_converter(self.origin_market_code, merged_row['base_asset'])} 역매매(LONG, {float(qty)}개) 거래를 진행합니다."""
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
                         try:
                             origin_reverse_res = self.origin_exchange_adaptor.market_long(origin_access_key, origin_secret_key, self.symbol_converter(self.origin_market_code, merged_row['base_asset']), qty, self.origin_market_type, True)
                             origin_reverse_order_id = str(origin_reverse_res['orderId'])
-                            title = "바이낸스 역매매(LONG) 성공"
-                            body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 바이낸스 {self.symbol_converter(self.origin_market_code, merged_row['base_asset'])} 역매매(LONG, {float(qty)}개) 거래가 정상적으로 진행되었습니다."""
+                            title = f"{origin_market_name_kr} 역매매(LONG) 성공"
+                            body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {self.symbol_converter(self.origin_market_code, merged_row['base_asset'])} 역매매(LONG, {float(qty)}개) 거래가 정상적으로 진행되었습니다."""
                             self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
                             
                             # put order info to the queue
@@ -494,8 +809,8 @@ class UserExchangeAdaptor:
                                                         "market_type": self.origin_market_type}
                             self.origin_exchange_adaptor.order_info_dict_queue.put(origin_order_info_dict)
                         except Exception as e:
-                            title = "바이낸스 역매매(LONG) 거래 실패"
-                            body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 바이낸스 {self.symbol_converter(self.origin_market_code, merged_row['base_asset'])} 역매매(LONG, {float(qty)}개) 거래가 실패하였습니다. {e}"""
+                            title = f"{origin_market_name_kr} 역매매(LONG) 거래 실패"
+                            body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {self.symbol_converter(self.origin_market_code, merged_row['base_asset'])} 역매매(LONG, {float(qty)}개) 거래가 실패하였습니다. {e}"""
                             self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR')
                             error_log = f"{title}|trade uuid:{merged_row['uuid']}\n{body}\n{traceback.format_exc()}"
                             self.logger.error(error_log)
@@ -507,8 +822,8 @@ class UserExchangeAdaptor:
                 trade_info_dict = {"user": merged_row['user'], "trade_config_uuid": merged_row['trade_config_uuid'], "trade_uuid": merged_row['uuid'], "base_asset": merged_row['base_asset'],
                                 "target_order_id": target_order_id, "origin_order_id": origin_order_id, "target_premium_value": merged_row['low'], "dollar": merged_row['dollar'], "trade_side": trade_side,
                                 "modified_input_usd": modified_input_usd, "modified_input_krw": modified_input_krw, "last_trade_history_uuid": merged_row['last_trade_history_uuid'],
-                                "telegram_id": merged_row['telegram_id'], "send_times": merged_row['send_times'], "send_term": merged_row['send_term'], "usdt_conversion": merged_row['usdt_conversion'],
-                                "trade_capital": merged_row['trade_capital']}
+                                "telegram_id": merged_row['telegram_id'], "send_times": merged_row['send_times'], "send_term": merged_row['send_term'], "usdt_conversion": None,
+                                "trade_capital": merged_row['trade_capital'], "trade_execution": "long_short_trade"}
                 # put trade info to the queue
                 self.trade_info_dict_queue.put(trade_info_dict)
                 return trade_info_dict
@@ -516,20 +831,301 @@ class UserExchangeAdaptor:
             else:
                 raise Exception(f'market_code_combination {self.market_code_combination} not supported yet.')
         except Exception as e:
-                # reflect the error to the trade to db
-                conn = self.postgres_client.pool.getconn()
-                curr = conn.cursor()
-                sql = f"""UPDATE trade SET trade_switch = %s WHERE uuid = %s"""
-                val = (-2 if trade_side == "ENTER" else 2, merged_row['uuid'])
-                curr.execute(sql, val)
-                conn.commit()
-                self.postgres_client.pool.putconn(conn)
-                raise e
+            self.logger.error(f"long_short_trade|{e}\n{traceback.format_exc()}")
+            # reflect the error to the trade to db
+            conn = self.postgres_client.pool.getconn()
+            curr = conn.cursor()
+            sql = f"""UPDATE trade SET trade_switch = %s WHERE uuid = %s"""
+            val = (-2 if trade_side == "ENTER" else 2, merged_row['uuid'])
+            curr.execute(sql, val)
+            conn.commit()
+            self.postgres_client.pool.putconn(conn)
+            raise e
             
-    def short_long_trade(self, merged_row, liquidation_call=False):
+    def short_long_trade(self, merged_row, liquidation_call=False, liquidation_market_code=None): # Short target market, Long origin market
         try:
+            if self.market_code_combination == "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT":
+                target_market_name_kr = '바이비트'
+                origin_market_name_kr = '바이낸스'                    
+                
+                if merged_row['trade_switch'] == 0:
+                    trade_side = "ENTER"
+                elif merged_row['trade_switch'] == -1:
+                    trade_side = "EXIT"
+                else:
+                    return
+                
+                if trade_side == "ENTER":
+                    qty = self.origin_exchange_adaptor.calculate_enter_qty(
+                        merged_row['base_asset'],
+                        None,
+                        merged_row['bp'],
+                        None,
+                        None,
+                        merged_row['trade_capital'],
+                        self.origin_market_type,
+                        'USD'
+                        )
+                    if qty == 0:
+                        body = f"투입금액이 {merged_row['base_asset']}USDT 1계약의 최소주문가능수량보다 낮습니다. \n주문을 취소합니다."
+                        # self.acw_api.create_message(merged_row['telegram_id'], "주문취소", self.node, 'WARNING', body)
+                        raise Exception(body)
+                    modified_input_usd = qty * merged_row['bp']
+                    target_symbol = self.symbol_converter(self.target_market_code, merged_row['base_asset'])
+                    target_qty = qty
+                    origin_symbol = self.symbol_converter(self.origin_market_code, merged_row['base_asset'])
+                    origin_qty = qty
+                else:
+                    last_trade_history_uuid = merged_row['last_trade_history_uuid']
+                    if last_trade_history_uuid is None:
+                        raise Exception("trade_uuid: {merged_row['uuid']}, last_trade_history_uuid is None. It's impossible to do long_short_trade.")
+                    # Check whether the trade_side of last_trade_history is "ENTER"
+                    last_trade_history_series = self.trade_history_df[self.trade_history_df['uuid']==last_trade_history_uuid]
+                    if len(last_trade_history_series) == 0:
+                        raise Exception(f"trade_uuid: {merged_row['uuid']}, last_trade_history_uuid: {last_trade_history_uuid} does not exist in the trade_history. It's impossible to do long_short_trade.")
+                    if last_trade_history_series['trade_side'].values[0] != "ENTER":
+                        raise Exception(f"trade_uuid: {merged_row['uuid']}, last_trade_history_uuid's trade_side is not 'ENTER'. It's impossible to do long_short_trade.")
+                    # Passed validation for trade_history
+                    target_order_id = last_trade_history_series['target_order_id'].values[0]
+                    origin_order_id = last_trade_history_series['origin_order_id'].values[0]
+                    # Get order_history_series
+                    target_order_history_series = self.order_history_df[self.order_history_df['order_id']==target_order_id]
+                    origin_order_history_series = self.order_history_df[self.order_history_df['order_id']==origin_order_id]
+                    # Get entered qty and symbol
+                    target_symbol = target_order_history_series['symbol'].values[0]
+                    target_qty = target_order_history_series['qty'].values[0]
+                    origin_symbol = origin_order_history_series['symbol'].values[0]
+                    origin_qty = origin_order_history_series['qty'].values[0]
+                    modified_input_usd = None
+                    
+                origin_market_liquidation = trade_side == "EXIT" and liquidation_call and liquidation_market_code == self.origin_market_code
+                target_market_liquidation = trade_side == "EXIT" and liquidation_call and liquidation_market_code == self.target_market_code
+                
+                if origin_market_liquidation: # BINANCE_USD_M SHORT position liquidation. Skip the origin market trade
+                    # Get BYBIT API keys
+                    key_uuid, target_access_key, target_secret_key = self.target_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=True)
+                    # BYBIT USD_M LONG trade + response validation
+                    try:
+                        target_res = self.target_exchange_adaptor.market_short(target_access_key, target_secret_key, target_symbol, target_qty, self.target_market_type)
+                        title = f"{target_market_name_kr} SHORT 성공"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {target_market_name_kr} {target_symbol} SHORT거래({float(target_qty)}개, {round(merged_row['trade_capital'])}USDT)가 정상적으로 진행되었습니다."
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        target_order_id = target_res['orderId']
+                        # put order info to the queue
+                        target_order_info_dict = {
+                            "trade_config_uuid": merged_row['trade_config_uuid'],
+                            "trade_uuid": merged_row['uuid'],
+                            "symbol": target_symbol,
+                            "order_id": target_order_id,
+                            "market_type": self.target_market_type
+                        }
+                        self.target_exchange_adaptor.order_info_dict_queue.put(target_order_info_dict)
+                        # reflect the error to the trade to db
+                        conn = self.postgres_client.pool.getconn()
+                        curr = conn.cursor()
+                        sql = f"""UPDATE trade SET trade_switch = %s WHERE uuid = %s"""
+                        val = (-2 if trade_side == "ENTER" else 2, merged_row['uuid'])
+                        curr.execute(sql, val)
+                        conn.commit()
+                        self.postgres_client.pool.putconn(conn)
+                        return
+                    except Exception as e:
+                        title = f"{target_market_name_kr} SHORT 실패"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {target_market_name_kr} {target_symbol} SHORT거래({float(target_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다. {e}"
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                        self.logger.error(error_log + '\n' + traceback.format_exc())
+                        # Monitoring purpose
+                        self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
+                        return               
+                elif target_market_liquidation: # BYBIT_USD_M LONG position liquidation. Skip the target market trade
+                    # GET BINANCE API keys
+                    key_uuid, origin_access_key, origin_secret_key = self.origin_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=True)
+                    # BINANCE USD_M SHORT trade + response validation
+                    try:
+                        origin_res = self.origin_exchange_adaptor.market_long(origin_access_key, origin_secret_key, origin_symbol, origin_qty, self.origin_market_type, False)
+                        title = f"{origin_market_name_kr} LONG 성공"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {origin_symbol} LONG거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}USDT)가 정상적으로 진행되었습니다."
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        origin_order_id = str(origin_res['orderId'])
+                        # put order info to the queue
+                        origin_order_info_dict =  {
+                            "trade_config_uuid": merged_row['trade_config_uuid'],
+                            "trade_uuid": merged_row['uuid'],
+                            "symbol": origin_symbol,
+                            "order_id": origin_order_id,
+                            "market_type": self.origin_market_type
+                        }
+                        self.origin_exchange_adaptor.order_info_dict_queue.put(origin_order_info_dict)
+                        # reflect the error to the trade to db
+                        conn = self.postgres_client.pool.getconn()
+                        curr = conn.cursor()
+                        sql = f"""UPDATE trade SET trade_switch = %s WHERE uuid = %s"""
+                        val = (-2 if trade_side == "ENTER" else 2, merged_row['uuid'])
+                        curr.execute(sql, val)
+                        conn.commit()
+                        self.postgres_client.pool.putconn(conn)
+                        return
+                    except Exception as e:
+                        title = f"{origin_market_name_kr} LONG 실패"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {origin_market_name_kr} {origin_symbol} LONG거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다. {e}"
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                        self.logger.error(error_log + '\n' + traceback.format_exc())
+                        # Monitoring purpose
+                        self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
+                        return
+                elif not origin_market_liquidation and not target_market_liquidation:
+                    # Get Binance API keys
+                    key_uuid, origin_access_key, origin_secret_key = self.origin_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=True)
+                    # Binance USD_M Short
+                    origin_return_dict = {}
+                    origin_trade_thread = Thread(target=self.origin_exchange_adaptor.market_long, args=(origin_access_key, origin_secret_key,
+                        origin_symbol, origin_qty, self.origin_market_type, False, origin_return_dict))
+                    origin_trade_thread.start()
+                    # Get BYBIT API keys
+                    key_uuid, target_access_key, target_secret_key = self.target_exchange_adaptor.get_api_key_tup(merged_row['trade_config_uuid'], futures=True)
+                    # BYBIT USD_M LONG trade + response validation
+                    target_trade_error = False
+                    try:
+                        target_res = self.target_exchange_adaptor.market_short(target_access_key, target_secret_key, target_symbol, target_qty, self.target_market_type)
+                        origin_trade_thread.join()
+                        title = f"{target_market_name_kr} SHORT 성공"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {target_market_name_kr} {target_symbol} SHORT거래({float(target_qty)}개, {round(merged_row['trade_capital'])}USDT)가 정상적으로 진행되었습니다."
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        target_order_id = target_res['orderId']
+                        # put order info to the queue
+                        target_order_info_dict = {
+                            "trade_config_uuid": merged_row['trade_config_uuid'],
+                            "trade_uuid": merged_row['uuid'],
+                            "symbol": target_symbol,
+                            "order_id": target_order_id,
+                            "market_type": self.target_market_type
+                        }
+                        self.target_exchange_adaptor.order_info_dict_queue.put(target_order_info_dict)
+                    except Exception as e:
+                        target_trade_error = True
+                        origin_trade_thread.join()
+                        title = f"{target_market_name_kr} SHORT 실패"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {target_market_name_kr} {target_symbol} SHORT거래({float(target_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다. {e}"
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                        self.logger.error(error_log + '\n' + traceback.format_exc())
+                        # Monitoring purpose
+                        self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
+                    # Binance response validation
+                    origin_trade_error = False
+                    if origin_return_dict['error_code'] is None:
+                        title = f"{origin_market_name_kr} LONG 성공"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {origin_symbol} LONG거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}USDT)가 정상적으로 진행되었습니다."
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        origin_res = origin_return_dict['res']
+                        origin_order_id = str(origin_res['orderId'])
+                        
+                        # put order info to the queue
+                        origin_order_info_dict =  {
+                            "trade_config_uuid": merged_row['trade_config_uuid'],
+                            "trade_uuid": merged_row['uuid'],
+                            "symbol": origin_symbol,
+                            "order_id": origin_order_id,
+                            "market_type": self.origin_market_type
+                        }
+                        self.origin_exchange_adaptor.order_info_dict_queue.put(origin_order_info_dict)
+                    else:
+                        origin_trade_error = True
+                        title = f"{origin_market_name_kr} LONG 실패"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {origin_market_name_kr} {origin_symbol} LONG거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다."
+                        body += f"\n{origin_market_name_kr} 에러내용: {origin_return_dict['res']}, 에러코드: {origin_return_dict['error_code']}"
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\n{body}"
+                        self.logger.error(error_log)
+                        # Monitoring purpose
+                        self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
+                        
+                    # raise exception according to the result of the trade
+                    if origin_trade_error and target_trade_error:
+                        raise MyException(f"{target_market_name_kr} SHORT과 {origin_market_name_kr} LONG 모두 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=4)
+                    elif origin_trade_error:
+                        # Check whether the trade_config's safe_reverse is set to True, if True, do the reverse trade for the target market
+                        if merged_row['safe_reverse']:
+                            title = f"{origin_market_name_kr} LONG 실패로 인한 {target_market_name_kr} 역매매(LONG) 거래"
+                            body = ""
+                            body += f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)} 의 {origin_market_name_kr} {origin_symbol} LONG 거래가 실패하여"
+                            body += f"\n{target_market_name_kr} {target_symbol} 역매매(LONG, {target_qty}개) 거래를 진행합니다."
+                            self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
+                            try:
+                                target_reverse_res = self.target_exchange_adaptor.market_long(target_access_key, target_secret_key, target_symbol, target_qty)
+                                target_reverse_order_id = target_reverse_res['orderId']
+                                title = f"{target_market_name_kr} 역매매(LONG) 성공"
+                                body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {target_market_name_kr} {target_symbol} 역매매(LONG, {target_qty}개) 거래가 정상적으로 진행되었습니다."""
+                                self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
+                                
+                                # put order info to the queue
+                                target_order_info_dict =  {
+                                    "trade_config_uuid": merged_row['trade_config_uuid'], 
+                                    "trade_uuid": merged_row['uuid'],
+                                    "symbol": target_symbol,
+                                    "order_id": target_reverse_order_id,
+                                    "market_type": self.target_market_type
+                                }
+                                self.target_exchange_adaptor.order_info_dict_queue.put(target_order_info_dict)
+                            except Exception as e:
+                                title = f"{target_market_name_kr} 역매매(LONG) 거래 실패"
+                                body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 
+                                {target_market_name_kr} {target_symbol} 역매매(LONG, {target_qty}개) 거래가 실패하였습니다. {e}"""
+                                self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR')
+                                error_log = f"{title}|trade uuid:{merged_row['uuid']}\n{body}\n{traceback.format_exc()}"
+                                self.logger.error(error_log)
+                                # Monitoring purpose
+                                self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
+                        raise MyException(f"{origin_market_name_kr} LONG 거래가 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=2)
+                    elif target_trade_error:
+                        # Check whether the trade_config's safe_reverse is set to True, if True, do the reverse trade for the origin market
+                        if merged_row['safe_reverse']:
+                            title = f"{target_market_name_kr} SHORT 실패로 인한 {origin_market_name_kr} 역매매(LONG) 거래"
+                            body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {target_market_name_kr} {target_symbol} SHORT 거래가 실패하여 {origin_market_name_kr} {origin_symbol} 역매매(SHORT, {float(origin_qty)}개) 거래를 진행합니다."""
+                            self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
+                            try:
+                                origin_reverse_res = self.origin_exchange_adaptor.market_short(origin_access_key, origin_secret_key, origin_symbol, origin_qty, self.origin_market_type, True)
+                                origin_reverse_order_id = str(origin_reverse_res['orderId'])
+                                title = f"{origin_market_name_kr} 역매매(SHORT) 성공"
+                                body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {origin_symbol} 역매매(SHORT, {float(origin_qty)}개) 거래가 정상적으로 진행되었습니다."""
+                                self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
+                                
+                                # put order info to the queue
+                                origin_order_info_dict =  {"trade_config_uuid": merged_row['trade_config_uuid'],
+                                                            "trade_uuid": merged_row['uuid'],
+                                                            "symbol": origin_symbol,
+                                                            "order_id": origin_reverse_order_id,
+                                                            "market_type": self.origin_market_type}
+                                self.origin_exchange_adaptor.order_info_dict_queue.put(origin_order_info_dict)
+                            except Exception as e:
+                                title = f"{origin_market_name_kr} 역매매(SHORT) 거래 실패"
+                                body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {origin_symbol} 역매매(SHORT, {float(origin_qty)}개) 거래가 실패하였습니다. {e}"""
+                                self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR')
+                                error_log = f"{title}|trade uuid:{merged_row['uuid']}\n{body}\n{traceback.format_exc()}"
+                                self.logger.error(error_log)
+                                # Monitoring purpose
+                                self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
+                        raise MyException(f"{target_market_name_kr} SHORT 거래가 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=3)
+                    
+                else:
+                    raise Exception(f"Unexpected case. It's impossible to do long_short_trade. origin_market_liquidation: {origin_market_liquidation}, target_market_liquidation: {target_market_liquidation}")
+                
+                # generate trade info dict
+                trade_info_dict = {"user": merged_row['user'], "trade_config_uuid": merged_row['trade_config_uuid'], "trade_uuid": merged_row['uuid'], "base_asset": merged_row['base_asset'],
+                                "target_order_id": target_order_id, "origin_order_id": origin_order_id, "target_premium_value": merged_row['high'], "dollar": merged_row['dollar'], "trade_side": trade_side,
+                                "modified_input_usd": modified_input_usd, "modified_input_krw": None, "last_trade_history_uuid": merged_row['last_trade_history_uuid'],
+                                "telegram_id": merged_row['telegram_id'], "send_times": merged_row['send_times'], "send_term": merged_row['send_term'], "usdt_conversion": None,
+                                "trade_capital": merged_row['trade_capital'], "trade_execution": "short_long_trade"}
+                # put trade info to the queue
+                self.trade_info_dict_queue.put(trade_info_dict)
+                return trade_info_dict
+            
+            ################################################################
             if self.market_code_combination == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT" or self.market_code_combination == "BITHUMB_SPOT/KRW:BINANCE_USD_M/USDT":
                 target_market_name_kr = "업비트" if self.market_code_combination == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT" else "빗썸"
+                origin_market_name_kr = "바이낸스"
                 trade_side = "EXIT"
                 # Check whether the trade_switch is -1 // trade_switch 0: 진입대기, -1: 탈출대기, -2: 진입에러, 1:탈출완료, 2:탈출에러, 3: 거래 진행 중
                 if merged_row['trade_switch'] != -1:
@@ -603,8 +1199,8 @@ class UserExchangeAdaptor:
                     # Binance response validation
                     origin_trade_error = False
                     if origin_return_dict['error_code'] is None:
-                        title = "바이낸스 LONG 성공"
-                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 바이낸스 {origin_symbol} LONG거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}원)가 정상적으로 진행되었습니다."
+                        title = f"{origin_market_name_kr} LONG 성공"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {origin_symbol} LONG거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}원)가 정상적으로 진행되었습니다."
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
                         origin_res = origin_return_dict['res']
                         origin_order_id = str(origin_res['orderId'])
@@ -613,9 +1209,9 @@ class UserExchangeAdaptor:
                         self.origin_exchange_adaptor.order_info_dict_queue.put(origin_order_info_dict)
                     else:
                         origin_trade_error = True
-                        title = "바이낸스 LONG 실패"
-                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 바이낸스 {origin_symbol} LONG거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}원)가 실패하였습니다."
-                        body += f"\n바이낸스 에러내용: {origin_return_dict['res']}, 에러코드: {origin_return_dict['error_code']}"
+                        title = f"{origin_market_name_kr} LONG 실패"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {origin_market_name_kr} {origin_symbol} LONG거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}원)가 실패하였습니다."
+                        body += f"\n{origin_market_name_kr} 에러내용: {origin_return_dict['res']}, 에러코드: {origin_return_dict['error_code']}"
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
                         error_log = f"{title}|trade uuid:{merged_row['uuid']}\nres:{origin_return_dict['res']}\n{body}"
                         self.logger.error(error_log)
@@ -624,13 +1220,13 @@ class UserExchangeAdaptor:
                     
                     # raise exception according to the result of the trade
                     if origin_trade_error and target_trade_error:
-                        raise MyException(f"{target_market_name_kr} 매도와 바이낸스 LONG 모두 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=4)
+                        raise MyException(f"{target_market_name_kr} 매도와 {origin_market_name_kr} LONG 모두 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=4)
                     elif origin_trade_error:
                         # Check whether the trade_config's safe_reverse is set to True, if True, do the reverse trade for the target market
                         if merged_row['safe_reverse']:
                             target_ordered_qty = float(target_res['result']['volume'])
-                            title = f"바이낸스 LONG 실패로 인한 {target_market_name_kr} 역매매(매수) 거래"
-                            body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 바이낸스 {origin_symbol} LONG 거래가 실패하여 {target_market_name_kr} {target_symbol} 역매매 (매수, {target_ordered_qty}개) 거래를 진행합니다."""
+                            title = f"{origin_market_name_kr} LONG 실패로 인한 {target_market_name_kr} 역매매(매수) 거래"
+                            body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {origin_symbol} LONG 거래가 실패하여 {target_market_name_kr} {target_symbol} 역매매 (매수, {target_ordered_qty}개) 거래를 진행합니다."""
                             self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
                             try:
                                 target_reverse_res = self.target_exchange_adaptor.market_long(target_access_key, target_secret_key, target_symbol, target_ordered_qty, merged_row['ap'])
@@ -653,18 +1249,18 @@ class UserExchangeAdaptor:
                                 self.logger.error(error_log)
                                 # Monitoring purpose
                                 self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'MONITOR')
-                        raise MyException(f"바이낸스 LONG 거래가 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=2)
+                        raise MyException(f"{origin_market_name_kr} LONG 거래가 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=2)
                     elif target_trade_error:
                         # Check whether the trade_config's safe_reverse is set to True, if True, do the reverse trade for the origin market
                         if merged_row['safe_reverse']:
-                            title = f"{target_market_name_kr} 매도 실패로 인한 바이낸스 역매매(SHORT) 거래"
-                            body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {target_market_name_kr} {target_symbol} 매도 거래가 실패하여 바이낸스 {origin_symbol} 역매매(SHORT, {float(origin_qty)}개) 거래를 진행합니다."""
+                            title = f"{target_market_name_kr} 매도 실패로 인한 {origin_market_name_kr} 역매매(SHORT) 거래"
+                            body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {target_market_name_kr} {target_symbol} 매도 거래가 실패하여 {origin_market_name_kr} {origin_symbol} 역매매(SHORT, {float(origin_qty)}개) 거래를 진행합니다."""
                             self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
                             try:
                                 origin_reverse_res = self.origin_exchange_adaptor.market_short(origin_access_key, origin_secret_key, origin_symbol, origin_qty, self.origin_market_type, False)
                                 origin_reverse_order_id = str(origin_reverse_res['orderId'])
-                                title = "바이낸스 역매매(SHORT) 성공"
-                                body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 바이낸스 {origin_symbol} 역매매(SHORT, {float(origin_qty)}개) 거래가 정상적으로 진행되었습니다."""
+                                title = f"{origin_market_name_kr} 역매매(SHORT) 성공"
+                                body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {origin_symbol} 역매매(SHORT, {float(origin_qty)}개) 거래가 정상적으로 진행되었습니다."""
                                 self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
                                 
                                 # put order info to the queue
@@ -675,8 +1271,8 @@ class UserExchangeAdaptor:
                                                            "market_type": self.origin_market_type}
                                 self.origin_exchange_adaptor.order_info_dict_queue.put(origin_order_info_dict)
                             except Exception as e:
-                                title = "바이낸스 역매매(SHORT) 거래 실패"
-                                body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 바이낸스 {origin_symbol} 역매매(SHORT, {float(origin_qty)}) 거래가 실패하였습니다. {e}"""
+                                title = f"{origin_market_name_kr} 역매매(SHORT) 거래 실패"
+                                body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {origin_market_name_kr} {origin_symbol} 역매매(SHORT, {float(origin_qty)}) 거래가 실패하였습니다. {e}"""
                                 self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR')
                                 error_log = f"{title}|trade uuid:{merged_row['uuid']}\n{body}\n{traceback.format_exc()}"
                                 self.logger.error(error_log)
@@ -691,7 +1287,7 @@ class UserExchangeAdaptor:
                                     "target_order_id": target_order_id, "origin_order_id": origin_order_id, "target_premium_value": merged_row['high'], "dollar": merged_row['dollar'], "trade_side": trade_side,
                                     "modified_input_usd": None, "modified_input_krw": None, "last_trade_history_uuid": merged_row['last_trade_history_uuid'],
                                     "telegram_id": merged_row['telegram_id'], "send_times": merged_row['send_times'], "send_term": merged_row['send_term'], "usdt_conversion": merged_row['usdt_conversion'],
-                                    "trade_capital": merged_row['trade_capital']}
+                                    "trade_capital": merged_row['trade_capital'], "trade_execution": "short_long_trade"}
                     # put trade info to the queue
                     self.trade_info_dict_queue.put(trade_info_dict)
                     return trade_info_dict
@@ -699,6 +1295,7 @@ class UserExchangeAdaptor:
             else:
                 raise Exception(f'market_code_combination {self.market_code_combination} not supported yet.')
         except Exception as e:
+            self.logger.error(f"short_long_trade|{e}\n{traceback.format_exc()}")
             # reflect the error to the trade to db
             conn = self.postgres_client.pool.getconn()
             curr = conn.cursor()
@@ -745,52 +1342,107 @@ class UserExchangeAdaptor:
             # Need to calculate the executed_premium_value and slippage_p
             target_executed_price = target_order_history['price']
             origin_executed_price = origin_order_history['price']
+            # Check the direction of the trade for two USD_M futures markets
+            trade_execution = trade_info_dict.get('trade_execution', None)
+            direction = "상방" if trade_execution == "long_short_trade" else "하방"
             # Check whether it used usdt_conversion
             if trade_info_dict['usdt_conversion']:
                 usdt_conversion = True
             else:
                 usdt_conversion = False
+            if 'KRW' in self.target_market_code:
+                capital_unit = '원'
+            elif 'USDT' in self.target_market_code:
+                capital_unit = 'USDT'
+            else:
+                raise Exception(f"market_code_combination {self.market_code_combination} not supported yet.")
             # Calculate the executed_premium_value
             if self.market_code_combination == "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT" or self.market_code_combination == "BITHUMB_SPOT/KRW:BINANCE_USD_M/USDT":
                 trade_info_dict['executed_premium_value'] = (target_executed_price - origin_executed_price*Decimal(str(trade_info_dict['dollar']))) / (origin_executed_price*Decimal(str(trade_info_dict['dollar']))) * 100
                 # check whether it used usdt_conversion
                 if usdt_conversion:
                     trade_info_dict['executed_premium_value'] = (1+trade_info_dict['executed_premium_value']/100) * Decimal(str(trade_info_dict['dollar']))
-            # Calculate the slippage_p which means the percentage of the slippage between target_premium_value and executed_premium_value
-            if trade_info_dict['trade_side'] == 'ENTER':
-                if not usdt_conversion:
-                    trade_info_dict['slippage_p'] = round((trade_info_dict['target_premium_value'] - trade_info_dict['executed_premium_value']),2)
+                # Calculate the slippage_p which means the percentage of the slippage between target_premium_value and executed_premium_value
+                if trade_info_dict['trade_side'] == 'ENTER':
+                    if not usdt_conversion:
+                        trade_info_dict['slippage_p'] = round((trade_info_dict['target_premium_value'] - trade_info_dict['executed_premium_value']),2)
+                    else:
+                        trade_info_dict['slippage_p'] = round((trade_info_dict['target_premium_value'] - trade_info_dict['executed_premium_value']) / trade_info_dict['executed_premium_value'] * 100, 2)
+                    # Reflect slippage to high value
+                    if trade_info_dict['target_premium_value'] < trade_info_dict['executed_premium_value']: # Original
+                        slippage_to_add = round(trade_info_dict['executed_premium_value'] - trade_info_dict['target_premium_value'], 3) # Original
+                        trade_df = get_trade_df(self.market_code_combination, trade_support=True)
+                        original_high = trade_df[trade_df['uuid']==trade_info_dict['trade_uuid']]['high'].values[0]
+                        new_high_to_apply = original_high + Decimal(str(slippage_to_add))
+                        # Send a message to notify the change
+                        title = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, trade_info_dict['trade_uuid'], self.logger)} 탈출프리미엄 조정"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, trade_info_dict['trade_uuid'], self.logger)}의 설정된 진입프리미엄값과 실제 체결된 진입프리미엄 값이 {slippage_to_add}만큼 차이나므로, 탈출프리미엄이 {new_high_to_apply}로 변경되었습니다."
+                        full_body = title + '\n' + body
+                        self.acw_api.create_message_thread(trade_info_dict['telegram_id'], title, full_body, 'INFO', send_times=trade_info_dict['send_times'], send_term=trade_info_dict['send_term'])
+                        # Update the low and high value
+                        curr.execute(f"UPDATE trade SET low={trade_info_dict['executed_premium_value']}, high={new_high_to_apply} WHERE uuid='{trade_info_dict['trade_uuid']}'")
+                        conn.commit()
+                    else:
+                        # Update only the low value as executed_premium_value
+                        curr.execute(f"UPDATE trade SET low={trade_info_dict['executed_premium_value']} WHERE uuid='{trade_info_dict['trade_uuid']}'")
+                        conn.commit()
+                        # Do not update trade_log on purpose
                 else:
-                    trade_info_dict['slippage_p'] = round((trade_info_dict['target_premium_value'] - trade_info_dict['executed_premium_value']) / trade_info_dict['executed_premium_value'] * 100, 2)
-                # Reflect slippage to high value
-                if trade_info_dict['target_premium_value'] < trade_info_dict['executed_premium_value']: # Original
-                    slippage_to_add = round(trade_info_dict['executed_premium_value'] - trade_info_dict['target_premium_value'], 3) # Original
-                    trade_df = get_trade_df(self.market_code_combination, trade_support=True)
-                    original_high = trade_df[trade_df['uuid']==trade_info_dict['trade_uuid']]['high'].values[0]
-                    new_high_to_apply = original_high + Decimal(str(slippage_to_add))
-                    # Send a message to notify the change
-                    title = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, trade_info_dict['trade_uuid'], self.logger)} 탈출프리미엄 조정"
-                    body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, trade_info_dict['trade_uuid'], self.logger)}의 설정된 진입프리미엄값과 실제 체결된 진입프리미엄 값이 {slippage_to_add}만큼 차이나므로, 탈출프리미엄이 {new_high_to_apply}로 변경되었습니다."
-                    full_body = title + '\n' + body
-                    self.acw_api.create_message_thread(trade_info_dict['telegram_id'], title, full_body, 'INFO', send_times=trade_info_dict['send_times'], send_term=trade_info_dict['send_term'])
-                    # Update the low and high value
-                    curr.execute(f"UPDATE trade SET low={trade_info_dict['executed_premium_value']}, high={new_high_to_apply} WHERE uuid='{trade_info_dict['trade_uuid']}'")
-                    conn.commit()
+                    if not usdt_conversion:
+                        trade_info_dict['slippage_p'] = (trade_info_dict['executed_premium_value'] - trade_info_dict['target_premium_value'])
+                    else:
+                        trade_info_dict['slippage_p'] = (trade_info_dict['executed_premium_value'] - trade_info_dict['target_premium_value']) / trade_info_dict['target_premium_value'] * 100
+                    
+                if trade_info_dict['slippage_p'] < 0:
+                    slippage_str = f"슬리피지: {(round(trade_info_dict['slippage_p'], 3))}%p"
                 else:
-                    # Update only the low value as executed_premium_value
-                    curr.execute(f"UPDATE trade SET low={trade_info_dict['executed_premium_value']} WHERE uuid='{trade_info_dict['trade_uuid']}'")
-                    conn.commit()
-                    # Do not update trade_log on purpose
+                    slippage_str = f"슬리피지 없음"
+            elif self.market_code_combination == "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT":
+                trade_info_dict['executed_premium_value'] = (target_executed_price - origin_executed_price) / origin_executed_price * 100
+                if trade_execution == "long_short_trade":
+                    trade_info_dict['slippage_p'] = round((trade_info_dict['target_premium_value'] - trade_info_dict['executed_premium_value']),3)
+                elif trade_execution == "short_long_trade":
+                    trade_info_dict['slippage_p'] = round((trade_info_dict['executed_premium_value'] - trade_info_dict['target_premium_value']),3)
+                else:
+                    raise Exception(f"trade_execution {trade_execution} not supported yet.")
+                if trade_info_dict['trade_side'] == 'ENTER':
+                    if trade_info_dict['slippage_p'] < 0:
+                        slippage_str = f"슬리피지: {trade_info_dict['slippage_p']}%p"
+                        # Reflect the slippage to the high value
+                        trade_df = get_trade_df(self.market_code_combination, trade_support=True)
+                        if trade_execution == "long_short_trade":
+                            original_high = trade_df[trade_df['uuid']==trade_info_dict['trade_uuid']]['high'].values[0]
+                            new_premium_value = original_high - Decimal(str(trade_info_dict['slippage_p']))
+                        elif trade_execution == "short_long_trade":
+                            original_low = trade_df[trade_df['uuid']==trade_info_dict['trade_uuid']]['low'].values[0]
+                            new_premium_value = original_low + Decimal(str(trade_info_dict['slippage_p']))
+                        # Send a message to notify the change
+                        title = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, trade_info_dict['trade_uuid'], self.logger)} {direction} 탈출프리미엄 조정"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, trade_info_dict['trade_uuid'], self.logger)}의 설정된 진입프리미엄값과 실제 체결된 진입프리미엄 값이 {abs(trade_info_dict['slippage_p'])}만큼 차이나므로, {direction} 탈출프리미엄이 {new_premium_value}로 변경되었습니다."
+                        full_body = title + '\n' + body
+                        self.acw_api.create_message_thread(trade_info_dict['telegram_id'], title, full_body, 'INFO', send_times=trade_info_dict['send_times'], send_term=trade_info_dict['send_term'])
+                        # Update the low and high
+                        if trade_execution == "long_short_trade":
+                            curr.execute(f"UPDATE trade SET low={trade_info_dict['executed_premium_value']}, high={new_premium_value} WHERE uuid='{trade_info_dict['trade_uuid']}'")
+                        elif trade_execution == "short_long_trade":
+                            curr.execute(f"UPDATE trade SET low={new_premium_value}, high={trade_info_dict['executed_premium_value']} WHERE uuid='{trade_info_dict['trade_uuid']}'")
+                        conn.commit()
+                    else:
+                        slippage_str = f"슬리피지 없음"
+                        # Update only the low or high value as executed_premium_value
+                        if trade_execution == "long_short_trade":
+                            curr.execute(f"UPDATE trade SET low={trade_info_dict['executed_premium_value']} WHERE uuid='{trade_info_dict['trade_uuid']}'")
+                        elif trade_execution == "short_long_trade":
+                            curr.execute(f"UPDATE trade SET high={trade_info_dict['executed_premium_value']} WHERE uuid='{trade_info_dict['trade_uuid']}'")
+                        conn.commit()
+                else:
+                    if trade_info_dict['slippage_p'] < 0:
+                        slippage_str = f"슬리피지: {trade_info_dict['slippage_p']}%p"
+                    else:
+                        slippage_str = f"슬리피지 없음"
+                    
             else:
-                if not usdt_conversion:
-                    trade_info_dict['slippage_p'] = (trade_info_dict['executed_premium_value'] - trade_info_dict['target_premium_value'])
-                else:
-                    trade_info_dict['slippage_p'] = (trade_info_dict['executed_premium_value'] - trade_info_dict['target_premium_value']) / trade_info_dict['target_premium_value'] * 100
-                
-            if trade_info_dict['slippage_p'] < 0:
-                slippage_str = f"슬리피지: {(round(trade_info_dict['slippage_p'], 3))}%p"
-            else:
-                slippage_str = f"슬리피지 없음"
+                raise Exception(f"market_code_combination {self.market_code_combination} not supported yet.")
 
             # Insert trade info to the database and return the generated uuid
             sql = """INSERT INTO trade_history (trade_config_uuid, trade_uuid, registered_datetime, trade_side, base_asset, target_order_id, origin_order_id, 
@@ -818,7 +1470,7 @@ class UserExchangeAdaptor:
             # Send message to the user
             if trade_info_dict['trade_side'] == 'ENTER':
                 title = "진입거래 성공"
-                body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, trade_info_dict['trade_uuid'], self.logger)}의 거래({round(trade_info_dict['trade_capital'])}원)가 정상적으로 진행되었습니다."
+                body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, trade_info_dict['trade_uuid'], self.logger)}의 거래({round(trade_info_dict['trade_capital'])}{capital_unit})가 정상적으로 진행되었습니다."
                 body += f"\n진입프리미엄: {round(trade_info_dict['target_premium_value'],2)}{premium_unit}\n실제진입프리미엄: {round(trade_info_dict['executed_premium_value'],2)}{premium_unit}\n{slippage_str}"
                 full_body = title + '\n' + body
             else:
@@ -835,7 +1487,7 @@ class UserExchangeAdaptor:
                     conn.commit()
                 
                 title = "탈출거래 성공"
-                body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, trade_info_dict['trade_uuid'], self.logger)}의 거래({round(trade_info_dict['trade_capital'])}원)가 정상적으로 진행되었습니다."
+                body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, trade_info_dict['trade_uuid'], self.logger)}의 거래({round(trade_info_dict['trade_capital'])}{capital_unit})가 정상적으로 진행되었습니다."
                 body += f"\n탈출프리미엄: {round(trade_info_dict['target_premium_value'],2)}{premium_unit}\n실제탈출프리미엄: {round(trade_info_dict['executed_premium_value'],2)}{premium_unit}\n{slippage_str}"
                 full_body = title + '\n' + body
             self.acw_api.create_message_thread(trade_info_dict['telegram_id'], title, full_body, 'INFO', send_times=trade_info_dict['send_times'], send_term=trade_info_dict['send_term'])
@@ -946,7 +1598,8 @@ class UserExchangeAdaptor:
             fetched_convert_rate_dict = {k.decode('utf-8'): float(v) for k, v in fetched_convert_rate_dict.items()}
     
             margin_liquidation_call_trade_dict = self.margin_liquidation_call_trade_queue.get()
-            trade_type = margin_liquidation_call_trade_dict.get('trade_type')
+            open_position_side = margin_liquidation_call_trade_dict.get('open_position_side') # LONG or SHORT
+            market_code = margin_liquidation_call_trade_dict.get('market_code')
             trade_df = margin_liquidation_call_trade_dict.get('trade_df')
             order_type = margin_liquidation_call_trade_dict.get('order_type')
                         
@@ -958,12 +1611,36 @@ class UserExchangeAdaptor:
             
             trade_row = merged_df.iloc[0]
             
-            if trade_type == "short_long_trade":
-                self.short_long_trade(trade_row, liquidation_call=True if order_type=='liquidation' else False)
-            elif trade_type == "long_short_trade":
-                self.long_short_trade(trade_row, liquidation_call=True if order_type=='liquidation' else False)
+            if market_code not in [self.target_market_code, self.origin_market_code]:
+                self.logger.error(f"margin liquidation call's market_code:{market_code} is not in the market_code_combination:{self.market_code_combination}.")
+                self.acw_api.create_message_thread(self.admin_id, f"margin liquidation call 에러", f"margin liquidation call's market_code:{market_code} is not in the market_code_combination:{self.market_code_combination}.", 'ERROR')
+                return
+            
+            if market_code == self.origin_market_code:
+                if open_position_side == 'SHORT': # UPBIT_SPOT/KRW:BINANCE_USD_M/USDT
+                    self.short_long_trade(trade_row,
+                                          liquidation_call=True if order_type=='liquidation' else False,
+                                          liquidation_market_code=market_code)
+                elif open_position_side == 'LONG': # BYBIT_USD_M/USDT:BINANCE_USD_M/USDT
+                    self.long_short_trade(trade_row,
+                                          liquidation_call=True if order_type=='liquidation' else False,
+                                          liquidation_market_code=market_code)
+                else:
+                    raise Exception(f"open_position_side {open_position_side} not supported.")
+            elif market_code == self.target_market_code:
+                if open_position_side == 'LONG': # BYBIT_USD_M/USDT:BINANCE_USD_M/USDT
+                    self.short_long_trade(trade_row,
+                                          liquidation_call=True if order_type=='liquidation' else False,
+                                          liquidation_market_code=market_code)
+                elif open_position_side == 'SHORT':
+                    self.long_short_trade(trade_row,
+                                          liquidation_call=True if order_type=='liquidation' else False,
+                                          liquidation_market_code=market_code)
+                else:
+                    raise Exception(f"open_position_side {open_position_side} not supported.")
             else:
-                raise Exception(f"trade_type {trade_type} not supported.")
+                raise Exception(f"market_code {market_code} not supported.")
+
         except Exception as e:
             self.logger.error(f"handle_margin_liquidation_call_trade|{e}")
             self.logger.error(traceback.format_exc())
@@ -1105,6 +1782,24 @@ class UserExchangeAdaptor:
                     total_pnl = target_pnl/Decimal(str(trade_info_dict['dollar'])) + origin_pnl
                     # total_fee = target_total_fee + origin_total_fee * Decimal(str(trade_info_dict['dollar']))
                     total_fee = target_total_fee/Decimal(str(trade_info_dict['dollar'])) + origin_total_fee
+                    total_pnl_after_fee = total_pnl - total_fee
+                elif self.market_code_combination == "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT":
+                    # Calculate realized_premium_gap_p
+                    enter_trade_executed_premium_value = enter_trade_history_series['executed_premium_value'].values[0]
+                    exit_trade_executed_premium_value = trade_info_dict['executed_premium_value']
+                    trade_execution = trade_info_dict.get('trade_execution') # long_short_potision or short_long_position of exit trade
+                    if trade_execution == 'long_short_trade': # 상향 -> 하향 돌파
+                        realized_premium_gap_p = enter_trade_executed_premium_value - exit_trade_executed_premium_value
+                    elif trade_execution == 'short_long_trade': # 하향 -> 상향 돌파
+                        realized_premium_gap_p = exit_trade_executed_premium_value - enter_trade_executed_premium_value
+                    else:
+                        raise Exception(f'trade_execution {trade_execution} from {self.market_code_combination} trade_info_dict is not supported yet.')
+                    
+                    total_currency = 'USDT'
+                    # total_pnl = target_pnl + origin_pnl * Decimal(str(trade_info_dict['dollar']))
+                    total_pnl = target_pnl + origin_pnl
+                    # total_fee = target_total_fee + origin_total_fee * Decimal(str(trade_info_dict['dollar']))
+                    total_fee = target_total_fee + origin_total_fee
                     total_pnl_after_fee = total_pnl - total_fee
                 else:
                     raise Exception(f'market_code_combination {self.market_code_combination} not supported yet.')

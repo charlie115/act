@@ -72,7 +72,7 @@ class Bithumb:
         all_market_code_list = pd.DataFrame(res.json())['market'].to_list()
         ticker_url = "/ticker"
         query_params = {
-            "markets": ",".join(all_market_code_list)
+            "markets": ",".join([x for x in all_market_code_list if 'KRW-' in x])
         }
         res = requests.get(self.server_url + ticker_url, headers=self.headers, params=query_params)
         res.raise_for_status()
