@@ -637,7 +637,7 @@ def handle_repeat_trade(postgres_client,
             elif row['trade_switch'] == 1: # 탈출완료
                 if pd.isnull(row['pauto_num']) or between_futures:
                     # read the trade log based on the uuid_x from trade_log table
-                    sql = "SELECT * FROM trade_log WHERE uuid = %s"
+                    sql = "SELECT * FROM trade_log WHERE trade_uuid = %s"
                     val = (row['uuid_x'],)
                     curr.execute(sql, val)
                     trade_log_df = pd.DataFrame(curr.fetchall())
