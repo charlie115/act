@@ -34,11 +34,12 @@ class Bybit:
         return wallet_df
 
     def spot_exchange_info(self):
-        response = requests.get(self.server_url + self.instrument_url, params={"category":"spot"})
+        response = requests.get(self.server_url + self.instrument_url, params={"category":"spot", "limit": 1000})
         response_json = response.json()
         info_df = pd.DataFrame(response_json['result']['list']).rename(columns={"baseCoin":"base_asset", "quoteCoin":"quote_asset"})
         info_df = info_df.join(info_df['lotSizeFilter'].apply(pd.Series))
         info_df = info_df.join(info_df['priceFilter'].apply(pd.Series)).drop(columns=['lotSizeFilter', 'priceFilter'], axis=1)
+        info_df = info_df[info_df['status'] == 'Trading']
         return info_df
 
     def all_tickers(self, category='spot'):
@@ -48,7 +49,7 @@ class Bybit:
         return ticker_df
     
     def usd_m_exchange_info(self):
-        response = requests.get(self.server_url + self.instrument_url, params={"category":"linear"})
+        response = requests.get(self.server_url + self.instrument_url, params={"category":"linear", "limit": 1000})
         response_json = response.json()
         info_df = pd.DataFrame(response_json['result']['list']).rename(columns={"baseCoin":"base_asset", "quoteCoin":"quote_asset", "contractType":"perpetual"})
         info_df = info_df.join(info_df['leverageFilter'].apply(pd.Series))
@@ -57,10 +58,11 @@ class Bybit:
         # result = info_df['perpetual'].replace({'LinearPerpetual': True, 'LinearFutures': False}).astype(bool)
         # info_df['perpetual'] = result
         info_df['perpetual'] = pd.Series(info_df['perpetual'].replace({'LinearPerpetual': True, 'LinearFutures': False}), dtype="boolean")
+        info_df = info_df[info_df['status'] == 'Trading']
         return info_df
     
     def coin_m_exchange_info(self):
-        response = requests.get(self.server_url + self.instrument_url, params={"category":"inverse"})
+        response = requests.get(self.server_url + self.instrument_url, params={"category":"inverse", "limit": 1000})
         response_json = response.json()
         info_df = pd.DataFrame(response_json['result']['list']).rename(columns={"baseCoin":"base_asset", "quoteCoin":"quote_asset", "contractType":"perpetual"})
         info_df = info_df.join(info_df['leverageFilter'].apply(pd.Series))
@@ -71,6 +73,7 @@ class Bybit:
         # result = result.infer_objects(copy=False)
         # info_df.loc[:, 'perpetual'] = result
         info_df['perpetual'] = pd.Series(info_df['perpetual'].replace({'InversePerpetual': True, 'InverseFutures': False}), dtype="boolean")
+        info_df = info_df[info_df['status'] == 'Trading']
         return info_df
 
 class InitBybitAdaptor:
