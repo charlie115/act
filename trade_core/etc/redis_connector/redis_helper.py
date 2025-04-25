@@ -4,8 +4,8 @@ import threading
 
 class RedisHelper:
    
-    # def __init__(self, host="localhost", port=6379, passwd='LocalRedis123!', db=0):
-    def __init__(self, host="localhost", port=6379, passwd=None, db=0): # For local testing
+    def __init__(self, host="localhost", port=6379, passwd='LocalRedis123!', db=0):
+    # def __init__(self, host="localhost", port=6379, passwd=None, db=0): # For local testing
         self.host = host
         self.port = port
         self.db = db
