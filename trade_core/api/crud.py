@@ -725,7 +725,16 @@ async def exit_trade(trade_uuid: UUID, db: AsyncSession):
     merged_row = merged_df[merged_df['uuid'] == str(trade_uuid)].iloc[0]
     if market_code_combination in ["UPBIT_SPOT/KRW:BINANCE_USD_M/USDT", "BITHUMB_SPOT/KRW:BINANCE_USD_M/USDT"]:
         trade_exchange_adaptor_dict[market_code_combination].short_long_trade(merged_row)
-
+        
+    elif market_code_combination == "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT":
+        # Check the side of the trade
+        trigger_switch = trade.trigger_switch
+        if trigger_switch == 1: # it was waiting for Downward Exit trade
+            trade_exchange_adaptor_dict[market_code_combination].long_short_trade(merged_row)
+        elif trigger_switch == 0: # it was waiting for Upward Exit trade
+            trade_exchange_adaptor_dict[market_code_combination].short_long_trade(merged_row)
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid trigger switch({trigger_switch})")
     # Re fetch trade from the database
     result = await db.execute(select(models.Trade).filter(
         models.Trade.uuid == trade_uuid
