@@ -255,7 +255,7 @@ class UserExchangeAdaptor:
                 position_df["ROI"] = position_df.apply(lambda x: (x['entry_price']-x['markPrice'])/x['markPrice']*x['leverage']*100 if x['qty']<0 else 
                                                    (x['markPrice']-x['entry_price'])/x['entry_price']*x['leverage']*100, axis=1)
         elif exchange == 'BYBIT':
-            position_df = exchange_adaptor.get_positions(access_key, secret_key, market_type)
+            position_df = exchange_adaptor.all_position_information(access_key, secret_key, market_type)
             if position_df.empty:
                 return position_df
             position_df = position_df.merge(fetched_info_df[['symbol','base_asset']], how='left', on='symbol')
