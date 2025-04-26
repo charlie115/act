@@ -262,8 +262,8 @@ class UserExchangeAdaptor:
             if len(position_df) == 0:
                 position_df["ROI"] = None
             else:
-                position_df["ROI"] = position_df.apply(lambda x: (x['avgPrice']-x['markPrice'])/x['markPrice']*x['leverage']*100 if x['qty']<0 else 
-                                                   (x['markPrice']-x['avgPrice'])/x['avgPrice']*x['leverage']*100, axis=1)
+                position_df["ROI"] = position_df.apply(lambda x: (x['avgPrice']-x['markPrice'])/x['markPrice']*x['leverage']*100 if x['side'] == 'SHORT' else 
+                                        (x['markPrice']-x['avgPrice'])/x['avgPrice']*x['leverage']*100, axis=1)
         else:
             raise Exception(f'exchange {exchange} not supported')
         return position_df
