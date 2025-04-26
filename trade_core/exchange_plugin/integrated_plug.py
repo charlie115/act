@@ -264,6 +264,8 @@ class UserExchangeAdaptor:
             else:
                 position_df["ROI"] = position_df.apply(lambda x: (x['avgPrice']-x['markPrice'])/x['markPrice']*x['leverage']*100 if x['side'] == 'SHORT' else 
                                         (x['markPrice']-x['avgPrice'])/x['avgPrice']*x['leverage']*100, axis=1)
+                position_df = position_df.rename(columns={"avgPrice":"entry_price", "marginType":"margin_type", "size":"qty", 'liqPrice':'liquidation_price'})
+                position_df.loc[:, 'qty'] = position_df.apply(lambda row: -row['qty'] if row['side'] == 'SHORT' else row['qty'], axis=1)
         else:
             raise Exception(f'exchange {exchange} not supported')
         return position_df

@@ -298,7 +298,7 @@ class USDMPosition(BaseModel):
     entry_price: Decimal
     leverage: int
     qty: Decimal
-    margin_type: str
+    margin_type: Optional[str] = None
     liquidation_price: Optional[Decimal] = None
     ROI: Optional[Decimal] = None
 
