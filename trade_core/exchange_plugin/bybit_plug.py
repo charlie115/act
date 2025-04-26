@@ -592,7 +592,7 @@ class UserBybitAdaptor:
         if market_type == "USD_M":
             res = client.get_positions(
                 category="linear",
-                settleCoin=self.quote_asset
+                settleCoin="USDT"
             )
             
             if res['retCode'] == 0:
