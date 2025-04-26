@@ -246,7 +246,7 @@ class TradesViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     trade_switch = serializers.IntegerField(required=False)
     trade_capital = serializers.FloatField(
         required=False,
-        validators=[MinValueValidator(10000)],
+        validators=[MinValueValidator(10)],
     )
     last_trade_history_uuid = serializers.UUIDField(required=False)
     status = serializers.CharField(required=False)
