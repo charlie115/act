@@ -254,7 +254,6 @@ def start_trigger_loop(
                 time.sleep(loop_interval_secs)
                 continue
             
-            # target_market_code, origin_market_code = market_code_combination.split(':')
             premium_df = get_premium_df(local_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
             merged_df = trade_df.merge(premium_df, on='base_asset')
             merged_df['SL_premium_value'] = merged_df.apply(
