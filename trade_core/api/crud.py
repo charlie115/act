@@ -60,6 +60,15 @@ user_exchange_adaptor = UserExchangeAdaptor(admin_id=ADMIN_TELEGRAM_ID, acw_api=
 
 remote_redis = RedisHelper(**redis_dict)
 
+trade_supported_market_code_combinations_between_futures = [
+    "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT",
+]
+
+trade_supported_market_code_combinations_between_spot_futures = [
+    "UPBIT_SPOT/KRW:BINANCE_USD_M/USDT",
+    "BITHUMB_SPOT/KRW:BINANCE_USD_M/USDT",
+    "BITHUMB_SPOT/KRW:BYBIT_USD_M/USDT",
+]
 # Dependency to get the async database session
 async def get_db():
     async with AsyncSession(engine) as session:
@@ -697,7 +706,7 @@ async def exit_trade(trade_uuid: UUID, db: AsyncSession):
     target_market_code = trade_config.target_market_code
     origin_market_code = trade_config.origin_market_code
     market_code_combination = target_market_code + ':' + origin_market_code
-    if market_code_combination not in ["UPBIT_SPOT/KRW:BINANCE_USD_M/USDT", "BITHUMB_SPOT/KRW:BINANCE_USD_M/USDT", "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT"]:
+    if market_code_combination not in trade_supported_market_code_combinations_between_futures + trade_supported_market_code_combinations_between_spot_futures:
         raise HTTPException(status_code=400, detail=f"Invalid market code({market_code_combination}) combination for the trade")
     
     # Fetch convert_rate_dict
@@ -723,10 +732,10 @@ async def exit_trade(trade_uuid: UUID, db: AsyncSession):
         lambda x: x['LS_premium'] if not x['usdt_conversion'] else (1 + x['LS_premium'] / 100) * x['dollar'], axis=1)
     # Filter in only the row with the trade_uuid and convert it to pandas series
     merged_row = merged_df[merged_df['uuid'] == str(trade_uuid)].iloc[0]
-    if market_code_combination in ["UPBIT_SPOT/KRW:BINANCE_USD_M/USDT", "BITHUMB_SPOT/KRW:BINANCE_USD_M/USDT"]:
+    if market_code_combination in trade_supported_market_code_combinations_between_spot_futures:
         trade_exchange_adaptor_dict[market_code_combination].short_long_trade(merged_row)
         
-    elif market_code_combination == "BYBIT_USD_M/USDT:BINANCE_USD_M/USDT":
+    elif market_code_combination in trade_supported_market_code_combinations_between_futures:
         # Check the side of the trade
         trigger_switch = trade.trigger_switch
         if trigger_switch == 1: # it was waiting for Downward Exit trade

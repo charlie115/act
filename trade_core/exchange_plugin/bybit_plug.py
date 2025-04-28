@@ -509,7 +509,7 @@ class UserBybitAdaptor:
             self.postgres_client.pool.putconn(conn)
             raise e
     
-    def market_long(self, access_key, secret_key, symbol, qty, market_type, return_dict=None):
+    def market_long(self, access_key, secret_key, symbol, qty, market_type, reduce_only=False,return_dict=None):
         client = self.load_user_client(access_key, secret_key)
         
         retry_count = 0
@@ -543,12 +543,11 @@ class UserBybitAdaptor:
                     else:
                         return_dict['res'] = e
                         return_dict['error_code'] = getattr(e, 'code', -1)
-                        # return
-                        print(e)
+                        return
                 time.sleep(self.trade_retry_term_sec)
                 retry_count += 1
     
-    def market_short(self, access_key, secret_key, symbol, qty, market_type, return_dict=None):
+    def market_short(self, access_key, secret_key, symbol, qty, market_type, reduce_only=False,return_dict=None):
         client = self.load_user_client(access_key, secret_key)
         
         retry_count = 0
@@ -582,8 +581,7 @@ class UserBybitAdaptor:
                     else:
                         return_dict['res'] = e
                         return_dict['error_code'] = getattr(e, 'code', -1)
-                        # return
-                        print(e)
+                        return
                 time.sleep(self.trade_retry_term_sec)
                 retry_count += 1
                 
