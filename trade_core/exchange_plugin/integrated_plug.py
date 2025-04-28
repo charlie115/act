@@ -831,7 +831,7 @@ class UserExchangeAdaptor:
                 trade_info_dict = {"user": merged_row['user'], "trade_config_uuid": merged_row['trade_config_uuid'], "trade_uuid": merged_row['uuid'], "base_asset": merged_row['base_asset'],
                                 "target_order_id": target_order_id, "origin_order_id": origin_order_id, "target_premium_value": merged_row['low'], "dollar": merged_row['dollar'], "trade_side": trade_side,
                                 "modified_input_usd": modified_input_usd, "modified_input_krw": modified_input_krw, "last_trade_history_uuid": merged_row['last_trade_history_uuid'],
-                                "telegram_id": merged_row['telegram_id'], "send_times": merged_row['send_times'], "send_term": merged_row['send_term'], "usdt_conversion": None,
+                                "telegram_id": merged_row['telegram_id'], "send_times": merged_row['send_times'], "send_term": merged_row['send_term'], "usdt_conversion": merged_row['usdt_conversion'],
                                 "trade_capital": merged_row['trade_capital'], "trade_execution": "long_short_trade"}
                 # put trade info to the queue
                 self.trade_info_dict_queue.put(trade_info_dict)
