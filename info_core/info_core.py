@@ -152,6 +152,10 @@ class InitCore:
                 break
             else:
                 self.logger.info(f"InitCore|Waiting for all info to be updated.")
+                # log the missing data
+                for data_name in self.enabled_data_name_list:
+                    if self.local_redis.get_data(data_name) is None:
+                        self.logger.info(f"InitCore|{data_name} is not updated.")
                 time.sleep(2)
 
         self.exchange_websocket_dict = {}
