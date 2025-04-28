@@ -21,7 +21,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 
 import { useTranslation } from 'react-i18next';
 
-import { usePutTradeMutation } from 'redux/api/drf/tradecore';
+import { useGetTradeConfigQuery, usePutTradeMutation } from 'redux/api/drf/tradecore';
 
 import NumberFormatWrapper from 'components/NumberFormatWrapper';
 
@@ -39,6 +39,12 @@ export default function UpdateTriggerForm({
   toggleExpanded,
 }) {
   const { t } = useTranslation();
+  
+  const { data: tradeConfig } = useGetTradeConfigQuery({ uuid: tradeConfigUuid });
+  
+  const betweenFutures = tradeConfig ? 
+    !(tradeConfig.target_market_code?.includes('SPOT') || tradeConfig.origin_market_code?.includes('SPOT')) : 
+    false;
 
   const { control, handleSubmit, formState, getValues, trigger } = useForm({
     defaultValues: {
@@ -124,7 +130,7 @@ export default function UpdateTriggerForm({
                 error={!!fieldState.error}
                 variant="standard"
               >
-                <InputLabel>{t('Entry')}</InputLabel>
+                <InputLabel>{betweenFutures ? t('Low Value') : t('Entry')}</InputLabel>
                 <Input
                   autoFocus
                   readOnly={isLoading}
@@ -176,7 +182,7 @@ export default function UpdateTriggerForm({
                 error={!!fieldState.error}
                 variant="standard"
               >
-                <InputLabel>{t('Exit')}</InputLabel>
+                <InputLabel>{betweenFutures ? t('High Value') : t('Exit')}</InputLabel>
                 <Input
                   readOnly={isLoading}
                   type="number"
@@ -229,7 +235,7 @@ export default function UpdateTriggerForm({
                       </InputAdornment>
                     ),
                     endAdornment: (
-                      <InputAdornment position="end">{t('KRW')}</InputAdornment>
+                      <InputAdornment position="end">{betweenFutures ? 'USD' : t('KRW')}</InputAdornment>
                     ),
                   }}
                   {...field}

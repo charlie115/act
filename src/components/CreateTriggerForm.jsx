@@ -95,6 +95,14 @@ const CreateTriggerForm = forwardRef(
     const [disabled, setDisabled] = useState(false);
     const [setup, setSetup] = useState('manual');
 
+    // Check if both markets are futures markets
+    const betweenFutures = useMemo(() => {
+      if (!marketCodes) return false;
+      const targetHasSpot = marketCodes.targetMarketCode?.includes('SPOT');
+      const originHasSpot = marketCodes.originMarketCode?.includes('SPOT');
+      return !targetHasSpot && !originHasSpot;
+    }, [marketCodes]);
+
     // Instead of trying to maintain references to chart series, store the data itself
     const [pBoundaryData, setPBoundaryData] = useState(null);
     const chartDataRef = useRef({
@@ -256,16 +264,23 @@ const CreateTriggerForm = forwardRef(
                   : undefined,
               trade_switch: tradeType === 'autoTrade' ? 0 : undefined,
             }).unwrap();
-        if (autoRepeat && trade)
-          postRepeatTrade({
+        if (autoRepeat && trade) {
+          const repeatTradeParams = {
             trade_config_uuid: tradeConfigUuid,
             trade_uuid: trade.uuid,
-            kline_interval: interval,
-            kline_num: autoSetupValues?.klineNum,
             auto_repeat_num: 0, // TODO: Replace with actual value
-            pauto_num: autoSetupValues?.percentGap,
             auto_repeat_switch: autoRepeat,
-          });
+          };
+          
+          // Only add these parameters when in auto mode
+          if (setup === 'auto') {
+            repeatTradeParams.kline_interval = interval;
+            repeatTradeParams.kline_num = autoSetupValues?.klineNum;
+            repeatTradeParams.pauto_num = autoSetupValues?.percentGap;
+          }
+          
+          postRepeatTrade(repeatTradeParams);
+        }
       } catch (e) {
         setAlertMessage({
           message: t('An error occurred. Please try again.'),
@@ -886,11 +901,12 @@ const CreateTriggerForm = forwardRef(
             <Grid item md={2} xs={12}>
               <ToggleButtonGroup
                 exclusive
-                disabled={disabled}
-                value={setup}
+                disabled={disabled || (betweenFutures && tradeType === 'autoTrade')}
+                value={betweenFutures && tradeType === 'autoTrade' ? 'manual' : setup}
                 onChange={(e, newSetup) => {
                   e.stopPropagation();
-                  if (newSetup !== null) setSetup(newSetup);
+                  if (newSetup !== null && !(betweenFutures && tradeType === 'autoTrade')) 
+                    setSetup(newSetup);
                 }}
                 color="secondary"
                 size="small"
@@ -1124,7 +1140,7 @@ const CreateTriggerForm = forwardRef(
                 />
               </Grid>
             )}
-            {setup === 'auto' && tradeType === 'autoTrade' && (
+            {tradeType === 'autoTrade' && (
               <Grid
                 item
                 md
@@ -1155,7 +1171,9 @@ const CreateTriggerForm = forwardRef(
                         exitValue &&
                         parseFloat(value) >= parseFloat(exitValue)
                       )
-                        return t('Entry must be lower than exit');
+                        return betweenFutures ? 
+                          t('Low Value must be lower than High Value') : 
+                          t('Entry must be lower than exit');
                       return true;
                     },
                   },
@@ -1166,7 +1184,7 @@ const CreateTriggerForm = forwardRef(
                     error={!!fieldState.error}
                     variant="standard"
                   >
-                    <InputLabel>{t('Entry')}</InputLabel>
+                    <InputLabel>{betweenFutures ? t('Low Value') : t('Entry')}</InputLabel>
                     <Input
                       disabled={disabled}
                       readOnly={
@@ -1213,7 +1231,9 @@ const CreateTriggerForm = forwardRef(
                         entryValue &&
                         parseFloat(value) <= parseFloat(entryValue)
                       )
-                        return t('Exit must be higher than entry');
+                        return betweenFutures ? 
+                          t('High Value must be higher than Low Value') : 
+                          t('Exit must be higher than entry');
                       return true;
                     },
                   },
@@ -1224,7 +1244,7 @@ const CreateTriggerForm = forwardRef(
                     error={!!fieldState.error}
                     variant="standard"
                   >
-                    <InputLabel>{t('Exit')}</InputLabel>
+                    <InputLabel>{betweenFutures ? t('High Value') : t('Exit')}</InputLabel>
                     <Input
                       disabled={disabled}
                       readOnly={
@@ -1268,8 +1288,8 @@ const CreateTriggerForm = forwardRef(
                     required: true,
                     validate: {
                       minimum: (value) =>
-                        parseInt(value?.replace(/,/g, ''), 10) >= 10000 ||
-                        t('Trade capital must be at least 10,000 or more.'),
+                        parseInt(value?.replace(/,/g, ''), 10) >= (betweenFutures ? 10 : 10000) ||
+                        t(`Trade capital must be at least ${betweenFutures ? '10' : '10,000'} or more.`),
                     },
                   }}
                   render={({ field, fieldState }) => (
@@ -1290,7 +1310,7 @@ const CreateTriggerForm = forwardRef(
                         ),
                         endAdornment: (
                           <InputAdornment position="end">
-                            {t('KRW')}
+                            {betweenFutures ? t('USD') : t('KRW')}
                           </InputAdornment>
                         ),
                       }}

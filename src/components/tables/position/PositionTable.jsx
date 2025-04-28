@@ -186,37 +186,52 @@ export default function PositionTable({ marketCodeCombination }) {
     const isTargetSpot = marketCodeCombination.target.isSpot;
     const isOriginSpot = marketCodeCombination.origin.isSpot;
 
-    const mergedData = [
-      ...((isTargetSpot ? targetSpotData : targetFuturesData) || []),
-      ...((isOriginSpot ? originSpotData : originFuturesData) || []),
-    ].reduce((acc, curr) => {
-      if (curr.asset) {
-        if (!acc[curr.asset]) acc[curr.asset] = {};
-        acc[curr.asset] = { ...acc[curr.asset], ...curr };
-      } else if (curr.base_asset) {
-        if (!acc[curr.base_asset]) acc[curr.base_asset] = {};
-        acc[curr.base_asset] = { ...acc[curr.base_asset], ...curr };
+    const targetData = (isTargetSpot ? targetSpotData : targetFuturesData) || [];
+    const originData = (isOriginSpot ? originSpotData : originFuturesData) || [];
+    
+    // Create a map of assets
+    const assetsMap = {};
+    
+    // Process target market data
+    targetData.forEach(item => {
+      const assetKey = item.asset || item.base_asset;
+      if (assetKey && assetKey !== 'KRW') {
+        if (!assetsMap[assetKey]) assetsMap[assetKey] = {};
+        assetsMap[assetKey].target = item;
       }
-      return acc;
-    }, {});
+    });
+    
+    // Process origin market data
+    originData.forEach(item => {
+      const assetKey = item.asset || item.base_asset;
+      if (assetKey && assetKey !== 'KRW') {
+        if (!assetsMap[assetKey]) assetsMap[assetKey] = {};
+        assetsMap[assetKey].origin = item;
+      }
+    });
 
-    return Object.keys(mergedData)
-      .filter((key) => key !== 'KRW')
+    return Object.keys(assetsMap)
       .map((key) => {
-        const item = mergedData[key];
+        const targetItem = assetsMap[key].target || {};
+        const originItem = assetsMap[key].origin || {};
+        
         const data = {
           asset: key,
           icon: assetsData?.[key]?.icon,
-          target_market_pos: Number(item[isTargetSpot ? 'free' : 'qty'] || 0),
-          target_market_roi: Number(item.ROI || 0),
-          target_market_entry_price: Number(item.entry_price || 0),
-          target_market_liquidation_price: Number(item.liquidation_price || 0),
-          target_market_margin_type: item.margin_type,
-          origin_market_pos: Number(item[isOriginSpot ? 'free' : 'qty'] || 0),
-          origin_market_roi: Number(item.ROI || 0),
-          origin_market_entry_price: Number(item.entry_price || 0),
-          origin_market_liquidation_price: Number(item.liquidation_price || 0),
-          origin_market_margin_type: item.margin_type,
+          target_market_pos: isTargetSpot 
+            ? Number(targetItem.free || 0)
+            : Number(parseFloat(targetItem.qty || 0).toFixed(3)),
+          target_market_roi: Number(parseFloat(targetItem.ROI || 0).toFixed(3)),
+          target_market_entry_price: Number(parseFloat(targetItem.entry_price || 0).toFixed(3)),
+          target_market_liquidation_price: Number(parseFloat(targetItem.liquidation_price || 0).toFixed(3)),
+          target_market_margin_type: targetItem.margin_type,
+          origin_market_pos: isOriginSpot 
+            ? Number(originItem.free || 0)
+            : Number(parseFloat(originItem.qty || 0).toFixed(3)),
+          origin_market_roi: Number(parseFloat(originItem.ROI || 0).toFixed(3)),
+          origin_market_entry_price: Number(parseFloat(originItem.entry_price || 0).toFixed(3)),
+          origin_market_liquidation_price: Number(parseFloat(originItem.liquidation_price || 0).toFixed(3)),
+          origin_market_margin_type: originItem.margin_type,
         };
         const hedge = Math.abs(Number(data.target_market_pos) + Number(data.origin_market_pos));
         return {

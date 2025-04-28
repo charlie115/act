@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   useLazyGetRepeatTradesByTradeConfigQuery,
+  useLazyGetTradeLogByUuidQuery,
   usePostRepeatTradeMutation,
   usePutRepeatTradeMutation,
 } from 'redux/api/drf/tradecore';
@@ -35,11 +36,13 @@ export default function AutoRepeatForm({
 
   const [getRepeatTrades, repeatTradesResult] =
     useLazyGetRepeatTradesByTradeConfigQuery();
+  
+  const [getTradeLog, tradeLogResult] = useLazyGetTradeLogByUuidQuery();
 
   const [postRepeatTrade, postResult] = usePostRepeatTradeMutation();
   const [putRepeatTrade, putResult] = usePutRepeatTradeMutation();
 
-  const { control, formState, handleSubmit, reset, setValue } = useForm({
+  const { control, formState, handleSubmit, reset, setValue, watch } = useForm({
     defaultValues: async () => {
       try {
         const [data] = await getRepeatTrades({
@@ -73,27 +76,47 @@ export default function AutoRepeatForm({
 
   const isFixed = useWatch({ control, name: 'isFixed' });
 
+  useEffect(() => {
+    if (castString(isFixed)) {
+      getTradeLog({ tradeConfigUuid, uuid: tradeUuid });
+    }
+  }, [isFixed, tradeUuid, getTradeLog]);
+
   const onSubmit = (data) => {
     if (!isValid) return;
-    if (data.uuid)
-      putRepeatTrade({
+    
+    const isFixedValue = castString(data.isFixed);
+    
+    if (data.uuid) {
+      const payload = {
         auto_repeat_switch: 1,
         auto_repeat_num: data.auto_repeat_num,
-        kline_num: data.kline_num,
-        pauto_num: data.pauto_num,
         uuid: data.uuid,
         trade_config_uuid: tradeConfigUuid,
         trade_uuid: data.trade_uuid,
-      });
-    else
-      postRepeatTrade({
+      };
+      
+      if (!isFixedValue) {
+        payload.kline_num = data.kline_num;
+        payload.pauto_num = data.pauto_num;
+      }
+      
+      putRepeatTrade(payload);
+    } else {
+      const payload = {
         trade_config_uuid: tradeConfigUuid,
         trade_uuid: tradeUuid,
         auto_repeat_num: 0,
         auto_repeat_switch: 1,
-        kline_num: data.kline_num,
-        pauto_num: data.pauto_num,
-      });
+      };
+      
+      if (!isFixedValue) {
+        payload.kline_num = data.kline_num;
+        payload.pauto_num = data.pauto_num;
+      }
+      
+      postRepeatTrade(payload);
+    }
   };
 
   useEffect(() => {
@@ -111,6 +134,9 @@ export default function AutoRepeatForm({
   }, [postResult.isSuccess]);
 
   if (repeatTradesResult?.isFetching) return <LinearProgress />;
+  if (castString(isFixed) && tradeLogResult?.isFetching) return <LinearProgress />;
+
+  const tradeLogData = tradeLogResult.data;
 
   return (
     <Box
@@ -133,7 +159,6 @@ export default function AutoRepeatForm({
             size="small"
           >
             <ToggleButton
-              // disabled={!repeatTradesResult.data?.[0]}
               value="true"
               sx={{ px: 2, py: 0.5 }}
             >
@@ -145,6 +170,36 @@ export default function AutoRepeatForm({
           </ToggleButtonGroup>
         )}
       />
+      {castString(isFixed) && tradeLogData && (
+        <Stack
+          spacing={2}
+          sx={{ p: 3 }}
+          className="animate__animated animate__fadeIn"
+        >
+          <Stack
+            direction="row"
+            spacing={2}
+            alignItems="center"
+          >
+            <FormControl sx={{ flex: 1 }} variant="standard">
+              <FormLabel sx={{ mb: 1 }}>{t('Entry')}</FormLabel>
+              <OutlinedInput
+                disabled
+                size="small"
+                value={tradeLogData.low || "-"}
+              />
+            </FormControl>
+            <FormControl sx={{ flex: 1 }} variant="standard">
+              <FormLabel sx={{ mb: 1 }}>{t('Exit')}</FormLabel>
+              <OutlinedInput
+                disabled
+                size="small"
+                value={tradeLogData.high || "-"}
+              />
+            </FormControl>
+          </Stack>
+        </Stack>
+      )}
       {!castString(isFixed) && (
         <Stack
           spacing={2}
@@ -214,8 +269,6 @@ export default function AutoRepeatForm({
               <FormControl fullWidth error={!!fieldState.error}>
                 <FormLabel sx={{ my: 1 }}>{t('Gap')}</FormLabel>
                 <OutlinedInput
-                  // disabled={disabled}
-                  // readOnly={isDollarFetching || isLoading}
                   type="number"
                   size="small"
                   endAdornment={

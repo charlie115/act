@@ -1,5 +1,6 @@
 import React from 'react';
 
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -7,12 +8,14 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import LinearProgress from '@mui/material/LinearProgress';
+import Box from '@mui/material/Box';
 
 import { Trans, useTranslation } from 'react-i18next';
 
 export default function DeleteAlert({
   loading,
   open,
+  errorMessage,
   onCancel,
   onClose,
   onExitTrade,
@@ -30,6 +33,11 @@ export default function DeleteAlert({
       {loading && <LinearProgress />}
       <DialogTitle id="delete-alert-title">{title}</DialogTitle>
       <DialogContent>
+        {errorMessage && (
+          <Box sx={{ mb: 2 }}>
+            <Alert severity="error">{errorMessage}</Alert>
+          </Box>
+        )}
         <DialogContentText id="delete-alert-description">
           <Trans>
             This action is{' '}

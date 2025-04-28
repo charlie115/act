@@ -321,74 +321,76 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
                 />
               </TableCell>
             </TableRow>
-            <TableRow>
-              <TableCell>{t('Repetitive Trade Condition')}</TableCell>
-              <TableCell align="center" colSpan={2}>
-                <Controller
-                  name="repeat_limit_p"
-                  control={control}
-                  defaultValue={0}
-                  rules={{
-                    required: true,
-                    valueAsNumber: true,
-                    validate: {
-                      range: (value) =>
-                        (value >= -20 && value <= 30) ||
-                        t('Value out of range'),
-                    },
-                  }}
-                  render={({ field, fieldState }) => (
-                    <FormControl
-                      fullWidth
-                      error={!!fieldState.error}
-                      variant="standard"
-                    >
-                      <Stack
-                        direction="row"
-                        alignItems="flex-end"
-                        spacing={2}
-                        sx={{ mb: 2 }}
+            {(marketCodeCombination.target.isSpot || marketCodeCombination.origin.isSpot) && (
+              <TableRow>
+                <TableCell>{t('Repetitive Trade Condition')}</TableCell>
+                <TableCell align="center" colSpan={2}>
+                  <Controller
+                    name="repeat_limit_p"
+                    control={control}
+                    defaultValue={0}
+                    rules={{
+                      required: true,
+                      valueAsNumber: true,
+                      validate: {
+                        range: (value) =>
+                          (value >= -20 && value <= 30) ||
+                          t('Value out of range'),
+                      },
+                    }}
+                    render={({ field, fieldState }) => (
+                      <FormControl
+                        fullWidth
+                        error={!!fieldState.error}
+                        variant="standard"
                       >
-                        <FormLabel>
-                          {t('Repetitive Trade Condition')}{' '}
-                          <small>[-20% ~ 30%]</small>
-                        </FormLabel>
-                        <Input
-                          inputProps={{
-                            min: -20,
-                            max: 30,
-                            step: 0.1,
-                            type: 'number',
-                          }}
+                        <Stack
+                          direction="row"
+                          alignItems="flex-end"
+                          spacing={2}
+                          sx={{ mb: 2 }}
+                        >
+                          <FormLabel>
+                            {t('Repetitive Trade Condition')}{' '}
+                            <small>[-20% ~ 30%]</small>
+                          </FormLabel>
+                          <Input
+                            inputProps={{
+                              min: -20,
+                              max: 30,
+                              step: 0.1,
+                              type: 'number',
+                            }}
+                            {...field}
+                            onChange={(e) => {
+                              const value = Number(e.target.value);
+                              field.onChange(value);
+                            }}
+                            sx={{ width: '5em' }}
+                            endAdornment={
+                              <InputAdornment position="end">%</InputAdornment>
+                            }
+                          />
+                        </Stack>
+                        <Slider
+                          marks
+                          min={-20}
+                          max={30}
+                          step={0.1}
+                          color={fieldState.error ? 'error' : 'info'}
+                          valueLabelDisplay="auto"
+                          valueLabelFormat={(value) => `${value}% 이하에서만 반복거래 작동`}
                           {...field}
-                          onChange={(e) => {
-                            const value = Number(e.target.value);
-                            field.onChange(value);
-                          }}
-                          sx={{ width: '5em' }}
-                          endAdornment={
-                            <InputAdornment position="end">%</InputAdornment>
-                          }
                         />
-                      </Stack>
-                      <Slider
-                        marks
-                        min={-20}
-                        max={30}
-                        step={0.1}
-                        color={fieldState.error ? 'error' : 'info'}
-                        valueLabelDisplay="auto"
-                        valueLabelFormat={(value) => `${value}% 이하에서만 반복거래 작동`}
-                        {...field}
-                      />
-                      <FormHelperText>
-                        {fieldState.error?.message}
-                      </FormHelperText>
-                    </FormControl>
-                  )}
-                />
-              </TableCell>
-            </TableRow>
+                        <FormHelperText>
+                          {fieldState.error?.message}
+                        </FormHelperText>
+                      </FormControl>
+                    )}
+                  />
+                </TableCell>
+              </TableRow>
+            )}
             <TableRow>
               <TableCell>
                 {t('Telegram Message Notification Interval')}

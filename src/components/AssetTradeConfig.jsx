@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -64,8 +64,6 @@ function AssetTradeConfig({
     { skip: !marketCodes }
   );
 
-  const [currentTab, setCurrentTab] = useState(CONFIGURATION_TAB.alarm);
-
   const tradeConfigAllocation = useMemo(
     () =>
       user?.trade_config_allocations?.find(
@@ -83,6 +81,14 @@ function AssetTradeConfig({
     );
     return combination?.trade_support ?? false;
   }, [nodes, marketCodes]);
+
+  const [currentTab, setCurrentTab] = useState(tradeSupport ? CONFIGURATION_TAB.autoTrade : CONFIGURATION_TAB.alarm);
+
+  useEffect(() => {
+    if (tradeSupport) {
+      setCurrentTab(CONFIGURATION_TAB.autoTrade);
+    }
+  }, [tradeSupport]);
 
   if (nodes?.results.length > 0)
     return (
@@ -142,6 +148,7 @@ function AssetTradeConfig({
                 />
                 {showTable && (
                   <TradesTable
+                    marketCodes={marketCodes}
                     tradeType={
                       currentTab === CONFIGURATION_TAB.alarm
                         ? 'alarm'

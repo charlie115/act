@@ -121,6 +121,10 @@ export default function TriggersTable({
 
   const [klineInterval, setKlineInterval] = useState('1T');
 
+  const betweenFutures = marketCodeCombination?.target && marketCodeCombination?.origin 
+    ? !marketCodeCombination.target.isSpot && !marketCodeCombination.origin.isSpot 
+    : false;
+
   const { data, isLoading, isSuccess } = useGetAllTradesQuery(
     { tradeConfigUuids },
     { pollingInterval: 1000 * 1, skip: !!autoRepeatTrade }
@@ -226,7 +230,6 @@ export default function TriggersTable({
       label: trigger.getLabel(),
       value: trigger.value,
       icon: <trigger.icon />,
-      // disabled: trigger.value === 'autoTrade',
     }));
     setTriggerTypeList(triggers);
     if (!selectedTriggerType) setSelectedTriggerType(triggers[0]);
@@ -267,13 +270,13 @@ export default function TriggersTable({
       {
         accessorKey: 'entry',
         size: isMobile ? 27 : 80,
-        header: t('Entry'),
+        header: betweenFutures ? t('Low Value') : t('Entry'),
         cell: renderValueCell,
       },
       {
         accessorKey: 'exit',
         size: isMobile ? 27 : 80,
-        header: t('Exit'),
+        header: betweenFutures ? t('High Value') : t('Exit'),
         cell: renderValueCell,
       },
       {
@@ -847,6 +850,7 @@ export default function TriggersTable({
             isMobile,
             klineInterval,
             triggerConfig,
+            betweenFutures,
             marketCodes: {
               targetMarketCode: marketCodeCombination?.target?.value,
               originMarketCode: marketCodeCombination?.origin?.value,

@@ -41,6 +41,7 @@ import renderValueCell from './renderValueCell';
 import renderSelectHeader from './renderSelectHeader';
 
 export default function TradesTable({
+  marketCodes,
   baseAsset,
   tradeConfigAllocation,
   tradeType,
@@ -58,6 +59,14 @@ export default function TradesTable({
   const [rowSelection, setRowSelection] = useState({});
 
   const [deleteAlert, setDeleteAlert] = useState(false);
+
+  // Check if both markets are futures markets
+  const betweenFutures = useMemo(() => {
+    if (!marketCodes) return false;
+    const targetHasSpot = marketCodes.targetMarketCode?.includes('SPOT');
+    const originHasSpot = marketCodes.originMarketCode?.includes('SPOT');
+    return !targetHasSpot && !originHasSpot;
+  }, [marketCodes]);
 
   const {
     data: trades,
@@ -100,13 +109,13 @@ export default function TradesTable({
       {
         accessorKey: 'entry',
         size: isMobile ? 80 : 120,
-        header: t('Entry'),
+        header: betweenFutures ? t('Low Value') : t('Entry'),
         cell: renderValueCell,
       },
       {
         accessorKey: 'exit',
         size: isMobile ? 80 : 120,
-        header: t('Exit'),
+        header: betweenFutures ? t('High Value') : t('Exit'),
         cell: renderValueCell,
       },
       ...(tradeType === 'autoTrade'
@@ -232,6 +241,7 @@ export default function TradesTable({
             isMobile,
             onTriggerConfigChange,
             expandIcon: EditIcon,
+            betweenFutures,
           },
         }}
         renderSubComponent={renderSubComponent}
