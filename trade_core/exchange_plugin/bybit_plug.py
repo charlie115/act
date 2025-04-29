@@ -787,13 +787,13 @@ class UserBybitAdaptor:
             
             # Handle different message types
             if 'topic' in data:
-                if data.get('topic') == 'execution':
-                    # Process execution updates (for margin call detection)
+                if data.get('topic') == 'position':
+                    # Process position updates (for margin call detection)
                     if 'data' in data and data['data']:
-                        for execution in data['data']:
+                        for position in data['data']:
                             # Check for Liquidation
-                            if execution['execType'] == 'BustTrade':
-                                self.usd_m_liquidation_callback(execution, trade_config_uuid, margin_call_mode, telegram_id)
+                            if position['positionStatus'] == 'Liq':
+                                self.usd_m_liquidation_callback(position, trade_config_uuid, margin_call_mode, telegram_id)
         
         except Exception as e:
             self.logger.error(f"WebSocket handle_message error: {str(e)}\n{traceback.format_exc()}")
@@ -816,7 +816,7 @@ class UserBybitAdaptor:
         while True:
             time.sleep(1)
     
-    def usd_m_liquidation_callback(self, execution_data, trade_config_uuid, margin_call_mode, telegram_id):
+    def usd_m_liquidation_callback(self, position, trade_config_uuid, margin_call_mode, telegram_id):
         """Handle liquidation events from execution updates"""
         try:
             # margin_call_mode == None -> Do nothing,
@@ -825,13 +825,12 @@ class UserBybitAdaptor:
             if margin_call_mode == None:
                 return
             elif margin_call_mode == 1 or margin_call_mode == 2:
-                symbol = execution_data['symbol']
+                symbol = position['symbol']
                 base_asset = symbol.replace('USDT', '')
-                side = execution_data['side']  # Buy or Sell
+                side = position['side']  # Buy or Sell
                 open_position_side = 'LONG' if side == 'Sell' else 'SHORT'
-                qty = execution_data['execQty']
-                exec_price = execution_data['execPrice']
-                exec_fee = execution_data['execFee']
+                qty = position['size']
+                exec_price = position['markPrice']
                 
                 # Send Liquidation message
                 body = f"청산 알람! 바이비트 {base_asset}USDT {open_position_side} {qty}개가 {exec_price}에 강제청산되었습니다.\n"
