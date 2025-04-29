@@ -828,7 +828,7 @@ class UserBybitAdaptor:
                 symbol = position['symbol']
                 base_asset = symbol.replace('USDT', '')
                 side = position['side']  # Buy or Sell
-                open_position_side = 'LONG' if side == 'Sell' else 'SHORT'
+                open_position_side = 'SHORT' if side == 'Sell' else 'LONG'
                 qty = position['size']
                 exec_price = position['markPrice']
                 
@@ -875,8 +875,6 @@ class UserBybitAdaptor:
                             "trade_df": row.to_frame().T,
                             "order_type": "liquidation"
                         }
-                        # TEST
-                        self.logger.info(f"margin_liquidation_call_trade_dict: {margin_liquidation_call_trade_dict}")
                         self.margin_liquidation_call_trade_queue.put(margin_liquidation_call_trade_dict)
             else:
                 return
