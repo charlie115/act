@@ -599,7 +599,7 @@ def handle_repeat_trade(postgres_client,
             conn.commit()            
             if row['trade_switch'] == 0: # 진입대기
                 if pd.isnull(row['pauto_num']) or between_futures:
-                    pass
+                    continue
                 else:
                     if (datetime.datetime.utcnow() - row['last_updated_datetime_x'] < datetime.timedelta(seconds=update_low_high_interval_secs)):
                         continue
