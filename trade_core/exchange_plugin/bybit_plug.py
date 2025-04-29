@@ -455,11 +455,8 @@ class UserBybitAdaptor:
                             category="linear",
                             orderId=order_id
                         )
-                        print(res)
                         if res['retCode'] == 0 and res['result']['list']:
                             order_info = res['result']['list'][0]
-                            print(order_info)
-                            print(return_dict)
                             if return_dict is not None:
                                 return_dict['res'] = order_info
                                 return_dict['error_code'] = None
@@ -783,15 +780,14 @@ class UserBybitAdaptor:
         self.start_socket_stream_thread = Thread(target=monitor_user_stream_loop, daemon=True)
         self.start_socket_stream_thread.start()
     
-    def handle_message(self, message, trade_config_uuid, margin_call_mode, telegram_id):
+    def handle_message(self, data, trade_config_uuid, margin_call_mode, telegram_id):
         """Handle incoming WebSocket messages"""
         try:
-            data = json.loads(message)
-            self.logger.info(f"user_usd_m_socket stream|trade_config_uuid:{trade_config_uuid}\nres: {data}\n") # test
+            self.logger.info(f"user_usd_m_socket stream|trade_config_uuid:{trade_config_uuid}\nres: {data}\n")
             
             # Handle different message types
             if 'topic' in data:
-                if data['topic'] == 'execution':
+                if data.get('topic') == 'execution':
                     # Process execution updates (for margin call detection)
                     if 'data' in data and data['data']:
                         for execution in data['data']:
