@@ -37,7 +37,7 @@ def get_pboundary(mongo_db_dict, market_code_combination, base_asset, usdt_conve
         
         # Load kimp_kline from DB
         # db_start = time.time()                                                      #test
-        collection = mongo_db_conn[f"{converted_market_code_combination}"][f'{base_asset}_{interval}'].find({}).sort('_id', -1).limit(kline_num)
+        collection = mongo_db_conn[f"{converted_market_code_combination}"][f'{base_asset}_{interval}'].find({}).sort('_id', -1).limit(int(kline_num))
         fetched_df = pd.DataFrame(collection)
         # print(f"db fetch time: {time.time() - db_start}")                           #test
         premium_df = pd.DataFrame(fetched_df).drop('_id', axis=1).sort_values('datetime_now').reset_index(drop=True).drop_duplicates()
