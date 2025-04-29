@@ -875,7 +875,8 @@ class UserBybitAdaptor:
                             "trade_df": row.to_frame().T,
                             "order_type": "liquidation"
                         }
-                        
+                        # TEST
+                        self.logger.info(f"margin_liquidation_call_trade_dict: {margin_liquidation_call_trade_dict}")
                         self.margin_liquidation_call_trade_queue.put(margin_liquidation_call_trade_dict)
             else:
                 return

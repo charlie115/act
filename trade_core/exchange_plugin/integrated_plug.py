@@ -1601,6 +1601,9 @@ class UserExchangeAdaptor:
             fetched_convert_rate_dict = {k.decode('utf-8'): float(v) for k, v in fetched_convert_rate_dict.items()}
     
             margin_liquidation_call_trade_dict = self.margin_liquidation_call_trade_queue.get()
+            # TEST
+            self.logger.info(f"margin_liquidation_call_trade_dict from handle_margin_liquidation_call_trade: {margin_liquidation_call_trade_dict}")
+            self.logger.info(f"self.origin_market_code: {self.origin_market_code}, self.target_market_code: {self.target_market_code}")
             open_position_side = margin_liquidation_call_trade_dict.get('open_position_side') # LONG or SHORT
             market_code = margin_liquidation_call_trade_dict.get('market_code')
             trade_df = margin_liquidation_call_trade_dict.get('trade_df')
@@ -1653,7 +1656,7 @@ class UserExchangeAdaptor:
                 pass
                 
     def handle_margin_liquidation_call_trade_queue_loop(self):
-        self.logger.info(f"handle_margin_liquidation_call_trade_queue_loop started.")
+        self.logger.info(f"handle_margin_liquidation_call_trade_queue_loop started for {self.market_code_combination}.")
         while True:
             try:
                 self.handle_margin_liquidation_call_trade()
