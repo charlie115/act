@@ -593,6 +593,16 @@ def handle_repeat_trade(postgres_client,
         for row_tup in validated_merged_df.iterrows():
             # First check whether the record has pauto_num value
             row = row_tup[1]
+            # TEST
+            logger.info(f"row: {row}")
+            logger.info(f"base_asset: {row['base_asset']}")
+            logger.info(f"trade uuid: {row['uuid_x']}")
+            logger.info(f"repeat uuid: {row['uuid_y']}")
+            logger.info(f"trade_switch: {row['trade_switch']}")
+            logger.info(f"pauto_num: {row['pauto_num']}")
+            logger.info(f"pauto_num type: {type(row['pauto_num'])}")
+            logger.info(f"pd.isnull(row['pauto_num']): {pd.isnull(row['pauto_num'])}")
+            logger.info(f"between_futures: {between_futures}")
             sql = "UPDATE repeat_trade SET last_updated_datetime = %s, auto_repeat_switch = 1, status=%s WHERE uuid = %s"
             val = (datetime.datetime.utcnow(), None, row['uuid_y'])
             curr.execute(sql, val)
