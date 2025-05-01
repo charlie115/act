@@ -4,31 +4,6 @@ import numpy as np
 import traceback
 import _pickle as pickle
 
-def safe_get_first_price(orders, symbol, side):
-    """Safely extracts the first price from a list of orders (asks or bids)."""
-    try:
-        # Check if the list exists, is not empty, and its first element exists and is not empty
-        if orders and isinstance(orders, list) and len(orders) > 0 and \
-           orders[0] and isinstance(orders[0], (list, tuple)) and len(orders[0]) > 0:
-            return orders[0][0]
-        else:
-            # Log the problematic case: empty list or malformed first element
-            # Use your actual logger here instead of print if available
-            print(f"prece_df_generator WARN: Empty or malformed {side} data for symbol {symbol}: {orders}")
-            # logging.warning(f"Empty or malformed {side} data for symbol {symbol}: {orders}")
-            return np.nan # Return NaN for problematic cases
-    except IndexError:
-        # Log the unexpected index error case
-        # Use your actual logger here instead of print if available
-        print(f"prece_df_generator ERROR: IndexError accessing {side} price for symbol {symbol}: {orders}")
-        # logging.error(f"IndexError accessing {side} price for symbol {symbol}: {orders}", exc_info=True)
-        return np.nan # Return NaN for problematic cases
-    except Exception as e:
-        # Log any other unexpected errors
-        print(f"prece_df_generator ERROR: Unexpected error processing {side} for symbol {symbol}: {orders} - {e}")
-        # logging.error(f"Unexpected error processing {side} for symbol {symbol}: {orders} - {e}", exc_info=True)
-        return np.nan
-
 def get_binance_price_df(redis_client, market_type):
     binance_ticker_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("ticker", f"BINANCE_{market_type}")).T.reset_index(drop=True)[['s','P','c','v','q']]
     binance_ticker_df.rename(columns={"q": "atp24h", 'P': 'scr', 'c': 'tp'}, inplace=True)
@@ -45,28 +20,24 @@ def get_bithumb_price_df(redis_client):
     orderbook_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("orderbook", "BITHUMB_SPOT")).T.reset_index()
     ticker_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("ticker", "BITHUMB_SPOT")).T.reset_index()
 
-    # Apply the safe extraction function
-    # Note: This applies the function row by row. Requires 'symbol' column to be present.
-    orderbook_df['best_ask'] = orderbook_df.apply(lambda row: safe_get_first_price(row['asks'], row['symbol'], 'asks'), axis=1)
-    orderbook_df['best_bid'] = orderbook_df.apply(lambda row: safe_get_first_price(row['bids'], row['symbol'], 'bids'), axis=1)
+    # Drop records where bids data is an empty list
+    orderbook_df = orderbook_df[orderbook_df['bids'].apply(lambda x: len(x) > 0)]
+    
+    # Extract the first price from asks and bids
+    orderbook_df['best_ask'] = orderbook_df['asks'].apply(lambda x: x[0][0])
+    orderbook_df['best_bid'] = orderbook_df['bids'].apply(lambda x: x[0][0])
 
-    # Drop rows where we couldn't get a valid bid or ask price, as they are unusable
-    orderbook_df.dropna(subset=['best_ask', 'best_bid'], inplace=True)
-
-    # Continue only if the DataFrame is not empty after dropping NaN rows
+    # Continue only if the DataFrame is not empty after dropping rows
     if orderbook_df.empty:
         print("WARN: Bithumb orderbook DataFrame became empty after removing rows with invalid asks/bids.")
-        # logging.warning("Bithumb orderbook DataFrame became empty after removing rows with invalid asks/bids.")
         # Return an empty DataFrame with expected columns to avoid downstream errors
-        # Adjust columns based on the final expected structure
         return pd.DataFrame(columns=['symbol', 'best_ask', 'best_bid', 'tp', 'scr', 'atp24h', 'base_asset', 'quote_asset', 'ap', 'bp'])
-
 
     merged_df = orderbook_df.merge(ticker_df[['symbol','closePrice','chgRate','value']], on='symbol', how='inner')
     merged_df[['base_asset', 'quote_asset']] = merged_df['symbol'].str.split('_', expand=True)
     merged_df = merged_df.rename(columns={'value':'atp24h', 'chgRate':'scr', 'closePrice': 'tp', 'best_ask':'ap', 'best_bid':'bp'})
 
-    # Convert to float. NaN values introduced by safe_get_first_price will be handled correctly.
+    # Convert to float
     merged_df[['scr','atp24h','tp','ap','bp']] = merged_df[['scr','atp24h','tp','ap','bp']].astype(float)
 
     # merged_df['tp'] = (merged_df['ap'] + merged_df['bp']) / 2 # This line can now potentially operate on NaN if ap/bp were NaN
@@ -112,6 +83,7 @@ def get_upbit_price_df(redis_client):
     upbit_orderbook_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("orderbook", "UPBIT_SPOT")).T.reset_index(drop=True)[['cd','tms','obu']]
     upbit_orderbook_df['ap'] = upbit_orderbook_df['obu'].apply(lambda x: x[0]['ap'])
     upbit_orderbook_df['bp'] = upbit_orderbook_df['obu'].apply(lambda x: x[0]['bp'])
+    upbit_orderbook_df = upbit_orderbook_df.dropna(subset=['ap', 'bp'])
     upbit_orderbook_df.drop('obu', axis=1, inplace=True)
     upbit_merged_df = pd.merge(upbit_ticker_df, upbit_orderbook_df, left_on='index', right_on='cd', how='inner')
     upbit_merged_df['base_asset'] = upbit_merged_df['index'].apply(lambda x: x.split('-')[1])
