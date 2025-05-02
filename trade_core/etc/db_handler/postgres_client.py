@@ -136,6 +136,39 @@ class InitDBClient:
             self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
         else:
             print(f"InitDBClient|TABLE: {table_name} created.")
+            
+    # def create_trigger_scanner(self, table_name='trigger_scanner'):
+    #     # First check whether the table exists
+    #     if self.check_table_exist(table_name):
+    #         if self.logger is not None:
+    #             self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
+    #         else:
+    #             print(f"InitDBClient|TABLE: {table_name} already exists.")
+    #         return
+    #     query = f"""
+    #         CREATE TABLE IF NOT EXISTS {table_name}
+    #         (
+    #             id SERIAL PRIMARY KEY,
+    #             uuid UUID DEFAULT gen_random_uuid() UNIQUE,
+    #             trade_config_uuid UUID NOT NULL,
+    #             registered_datetime TIMESTAMP,
+    #             last_updated_datetime TIMESTAMP,
+    #             low NUMERIC(8, 3) NOT NULL,
+    #             high NUMERIC(8, 3) NOT NULL,
+    #             min_target_atp NUMERIC(20, 3),
+    #             min_origin_atp NUMERIC(20, 3),
+    #             min_target_funding_rate NUMERIC(8, 6),
+    #             min_origin_funding_rate NUMERIC(8, 6),
+    #             between_futures BOOLEAN,
+    #             trade_capital INTEGER,
+    #             curr_repeat_num INTEGER,
+    #             max_repeat_num INTEGER,
+    #             repeat_term_secs INTEGER,
+    #             remark TEXT,
+    #             FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
+    #                 ON DELETE CASCADE
+    #                 ON UPDATE CASCADE
+    #         )"""
 
     def create_trade(self, table_name='trade'):
         # First check whether the table exists
@@ -162,10 +195,13 @@ class InitDBClient:
                 between_futures BOOLEAN,
                 trade_capital INTEGER,
                 last_trade_history_uuid UUID,
+                trigger_scanner_uuid UUID,
                 status TEXT,
                 remark TEXT,
                 FOREIGN KEY (trade_config_uuid) REFERENCES trade_config(uuid)
                     ON DELETE CASCADE
+                    ON UPDATE CASCADE,
+                FOREIGN KEY (trigger_scanner_uuid) REFERENCES trigger_scanner(uuid)
                     ON UPDATE CASCADE
             )"""
         conn = self.get_conn()

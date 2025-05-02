@@ -3,6 +3,7 @@ import json
 import traceback
 import datetime
 import pandas as pd
+from etc.db_handler.mongodb_client import InitDBClient as InitMongoDBClient
 from etc.db_handler.postgres_client import InitDBClient as InitPostgresDBClient
 from exchange_plugin.integrated_plug import UserExchangeAdaptor
 from etc.utils import get_trade_config_df, get_trade_df, get_users_with_negative_balance
@@ -679,3 +680,99 @@ def handle_repeat_trade(postgres_client,
         # put the connection back to the pool
         postgres_client.pool.putconn(conn, close=True)
         raise e
+    
+def start_trigger_scanner_loop(
+    market_code_combination,
+    postgres_db_dict,
+    admin_id,
+    acw_api,
+    logging_dir,
+    table_name='trigger_scanner',
+    loop_interval_secs=5
+):
+    logger = TradeCoreLogger("start_trigger_scanner_loop", logging_dir).logger
+    logger.info(f"start_trigger_scanner_loop started for {market_code_combination} | | table_name: {table_name} | loop_interval_secs: {loop_interval_secs}")
+    target_market_code, origin_market_code = market_code_combination.split(':')
+    while True:
+        # try:
+        time.sleep(loop_interval_secs)
+        
+        # except Exception as e:
+        #     logger.error(f"Error in start_trigger_scanner_loop: {e}\n{traceback.format_exc()}")
+
+    
+def fetch_fundingrate_loop(admin_id, acw_api, mongo_db_dict, market_code_combination, market_code, logging_dir):
+    logger = TradeCoreLogger("fetch_fundingrate_loop", logging_dir).logger
+    logger.info(f"fetch_fundingrate_loop started for {market_code_combination}|{market_code}")
+    target_market_code, origin_market_code = market_code_combination.split(':')
+    if 'SPOT' in target_market_code and 'SPOT' in origin_market_code:
+        raise Exception("Between SPOT markets is not supported for fundingrate")
+    elif 'SPOT' not in target_market_code and 'SPOT' not in origin_market_code:
+        raise Exception("Between futures markets is not supported for fundingrate")        
+        # Initialize convert_rate_dict
+    while True:
+        fetched_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
+        if fetched_convert_rate_dict:
+            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
+            break
+        logger.info("convert_rate_dict is not ready yet. Waiting for 1 second...")
+        time.sleep(1)
+    while True:
+        try:
+            # Reload convert_rate_dict
+            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in local_redis.hgetall_dict('convert_rate_dict').items()}
+            fetch_fundingrate_and_save_to_redis(mongo_db_dict, market_code_combination, market_code, fetched_convert_rate_dict, logger)
+            time.sleep(60)
+        except Exception as e:
+            logger.error(f"Error in fetch_fundingrate_loop: {e}\n{traceback.format_exc()}")
+            title = f"Error in fetch_fundingrate_loop"
+            full_content = f"Error in fetch_fundingrate_loop: {e}\n{traceback.format_exc()}"
+            acw_api.create_message_thread(admin_id, title, full_content, 'ERROR')
+            time.sleep(60)
+
+def fetch_fundingrate_and_save_to_redis(mongo_db_dict, market_code_combination, market_code, convert_rate_dict, logger, ex=180):
+    client = InitMongoDBClient(**mongo_db_dict)
+    conn = client.get_conn()
+    target_market_code, origin_market_code = market_code_combination.split(':')
+    premium_df = get_premium_df(local_redis, convert_rate_dict, target_market_code, origin_market_code, logger)
+    
+    base_asset_list_to_fetch = premium_df['base_asset'].unique().tolist()
+    
+    redis_key_name = f'fundingrate|{market_code_combination}|{market_code}'
+    market_code_without_quote_asset, quote_asset = market_code.split('/')
+    exchange = market_code_without_quote_asset.split('_')[0]
+    market_type = market_code_without_quote_asset.replace(exchange + '_', '')
+
+    fundingrate_db_name = f'{exchange}_fundingrate'
+    fundingrate_collection_name = market_type
+    # Fetch all
+    db = conn[fundingrate_db_name]
+    collection = db[fundingrate_collection_name]
+    cursor = collection.aggregate([
+        {
+            '$match': {
+                'base_asset': {'$in': base_asset_list_to_fetch},
+                'quote_asset': quote_asset,
+                'perpetual': True
+            }
+        },
+        {
+            '$sort': {'funding_time': -1}
+        },
+        {
+            '$group': {
+                '_id': '$base_asset',
+                'doc': {'$first': '$$ROOT'}
+            }
+        },
+        {
+            '$replaceRoot': {'newRoot': '$doc'}
+        },
+        {
+            '$project': {'_id': 0}
+        }
+    ])
+    fundingrate_df = pd.DataFrame(list(cursor))
+    conn.close()
+    local_redis.set_data(redis_key_name, pickle.dumps(fundingrate_df), ex=ex)
+    return fundingrate_df

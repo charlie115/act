@@ -19,13 +19,30 @@ def get_binance_price_df(redis_client, market_type):
 def get_bithumb_price_df(redis_client):
     orderbook_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("orderbook", "BITHUMB_SPOT")).T.reset_index()
     ticker_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("ticker", "BITHUMB_SPOT")).T.reset_index()
+
+    # Drop records where bids data is an empty list
+    orderbook_df = orderbook_df[orderbook_df['bids'].apply(lambda x: len(x) > 0)]
+    
+    # Extract the first price from asks and bids
     orderbook_df['best_ask'] = orderbook_df['asks'].apply(lambda x: x[0][0])
     orderbook_df['best_bid'] = orderbook_df['bids'].apply(lambda x: x[0][0])
+
+    # Continue only if the DataFrame is not empty after dropping rows
+    if orderbook_df.empty:
+        print("WARN: Bithumb orderbook DataFrame became empty after removing rows with invalid asks/bids.")
+        # Return an empty DataFrame with expected columns to avoid downstream errors
+        return pd.DataFrame(columns=['symbol', 'best_ask', 'best_bid', 'tp', 'scr', 'atp24h', 'base_asset', 'quote_asset', 'ap', 'bp'])
+
     merged_df = orderbook_df.merge(ticker_df[['symbol','closePrice','chgRate','value']], on='symbol', how='inner')
     merged_df[['base_asset', 'quote_asset']] = merged_df['symbol'].str.split('_', expand=True)
     merged_df = merged_df.rename(columns={'value':'atp24h', 'chgRate':'scr', 'closePrice': 'tp', 'best_ask':'ap', 'best_bid':'bp'})
+
+    # Convert to float
     merged_df[['scr','atp24h','tp','ap','bp']] = merged_df[['scr','atp24h','tp','ap','bp']].astype(float)
-    # merged_df['tp'] = (merged_df['ap'] + merged_df['bp']) / 2  # Since Currently bithumb websocket does not provide trade price, we will use the average price of the orderbook
+
+    # merged_df['tp'] = (merged_df['ap'] + merged_df['bp']) / 2 # This line can now potentially operate on NaN if ap/bp were NaN
+    # Consider how to handle NaN values if using this calculation, e.g., dropna beforehand or use pandas functions that handle NaN.
+
     return merged_df
 
 def get_bybit_price_df(redis_client, market_type):
@@ -66,6 +83,7 @@ def get_upbit_price_df(redis_client):
     upbit_orderbook_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("orderbook", "UPBIT_SPOT")).T.reset_index(drop=True)[['cd','tms','obu']]
     upbit_orderbook_df['ap'] = upbit_orderbook_df['obu'].apply(lambda x: x[0]['ap'])
     upbit_orderbook_df['bp'] = upbit_orderbook_df['obu'].apply(lambda x: x[0]['bp'])
+    upbit_orderbook_df = upbit_orderbook_df.dropna(subset=['ap', 'bp'])
     upbit_orderbook_df.drop('obu', axis=1, inplace=True)
     upbit_merged_df = pd.merge(upbit_ticker_df, upbit_orderbook_df, left_on='index', right_on='cd', how='inner')
     upbit_merged_df['base_asset'] = upbit_merged_df['index'].apply(lambda x: x.split('-')[1])
@@ -76,7 +94,6 @@ def get_upbit_price_df(redis_client):
     return upbit_merged_df
 
 
-    
 EXCHANGE_HANDLERS = {
     "BINANCE": get_binance_price_df,
     "BITHUMB": get_bithumb_price_df,

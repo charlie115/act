@@ -20,6 +20,7 @@ from standalone_func.trigger_functions import (fetch_users_with_negative_balance
                                                load_merged_repeat_df,
                                                handle_repeat_trade_loop,
                                                handle_repeat_trade,
+                                               fetch_fundingrate_loop,
                                                )
 
 class InitTrigger:
@@ -73,6 +74,8 @@ class InitTrigger:
         self.load_trade_config_loop_thread.start()
 
         self.trade_proc_dict = {}
+        self.fetch_fundingrate_thread_dict = {}
+        self.trigger_scanner_proc_dict = {}
         self.logger.info(f"Enabled Market Code Combinations: {self.enabled_market_code_combinations}")
         for each_market_code_combination in self.enabled_market_code_combinations:
             market_code_combination_name = each_market_code_combination['market_code_combination']
@@ -95,6 +98,22 @@ class InitTrigger:
                     ),
                     daemon=True)
                 self.trade_proc_dict[f"trade|{market_code_combination_name}"].start()
+                # For trigger scan
+                target_market_code, origin_market_code = market_code_combination_name.split(':')
+                if 'SPOT' in target_market_code and 'SPOT' not in origin_market_code: # Between Spot and Futures
+                    market_code = target_market_code if 'SPOT' not in target_market_code else origin_market_code
+                    # Fetch fundingrate
+                    self.fetch_fundingrate_thread_dict[f"{market_code_combination_name}|{market_code}"] = Thread(
+                        target=fetch_fundingrate_loop,
+                        args=(
+                            admin_id,
+                            acw_api,
+                            self.mongo_db_dict,
+                            market_code_combination_name,
+                            market_code,
+                            logging_dir))
+                    self.fetch_fundingrate_thread_dict[f"{market_code_combination_name}|{market_code}"].start()
+                    # Start Trigger Scanner
             # Only Alarms
             self.trade_proc_dict[f"alarm|{market_code_combination_name}"] = Process(
                 target=start_trigger_loop,

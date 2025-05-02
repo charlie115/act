@@ -1,11 +1,12 @@
 import redis
 import json
 import threading
+import _pickle as pickle
 
 class RedisHelper:
    
-    def __init__(self, host="localhost", port=6379, passwd='LocalRedis123!', db=0):
-    # def __init__(self, host="localhost", port=6379, passwd=None, db=0): # For local testing
+    # def __init__(self, host="localhost", port=6379, passwd='LocalRedis123!', db=0):
+    def __init__(self, host="localhost", port=6379, passwd=None, db=0): # For local testing
         self.host = host
         self.port = port
         self.db = db
@@ -105,3 +106,11 @@ class RedisHelper:
         all_stream_data = redis_conn.hgetall(redis_key)
         # Deserialize JSON strings back to dictionaries
         return {symbol.decode('utf-8'): json.loads(ticker_data) for symbol, ticker_data in all_stream_data.items()}
+    
+    def get_fundingrate_df(self, market_code_combination, market_code):
+        redis_conn = self.get_redis_client()
+        redis_key = f'fundingrate|{market_code_combination}|{market_code}'
+        fundingrate_df_raw = redis_conn.get(redis_key)
+        if fundingrate_df_raw:
+            return pickle.loads(fundingrate_df_raw)
+        raise ValueError(f'No fundingrate data found for {market_code_combination} {market_code}, key: {redis_key}')
