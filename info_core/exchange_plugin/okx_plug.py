@@ -83,6 +83,7 @@ class InitOkxAdaptor:
 
     def usd_m_exchange_info(self):
         info_df = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='SWAP')['data'])
+        info_df = info_df[info_df['state'] == 'live']
         info_df['perpetual'] = True
         temp = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='FUTURES')['data'])
         # temp['base_asset']
@@ -109,6 +110,7 @@ class InitOkxAdaptor:
 
     def coin_m_exchange_info(self):
         info_df = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='SWAP')['data'])
+        info_df = info_df[info_df['state'] == 'live']
         info_df['perpetual'] = True
         temp = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='FUTURES')['data'])
         # temp['base_asset']
