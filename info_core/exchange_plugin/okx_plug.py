@@ -469,8 +469,12 @@ class InitOkxAdaptor:
 
         funding_data_list = []
         for each_symbol in symbol_list:
-            funding_data_list.append(self.pub_client.PublicAPI.get_funding_rate(each_symbol)['data'][0])
-            time.sleep(0.25)
+            fundingrate_data = self.pub_client.PublicAPI.get_funding_rate(each_symbol)
+            if fundingrate_data['code'] == '0':
+                funding_data_list.append(fundingrate_data['data'][0])
+            else:
+                print(f"get_fundingrate|{each_symbol} is not valid. msg: {fundingrate_data['msg']}")
+            time.sleep(0.15)
 
         funding_df = pd.DataFrame(funding_data_list)
         funding_df.replace('', None, inplace=True)
