@@ -1275,26 +1275,47 @@ class TriggerScannerViewSet(
 
     def get_object(self):
         "Override get_object since our queryset is a dict and not a model"
-        trade_config_allocation = None
-        try:
-            for obj in self.get_queryset():
-                if str(obj.get("uuid")) == self.kwargs[self.lookup_field]:
-                    return obj
-        except Exception:
-            pass
-        
-        raise exceptions.NotFound()
 
+        queryset = self.filter_queryset(self.get_queryset())
+
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+
+        assert lookup_url_kwarg in self.kwargs, (
+            "Expected view %s to be called with a URL keyword argument "
+            'named "%s". Fix your URL conf, or set the `.lookup_field` '
+            "attribute on the view correctly."
+            % (self.__class__.__name__, lookup_url_kwarg)
+        )
+
+        obj = next(
+            (
+                item
+                for item in queryset
+                if item[self.lookup_field] == self.kwargs[lookup_url_kwarg]
+            ),
+            None,
+        )
+
+        if obj is None:
+            raise exceptions.NotFound()
+
+        return obj
+    
     def filter_queryset(self, queryset):
-        "Manual filter queryset using our filter class"
-        query_serializer = TriggerScannerFilterSerializer(data=self.request.query_params)
-        query_serializer.is_valid()
-        query = query_serializer.validated_data
+        filterset = super().filter_queryset(queryset)
 
-        if query:
-            queryset = filter_list_of_dictionaries(query, queryset)
+        query_params = TriggerScannerFilterSerializer(data=self.request.query_params)
+        query_params.is_valid(raise_exception=True)
 
-        return queryset
+        query = {
+            key: value
+            for key, value in query_params.validated_data.items()
+            if key in self.request.query_params.keys()
+        }
+
+        filterset = filter_list_of_dictionaries(query, queryset)
+
+        return filterset
 
     def get_queryset(self):
         "Override get_queryset since we don't have model"
@@ -1327,17 +1348,52 @@ class TriggerScannerViewSet(
             raise exceptions.APIException({"detail": str(err)})
 
     def perform_create(self, serializer):
-        self.check_object_permissions(self.request, dict(serializer.validated_data))
+        trade_config_allocation = self.get_trade_config_allocation(
+            serializer.validated_data["trade_config_uuid"]
+        )
+        self.check_object_permissions(self.request, trade_config_allocation)
         serializer.save()
 
+    def delete(self, request, *args, **kwargs):
+        if not kwargs:
+            return self.bulk_delete(request)
+        return self.destroy(request, *args, **kwargs)
+
     def perform_destroy(self, instance):
-        node = self.get_node(instance.get("trade_config_uuid"))
+        node = self.get_node(trade_config_uuid=instance.get("trade_config_uuid"))
 
         api_response = self.tradecore_destroy_api(
             url=node.url,
             endpoint=self.tradecore_api_endpoint,
-            path_param=instance.get("uuid"),
+            path_param=instance.get(self.lookup_field),
         )
 
-        if api_response.status_code != HTTP_204_NO_CONTENT:
-            self.handle_exception_from_api(api_response)
+        if api_response.status_code == HTTP_204_NO_CONTENT:
+            return response.Response(status=HTTP_204_NO_CONTENT)
+
+        self.handle_exception_from_api(api_response)
+        
+    @extend_schema(responses=TriggerScannerViewSetSerializer(many=True))
+    @action(detail=False, methods=["delete"])
+    def bulk_delete(self, request):
+        query_params = TriggerScannerQueryParamsSerializer(
+            context={"view": self, "request": self.request},
+            data=self.request.query_params,
+        )
+        query_params.is_valid(raise_exception=True)
+        query = query_params.validated_data
+
+        node = self.get_node(trade_config_uuid=query.get("trade_config_uuid"))
+
+        api_response = self.tradecore_destroy_many_api(
+            url=node.url,
+            endpoint=self.tradecore_api_endpoint,
+            query_params=query,
+        )
+
+        if api_response.status_code == HTTP_204_NO_CONTENT:
+            return response.Response(status=HTTP_204_NO_CONTENT)
+        elif api_response.status_code == HTTP_404_NOT_FOUND:
+            raise exceptions.NotFound(api_response.json().get("detail"))
+
+        self.handle_exception_from_api(api_response)
