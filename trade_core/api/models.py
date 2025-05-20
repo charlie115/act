@@ -193,3 +193,27 @@ class PnlHistory(Base):
     trade_history1 = relationship('TradeHistory', primaryjoin='PnlHistory.exit_trade_history_uuid == TradeHistory.uuid')
     trade_config = relationship('TradeConfig')
     trade_log = relationship('TradeLog')
+
+class TriggerScanner(Base):
+    __tablename__ = 'trigger_scanner'
+
+    id = Column(Integer, primary_key=True, server_default=text("nextval('trigger_scanner_id_seq'::regclass)"))
+    uuid = Column(UUID(as_uuid=True), unique=True, server_default=text("gen_random_uuid()"))
+    trade_config_uuid = Column(ForeignKey('trade_config.uuid', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    registered_datetime = Column(DateTime)
+    last_updated_datetime = Column(DateTime)
+    low = Column(Numeric(8, 3), nullable=False)
+    high = Column(Numeric(8, 3), nullable=False)
+    min_target_atp = Column(Numeric(20, 3))
+    min_origin_atp = Column(Numeric(20, 3))
+    min_target_funding_rate = Column(Numeric(8, 6))
+    min_origin_funding_rate = Column(Numeric(8, 6))
+    funding_rate_diff_threshold = Column(Numeric(8, 6))
+    between_futures = Column(Boolean)
+    trade_capital = Column(Integer)
+    curr_repeat_num = Column(Integer, server_default=text("0"))
+    max_repeat_num = Column(Integer)
+    repeat_term_secs = Column(Integer, server_default=text("300"))
+    remark = Column(Text)
+
+    trade_config = relationship('TradeConfig')

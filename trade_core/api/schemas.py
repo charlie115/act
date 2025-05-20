@@ -56,7 +56,7 @@ class TradeConfig(TradeConfigBase):
 
     class Config:
         orm_mode = True
-
+        
 class TradeBase(BaseModel):
     uuid: UUID
     trade_config_uuid: UUID
@@ -72,13 +72,13 @@ class TradeBase(BaseModel):
     last_trade_history_uuid: Optional[UUID] = None
     status: Optional[str] = None
     remark: Optional[str] = None
-
+    trigger_scanner_uuid: Optional[UUID] = None
 class TradeCreate(TradeBase):
     uuid: Optional[UUID] = None
-    # uuid: UUID
     trade_config_uuid: UUID
     registered_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
     last_updated_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    trigger_scanner_uuid: Optional[UUID] = None
 
 class TradeUpdate(TradeBase):
     uuid: Optional[UUID] = None
@@ -281,6 +281,56 @@ class PnlHistoryBase(BaseModel):
     remark: Optional[str] = None
     
 class PnlHistory(PnlHistoryBase):
+    id: int
+    
+    class Config:
+        orm_mode = True
+
+class TriggerScannerBase(BaseModel):
+    uuid: UUID
+    trade_config_uuid: UUID
+    registered_datetime: datetime
+    last_updated_datetime: datetime
+    low: Decimal
+    high: Decimal
+    min_target_atp: Optional[Decimal] = None
+    min_origin_atp: Optional[Decimal] = None
+    min_target_funding_rate: Optional[Decimal] = None
+    min_origin_funding_rate: Optional[Decimal] = None
+    funding_rate_diff_threshold: Optional[Decimal] = None
+    between_futures: Optional[bool] = None
+    trade_capital: int
+    curr_repeat_num: Optional[int] = None
+    max_repeat_num: Optional[int] = None
+    repeat_term_secs: Optional[int] = None
+    remark: Optional[str] = None
+
+class TriggerScannerCreate(TriggerScannerBase):
+    uuid: Optional[UUID] = None
+    registered_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    last_updated_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    curr_repeat_num: Optional[int] = 0
+    repeat_term_secs: Optional[int] = 300
+
+class TriggerScannerUpdate(TriggerScannerBase):
+    uuid: Optional[UUID] = None
+    trade_config_uuid: Optional[UUID] = None
+    registered_datetime: Optional[datetime] = None
+    last_updated_datetime: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    low: Optional[Decimal] = None
+    high: Optional[Decimal] = None
+    min_target_atp: Optional[Decimal] = None
+    min_origin_atp: Optional[Decimal] = None
+    min_target_funding_rate: Optional[Decimal] = None
+    min_origin_funding_rate: Optional[Decimal] = None
+    funding_rate_diff_threshold: Optional[Decimal] = None
+    between_futures: Optional[bool] = None
+    trade_capital: Optional[int] = None
+    curr_repeat_num: Optional[int] = None
+    max_repeat_num: Optional[int] = None
+    repeat_term_secs: Optional[int] = None
+
+class TriggerScanner(TriggerScannerBase):
     id: int
     
     class Config:

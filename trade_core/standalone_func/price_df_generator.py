@@ -83,9 +83,9 @@ def get_upbit_price_df(redis_client):
     upbit_orderbook_df = pd.DataFrame(redis_client.get_all_exchange_stream_data("orderbook", "UPBIT_SPOT")).T.reset_index(drop=True)[['cd','tms','obu']]
     upbit_orderbook_df['ap'] = upbit_orderbook_df['obu'].apply(lambda x: x[0]['ap'])
     upbit_orderbook_df['bp'] = upbit_orderbook_df['obu'].apply(lambda x: x[0]['bp'])
-    upbit_orderbook_df = upbit_orderbook_df.dropna(subset=['ap', 'bp'])
     upbit_orderbook_df.drop('obu', axis=1, inplace=True)
     upbit_merged_df = pd.merge(upbit_ticker_df, upbit_orderbook_df, left_on='index', right_on='cd', how='inner')
+    upbit_merged_df = upbit_merged_df.dropna(subset=['tp', 'ap', 'bp'])
     upbit_merged_df['base_asset'] = upbit_merged_df['index'].apply(lambda x: x.split('-')[1])
     upbit_merged_df['quote_asset'] = upbit_merged_df['index'].apply(lambda x: x.split('-')[0])
     upbit_merged_df.drop('index', axis=1, inplace=True)

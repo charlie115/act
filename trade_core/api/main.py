@@ -141,6 +141,29 @@ async def read_all_pnl_history(trade_config_uuid: Optional[UUID] = None, trade_u
 async def read_pnl_history(uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
     return await crud.get_pnl_history(uuid, db)
 
+@app.get("/trigger-scanner/", response_model=List[schemas.TriggerScanner])
+async def read_all_trigger_scanners(trade_config_uuid: Optional[UUID] = None, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.get_all_trigger_scanners(trade_config_uuid, db)
+
+@app.get("/trigger-scanner/{uuid}", response_model=schemas.TriggerScanner)
+async def read_trigger_scanner(uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.get_trigger_scanner(uuid, db)
+
+@app.post("/trigger-scanner/", response_model=schemas.TriggerScanner, status_code=status.HTTP_201_CREATED)
+async def create_trigger_scanner(trigger_scanner: schemas.TriggerScannerCreate, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.create_trigger_scanner(trigger_scanner, db)
+
+@app.put("/trigger-scanner/{uuid}", response_model=schemas.TriggerScanner)
+async def update_trigger_scanner(uuid: UUID, trigger_scanner: schemas.TriggerScannerUpdate, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.update_trigger_scanner(uuid, trigger_scanner, db)
+
+@app.delete("/trigger-scanner/{uuid}")
+async def remove_trigger_scanner(uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.delete_trigger_scanner(uuid, db)
+
+@app.delete("/trigger-scanner/")
+async def remove_all_trigger_scanners(trade_config_uuid: UUID, db: AsyncSession = Depends(crud.get_db)):
+    return await crud.delete_all_trigger_scanners(trade_config_uuid, db)
 
 ############ API endpoints for communication with exchanges ####################################
 @app.get("/spot-position/{user}", response_model=List[schemas.SpotPosition])

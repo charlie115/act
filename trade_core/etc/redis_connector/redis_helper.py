@@ -2,7 +2,7 @@ import redis
 import json
 import threading
 import _pickle as pickle
-
+import pandas as pd
 class RedisHelper:
    
     def __init__(self, host="localhost", port=6379, passwd='LocalRedis123!', db=0):
@@ -113,4 +113,4 @@ class RedisHelper:
         fundingrate_df_raw = redis_conn.get(redis_key)
         if fundingrate_df_raw:
             return pickle.loads(fundingrate_df_raw)
-        raise ValueError(f'No fundingrate data found for {market_code_combination} {market_code}, key: {redis_key}')
+        return pd.DataFrame()

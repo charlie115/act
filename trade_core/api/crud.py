@@ -593,8 +593,102 @@ async def get_pnl_history(uuid: UUID, db: AsyncSession):
     ))
     pnl_history = result.scalar_one_or_none()
     if pnl_history is None:
-        raise HTTPException(status_code=404, detail="Pnl history not found")
+        raise HTTPException(status_code=404, detail="PnL history not found")
     return pnl_history
+
+async def get_all_trigger_scanners(trade_config_uuid: UUID, db: AsyncSession):
+    if trade_config_uuid is None:
+        # Query to find all trigger scanners
+        result = await db.execute(select(models.TriggerScanner))
+    else:
+        result = await db.execute(select(models.TriggerScanner).filter(models.TriggerScanner.trade_config_uuid == trade_config_uuid))
+    trigger_scanners = result.scalars().all()
+    return trigger_scanners
+
+async def get_trigger_scanner(uuid: UUID, db: AsyncSession):
+    result = await db.execute(select(models.TriggerScanner).filter(
+        models.TriggerScanner.uuid == uuid
+    ))
+    trigger_scanner = result.scalar_one_or_none()
+    if trigger_scanner is None:
+        raise HTTPException(status_code=404, detail="Trigger scanner not found")
+    return trigger_scanner
+
+@handle_db_exceptions
+async def create_trigger_scanner(trigger_scanner: schemas.TriggerScannerCreate, db: AsyncSession):
+    if trigger_scanner.low >= trigger_scanner.high:
+        raise HTTPException(status_code=400, detail="Low must be less than high")
+    
+    # Check if the trade_config_uuid exists
+    result = await db.execute(select(models.TradeConfig).filter(
+        models.TradeConfig.uuid == trigger_scanner.trade_config_uuid
+    ))
+    trade_config = result.scalar_one_or_none()
+    if trade_config is None:
+        raise HTTPException(status_code=404, detail="Trade config not found")
+    
+    # Create the trigger scanner
+    db_trigger_scanner = models.TriggerScanner(**trigger_scanner.dict())
+    db.add(db_trigger_scanner)
+    await db.commit()
+    await db.refresh(db_trigger_scanner)
+    return db_trigger_scanner
+
+async def update_trigger_scanner(uuid: UUID, trigger_scanner: schemas.TriggerScannerUpdate, db: AsyncSession):
+    result = await db.execute(select(models.TriggerScanner).filter(
+        models.TriggerScanner.uuid == uuid
+    ))
+    db_trigger_scanner = result.scalar_one_or_none()
+    if db_trigger_scanner is None:
+        raise HTTPException(status_code=404, detail="Trigger scanner not found")
+
+    # Check if low and high values are valid if both are provided
+    if trigger_scanner.low is not None and trigger_scanner.high is not None:
+        if trigger_scanner.low >= trigger_scanner.high:
+            raise HTTPException(status_code=400, detail="Low must be less than high")
+    # Check if mixed values are valid (updating only one of low or high)
+    elif trigger_scanner.low is not None and db_trigger_scanner.high is not None:
+        if trigger_scanner.low >= db_trigger_scanner.high:
+            raise HTTPException(status_code=400, detail="Low must be less than high")
+    elif trigger_scanner.high is not None and db_trigger_scanner.low is not None:
+        if db_trigger_scanner.low >= trigger_scanner.high:
+            raise HTTPException(status_code=400, detail="Low must be less than high")
+    
+    # Update the trigger scanner
+    for var, value in vars(trigger_scanner).items():
+        if value is not None:
+            setattr(db_trigger_scanner, var, value)
+    
+    await db.commit()
+    await db.refresh(db_trigger_scanner)
+    return db_trigger_scanner
+
+async def delete_trigger_scanner(uuid: UUID, db: AsyncSession):
+    result = await db.execute(select(models.TriggerScanner).filter(
+        models.TriggerScanner.uuid == uuid
+    ))
+    trigger_scanner = result.scalar_one_or_none()
+    if trigger_scanner is None:
+        raise HTTPException(status_code=404, detail="Trigger scanner not found")
+    await db.delete(trigger_scanner)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+async def delete_all_trigger_scanners(trade_config_uuid: UUID, db: AsyncSession):
+    # Query to find all trigger scanners for the trade config
+    result = await db.execute(select(models.TriggerScanner).filter(models.TriggerScanner.trade_config_uuid == trade_config_uuid))
+    trigger_scanners = result.scalars().all()
+
+    # Check if any trigger scanners are found
+    if not trigger_scanners:
+        raise HTTPException(status_code=404, detail="No trigger scanners found for the trade config")
+
+    # Delete all trigger scanners
+    for trigger_scanner in trigger_scanners:
+        await db.delete(trigger_scanner)
+    
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 #################### API for communication with exchanges ####################################
 async def fetch_spot_position(user: UUID, market_code: str, db: AsyncSession):
