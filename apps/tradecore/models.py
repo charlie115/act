@@ -103,6 +103,7 @@ class Trade(models.Model):
     trade_switch = models.IntegerField(null=True, blank=True)
     trade_capital = models.IntegerField(null=True, blank=True)
     last_trade_history_uuid = models.UUIDField(null=True, blank=True)
+    trigger_scanner_uuid = models.UUIDField(null=True, blank=True)
     status = models.CharField(max_length=100, null=True, blank=True)
     remark = models.CharField(max_length=255, null=True, blank=True)
     
@@ -228,3 +229,37 @@ class RepeatTrade(models.Model):
         managed = False  # No database table creation
         verbose_name = "Repeat Trade"
         verbose_name_plural = "Repeat Trades"
+
+class TriggerScanner(models.Model):
+    """
+    Proxy model for trigger scanners from the external API.
+    Does not create a database table.
+    """
+    uuid = models.UUIDField(primary_key=True)
+    trade_config_uuid = models.UUIDField(
+        help_text="Trade config uuid related to user",
+        verbose_name="Trade Config UUID",
+    )
+    registered_datetime = models.DateTimeField()
+    last_updated_datetime = models.DateTimeField()
+    low = models.DecimalField(max_digits=6, decimal_places=3)
+    high = models.DecimalField(max_digits=6, decimal_places=3)
+    min_target_atp = models.DecimalField(max_digits=20, decimal_places=3, null=True, blank=True)
+    min_origin_atp = models.DecimalField(max_digits=20, decimal_places=3, null=True, blank=True)
+    min_target_funding_rate = models.DecimalField(max_digits=20, decimal_places=10, null=True, blank=True)
+    min_origin_funding_rate = models.DecimalField(max_digits=20, decimal_places=10, null=True, blank=True)
+    funding_rate_diff_threshold = models.DecimalField(max_digits=20, decimal_places=10, null=True, blank=True)
+    between_futures = models.BooleanField(null=True, blank=True)
+    trade_capital = models.IntegerField()
+    curr_repeat_num = models.IntegerField(default=0)
+    max_repeat_num = models.IntegerField(default=1)
+    repeat_term_secs = models.IntegerField(default=300)
+    remark = models.CharField(max_length=255, null=True, blank=True)
+    
+    def __str__(self):
+        return f"TriggerScanner {self.uuid}"
+    
+    class Meta:
+        managed = False  # No database table creation
+        verbose_name = "Trigger Scanner"
+        verbose_name_plural = "Trigger Scanners"

@@ -249,6 +249,7 @@ class TradesViewSetSerializer(TradeCoreMixin, serializers.Serializer):
         validators=[MinValueValidator(10)],
     )
     last_trade_history_uuid = serializers.UUIDField(required=False)
+    trigger_scanner_uuid = serializers.UUIDField(required=False)
     status = serializers.CharField(required=False)
     remark = serializers.CharField(required=False)
 
@@ -759,3 +760,81 @@ class ExitTradeQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
         )
 
         return super().validate(attrs)
+
+class TriggerScannerQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
+    """Separate validation for query"""
+    trade_config_uuid = serializers.UUIDField()
+
+    def validate(self, attrs):
+        self.get_trade_config_allocation(attrs.get("trade_config_uuid"))
+        return attrs
+
+
+class TriggerScannerFilterSerializer(serializers.Serializer):
+    """
+    This is just a hacky way to filter a non-model view
+    Only used in overriden filter_queryset function of the corresponding view
+    """
+    low = serializers.DecimalField(max_digits=6, decimal_places=3, required=False)
+    high = serializers.DecimalField(max_digits=6, decimal_places=3, required=False)
+    min_target_atp = serializers.DecimalField(max_digits=20, decimal_places=3, required=False)
+    min_origin_atp = serializers.DecimalField(max_digits=20, decimal_places=3, required=False)
+    min_target_funding_rate = serializers.DecimalField(max_digits=20, decimal_places=10, required=False)
+    min_origin_funding_rate = serializers.DecimalField(max_digits=20, decimal_places=10, required=False)
+    funding_rate_diff_threshold = serializers.DecimalField(max_digits=20, decimal_places=10, required=False)
+    between_futures = serializers.BooleanField(required=False)
+    trade_capital = serializers.IntegerField(required=False)
+    curr_repeat_num = serializers.IntegerField(required=False)
+    max_repeat_num = serializers.IntegerField(required=False)
+    repeat_term_secs = serializers.IntegerField(required=False)
+    remark = serializers.CharField(required=False)
+
+
+class TriggerScannerViewSetSerializer(TradeCoreMixin, serializers.Serializer):
+    trade_config_uuid = serializers.UUIDField()
+    uuid = serializers.UUIDField(read_only=True)
+    registered_datetime = serializers.DateTimeField(read_only=True)
+    last_updated_datetime = serializers.DateTimeField(read_only=True)
+    low = serializers.DecimalField(max_digits=6, decimal_places=3)
+    high = serializers.DecimalField(max_digits=6, decimal_places=3)
+    min_target_atp = serializers.DecimalField(max_digits=20, decimal_places=3, required=False)
+    min_origin_atp = serializers.DecimalField(max_digits=20, decimal_places=3, required=False)
+    min_target_funding_rate = serializers.DecimalField(max_digits=20, decimal_places=10, required=False)
+    min_origin_funding_rate = serializers.DecimalField(max_digits=20, decimal_places=10, required=False)
+    funding_rate_diff_threshold = serializers.DecimalField(max_digits=20, decimal_places=10, required=False)
+    between_futures = serializers.BooleanField(required=False)
+    trade_capital = serializers.IntegerField(
+        validators=[MinValueValidator(10)],
+    )
+    curr_repeat_num = serializers.IntegerField(required=False, default=0)
+    max_repeat_num = serializers.IntegerField(required=False, default=1)
+    repeat_term_secs = serializers.IntegerField(required=False, default=300)
+    remark = serializers.CharField(required=False)
+
+    def create(self, validated_data):
+        node = self.get_node(validated_data.get("trade_config_uuid"))
+
+        api_response = self.tradecore_create_api(
+            url=node.url,
+            endpoint=self.context["view"].tradecore_api_endpoint,
+            data=validated_data,
+        )
+        if api_response.status_code == HTTP_201_CREATED:
+            return api_response.json()
+
+        self.handle_exception_from_api(api_response)
+
+    def update(self, instance, validated_data):
+        node = self.get_node(instance.get("uuid"))
+
+        api_response = self.tradecore_update_api(
+            url=node.url,
+            endpoint=self.context["view"].tradecore_api_endpoint,
+            path_param=instance.get("uuid"),
+            data=validated_data,
+        )
+
+        if api_response.status_code == HTTP_200_OK:
+            return api_response.json()
+
+        self.handle_exception_from_api(api_response)

@@ -112,15 +112,9 @@ urlpatterns = [
         ExitTradeView.as_view(),
         name="exit-trade-view",
     ),
-    # Derpecated
-    # path(
-    #     "deposit-address/",
-    #     DepositAddressView.as_view(),
-    #     name="deposit-address-view",
-    # ),
-    # path(
-    #     "deposit-amount/",
-    #     include("tradecore.urls.deposit_amount"),
-    #     name="deposit-amount",
-    # ),
+    path(
+        "trigger-scanner/",
+        include("tradecore.urls.trigger_scanner"),
+        name="trigger-scanner",
+    ),
 ]

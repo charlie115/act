@@ -40,7 +40,10 @@ from tradecore.serializers import (
     PNLHistoryViewSetFilterSerializer,
     PNLHistoryViewSetSerializer,
     PboundaryQueryParamsSerializer,
-    ExitTradeQueryParamsSerializer
+    ExitTradeQueryParamsSerializer,
+    TriggerScannerQueryParamsSerializer,
+    TriggerScannerFilterSerializer,
+    TriggerScannerViewSetSerializer,
 )
 
 
@@ -1230,3 +1233,111 @@ class ExitTradeView(TradeCoreMixin, views.APIView):
             return obj
 
         self.handle_exception_from_api(api_response)
+
+@extend_schema(tags=["TriggerScanner"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List trigger scanners",
+        description="Returns a list of all `trigger scanners`.",
+    ),
+    create=extend_schema(
+        operation_id="Create a trigger scanner",
+        description="Creates a new `trigger scanner`.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve a trigger scanner",
+        description="Retrieves the details of an existing `trigger scanner`.",
+    ),
+    update=extend_schema(
+        operation_id="Update a trigger scanner",
+        description="Updates an existing `trigger scanner`.<br>"
+        "*Only the parameters specified will be updated while the rest will be left unchanged.*",
+    ),
+    destroy=extend_schema(
+        operation_id="Delete a trigger scanner",
+        description="Deletes an existing `trigger scanner`.",
+    ),
+)
+class TriggerScannerViewSet(
+    TradeCoreMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = TriggerScannerViewSetSerializer
+    permission_classes = [IsAdmin | IsInternal | IsManager | IsUser]
+    lookup_field = "uuid"
+    tradecore_api_endpoint = "trigger-scanner/"
+    http_method_names = ["get", "post", "put", "delete"]
+
+    def get_object(self):
+        "Override get_object since our queryset is a dict and not a model"
+        trade_config_allocation = None
+        try:
+            for obj in self.get_queryset():
+                if str(obj.get("uuid")) == self.kwargs[self.lookup_field]:
+                    return obj
+        except Exception:
+            pass
+        
+        raise exceptions.NotFound()
+
+    def filter_queryset(self, queryset):
+        "Manual filter queryset using our filter class"
+        query_serializer = TriggerScannerFilterSerializer(data=self.request.query_params)
+        query_serializer.is_valid()
+        query = query_serializer.validated_data
+
+        if query:
+            queryset = filter_list_of_dictionaries(queryset, query)
+
+        return queryset
+
+    def get_queryset(self):
+        "Override get_queryset since we don't have model"
+        query_serializer = TriggerScannerQueryParamsSerializer(
+            data=self.request.query_params, context={"request": self.request}
+        )
+        query_serializer.is_valid(raise_exception=True)
+        query = query_serializer.validated_data
+
+        try:
+            trade_config_allocation = self.get_trade_config_allocation(
+                trade_config_uuid=query.get("trade_config_uuid"),
+            )
+            node = trade_config_allocation.node
+
+            api_response = self.tradecore_list_api(
+                url=node.url,
+                endpoint=self.tradecore_api_endpoint,
+                query_params={"trade_config_uuid": query.get("trade_config_uuid")},
+            )
+
+            if api_response.status_code == HTTP_200_OK:
+                return api_response.json()
+
+            self.handle_exception_from_api(api_response)
+
+        except exceptions.APIException as err:
+            raise err
+        except Exception as err:
+            raise exceptions.APIException({"detail": str(err)})
+
+    def perform_create(self, serializer):
+        self.check_object_permissions(self.request, dict(serializer.validated_data))
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        node = self.get_node(instance.get("trade_config_uuid"))
+
+        api_response = self.tradecore_destroy_api(
+            url=node.url,
+            endpoint=self.tradecore_api_endpoint,
+            path_param=instance.get("uuid"),
+        )
+
+        if api_response.status_code != HTTP_204_NO_CONTENT:
+            self.handle_exception_from_api(api_response)
