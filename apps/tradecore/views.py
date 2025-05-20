@@ -1292,7 +1292,7 @@ class TriggerScannerViewSet(
         query = query_serializer.validated_data
 
         if query:
-            queryset = filter_list_of_dictionaries(queryset, query)
+            queryset = filter_list_of_dictionaries(query, queryset)
 
         return queryset
 
