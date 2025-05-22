@@ -693,6 +693,7 @@ async def async_create_trade(row, admin_id, acw_api, logger):
             "low": float(row['low']),
             "high": float(row['high']),
             "trade_capital": float(row['trade_capital']),
+            "trade_switch": 0,
             "trigger_scanner_uuid": str(row['uuid'])
         }
         
