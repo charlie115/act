@@ -733,25 +733,33 @@ def start_trigger_scanner_loop(
     conn = postgres_client.pool.getconn()
     curr = conn.cursor(cursor_factory=extras.RealDictCursor)
     logger.info(f"postgres client for start_trigger_scanner_loop has been initiated for {market_code_combination}")
+    
+     # Loop Thread for saving servercheck status
+    target_market_servercheck = False
+    origin_market_servercheck = False
+    def save_servercheck_status():
+        logger.info(f"start_trigger_scanner_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, save_servercheck_status thread has started.")
+        nonlocal target_market_servercheck, origin_market_servercheck
+        while True:
+            try:
+                target_market_servercheck = fetch_market_servercheck(target_market_code)
+                origin_market_servercheck = fetch_market_servercheck(origin_market_code)
+                time.sleep(1)
+            except Exception as e:
+                logger.error(f"start_trigger_scanner_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in save_servercheck_status: {traceback.format_exc()}")
+                time.sleep(3)
+    save_servercheck_status_thread = Thread(target=save_servercheck_status, daemon=True)
+    save_servercheck_status_thread.start()
+    
     while True:
+        time.sleep(loop_interval_secs)
         # try:
-        # Loop Thread for saving servercheck status
-        target_market_servercheck = False
-        origin_market_servercheck = False
-        def save_servercheck_status():
-            logger.info(f"start_trigger_scanner_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, save_servercheck_status thread has started.")
-            nonlocal target_market_servercheck, origin_market_servercheck
-            while True:
-                try:
-                    target_market_servercheck = fetch_market_servercheck(target_market_code)
-                    origin_market_servercheck = fetch_market_servercheck(origin_market_code)
-                    time.sleep(1)
-                except Exception as e:
-                    logger.error(f"start_trigger_scanner_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in save_servercheck_status: {traceback.format_exc()}")
-                    time.sleep(3)
-        save_servercheck_status_thread = Thread(target=save_servercheck_status, daemon=True)
-        save_servercheck_status_thread.start()
-
+        
+        if target_market_servercheck or origin_market_servercheck:
+            logger.info(f"start_trigger_scanner_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, has been skipped due to server check.")
+            time.sleep(60)
+            continue
+        
         # Initialize convert_rate_dict
         while True:
             fetched_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
@@ -896,8 +904,6 @@ def start_trigger_scanner_loop(
                 full_content += f"\n반복주기: {row['repeat_term_secs']}초"
                 full_content += f"\n마지막 업데이트: {row['last_updated_datetime']}"
                 acw_api.create_message_thread(row['telegram_id'], title, full_content, 'INFO')
-        
-        time.sleep(loop_interval_secs)
         
         # except Exception as e:
         #     title = f"Error in start_trigger_scanner_loop"
