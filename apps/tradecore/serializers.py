@@ -229,6 +229,7 @@ class TradesViewSetFilterSerializer(serializers.Serializer):
     trade_switch = serializers.IntegerField(required=False)
     trade_capital = serializers.IntegerField(required=False)
     last_trade_history_uuid = serializers.UUIDField(required=False)
+    trigger_scanner_uuid = serializers.UUIDField(required=False)
     status = serializers.CharField(required=False)
     remark = serializers.CharField(required=False)
 
@@ -806,9 +807,9 @@ class TriggerScannerViewSetSerializer(TradeCoreMixin, serializers.Serializer):
     trade_capital = serializers.IntegerField(
         validators=[MinValueValidator(10)],
     )
-    curr_repeat_num = serializers.IntegerField(required=False, default=0)
-    max_repeat_num = serializers.IntegerField(required=False, default=1)
-    repeat_term_secs = serializers.IntegerField(required=False, default=300)
+    curr_repeat_num = serializers.IntegerField(required=False)
+    max_repeat_num = serializers.IntegerField(required=False)
+    repeat_term_secs = serializers.IntegerField(required=False)
     remark = serializers.CharField(required=False)
 
     def create(self, validated_data):
@@ -823,15 +824,24 @@ class TriggerScannerViewSetSerializer(TradeCoreMixin, serializers.Serializer):
             return api_response.json()
 
         self.handle_exception_from_api(api_response)
-
+    
     def update(self, instance, validated_data):
-        node = self.get_node(instance.get("uuid"))
+        fixed_value_keys = [
+            "trade_config_uuid",
+        ]
+
+        new_instance = instance.copy()
+        for key, value in validated_data.items():
+            if key not in fixed_value_keys and value != instance.get(key, None):
+                new_instance[key] = value
+
+        node = self.get_node(validated_data.get("trade_config_uuid"))
 
         api_response = self.tradecore_update_api(
             url=node.url,
             endpoint=self.context["view"].tradecore_api_endpoint,
             path_param=instance.get("uuid"),
-            data=validated_data,
+            data=new_instance,
         )
 
         if api_response.status_code == HTTP_200_OK:
