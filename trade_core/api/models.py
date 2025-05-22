@@ -57,6 +57,7 @@ class Trade(Base):
     trade_switch = Column(SmallInteger)
     trade_capital = Column(Integer)
     last_trade_history_uuid = Column(ForeignKey('trade_history.uuid', ondelete='SET NULL', onupdate='CASCADE'))
+    trigger_scanner_uuid = Column(ForeignKey('trigger_scanner.uuid', ondelete='SET NULL', onupdate='CASCADE'))
     status = Column(Text)
     remark = Column(Text)
 
