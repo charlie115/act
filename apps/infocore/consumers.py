@@ -30,6 +30,7 @@ class KlineConsumer(AsyncWebsocketConsumer):
         target_market_code = query_params.get("target_market_code", None)
         origin_market_code = query_params.get("origin_market_code", None)
         interval = query_params.get("interval", None)
+        self._base_asset = query_params.get("base_asset", None)
 
         if target_market_code and origin_market_code and interval:
             await self.accept()
@@ -70,9 +71,29 @@ class KlineConsumer(AsyncWebsocketConsumer):
                 try:
                     stream_key, stream_data = stream
                     entry_id, entry_data = stream_data[0]
-                    kline_data = pickle.loads(entry_data[b"data"]).to_json(
-                        orient="records"
-                    )
+                    kline_df = pickle.loads(entry_data[b"data"])
+                    if self._base_asset: # Filter the dataframe by base asset
+                        kline_data = kline_df[kline_df["base_asset"] == self._base_asset].to_json(
+                            orient="records"
+                        )
+                    else:
+                        concise_kline_df = kline_df.drop(columns=[
+                            "tp_open",
+                            "tp_high",
+                            "tp_high",
+                            "tp_low",
+                            "tp_close",
+                            "LS_open",
+                            "LS_high",
+                            "LS_low",
+                            "SL_open",
+                            "SL_high",
+                            "SL_low",
+                            "datetime_now",
+                        ])
+                        kline_data = concise_kline_df.to_json(
+                            orient="records"
+                        )
                     data["result"] = kline_data
 
                 except Exception as err:
