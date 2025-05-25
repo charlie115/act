@@ -754,164 +754,164 @@ def start_trigger_scanner_loop(
     
     while True:
         time.sleep(loop_interval_secs)
-        # try:
+        try:
         
-        if target_market_servercheck or origin_market_servercheck:
-            logger.info(f"start_trigger_scanner_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, has been skipped due to server check.")
-            time.sleep(60)
-            continue
-        
-        # Initialize convert_rate_dict
-        while True:
-            fetched_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
-            if fetched_convert_rate_dict:
-                fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
-                break
-            logger.info("convert_rate_dict is not ready yet. Waiting for 1 second...")
-            time.sleep(1)
-        
-        # Initialize fundingrate_df
-        while True:
-            fundingrate_df = local_redis.get_fundingrate_df(market_code_combination, origin_market_code)
-            if not fundingrate_df.empty:
-                break
-            logger.info("fundingrate_df is not ready yet. Waiting for 1 second...")
-            time.sleep(1)
+            if target_market_servercheck or origin_market_servercheck:
+                logger.info(f"start_trigger_scanner_loop|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, has been skipped due to server check.")
+                time.sleep(60)
+                continue
             
-        users_with_negative_balance = get_users_with_negative_balance(users_with_negative_banace_redis_key_name)
-        # Load trigger_scanner table
-        if not users_with_negative_balance:
-            sql = """
-            SELECT trigger_scanner.*, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code
-            FROM trigger_scanner
-            JOIN trade_config ON trigger_scanner.trade_config_uuid = trade_config.uuid
-            WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s
-            AND (trigger_scanner.max_repeat_num IS NULL OR trigger_scanner.curr_repeat_num < trigger_scanner.max_repeat_num)
-            """
-            val = (target_market_code, origin_market_code)
-        else:
-            sql = """
-            SELECT trigger_scanner.*, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code
-            FROM trigger_scanner
-            JOIN trade_config ON trigger_scanner.trade_config_uuid = trade_config.uuid
-            WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s AND trade_config.user NOT IN %s
-            AND (trigger_scanner.max_repeat_num IS NULL OR trigger_scanner.curr_repeat_num < trigger_scanner.max_repeat_num)
-            """
-            val = (target_market_code, origin_market_code, tuple(users_with_negative_balance))
+            # Initialize convert_rate_dict
+            while True:
+                fetched_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
+                if fetched_convert_rate_dict:
+                    fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
+                    break
+                logger.info("convert_rate_dict is not ready yet. Waiting for 1 second...")
+                time.sleep(1)
             
-        curr.execute(sql, val)
-        trigger_scanner_df = pd.DataFrame(curr.fetchall())
-        if not trigger_scanner_df.empty:
-            # Ensure 'last_updated_datetime' is in datetime format
-            trigger_scanner_df['last_updated_datetime'] = pd.to_datetime(trigger_scanner_df['last_updated_datetime'])
-            
-            # Get current datetime - always use UTC for consistency
-            now = pd.Timestamp.now(tz='UTC')
-            
-            # Check if datetime has timezone info
-            has_tz = False
-            if not trigger_scanner_df['last_updated_datetime'].isna().all():
-                sample_dt = trigger_scanner_df['last_updated_datetime'].iloc[0]
-                has_tz = hasattr(sample_dt, 'tz') and sample_dt.tz is not None
-            
-            if has_tz:
-                # If timestamps have timezone, normalize to UTC
-                last_updated_utc = trigger_scanner_df['last_updated_datetime'].dt.tz_convert('UTC')
-            else:
-                # If naive timestamps, assume they're in UTC
-                last_updated_utc = trigger_scanner_df['last_updated_datetime'].dt.tz_localize('UTC')
-            
-            # Calculate next update times
-            next_update_times = last_updated_utc + pd.to_timedelta(trigger_scanner_df['repeat_term_secs'], unit='s')
-            
-            # Filter records where next update time is before current time
-            trigger_scanner_df = trigger_scanner_df[next_update_times < now]
-        if not trigger_scanner_df.empty:
-            premium_df = get_premium_df(local_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
-            merged_premium_df = premium_df.merge(fundingrate_df[['base_asset','funding_rate','funding_time']], on='base_asset')
-            cross_merged_df = pd.merge(merged_premium_df, trigger_scanner_df, how='cross')
-            
-            # 컬럼을 숫자형으로 변환 (None -> np.nan, 변환 불가 시 np.nan)
-            cross_merged_df['min_origin_funding_rate'] = pd.to_numeric(cross_merged_df['min_origin_funding_rate'], errors='coerce')
-
-            # atp 관련 컬럼도 동일하게 처리 (필요한 경우)
-            cross_merged_df['min_target_atp'] = pd.to_numeric(cross_merged_df['min_target_atp'], errors='coerce')
-
-            # 1. 기본 LS_premium 조건
-            condition_ls_premium = cross_merged_df['LS_premium'] < cross_merged_df['low']
-            # 2. Funding Rate 조건
-            condition_funding_rate = (
-                cross_merged_df['min_origin_funding_rate'].isnull() |
-                (cross_merged_df['funding_rate'] >= cross_merged_df['min_origin_funding_rate'])
-            )
-            # 3. ATP 조건
-            condition_atp = (
-                cross_merged_df['min_target_atp'].isnull() |
-                (cross_merged_df['atp24h'] > cross_merged_df['min_target_atp'])
-            )
-            # 모든 조건을 결합 (AND 연산)
-            final_condition = condition_ls_premium & condition_funding_rate & condition_atp
-            filtered_df = cross_merged_df[final_condition].copy()
-            
-            if not filtered_df.empty:
-                # uuid로 그룹화한 후, 각 그룹에서 LS_premium이 최소값인 행의 인덱스를 찾음
-                idx_min_ls_premium = filtered_df.groupby('uuid')['LS_premium'].idxmin()
-
-                # 찾은 인덱스를 사용하여 해당 행들을 원래 DataFrame에서 추출
-                result_df = filtered_df.loc[idx_min_ls_premium]
-            else:
-                result_df = pd.DataFrame(columns=filtered_df.columns) # 빈 DataFrame 처리
+            # Initialize fundingrate_df
+            while True:
+                fundingrate_df = local_redis.get_fundingrate_df(market_code_combination, origin_market_code)
+                if not fundingrate_df.empty:
+                    break
+                logger.info("fundingrate_df is not ready yet. Waiting for 1 second...")
+                time.sleep(1)
                 
-            if not result_df.empty:
-                # Update last_updated_datetime and curr_repeat_num for multiple rows
-                uuid_list = result_df['uuid'].tolist()
-                sql = "UPDATE trigger_scanner SET last_updated_datetime = %s, curr_repeat_num = curr_repeat_num + 1 WHERE uuid IN %s"
-                val = (datetime.datetime.utcnow(), tuple(uuid_list))
-                curr.execute(sql, val)
-                conn.commit()
+            users_with_negative_balance = get_users_with_negative_balance(users_with_negative_banace_redis_key_name)
+            # Load trigger_scanner table
+            if not users_with_negative_balance:
+                sql = """
+                SELECT trigger_scanner.*, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code
+                FROM trigger_scanner
+                JOIN trade_config ON trigger_scanner.trade_config_uuid = trade_config.uuid
+                WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s
+                AND (trigger_scanner.max_repeat_num IS NULL OR trigger_scanner.curr_repeat_num < trigger_scanner.max_repeat_num)
+                """
+                val = (target_market_code, origin_market_code)
+            else:
+                sql = """
+                SELECT trigger_scanner.*, trade_config.telegram_id, trade_config.target_market_code, trade_config.origin_market_code
+                FROM trigger_scanner
+                JOIN trade_config ON trigger_scanner.trade_config_uuid = trade_config.uuid
+                WHERE trade_config.target_market_code=%s AND trade_config.origin_market_code=%s AND trade_config.user NOT IN %s
+                AND (trigger_scanner.max_repeat_num IS NULL OR trigger_scanner.curr_repeat_num < trigger_scanner.max_repeat_num)
+                """
+                val = (target_market_code, origin_market_code, tuple(users_with_negative_balance))
+                
+            curr.execute(sql, val)
+            trigger_scanner_df = pd.DataFrame(curr.fetchall())
+            if not trigger_scanner_df.empty:
+                # Ensure 'last_updated_datetime' is in datetime format
+                trigger_scanner_df['last_updated_datetime'] = pd.to_datetime(trigger_scanner_df['last_updated_datetime'])
+                
+                # Get current datetime - always use UTC for consistency
+                now = pd.Timestamp.now(tz='UTC')
+                
+                # Check if datetime has timezone info
+                has_tz = False
+                if not trigger_scanner_df['last_updated_datetime'].isna().all():
+                    sample_dt = trigger_scanner_df['last_updated_datetime'].iloc[0]
+                    has_tz = hasattr(sample_dt, 'tz') and sample_dt.tz is not None
+                
+                if has_tz:
+                    # If timestamps have timezone, normalize to UTC
+                    last_updated_utc = trigger_scanner_df['last_updated_datetime'].dt.tz_convert('UTC')
+                else:
+                    # If naive timestamps, assume they're in UTC
+                    last_updated_utc = trigger_scanner_df['last_updated_datetime'].dt.tz_localize('UTC')
+                
+                # Calculate next update times
+                next_update_times = last_updated_utc + pd.to_timedelta(trigger_scanner_df['repeat_term_secs'], unit='s')
+                
+                # Filter records where next update time is before current time
+                trigger_scanner_df = trigger_scanner_df[next_update_times < now]
+            if not trigger_scanner_df.empty:
+                premium_df = get_premium_df(local_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
+                merged_premium_df = premium_df.merge(fundingrate_df[['base_asset','funding_rate','funding_time']], on='base_asset')
+                cross_merged_df = pd.merge(merged_premium_df, trigger_scanner_df, how='cross')
+                
+                # 컬럼을 숫자형으로 변환 (None -> np.nan, 변환 불가 시 np.nan)
+                cross_merged_df['min_origin_funding_rate'] = pd.to_numeric(cross_merged_df['min_origin_funding_rate'], errors='coerce')
 
-                # Create trades asynchronously for rows in result_df
-                async def process_trades():
-                    tasks = []
-                    for _, row in result_df.iterrows():
-                        task = asyncio.create_task(async_create_trade(row, admin_id, acw_api, logger))
-                        tasks.append(task)
+                # atp 관련 컬럼도 동일하게 처리 (필요한 경우)
+                cross_merged_df['min_target_atp'] = pd.to_numeric(cross_merged_df['min_target_atp'], errors='coerce')
+
+                # 1. 기본 LS_premium 조건
+                condition_ls_premium = cross_merged_df['LS_premium'] < cross_merged_df['low']
+                # 2. Funding Rate 조건
+                condition_funding_rate = (
+                    cross_merged_df['min_origin_funding_rate'].isnull() |
+                    (cross_merged_df['funding_rate'] >= cross_merged_df['min_origin_funding_rate'])
+                )
+                # 3. ATP 조건
+                condition_atp = (
+                    cross_merged_df['min_target_atp'].isnull() |
+                    (cross_merged_df['atp24h'] > cross_merged_df['min_target_atp'])
+                )
+                # 모든 조건을 결합 (AND 연산)
+                final_condition = condition_ls_premium & condition_funding_rate & condition_atp
+                filtered_df = cross_merged_df[final_condition].copy()
+                
+                if not filtered_df.empty:
+                    # uuid로 그룹화한 후, 각 그룹에서 LS_premium이 최소값인 행의 인덱스를 찾음
+                    idx_min_ls_premium = filtered_df.groupby('uuid')['LS_premium'].idxmin()
+
+                    # 찾은 인덱스를 사용하여 해당 행들을 원래 DataFrame에서 추출
+                    result_df = filtered_df.loc[idx_min_ls_premium]
+                else:
+                    result_df = pd.DataFrame(columns=filtered_df.columns) # 빈 DataFrame 처리
                     
-                    # Wait for all API calls to complete
-                    results = await asyncio.gather(*tasks, return_exceptions=True)
-                    return results
-                
-                # Run the async function in a synchronous context
-                loop = asyncio.get_event_loop()
-                try:
-                    trade_results = loop.run_until_complete(process_trades())
-                    logger.info(f"Created {len([r for r in trade_results if r is not None])} trades from trigger scanner")
-                except Exception as e:
-                    logger.error(f"Error processing trades: {e}\n{traceback.format_exc()}")
-                
-            # Send message to telegram for testing
-            for row_tup in result_df.iterrows():
-                row = row_tup[1]
-                title = f"Trigger Scanner Loop"
-                full_content = f"{market_code_combination}의 {row['base_asset']} 프리미엄 하향돌파"
-                full_content += f"\n현재프리미엄: {row['LS_premium']}, Low값: {row['low']}, High값: {row['high']}"
-                full_content += f"\n진입자산: {row['trade_capital']}"
-                full_content += f"\n설정오리진최소펀딩률: {row['min_origin_funding_rate']}"
-                full_content += f"\n현재펀딩률: {row['funding_rate']}"
-                full_content += f"\n설정최소타겟거래량: {row['min_target_atp']}"
-                full_content += f"\n현재타겟거래량: {row['atp24h']}"
-                full_content += f"\n현재반복횟수: {row['curr_repeat_num'] + 1}"
-                full_content += f"\n최대반복횟수: {row['max_repeat_num']}"
-                full_content += f"\n반복주기: {row['repeat_term_secs']}초"
-                full_content += f"\n마지막 업데이트: {row['last_updated_datetime']}"
-                acw_api.create_message_thread(row['telegram_id'], title, full_content, 'INFO')
+                if not result_df.empty:
+                    # Update last_updated_datetime and curr_repeat_num for multiple rows
+                    uuid_list = result_df['uuid'].tolist()
+                    sql = "UPDATE trigger_scanner SET last_updated_datetime = %s, curr_repeat_num = curr_repeat_num + 1 WHERE uuid IN %s"
+                    val = (datetime.datetime.utcnow(), tuple(uuid_list))
+                    curr.execute(sql, val)
+                    conn.commit()
+
+                    # Create trades asynchronously for rows in result_df
+                    async def process_trades():
+                        tasks = []
+                        for _, row in result_df.iterrows():
+                            task = asyncio.create_task(async_create_trade(row, admin_id, acw_api, logger))
+                            tasks.append(task)
+                        
+                        # Wait for all API calls to complete
+                        results = await asyncio.gather(*tasks, return_exceptions=True)
+                        return results
+                    
+                    # Run the async function in a synchronous context
+                    loop = asyncio.get_event_loop()
+                    try:
+                        trade_results = loop.run_until_complete(process_trades())
+                        logger.info(f"Created {len([r for r in trade_results if r is not None])} trades from trigger scanner")
+                    except Exception as e:
+                        logger.error(f"Error processing trades: {e}\n{traceback.format_exc()}")
+                    
+                # Send message to telegram for testing
+                for row_tup in result_df.iterrows():
+                    row = row_tup[1]
+                    title = f"Trigger Scanner Loop"
+                    full_content = f"{market_code_combination}의 {row['base_asset']} 프리미엄 하향돌파"
+                    full_content += f"\n현재프리미엄: {row['LS_premium']}, Low값: {row['low']}, High값: {row['high']}"
+                    full_content += f"\n진입자산: {row['trade_capital']}"
+                    full_content += f"\n설정오리진최소펀딩률: {round(row['min_origin_funding_rate']*100, 4)}"
+                    full_content += f"\n현재펀딩률: {round(row['funding_rate']*100, 4)}"
+                    full_content += f"\n설정최소타겟거래량: {round(row['min_target_atp']/1000000000, 3)}"
+                    full_content += f"\n현재타겟거래량: {round(row['atp24h']/1000000000, 3)}"
+                    full_content += f"\n현재반복횟수: {row['curr_repeat_num'] + 1}"
+                    full_content += f"\n최대반복횟수: {row['max_repeat_num']}"
+                    full_content += f"\n반복주기: {row['repeat_term_secs']}초"
+                    full_content += f"\n마지막 업데이트: {row['last_updated_datetime']}"
+                    acw_api.create_message_thread(row['telegram_id'], title, full_content, 'INFO')
         
-        # except Exception as e:
-        #     title = f"Error in start_trigger_scanner_loop"
-        #     full_content = f"Error in start_trigger_scanner_loop: {e}\n{traceback.format_exc()}"
-        #     logger.error(f"Error in start_trigger_scanner_loop: {e}\n{traceback.format_exc()}")
-        #     acw_api.create_message_thread(admin_id, title, full_content, 'ERROR')
-        #     time.sleep(10)
+        except Exception as e:
+            title = f"Error in start_trigger_scanner_loop"
+            full_content = f"Error in start_trigger_scanner_loop: {e}\n{traceback.format_exc()}"
+            logger.error(f"Error in start_trigger_scanner_loop: {e}\n{traceback.format_exc()}")
+            acw_api.create_message_thread(admin_id, title, full_content, 'ERROR')
+            time.sleep(10)
 
     
 def fetch_fundingrate_loop(admin_id, acw_api, mongo_db_dict, market_code_combination, market_code, logging_dir):

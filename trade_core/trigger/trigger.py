@@ -124,7 +124,7 @@ class InitTrigger:
                             logging_dir,
                             'trigger_scanner',
                             'negative_balance_users',
-                            5
+                            0.1
                         ),
                         daemon=True)
                     self.trigger_scanner_proc_dict[market_code_combination_name].start()
