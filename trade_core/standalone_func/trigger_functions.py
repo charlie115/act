@@ -827,11 +827,7 @@ def start_trigger_scanner_loop(
                 # Filter records where next update time is before current time OR curr_repeat_num is 0 (first execution)
                 time_condition = next_update_times < now
                 first_execution_condition = trigger_scanner_df['curr_repeat_num'] == 0
-                logger.info(f"first_execution_condition: {first_execution_condition}")
-                logger.info(f"time_condition: {time_condition}")
-                logger.info(f"trigger_scanner_df before filtering: {trigger_scanner_df}")
                 trigger_scanner_df = trigger_scanner_df[time_condition | first_execution_condition]
-                logger.info(f"trigger_scanner_df after filtering: {trigger_scanner_df}")
             if not trigger_scanner_df.empty:
                 premium_df = get_premium_df(local_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
                 merged_premium_df = premium_df.merge(fundingrate_df[['base_asset','funding_rate','funding_time']], on='base_asset')
