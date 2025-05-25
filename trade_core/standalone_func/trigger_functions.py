@@ -824,8 +824,10 @@ def start_trigger_scanner_loop(
                 # Calculate next update times
                 next_update_times = last_updated_utc + pd.to_timedelta(trigger_scanner_df['repeat_term_secs'], unit='s')
                 
-                # Filter records where next update time is before current time
-                trigger_scanner_df = trigger_scanner_df[next_update_times < now]
+                # Filter records where next update time is before current time OR curr_repeat_num is 0 (first execution)
+                time_condition = next_update_times < now
+                first_execution_condition = trigger_scanner_df['curr_repeat_num'] == 0
+                trigger_scanner_df = trigger_scanner_df[time_condition | first_execution_condition]
             if not trigger_scanner_df.empty:
                 premium_df = get_premium_df(local_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
                 merged_premium_df = premium_df.merge(fundingrate_df[['base_asset','funding_rate','funding_time']], on='base_asset')
