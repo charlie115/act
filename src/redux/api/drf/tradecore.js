@@ -347,6 +347,108 @@ const api = drfApi.injectEndpoints({
       }),
       invalidatesTags: ['TradeConfig'],
     }),
+    getAllTriggerScanners: builder.query({
+      keepUnusedDataFor: 0,
+      providesTags: ['AllTriggerScanners'],
+      refetchOnMountOrArgChange: true,
+      queryFn: async ({ tradeConfigUuids, params }, queryApi, extraOptions) => {
+        try {
+          const promises = tradeConfigUuids.map((tradeConfigUuid) =>
+            baseQueryWithReAuth(
+              {
+                url: '/tradecore/trigger-scanner/',
+                params: { tradeConfigUuid, ...params },
+              },
+              queryApi,
+              extraOptions
+            )
+          );
+          const results = await Promise.allSettled(promises);
+          const okResults = results.filter(
+            (result) => result.value?.meta?.response?.ok
+          );
+
+          const data = okResults.reduce(
+            (acc, result) => acc.concat(result.value.data),
+            []
+          );
+          const meta = okResults.reduce(
+            (acc, result) => acc.concat(result.value.meta),
+            []
+          );
+          return { data, meta };
+        } catch (error) {
+          // Catch any errors and return them as an object with an `error` field
+          return { error };
+        }
+      },
+    }),
+    getTriggerScannersByTradeConfig: builder.query({
+      keepUnusedDataFor: 1,
+      providesTags: ['TriggerScannersByTradeConfig'],
+      query: (params) => ({
+        url: '/tradecore/trigger-scanner/',
+        params,
+      }),
+    }),
+    getTriggerScannerByUuid: builder.query({
+      keepUnusedDataFor: 1,
+      query: ({ uuid, ...params }) => ({
+        url: `/tradecore/trigger-scanner/${uuid}/`,
+        params,
+      }),
+    }),
+    postTriggerScanner: builder.mutation({
+      query: (body) => ({
+        url: '/tradecore/trigger-scanner/',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['AllTriggerScanners', 'TriggerScannersByTradeConfig'],
+    }),
+    putTriggerScanner: builder.mutation({
+      query: ({ uuid, ...body }) => ({
+        url: `/tradecore/trigger-scanner/${uuid}/`,
+        method: 'PUT',
+        params: { tradeConfigUuid: body.trade_config_uuid },
+        body,
+      }),
+      invalidatesTags: ['AllTriggerScanners', 'TriggerScannersByTradeConfig'],
+    }),
+    deleteTriggerScanner: builder.mutation({
+      query: ({ uuid, ...params }) => ({
+        url: `/tradecore/trigger-scanner/${uuid}/`,
+        method: 'DELETE',
+        params,
+      }),
+      invalidatesTags: ['AllTriggerScanners', 'TriggerScannersByTradeConfig'],
+    }),
+    deleteMultipleTriggerScanner: builder.mutation({
+      queryFn: async (items, queryApi, extraOptions) => {
+        try {
+          const promises = items.map((item) =>
+            baseQueryWithReAuth(
+              {
+                url: `/tradecore/trigger-scanner/${item.uuid}/`,
+                method: 'DELETE',
+                params: item.params,
+              },
+              queryApi,
+              extraOptions
+            )
+          );
+          const results = await Promise.allSettled(promises);
+          return {
+            data: results.map((result) => result.value.data),
+            meta: results.map((result) => result.value.meta),
+          };
+        } catch (error) {
+          // Catch any errors and return them as an object with an `error` field
+          return { error };
+        }
+      },
+      invalidatesTags: ['AllTriggerScanners', 'TriggerScannersByTradeConfig'],
+    }),
   }),
 });
 
@@ -358,6 +460,7 @@ export const {
   useGetAllRepeatTradesQuery,
   useGetAllTradesQuery,
   useGetAllTradeLogsQuery,
+  useGetAllTriggerScannersQuery,
   useGetExchangeApiKeyQuery,
   useGetFuturesPositionQuery,
   useGetNodesQuery,
@@ -373,6 +476,8 @@ export const {
   useGetTradeHistoryQuery,
   useGetTradeHistoryByUuidQuery,
   useGetTradesByTradeConfigQuery,
+  useGetTriggerScannersByTradeConfigQuery,
+  useGetTriggerScannerByUuidQuery,
   useLazyGetExchangeApiKeyQuery,
   useLazyGetPnlHistoryQuery,
   useLazyGetPBoundaryQuery,
@@ -384,7 +489,11 @@ export const {
   usePostRepeatTradeMutation,
   usePostTradeMutation,
   usePostTradeConfigMutation,
+  usePostTriggerScannerMutation,
   usePutRepeatTradeMutation,
   usePutTradeMutation,
   usePutTradeConfigMutation,
+  usePutTriggerScannerMutation,
+  useDeleteTriggerScannerMutation,
+  useDeleteMultipleTriggerScannerMutation,
 } = api;

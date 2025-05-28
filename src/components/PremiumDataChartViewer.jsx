@@ -143,6 +143,7 @@ const PremiumDataChartViewer = forwardRef(
         ...marketCodes,
         interval: klineInterval,
         queryKey,
+        baseAsset,
       },
       { skip: !marketCodes }
     );

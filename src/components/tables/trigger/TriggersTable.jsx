@@ -39,6 +39,7 @@ import {
   useDeleteRepeatTradeMutation,
   useGetAllRepeatTradesQuery,
   useGetAllTradesQuery,
+  useGetTradesByTradeConfigQuery,
   useGetTradeHistoryQuery,
   useExitMultipleTradesMutation,
 } from 'redux/api/drf/tradecore';
@@ -84,6 +85,8 @@ export default function TriggersTable({
   queryKey,
   tradeConfigAllocations,
   tradeConfigUuids,
+  triggerScannerUuid,
+  scannerTradeConfigUuid,
 }) {
   const assetSearchRef = useRef();
   const premiumDataViewerRef = useRef();
@@ -125,10 +128,24 @@ export default function TriggersTable({
     ? !marketCodeCombination.target.isSpot && !marketCodeCombination.origin.isSpot 
     : false;
 
-  const { data, isLoading, isSuccess } = useGetAllTradesQuery(
-    { tradeConfigUuids },
-    { pollingInterval: 1000 * 1, skip: !!autoRepeatTrade }
+  // Conditional query based on whether we're in scanner context or not
+  const allTradesQuery = useGetAllTradesQuery(
+    { 
+      tradeConfigUuids,
+    },
+    { pollingInterval: 1000 * 1, skip: !!autoRepeatTrade || !!triggerScannerUuid }
   );
+
+  const scannerTradesQuery = useGetTradesByTradeConfigQuery(
+    { 
+      tradeConfigUuid: scannerTradeConfigUuid,
+      trigger_scanner_uuid: triggerScannerUuid,
+    },
+    { pollingInterval: 1000 * 1, skip: !!autoRepeatTrade || !triggerScannerUuid }
+  );
+
+  // Use the appropriate query result
+  const { data, isLoading, isSuccess } = triggerScannerUuid ? scannerTradesQuery : allTradesQuery;
 
   const { data: repeatTrades } = useGetAllRepeatTradesQuery({
     tradeConfigUuids,
@@ -237,14 +254,14 @@ export default function TriggersTable({
 
   const columns = useMemo(
     () => [
-      {
+      ...(!triggerScannerUuid ? [{
         accessorKey: 'select',
         enableGlobalFilter: false,
         enableSorting: false,
         size: isMobile ? 15 : 30,
         header: renderSelectHeader,
         cell: renderSelectCell,
-      },
+      }] : []),
       {
         accessorKey: 'icon',
         enableGlobalFilter: false,
@@ -359,12 +376,12 @@ export default function TriggersTable({
         header: <span />,
       },
     ],
-    [marketCodeCombination, i18n.language, isMobile]
+    [marketCodeCombination, i18n.language, isMobile, triggerScannerUuid]
   );
 
   const tableData = useMemo(() => {
     if (!data) return [];
-    if (selectedAsset) {
+    if (selectedAsset && !triggerScannerUuid) {
       // --- Add Row Configuration ---
       // Still extract from element.props.src for the Add row, as this works
       const targetIconElement = marketCodeCombination?.target?.icon;
@@ -515,6 +532,7 @@ export default function TriggersTable({
     isDeleteLoading,
     isExitTradeLoading,
     i18n.language,
+    triggerScannerUuid,
   ]);
 
   const capitalTotals = useMemo(() => {
@@ -565,10 +583,11 @@ export default function TriggersTable({
     if (
       marketCodeCombination &&
       marketCodeCombination.value !== 'ALL' &&
-      !marketCodeCombination.tradeConfigUuid
+      !marketCodeCombination.tradeConfigUuid &&
+      !triggerScannerUuid
     )
       assetSearchRef?.current?.open();
-  }, [marketCodeCombination]);
+  }, [marketCodeCombination, triggerScannerUuid]);
 
   useEffect(() => {
     if (selectedAsset)
@@ -716,15 +735,17 @@ export default function TriggersTable({
         spacing={1}
         sx={{ mb: 2, flexWrap: 'wrap' }}
       >
-        <DropdownMenu
-          value={selectedTriggerType}
-          options={triggerTypeList}
-          onSelectItem={setSelectedTriggerType}
-          buttonStyle={{
-            justifyContent: 'flex-start',
-            minWidth: isMobile ? 100 : 220,
-          }}
-        />
+        {!triggerScannerUuid && (
+          <DropdownMenu
+            value={selectedTriggerType}
+            options={triggerTypeList}
+            onSelectItem={setSelectedTriggerType}
+            buttonStyle={{
+              justifyContent: 'flex-start',
+              minWidth: isMobile ? 100 : 220,
+            }}
+          />
+        )}
         {/* --- START: Display Capital Totals --- */}
         {/* Only display if totals are calculated AND the selected type is NOT ALARM */}
         {capitalTotals && selectedTriggerType?.value !== 'alarms' && (
@@ -778,30 +799,32 @@ export default function TriggersTable({
         )}
         {/* --- END: Display Capital Totals --- */}
         <Box sx={{ flexGrow: 1, minWidth: { xs: 0, sm: '10px'} }} />
-        <Box
-          className={
-            marketCodeCombination &&
-            marketCodeCombination.value !== 'ALL' &&
-            !marketCodeCombination.tradeConfigUuid
-              ? 'animate__animated animate__pulse animate__repeat-2'
-              : undefined
-          }
-          sx={{ ml: 'auto', mt: { xs: 1, md: 0 } }}
-        >
-          <AssetSearchInput
-            showSelect
-            ref={assetSearchRef}
-            onChange={(value) => setGlobalFilter(value)}
-            onSelect={(value) => {
-              setGlobalFilter(value);
-              setSelectedAsset(value);
-            }}
-            selectIcon={<AddIcon />}
-            {...assetSearchProps}
-          />
-        </Box>
+        {!triggerScannerUuid && (
+          <Box
+            className={
+              marketCodeCombination &&
+              marketCodeCombination.value !== 'ALL' &&
+              !marketCodeCombination.tradeConfigUuid
+                ? 'animate__animated animate__pulse animate__repeat-2'
+                : undefined
+            }
+            sx={{ ml: 'auto', mt: { xs: 1, md: 0 } }}
+          >
+            <AssetSearchInput
+              showSelect
+              ref={assetSearchRef}
+              onChange={(value) => setGlobalFilter(value)}
+              onSelect={(value) => {
+                setGlobalFilter(value);
+                setSelectedAsset(value);
+              }}
+              selectIcon={<AddIcon />}
+              {...assetSearchProps}
+            />
+          </Box>
+        )}
       </Stack>
-      {Object.keys(rowSelection).length > 0 && (
+      {Object.keys(rowSelection).length > 0 && !triggerScannerUuid && (
         <Stack alignItems="center" direction="row" spacing={2} sx={{ mb: 2 }}>
           <Typography sx={{ fontWeight: 700 }}>
             {t('{{selected}} of {{total}} selected', {
@@ -840,7 +863,7 @@ export default function TriggersTable({
         isLoading={isLoading}
         options={{
           getRowId,
-          enableRowSelection: true,
+          enableRowSelection: !triggerScannerUuid,
           state: { expanded, globalFilter, pagination, rowSelection },
           onExpandedChange,
           onPaginationChange: setPagination,
@@ -887,71 +910,75 @@ export default function TriggersTable({
           },
         })}
       />
-      <DeleteAlert
-        loading={isDeleteLoading}
-        open={deleteAlert}
-        title={t(
-          'Are you sure you want to permanently delete the selected trigger(s)?'
-        )}
-        onCancel={() => setDeleteAlert(false)}
-        onClose={() => setDeleteAlert(isDeleteLoading)}
-        onDelete={() =>
-          deleteMultipleTrades(
-            Object.keys(rowSelection).map((row) => {
-              const details = tableData.find((o) => o.uuid === row);
-              return {
-                uuid: row,
-                params: { tradeConfigUuid: details.trade_config_uuid },
-              };
-            })
-          )
-        }
-      />
-      <ExitTradeAlert
-        loading={isExitTradeLoading}
-        open={exitTradeAlert}
-        title={t(
-          'Are you sure you want to exit the selected trade?'
-        )}
-        onCancel={() => setExitTradeAlert(false)}
-        onClose={() => setExitTradeAlert(isExitTradeLoading)}
-        onExitTrade={() =>
-          exitMultipleTrades(
-            Object.keys(rowSelection).map((row) => {
-              const details = tableData.find((o) => o.uuid === row);
-              return {
-                uuid: row,
-                params: { 
-                  trade_config_uuid: details.trade_config_uuid,
-                  trade_uuid: details.uuid
-                 },
-              };
-            })
-          )
-        }
-      />
-      <Dialog
-        fullWidth
-        maxWidth="sm"
-        open={!!autoRepeatTrade}
-        onClose={() => setAutoRepeatTrade()}
-      >
-        <DialogTitle>{t('Auto Repeat Configuration')}</DialogTitle>
-        <DialogContent>
-          <AutoRepeatForm
-            {...autoRepeatTrade}
-            tradeConfigUuid={autoRepeatTrade?.trade_config_uuid}
-            tradeUuid={autoRepeatTrade?.uuid}
-            onSuccess={() => setAutoRepeatTrade()}
+      {!triggerScannerUuid && (
+        <>
+          <DeleteAlert
+            loading={isDeleteLoading}
+            open={deleteAlert}
+            title={t(
+              'Are you sure you want to permanently delete the selected trigger(s)?'
+            )}
+            onCancel={() => setDeleteAlert(false)}
+            onClose={() => setDeleteAlert(isDeleteLoading)}
+            onDelete={() =>
+              deleteMultipleTrades(
+                Object.keys(rowSelection).map((row) => {
+                  const details = tableData.find((o) => o.uuid === row);
+                  return {
+                    uuid: row,
+                    params: { tradeConfigUuid: details.trade_config_uuid },
+                  };
+                })
+              )
+            }
           />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAutoRepeatTrade()}>{t('Cancel')}</Button>
-          <Button form="auto-repeat-form" type="submit">
-            {t('Turn on repeat transactions')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          <ExitTradeAlert
+            loading={isExitTradeLoading}
+            open={exitTradeAlert}
+            title={t(
+              'Are you sure you want to exit the selected trade?'
+            )}
+            onCancel={() => setExitTradeAlert(false)}
+            onClose={() => setExitTradeAlert(isExitTradeLoading)}
+            onExitTrade={() =>
+              exitMultipleTrades(
+                Object.keys(rowSelection).map((row) => {
+                  const details = tableData.find((o) => o.uuid === row);
+                  return {
+                    uuid: row,
+                    params: { 
+                      trade_config_uuid: details.trade_config_uuid,
+                      trade_uuid: details.uuid
+                     },
+                  };
+                })
+              )
+            }
+          />
+          <Dialog
+            fullWidth
+            maxWidth="sm"
+            open={!!autoRepeatTrade}
+            onClose={() => setAutoRepeatTrade()}
+          >
+            <DialogTitle>{t('Auto Repeat Configuration')}</DialogTitle>
+            <DialogContent>
+              <AutoRepeatForm
+                {...autoRepeatTrade}
+                tradeConfigUuid={autoRepeatTrade?.trade_config_uuid}
+                tradeUuid={autoRepeatTrade?.uuid}
+                onSuccess={() => setAutoRepeatTrade()}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setAutoRepeatTrade()}>{t('Cancel')}</Button>
+              <Button form="auto-repeat-form" type="submit">
+                {t('Turn on repeat transactions')}
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </>
+      )}
     </Box>
   );
 }

@@ -22,6 +22,7 @@ const Capital = lazy(() => import('pages/bot/Capital'));
 const PnLHistory = lazy(() => import('pages/bot/PnLHistory'));
 const Settings = lazy(() => import('pages/bot/Settings'));
 const Triggers = lazy(() => import('pages/bot/Triggers'));
+const Scanner = lazy(() => import('pages/bot/Scanner'));
 
 const Home = lazy(() => import('pages/Home'));
 const Login = lazy(() => import('pages/Login'));
@@ -130,6 +131,11 @@ const main = [
         name: 'bot-triggers',
         path: '/bot/triggers',
         element: Triggers,
+      },
+      {
+        name: 'bot-scanner',
+        path: '/bot/scanner',
+        element: Scanner,
       },
       {
         name: 'bot/pnl-history',

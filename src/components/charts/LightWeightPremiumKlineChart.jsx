@@ -159,6 +159,7 @@ const LightWeightPremiumKlineChart = forwardRef(
         ...marketCodes,
         interval,
         queryKey,
+        baseAsset,
       },
       { skip: !marketCodes }
     );

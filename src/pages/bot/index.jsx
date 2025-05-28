@@ -51,6 +51,7 @@ import { MARKET_CODE_LIST } from 'constants/lists';
 
 const TAB = {
   triggers: '/bot/triggers',
+  scanner: '/bot/scanner',
   position: '/bot/position',
   capital: '/bot/capital',
   pnlHistory: '/bot/pnl-history',
@@ -66,6 +67,11 @@ const TABS = [
     id: TAB.triggers,
     name: '/bot/triggers',
     getLabel: () => i18n.t('Triggers'),
+  },
+  {
+    id: TAB.scanner,
+    name: '/bot/scanner',
+    getLabel: () => i18n.t('Scanner'),
   },
   {
     id: TAB.position,

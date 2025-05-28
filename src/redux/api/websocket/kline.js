@@ -20,6 +20,9 @@ const api = websocketApi.injectEndpoints({
         url.searchParams.set('target_market_code', args.targetMarketCode);
         url.searchParams.set('origin_market_code', args.originMarketCode);
         url.searchParams.set('interval', args.interval);
+        if (args.baseAsset) {
+          url.searchParams.set('base_asset', args.baseAsset);
+        }
         
         // Track connection state
         let isConnecting = false;
