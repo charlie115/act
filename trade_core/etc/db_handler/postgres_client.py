@@ -214,6 +214,7 @@ class InitDBClient:
                     ON DELETE CASCADE
                     ON UPDATE CASCADE,
                 FOREIGN KEY (trigger_scanner_uuid) REFERENCES trigger_scanner(uuid)
+                    ON DELETE SET NULL
                     ON UPDATE CASCADE
             )"""
         conn = self.get_conn()
