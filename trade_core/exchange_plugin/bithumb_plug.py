@@ -70,14 +70,30 @@ class Bithumb:
         res = requests.get(self.server_url + market_url, headers=self.headers)
         res.raise_for_status()
         all_market_code_list = pd.DataFrame(res.json())['market'].to_list()
-        ticker_url = "/ticker"
-        query_params = {
-            "markets": ",".join([x for x in all_market_code_list if 'KRW-' in x])
-        }
-        res = requests.get(self.server_url + ticker_url, headers=self.headers, params=query_params)
-        res.raise_for_status()
         
-        total_ticker_df = pd.DataFrame(res.json())
+        # Filter for KRW markets
+        krw_markets = [x for x in all_market_code_list if 'KRW-' in x]
+        
+        # Split into chunks of 300 to avoid 413 Entity Too Large error
+        chunk_size = 300
+        ticker_data_list = []
+        
+        for i in range(0, len(krw_markets), chunk_size):
+            chunk = krw_markets[i:i + chunk_size]
+            
+            ticker_url = "/ticker"
+            query_params = {
+                "markets": ",".join(chunk)
+            }
+            res = requests.get(self.server_url + ticker_url, headers=self.headers, params=query_params)
+            res.raise_for_status()
+            
+            # Collect the ticker data from this chunk
+            chunk_data = res.json()
+            ticker_data_list.extend(chunk_data)
+        
+        # Combine all ticker data into a single DataFrame
+        total_ticker_df = pd.DataFrame(ticker_data_list)
         
         
         # Rename columns and clean up
