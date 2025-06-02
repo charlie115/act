@@ -4,6 +4,8 @@ import React, {
   useMemo,
   useRef,
   useState,
+  startTransition,
+  useDeferredValue,
 } from 'react';
 
 import Box from '@mui/material/Box';
@@ -58,14 +60,16 @@ import renderExpandCell from 'components/tables/common/renderExpandCell';
 import renderFundingRateHeader from 'components/tables/common/renderFundingRateHeader';
 import renderFundingRateCell from 'components/tables/common/renderFundingRateCell';
 
-import renderNameCell from './renderNameCell';
-import renderPremiumCell from './renderPremiumCell';
-import renderPriceCell from './renderPriceCell';
-import renderSpreadCell from './renderSpreadCell';
-import renderStarCell from './renderStarCell';
-import renderVolatilityCell from './renderVolatilityCell';
-import renderVolumeCell from './renderVolumeCell';
-import renderWalletStatusCell from './renderWalletStatusCell';
+import {
+  renderNameCell,
+  renderPremiumCell,
+  renderPriceCell,
+  renderSpreadCell,
+  renderStarCell,
+  renderVolatilityCell,
+  renderVolumeCell,
+  renderWalletStatusCell,
+} from './memoizedRenderers';
 
 const DEFAULT_PAGE_SIZE = 50;
 
@@ -124,11 +128,25 @@ function PremiumTable({
   const realTimeDataList = useMemo(() => {
     if (realTimeData?.disconnected || !realTimeData) return [];
     
-    const dataArray = Array.isArray(realTimeData) 
-      ? realTimeData 
-      : Object.values(realTimeData).filter(item => typeof item === 'object' && item !== null);
-      
-    return orderBy(dataArray, 'atp24h', 'desc');
+    // Use Map for O(1) lookups and avoid duplicate processing
+    const dataMap = new Map();
+    
+    if (Array.isArray(realTimeData)) {
+      realTimeData.forEach(item => {
+        if (item && item.base_asset) {
+          dataMap.set(item.base_asset, item);
+        }
+      });
+    } else {
+      Object.entries(realTimeData).forEach(([, value]) => {
+        if (typeof value === 'object' && value !== null && value.base_asset) {
+          dataMap.set(value.base_asset, value);
+        }
+      });
+    }
+    
+    // Convert to array and sort only once
+    return Array.from(dataMap.values()).sort((a, b) => (b.atp24h || 0) - (a.atp24h || 0));
   }, [realTimeData]);
 
   const { data: assetsData, isSuccess: isAssetsDataSuccess } =
@@ -149,13 +167,14 @@ function PremiumTable({
       marketCode: marketCodesParam?.targetMarketCode,
     },
     {
-      pollingInterval: 1000 * 60,
+      pollingInterval: 1000 * 90, // Increased to 90 seconds
       skip:
         !ready ||
         !assetsParam ||
         !marketCodesParam ||
         marketCodesParam?.targetMarketCode.includes('SPOT'),
-      refetchOnFocus: false
+      refetchOnFocus: false,
+      refetchOnMountOrArgChange: false
     }
   );
   const { data: originFundingRate } = useGetFundingRateQuery(
@@ -164,20 +183,21 @@ function PremiumTable({
       marketCode: marketCodesParam?.originMarketCode,
     },
     {
-      pollingInterval: 1000 * 60,
+      pollingInterval: 1000 * 90, // Increased to 90 seconds
       skip:
         !ready ||
         !assetsParam ||
         !marketCodesParam ||
         marketCodesParam?.originMarketCode.includes('SPOT'),
-      refetchOnFocus: false
+      refetchOnFocus: false,
+      refetchOnMountOrArgChange: false
     }
   );
-  const { data: walletStatus, isSuccess: isWalletStatusSuccess } =
+  const { data: walletStatus } =
     useGetWalletStatusQuery(
       { baseAsset: assetsParam, ...marketCodesParam },
       {
-        pollingInterval: 1000 * 60,
+        pollingInterval: 1000 * 120, // Increased to 2 minutes
         skip:
           !ready ||
           !assetsParam ||
@@ -186,7 +206,8 @@ function PremiumTable({
             marketCodesParam?.targetMarketCode.includes('SPOT') ||
             marketCodesParam?.originMarketCode.includes('SPOT')
           ),
-        refetchOnFocus: false
+        refetchOnFocus: false,
+        refetchOnMountOrArgChange: false
       }
     );
   const lastMarketCodesRef = useRef();
@@ -202,7 +223,7 @@ function PremiumTable({
       _t: `${marketCodeChangeCounter}`,
     },
     { 
-      pollingInterval: 1000 * 60,
+      pollingInterval: 1000 * 120, // Increased to 2 minutes
       skip: !ready || !marketCodesParam,
       refetchOnMountOrArgChange: true,
       refetchOnFocus: false
@@ -212,9 +233,10 @@ function PremiumTable({
   const { data: klineVolatilityData } = useGetKlineVolatilityQuery(
     { baseAsset: assetsParam, ...marketCodesParam },
     { 
-      pollingInterval: 1000 * 60,
+      pollingInterval: 1000 * 120, // Increased to 2 minutes
       skip: !ready || !assetsParam || !marketCodesParam,
-      refetchOnFocus: false
+      refetchOnFocus: false,
+      refetchOnMountOrArgChange: false
     }
   );
 
@@ -278,7 +300,7 @@ function PremiumTable({
       {
         accessorKey: 'tp',
         enableGlobalFilter: false,
-        size: isMobile ? 50 : 65,
+        size: isMobile ? 50 : 45,
         header: t('Current Price'),
         cell: renderPriceCell,
       },
@@ -357,12 +379,12 @@ function PremiumTable({
   );
 
   const volatilityData = useMemo(() => {
-    if (!klineVolatilityData || !Array.isArray(klineVolatilityData)) return {};
+    if (!klineVolatilityData || !Array.isArray(klineVolatilityData)) return new Map();
     
-    const result = {};
+    const result = new Map();
     klineVolatilityData.forEach(item => {
       if (item && item.base_asset) {
-        result[item.base_asset] = parseFloat(item.mean_diff || 0).toFixed(2);
+        result.set(item.base_asset, parseFloat(item.mean_diff || 0).toFixed(2));
       }
     });
     
@@ -381,6 +403,46 @@ function PremiumTable({
       return [];
     }
     
+    // Create lookup maps for O(1) access
+    const favoriteAssetsMap = new Map();
+    const targetFRMap = new Map();
+    const originFRMap = new Map();
+    const walletStatusMap = new Map();
+    const aiRecsMap = new Map();
+    
+    // Build lookup maps
+    if (favoriteAssets) {
+      Object.entries(favoriteAssets).forEach(([key, value]) => {
+        favoriteAssetsMap.set(key, value);
+      });
+    }
+    
+    if (targetFundingRate) {
+      Object.entries(targetFundingRate).forEach(([key, value]) => {
+        targetFRMap.set(key, value?.[0]);
+      });
+    }
+    
+    if (originFundingRate) {
+      Object.entries(originFundingRate).forEach(([key, value]) => {
+        originFRMap.set(key, value?.[0]);
+      });
+    }
+    
+    if (walletStatus) {
+      Object.entries(walletStatus).forEach(([key, value]) => {
+        walletStatusMap.set(key, value);
+      });
+    }
+    
+    if (validAiRankRecommendations) {
+      validAiRankRecommendations.forEach(rec => {
+        if (rec.base_asset) {
+          aiRecsMap.set(rec.base_asset, rec);
+        }
+      });
+    }
+    
     const processedData = realTimeDataList.map((asset) => {
       if (!asset || !asset.base_asset) return null;
       
@@ -388,19 +450,16 @@ function PremiumTable({
       let favoriteAssetId;
       
       if (loggedin) {
-        favoriteAssetId = favoriteAssets?.[name];
+        favoriteAssetId = favoriteAssetsMap.get(name);
       } else {
         const index = localFavoriteAssets?.indexOf(name) ?? -1;
         favoriteAssetId = index >= 0 ? index : undefined;
       }
       
-      const targetFR = targetFundingRate?.[name]?.[0];
-      const originFR = originFundingRate?.[name]?.[0];
+      const targetFR = targetFRMap.get(name);
+      const originFR = originFRMap.get(name);
       
-      // Find AI recommendation for this asset if available
-      const aiRankRecommendation = validAiRankRecommendations?.find(
-        recommendation => recommendation.base_asset === name
-      );
+      const aiRankRecommendation = aiRecsMap.get(name);
       
       let walletStatusSummary = {
         right: [],
@@ -408,7 +467,8 @@ function PremiumTable({
         all: []
       };
       
-      if (walletStatus && walletStatus[name] && marketCodes) {
+      const walletData = walletStatusMap.get(name);
+      if (walletData && marketCodes) {
         const target = marketCodes.targetMarketCode.replace(
           REGEX.spotMarketSuffix,
           ''
@@ -418,10 +478,10 @@ function PremiumTable({
           ''
         );
         
-        const targetWithdraw = walletStatus[name][target]?.withdraw || [];
-        const targetDeposit = walletStatus[name][target]?.deposit || [];
-        const originWithdraw = walletStatus[name][origin]?.withdraw || [];
-        const originDeposit = walletStatus[name][origin]?.deposit || [];
+        const targetWithdraw = walletData[target]?.withdraw || [];
+        const targetDeposit = walletData[target]?.deposit || [];
+        const originWithdraw = walletData[origin]?.withdraw || [];
+        const originDeposit = walletData[origin]?.deposit || [];
         
         walletStatusSummary = {
           right: intersection(targetWithdraw, originDeposit),
@@ -435,7 +495,7 @@ function PremiumTable({
         favoriteAssetId,
         icon: assetsData?.[name]?.icon,
         spread: asset ? asset.SL_close - asset.LS_close : '',
-        volatility: volatilityData[name] || '0.00',
+        volatility: volatilityData.get(name) || '0.00',
         ...(targetFR
           ? {
               targetFundingRate: targetFR.funding_rate * 100,
@@ -450,7 +510,7 @@ function PremiumTable({
           : {}),
         ...asset,
         walletStatus: walletStatusSummary,
-        walletNetworks: walletStatus?.[name] || {},
+        walletNetworks: walletData || {},
         aiRankRecommendation,
         chart: true,
       };
@@ -621,9 +681,14 @@ function PremiumTable({
     [loggedin]
   );
 
+  // Use deferred value for search to prevent blocking UI
+  const deferredSearchKeyword = useDeferredValue(searchKeyword);
+  
   useEffect(() => {
-    setGlobalFilter(searchKeyword);
-  }, [searchKeyword]);
+    startTransition(() => {
+      setGlobalFilter(deferredSearchKeyword);
+    });
+  }, [deferredSearchKeyword]);
 
   useEffect(() => {
     setColumnVisibility({
@@ -638,8 +703,11 @@ function PremiumTable({
 
   const getRowId = useCallback((row) => row.name, []);
   const onExpandedChange = useCallback(
-    (newExpanded) =>
-      setExpanded(isFunction(newExpanded) ? newExpanded() : newExpanded),
+    (newExpanded) => {
+      startTransition(() => {
+        setExpanded(isFunction(newExpanded) ? newExpanded() : newExpanded);
+      });
+    },
     []
   );
 
@@ -663,7 +731,7 @@ function PremiumTable({
 
   useEffect(() => {
     if (isAiRecsError) {
-      console.log("AI Recommendations error:", aiRecsError);
+      // AI Recommendations error handled silently
     }
   }, [validAiRankRecommendations, isAiRecsError, aiRecsError]);
 

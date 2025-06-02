@@ -1,5 +1,4 @@
 import isEqual from 'lodash/isEqual';
-// Remove memoize import since we're not using it anymore
 import websocketApi from 'redux/api/websocket';
 
 // import { DateTime } from 'luxon';
@@ -63,7 +62,32 @@ const api = websocketApi.injectEndpoints({
           }
         };
         
-        // Message handler
+        // Batch updates for better performance
+        const pendingUpdates = [];
+        let updateTimeout = null;
+        
+        const flushUpdates = () => {
+          if (pendingUpdates.length === 0) return;
+          
+          updateCachedData((draft) => {
+            // Clear the disconnected flag if it exists
+            if (draft.disconnected) {
+              delete draft.disconnected;
+            }
+            
+            // Process all pending updates at once
+            pendingUpdates.forEach((item) => {
+              if (!(item.base_asset in draft)) draft[item.base_asset] = {};
+              if (!isEqual(item, draft[item.base_asset]))
+                draft[item.base_asset] = item;
+            });
+            
+            // Clear pending updates
+            pendingUpdates.length = 0;
+          });
+        };
+        
+        // Message handler with batching
         const onMessage = (event) => {
           // Update last message time on any message
           lastMessageTime = Date.now();
@@ -74,21 +98,15 @@ const api = websocketApi.injectEndpoints({
 
             const result = JSON.parse(message.result);
 
-            updateCachedData((draft) => {
-              // Clear the disconnected flag if it exists
-              if (draft.disconnected) {
-                delete draft.disconnected;
-              }
-              
-              result.forEach((item) => {
-                // Convert datetime_now from seconds to milliseconds
-                item.datetime_now *= 1000;
-        
-                if (!(item.base_asset in draft)) draft[item.base_asset] = {};
-                if (!isEqual(item, draft[item.base_asset]))
-                  draft[item.base_asset] = item;
-              });
+            result.forEach((item) => {
+              // Convert datetime_now from seconds to milliseconds
+              item.datetime_now *= 1000;
+              pendingUpdates.push(item);
             });
+            
+            // Debounce updates - wait 50ms to batch multiple messages
+            if (updateTimeout) clearTimeout(updateTimeout);
+            updateTimeout = setTimeout(flushUpdates, 50);
           } catch {
             /* empty */
           }
@@ -195,6 +213,12 @@ const api = websocketApi.injectEndpoints({
         
         // Clean up on component unmount or query deactivation
         await cacheEntryRemoved;
+        
+        // Flush any pending updates before cleanup
+        if (updateTimeout) {
+          clearTimeout(updateTimeout);
+          flushUpdates();
+        }
         
         // Remove visibility change listener
         document.removeEventListener('visibilitychange', handleVisibilityChange);
