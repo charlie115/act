@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import formatIntlNumber from 'utils/formatIntlNumber';
+import formatShortNumber from 'utils/formatShortNumber';
 import isUndefined from 'lodash/isUndefined';
 
 // Import original renderers
@@ -133,17 +134,9 @@ export const renderVolumeCell = memo(({ cell }) => {
   
   if (isUndefined(value)) return '...';
   
-  // Use 억 (100 million) for Korean format
-  const formattedVolume = value >= 1e8 ? 
-    `${Math.floor(value / 1e8).toLocaleString()}억` : 
-    formatIntlNumber(value, 0);
-  
   return (
-    <Box
-      component="span"
-      sx={{ fontSize: { xs: 8, sm: 12 } }}
-    >
-      {formattedVolume}
+    <Box sx={{ fontSize: { xs: 8, sm: 12 } }}>
+      {formatShortNumber(cell.getValue(), 2)}
     </Box>
   );
 }, (prevProps, nextProps) => prevProps.cell.getValue() === nextProps.cell.getValue());
