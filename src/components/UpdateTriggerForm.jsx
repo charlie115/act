@@ -142,23 +142,19 @@ export default function UpdateTriggerForm({
                   autoFocus
                   readOnly={isLoading}
                   type="number"
-                  slotProps={{
-                    input: {
-                      startAdornment: !isMobile && (
-                        <InputAdornment position="start">
-                          <TrendingDownIcon
-                            color={entry ? 'accent' : undefined}
-                            fontSize="small"
-                          />
-                        </InputAdornment>
-                      ),
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          {isTether ? t('KRW') : '%'}
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <TrendingDownIcon
+                        color={entry ? 'accent' : undefined}
+                        fontSize="small"
+                      />
+                    </InputAdornment>
+                  }
+                  endAdornment={
+                    <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontSize: isMobile ? '1rem' : '0.875rem' } }}>
+                      {isTether ? t('KRW') : '%'}
+                    </InputAdornment>
+                  }
                   inputProps={{ precision: 2, step: 0.1 }}
                   placeholder="0"
                   sx={{ 
@@ -210,23 +206,19 @@ export default function UpdateTriggerForm({
                 <Input
                   readOnly={isLoading}
                   type="number"
-                  slotProps={{
-                    input: {
-                      startAdornment: !isMobile && (
-                        <InputAdornment position="start">
-                          <TrendingUpIcon
-                            color={exit ? 'warning' : undefined}
-                            fontSize="small"
-                          />
-                        </InputAdornment>
-                      ),
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          {isTether ? t('KRW') : '%'}
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <TrendingUpIcon
+                        color={exit ? 'warning' : undefined}
+                        fontSize="small"
+                      />
+                    </InputAdornment>
+                  }
+                  endAdornment={
+                    <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontSize: isMobile ? '1rem' : '0.875rem' } }}>
+                      {isTether ? t('KRW') : '%'}
+                    </InputAdornment>
+                  }
                   inputProps={{ step: 0.1 }}
                   placeholder="0"
                   sx={{ 
@@ -293,14 +285,12 @@ export default function UpdateTriggerForm({
                       }
                     },
                     startAdornment: (
-                      !isMobile && (
-                        <InputAdornment position="start">
-                          <PaymentIcon fontSize="small" />
-                        </InputAdornment>
-                      )
+                      <InputAdornment position="start">
+                        <PaymentIcon fontSize="small" />
+                      </InputAdornment>
                     ),
                     endAdornment: (
-                      <InputAdornment position="end">{betweenFutures ? 'USD' : t('KRW')}</InputAdornment>
+                      <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontSize: isMobile ? '1rem' : '0.875rem' } }}>{betweenFutures ? 'USD' : t('KRW')}</InputAdornment>
                     ),
                   }}
                   {...field}

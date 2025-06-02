@@ -1211,23 +1211,19 @@ const CreateTriggerForm = forwardRef(
                         isDollarFetching || isLoading || setup === 'auto'
                       }
                       type="number"
-                      slotProps={{
-                        input: {
-                          startAdornment: !isMobile && (
-                            <InputAdornment position="start">
-                              <TrendingDownIcon
-                                color={entry ? 'accent' : undefined}
-                                fontSize="small"
-                              />
-                            </InputAdornment>
-                          ),
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              {isTether ? t('KRW') : '%'}
-                            </InputAdornment>
-                          ),
-                        },
-                      }}
+                      startAdornment={
+                        <InputAdornment position="start">
+                          <TrendingDownIcon
+                            color={entry ? 'accent' : undefined}
+                            fontSize="small"
+                          />
+                        </InputAdornment>
+                      }
+                      endAdornment={
+                        <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontSize: isMobile ? '1rem' : '0.875rem' } }}>
+                          {isTether ? t('KRW') : '%'}
+                        </InputAdornment>
+                      }
                       inputProps={{ precision: 2, step: 0.1 }}
                       placeholder="0"
                       sx={{ 
@@ -1288,23 +1284,19 @@ const CreateTriggerForm = forwardRef(
                         isDollarFetching || isLoading || setup === 'auto'
                       }
                       type="number"
-                      slotProps={{
-                        input: {
-                          startAdornment: !isMobile && (
-                            <InputAdornment position="start">
-                              <TrendingUpIcon
-                                color={exit ? 'warning' : undefined}
-                                fontSize="small"
-                              />
-                            </InputAdornment>
-                          ),
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              {isTether ? t('KRW') : '%'}
-                            </InputAdornment>
-                          ),
-                        },
-                      }}
+                      startAdornment={
+                        <InputAdornment position="start">
+                          <TrendingUpIcon
+                            color={exit ? 'warning' : undefined}
+                            fontSize="small"
+                          />
+                        </InputAdornment>
+                      }
+                      endAdornment={
+                        <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontSize: isMobile ? '1rem' : '0.875rem' } }}>
+                          {isTether ? t('KRW') : '%'}
+                        </InputAdornment>
+                      }
                       inputProps={{ step: 0.1 }}
                       placeholder="0"
                       sx={{ 
@@ -1373,14 +1365,12 @@ const CreateTriggerForm = forwardRef(
                           }
                         },
                         startAdornment: (
-                          !isMobile && (
-                            <InputAdornment position="start">
-                              <PaymentIcon fontSize="small" />
-                            </InputAdornment>
-                          )
+                          <InputAdornment position="start">
+                            <PaymentIcon fontSize="small" />
+                          </InputAdornment>
                         ),
                         endAdornment: (
-                          <InputAdornment position="end">
+                          <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontSize: isMobile ? '1rem' : '0.875rem' } }}>
                             {betweenFutures ? t('USD') : t('KRW')}
                           </InputAdornment>
                         ),
