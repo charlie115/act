@@ -22,10 +22,20 @@ export default (num, decimal, lang) => {
   let tier;
   let scale;
   if (language === 'ko') {
-    tier = Math.log10(Math.abs(number)) | 0;
-    tier = Math.min(tier, 8);
-    if (tier < 3) return number.toFixed(dec) * 1;
-    scale = 10 ** tier;
+    // Only use 만(10,000), 백만(1,000,000), 억(100,000,000)
+    if (number < 10000) {
+      return number.toFixed(dec) * 1;
+    }
+    if (number < 1000000) {
+      scale = 10000;
+      tier = 4; // 만
+    } else if (number < 100000000) {
+      scale = 1000000;
+      tier = 6; // 백만
+    } else {
+      scale = 100000000;
+      tier = 8; // 억
+    }
   } else {
     tier = (Math.log10(Math.abs(number)) / 3) | 0;
     if (tier === 0) return number.toFixed(dec) * 1;
