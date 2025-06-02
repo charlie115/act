@@ -4,7 +4,12 @@ import Typography from '@mui/material/Typography';
 
 import formatIntlNumber from 'utils/formatIntlNumber';
 
-export default function renderTradeCapitalCell({ cell }) {
+export default function renderTradeCapitalCell({ cell, table }) {
   if (cell.getValue() === null) return '-';
-  return <Typography>{formatIntlNumber(cell.getValue(), 2)}</Typography>;
+  const isMobile = table.options.meta?.isMobile;
+  return (
+    <Typography sx={{ fontSize: isMobile ? '0.4rem !important' : 'inherit' }}>
+      {formatIntlNumber(cell.getValue(), 2)}
+    </Typography>
+  );
 }

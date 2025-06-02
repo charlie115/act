@@ -75,7 +75,7 @@ function App() {
                 opacity: 0,
               },
               '.show-more-or-less': {
-                color: theme.palette.secondary.main,
+                color: '#64748b',
                 cursor: 'pointer',
                 fontSize: 12,
                 // display: 'block',

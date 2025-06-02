@@ -220,6 +220,11 @@ export default function CommunityMessages({
               setSeenMessages((state) => [...state, ...newMessages]);
               setNewMessages([]);
               setIsAutoScroll(true);
+              // Immediately scroll to bottom
+              scrollTo({
+                top: messagesContainerRef.current?.scrollHeight,
+                behavior: 'smooth',
+              });
             }}
           >
             <Badge badgeContent={newMessages.length} color="info">

@@ -35,7 +35,6 @@ export default function CapitalTable({ marketCodeCombination }) {
   const { data: dollarInfo } = useGetDollarQuery();
   const { data: usdtInfo } = useGetUsdtQuery();
 
-  const gapColor = theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100';
 
   const metrics = [
     { key: 'currency', label: t('Currency')},
@@ -57,13 +56,6 @@ export default function CapitalTable({ marketCodeCombination }) {
         accessorKey: 'metric',
         header: '',
         size: 50,
-      },
-      {
-        accessorKey: 'gap_left',
-        enableSorting: false,
-        header: <span />,
-        maxSize: 1,
-        props: { sx: { borderRight: 1.5, borderColor: gapColor, width: '1px' } },
       },
       {
         accessorKey: 'target',
@@ -95,7 +87,7 @@ export default function CapitalTable({ marketCodeCombination }) {
         },
       },
     ],
-    [i18n.language, gapColor, isMobile, targetCapitalData, originCapitalData]
+    [i18n.language, isMobile, targetCapitalData, originCapitalData]
   );
 
   const tableData = useMemo(() =>
@@ -192,11 +184,8 @@ export default function CapitalTable({ marketCodeCombination }) {
           if (isTotalRow) {
             if (columnId === 'metric') {
               colSpan = 1;
-            } else if (columnId === 'gap_left') {
-              colSpan = 0;
-              display = 'none';
             } else if (columnId === 'target') {
-              colSpan = 2; // Adjust according to your needs
+              colSpan = 2;
             } else if (columnId === 'origin') {
               colSpan = 0;
               display = 'none';
@@ -214,7 +203,23 @@ export default function CapitalTable({ marketCodeCombination }) {
           };
         }}
 
-        getHeaderProps={() => ({ sx: { textAlign: 'center' } })}
+        getHeaderProps={() => ({
+          sx: {
+            textAlign: 'center',
+            fontSize: isMobile ? '0.6em' : '0.7em',
+            padding: isMobile ? theme.spacing(0.5, 0.2) : theme.spacing(1, 1.5),
+            whiteSpace: isMobile ? 'normal' : 'normal',
+            lineHeight: isMobile ? 1.2 : 1.5,
+            wordBreak: isMobile ? 'break-word' : 'normal',
+          }
+        })}
+        getTableProps={() => ({
+          sx: {
+            border: 1,
+            borderColor: 'divider',
+            fontSize: isMobile ? '0.65em' : '1.15em',
+          },
+        })}
         showProgressBar={isLoading}
         isLoading={isLoading}
       />

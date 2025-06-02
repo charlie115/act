@@ -78,22 +78,17 @@ export default function PositionTable({ marketCodeCombination }) {
         accessorKey: 'asset',
         header: t('Asset'),
         props: { sx: { textAlign: 'left' } },
-        size: 35,
+        size: isMobile ? 35 : 50,
       },
       {
         accessorKey: 'hedge_status',
-        header: t('Hedge Status'),
+        header: (
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            {t('Hedge Status')}
+          </Box>
+        ),
         cell: renderHedgeStatus,
-        size: isMobile ? 40 : 80,
-      },
-      {
-        accessorKey: 'gap_left',
-        enableSorting: false,
-        header: <span />,
-        maxSize: 1,
-        props: {
-          sx: { borderRight: 1.5, borderColor: gapColor, width: '1px' },
-        },
+        size: isMobile ? 30 : 80,
       },
       {
         accessorKey: 'target',
@@ -102,44 +97,61 @@ export default function PositionTable({ marketCodeCombination }) {
         columns: [
           {
             accessorKey: 'target_market_pos',
-            size: isMobile ? 40 : 90,
-            header: t('market.Position'),
+            size: isMobile ? 50 : 120,
+            header: (
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                {t('market.Position')}
+              </Box>
+            ),
             cell: renderPositionCell,
-            slotProps: { header: { sx: { bgcolor: 'background.default' } } },
+            props: { sx: { textAlign: 'center', bgcolor: 'background.default' } },
           },
           ...(marketCodeCombination.target.isSpot
             ? []
             : [
                 {
                   accessorKey: 'target_market_roi',
-                  size: isMobile ? 40 : 90,
-                  header: `${t('ROI')}(%)`,
+                  size: isMobile ? 50 : 120,
+                  header: (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                      {`${t('ROI')}(%)`}
+                    </Box>
+                  ),
                   cell: renderColoredSignedNumberCell,
+                  props: { sx: { textAlign: 'center' } },
                 },
                 {
                   accessorKey: 'target_market_entry_price',
-                  size: isMobile ? 40 : 90,
-                  header: t('Entry Price'),
+                  size: isMobile ? 50 : 120,
+                  header: (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                      {t('Entry Price')}
+                    </Box>
+                  ),
+                  props: { sx: { textAlign: 'center' } },
                 },
                 {
                   accessorKey: 'target_market_liquidation_price',
-                  size: isMobile ? 40 : 90,
-                  header: t('Liquidation Price'),
+                  size: isMobile ? 50 : 120,
+                  header: (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                      {t('Liquidation Price')}
+                    </Box>
+                  ),
+                  props: { sx: { textAlign: 'center' } },
                 },
                 {
                   accessorKey: 'target_market_margin_type',
-                  size: isMobile ? 40 : 90,
-                  header: t('Margin Type'),
+                  size: isMobile ? 50 : 120,
+                  header: (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                      {t('Margin Type')}
+                    </Box>
+                  ),
+                  props: { sx: { textAlign: 'center' } },
                 },
               ]),
         ],
-      },
-      {
-        accessorKey: 'gap_right',
-        enableSorting: false,
-        header: <span />,
-        maxSize: 1,
-        props: { sx: { borderLeft: 1.5, borderColor: gapColor, width: '1px' } },
       },
       {
         accessorKey: 'origin',
@@ -147,33 +159,65 @@ export default function PositionTable({ marketCodeCombination }) {
         columns: [
           {
             accessorKey: 'origin_market_pos',
-            size: isMobile ? 40 : 90,
-            header: t('market.Position'),
+            size: isMobile ? 50 : 120,
+            header: (
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                {t('market.Position')}
+              </Box>
+            ),
             cell: renderPositionCell,
+            slotProps: { 
+              header: { 
+                sx: { 
+                  fontSize: isMobile ? '0.35rem' : 'inherit',
+                  textAlign: 'center'
+                } 
+              } 
+            },
           },
           ...(marketCodeCombination.origin.isSpot
             ? []
             : [
                 {
                   accessorKey: 'origin_market_roi',
-                  size: isMobile ? 40 : 90,
-                  header: `${t('ROI')}(%)`,
+                  size: isMobile ? 50 : 120,
+                  header: (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                      {`${t('ROI')}(%)`}
+                    </Box>
+                  ),
                   cell: renderColoredSignedNumberCell,
+                  props: { sx: { textAlign: 'center' } },
                 },
                 {
                   accessorKey: 'origin_market_entry_price',
-                  size: isMobile ? 40 : 90,
-                  header: t('Entry Price'),
+                  size: isMobile ? 50 : 120,
+                  header: (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                      {t('Entry Price')}
+                    </Box>
+                  ),
+                  props: { sx: { textAlign: 'center' } },
                 },
                 {
                   accessorKey: 'origin_market_liquidation_price',
-                  size: isMobile ? 40 : 90,
-                  header: t('Liquidation Price'),
+                  size: isMobile ? 50 : 120,
+                  header: (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                      {t('Liquidation Price')}
+                    </Box>
+                  ),
+                  props: { sx: { textAlign: 'center' } },
                 },
                 {
                   accessorKey: 'origin_market_margin_type',
-                  size: isMobile ? 40 : 90,
-                  header: t('Margin Type'),
+                  size: isMobile ? 50 : 120,
+                  header: (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                      {t('Margin Type')}
+                    </Box>
+                  ),
+                  props: { sx: { textAlign: 'center' } },
                 },
               ]),
         ],
@@ -268,18 +312,35 @@ export default function PositionTable({ marketCodeCombination }) {
           meta: {
             marketCodes: marketCodeCombination,
             expandIcon: ExpandCircleDownIcon,
+            isMobile,
           },
         }}
         getCellProps={(cell) => ({
           sx: {
             py: 0.5,
             textAlign: 'center',
+            fontSize: isMobile ? '0.4rem' : 'inherit',
             ...(cell?.column.id.startsWith('target')
               ? { bgcolor: 'background.default' }
               : {}),
           },
         })}
-        getHeaderProps={() => ({ sx: { textAlign: 'center' } })}
+        getHeaderProps={() => ({
+          sx: {
+            textAlign: 'center',
+            fontSize: isMobile ? '0.35rem' : '0.7em',
+            padding: isMobile ? theme.spacing(0.5, 0.2) : theme.spacing(1, 1.5),
+            whiteSpace: isMobile ? 'normal' : 'normal',
+            lineHeight: isMobile ? 1.2 : 1.5,
+            wordBreak: isMobile ? 'break-word' : 'normal',
+          }
+        })}
+        getTableProps={() => ({
+          sx: {
+            border: 1,
+            borderColor: 'divider',
+          },
+        })}
         showProgressBar={isLoading}
         isLoading={isLoading}
       />

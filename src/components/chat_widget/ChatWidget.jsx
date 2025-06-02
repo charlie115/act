@@ -228,7 +228,14 @@ export default function ChatWidget({ isVisible }) {
           >
             <ChatIcon fontSize="large" />
             {(hovered || open) && (
-              <Typography sx={{ fontWeight: 700, ml: 1 }}>
+              <Typography sx={{ 
+                fontWeight: 700, 
+                ml: 1,
+                fontSize: '0.875rem',
+                '@media (max-width:600px)': {
+                  fontSize: '0.875rem',
+                }
+              }}>
                 {t('Chat')}
               </Typography>
             )}

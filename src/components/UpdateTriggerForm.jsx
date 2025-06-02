@@ -17,6 +17,9 @@ import PaymentIcon from '@mui/icons-material/Payment';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+
 import { Controller, useForm, useWatch } from 'react-hook-form';
 
 import { useTranslation } from 'react-i18next';
@@ -39,6 +42,8 @@ export default function UpdateTriggerForm({
   toggleExpanded,
 }) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   const { data: tradeConfig } = useGetTradeConfigQuery({ uuid: tradeConfigUuid });
   
@@ -69,7 +74,7 @@ export default function UpdateTriggerForm({
         high: parseFloat(data.exit),
         trade_capital:
           tradeType === 'autoTrade' && !!data.tradeCapital
-            ? parseInt(`${data.tradeCapital}`.replace(/,/g, ''), 10)
+            ? parseInt(String(data.tradeCapital).replace(/,/g, ''), 10)
             : undefined,
         base_asset: baseAsset,
         trade_config_uuid: tradeConfigUuid,
@@ -108,8 +113,8 @@ export default function UpdateTriggerForm({
       onSubmit={handleSubmit(onSubmit)}
       sx={{ p: 4 }}
     >
-      <Grid container spacing={3} sx={{ px: { xs: 2, md: 4 } }}>
-        <Grid item md xs={12} sx={{ pt: '12px !important' }}>
+      <Grid container spacing={isMobile ? 1.5 : 3} sx={{ px: { xs: 2, md: 4 } }}>
+        <Grid item md xs={6} sx={{ pt: '12px !important' }}>
           <Controller
             name="entry"
             control={control}
@@ -130,25 +135,42 @@ export default function UpdateTriggerForm({
                 error={!!fieldState.error}
                 variant="standard"
               >
-                <InputLabel>{betweenFutures ? t('Low Value') : t('Entry')}</InputLabel>
+                <InputLabel sx={{ fontSize: isMobile ? '0.8rem !important' : '1rem' }}>
+                  {betweenFutures ? t('Low Value') : t('Entry')}
+                </InputLabel>
                 <Input
                   autoFocus
                   readOnly={isLoading}
                   type="number"
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <TrendingDownIcon
-                        color={entry ? 'accent' : undefined}
-                        fontSize="small"
-                      />
-                    </InputAdornment>
-                  }
-                  endAdornment={
-                    <InputAdornment position="end">
-                      {isTether ? t('KRW') : '%'}
-                    </InputAdornment>
-                  }
+                  slotProps={{
+                    input: {
+                      startAdornment: !isMobile && (
+                        <InputAdornment position="start">
+                          <TrendingDownIcon
+                            color={entry ? 'accent' : undefined}
+                            fontSize="small"
+                          />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          {isTether ? t('KRW') : '%'}
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
                   inputProps={{ precision: 2, step: 0.1 }}
+                  placeholder="0"
+                  sx={{ 
+                    '& input': { 
+                      fontSize: isMobile ? '0.875rem' : '1rem',
+                      padding: isMobile ? '4px 0 5px' : undefined,
+                      '&::placeholder': {
+                        fontSize: isMobile ? '1rem' : '1.125rem',
+                        opacity: 0.5
+                      }
+                    } 
+                  }}
                   {...field}
                   onChange={(e) => {
                     const { value } = e.target;
@@ -161,7 +183,7 @@ export default function UpdateTriggerForm({
             )}
           />
         </Grid>
-        <Grid item md xs={12} sx={{ pt: '12px !important' }}>
+        <Grid item md xs={6} sx={{ pt: '12px !important' }}>
           <Controller
             name="exit"
             control={control}
@@ -182,24 +204,41 @@ export default function UpdateTriggerForm({
                 error={!!fieldState.error}
                 variant="standard"
               >
-                <InputLabel>{betweenFutures ? t('High Value') : t('Exit')}</InputLabel>
+                <InputLabel sx={{ fontSize: isMobile ? '0.8rem !important' : '1rem' }}>
+                  {betweenFutures ? t('High Value') : t('Exit')}
+                </InputLabel>
                 <Input
                   readOnly={isLoading}
                   type="number"
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <TrendingUpIcon
-                        color={exit ? 'warning' : undefined}
-                        fontSize="small"
-                      />
-                    </InputAdornment>
-                  }
-                  endAdornment={
-                    <InputAdornment position="end">
-                      {isTether ? t('KRW') : '%'}
-                    </InputAdornment>
-                  }
+                  slotProps={{
+                    input: {
+                      startAdornment: !isMobile && (
+                        <InputAdornment position="start">
+                          <TrendingUpIcon
+                            color={exit ? 'warning' : undefined}
+                            fontSize="small"
+                          />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          {isTether ? t('KRW') : '%'}
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
                   inputProps={{ step: 0.1 }}
+                  placeholder="0"
+                  sx={{ 
+                    '& input': { 
+                      fontSize: isMobile ? '0.875rem' : '1rem',
+                      padding: isMobile ? '4px 0 5px' : undefined,
+                      '&::placeholder': {
+                        fontSize: isMobile ? '1rem' : '1.125rem',
+                        opacity: 0.5
+                      }
+                    } 
+                  }}
                   {...field}
                   onChange={(e) => {
                     const { value } = e.target;
@@ -217,7 +256,16 @@ export default function UpdateTriggerForm({
             <Controller
               name="tradeCapital"
               control={control}
-              rules={{ required: true }}
+              rules={{
+                required: true,
+                validate: {
+                  minimum: (value) => {
+                    const stringValue = String(value || '');
+                    return parseInt(stringValue.replace(/,/g, ''), 10) >= (betweenFutures ? 10 : 10000) ||
+                      t(`Trade capital must be at least ${betweenFutures ? '10' : '10,000'} or more.`);
+                  },
+                },
+              }}
               render={({ field, fieldState }) => (
                 <NumberFormatWrapper
                   fullWidth
@@ -228,11 +276,28 @@ export default function UpdateTriggerForm({
                   error={!!fieldState.error}
                   label={t('Trade Capital')}
                   variant="standard"
+                  helperText={fieldState.error?.message}
+                  placeholder={betweenFutures ? "100" : "100,000"}
+                  InputLabelProps={{
+                    sx: { fontSize: isMobile ? '0.8rem !important' : '1rem' }
+                  }}
                   InputProps={{
+                    sx: {
+                      '& input': {
+                        fontSize: isMobile ? '0.875rem' : '1rem',
+                        padding: isMobile ? '4px 0 5px' : undefined,
+                        '&::placeholder': {
+                          fontSize: isMobile ? '1rem' : '1.125rem',
+                          opacity: 0.5
+                        }
+                      }
+                    },
                     startAdornment: (
-                      <InputAdornment position="start">
-                        <PaymentIcon fontSize="small" />
-                      </InputAdornment>
+                      !isMobile && (
+                        <InputAdornment position="start">
+                          <PaymentIcon fontSize="small" />
+                        </InputAdornment>
+                      )
                     ),
                     endAdornment: (
                       <InputAdornment position="end">{betweenFutures ? 'USD' : t('KRW')}</InputAdornment>
@@ -244,12 +309,13 @@ export default function UpdateTriggerForm({
             />
           </Grid>
         )}
-        <Grid item md xs={12}>
+        <Grid item md xs={12} sx={{ pt: isMobile ? '16px !important' : '12px !important' }}>
           <Stack direction="row" spacing={1}>
             <Button
               fullWidth
               type="submit"
               variant="contained"
+              size={isMobile ? 'medium' : 'large'}
               disabled={!isValid || isLoading}
               endIcon={
                 isLoading ? (
@@ -261,7 +327,13 @@ export default function UpdateTriggerForm({
             >
               {t('Update')}
             </Button>
-            <Button onClick={() => toggleExpanded(false)}>{t('Cancel')}</Button>
+            <Button 
+              onClick={() => toggleExpanded(false)}
+              size={isMobile ? 'medium' : 'large'}
+              sx={{ minWidth: isMobile ? 60 : 80 }}
+            >
+              {t('Cancel')}
+            </Button>
           </Stack>
         </Grid>
       </Grid>

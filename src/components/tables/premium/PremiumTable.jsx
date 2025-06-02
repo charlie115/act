@@ -259,7 +259,7 @@ function PremiumTable({
         accessorKey: 'name',
         enableGlobalFilter: true,
         size: isMobile ? 35 : 45,
-        header: t('Name'),
+        header: '',
         cell: renderNameCell,
       },
       ...(marketCodes?.targetMarketCode.includes('SPOT') ||
@@ -270,7 +270,7 @@ function PremiumTable({
               enableGlobalFilter: false,
               enableSorting: false,
               size: isMobile ? 15 : 25,
-              header: <WalletIcon fontSize="small" />,
+              header: <WalletIcon fontSize={isMobile ? 'inherit' : 'small'} />,
               cell: renderWalletStatusCell,
             },
           ]
@@ -732,7 +732,7 @@ function PremiumTable({
   );
 
   return (
-    <Box sx={{ boxShadow: 2 }}>
+    <Box sx={{ boxShadow: 2, borderRadius: '6px !important', overflow: 'hidden' }}>
       <ReactTableUI
         ref={tableRef}
         columns={columns}
@@ -751,7 +751,7 @@ function PremiumTable({
           meta: tableMeta,
         }}
         renderSubComponent={renderSubComponent}
-        getCellProps={() => ({ sx: { height: 50 } })}
+        getCellProps={() => ({ sx: { height: 40 } })}
         getRowProps={(row) => ({
           onClick: () => row.toggleExpanded(!row.getIsExpanded()),
           sx: {

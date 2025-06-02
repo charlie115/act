@@ -309,6 +309,11 @@ export default function TelegramMessages({ display, isOpen, onNewMessages }) {
               setSeenMessages((state) => [...state, ...newMessages]);
               setNewMessages([]);
               setIsAutoScroll(true);
+              // Immediately scroll to bottom
+              scrollTo({
+                top: messagesContainerRef.current?.scrollHeight,
+                behavior: 'smooth',
+              });
             }}
           >
             <Badge badgeContent={newMessages.length} color="info">

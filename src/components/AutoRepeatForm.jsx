@@ -271,9 +271,13 @@ export default function AutoRepeatForm({
                 <OutlinedInput
                   type="number"
                   size="small"
-                  endAdornment={
-                    <InputAdornment position="end">%</InputAdornment>
-                  }
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">%</InputAdornment>
+                      ),
+                    },
+                  }}
                   inputProps={{ min: 0, step: 0.05, type: 'number' }}
                   {...field}
                 />

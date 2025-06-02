@@ -38,6 +38,7 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { LineStyle, LineType } from 'lightweight-charts';
 
@@ -86,6 +87,7 @@ const CreateTriggerForm = forwardRef(
     const { i18n, t } = useTranslation();
 
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const user = useSelector((state) => state.auth.user);
 
@@ -1007,9 +1009,13 @@ const CreateTriggerForm = forwardRef(
                           readOnly={isDollarFetching || isLoading}
                           type="number"
                           size="small"
-                          endAdornment={
-                            <InputAdornment position="end">%</InputAdornment>
-                          }
+                          slotProps={{
+                            input: {
+                              endAdornment: (
+                                <InputAdornment position="end">%</InputAdornment>
+                              ),
+                            },
+                          }}
                           inputProps={{ min: 0, step: 0.05, type: 'number' }}
                           {...field}
                         />
@@ -1052,21 +1058,27 @@ const CreateTriggerForm = forwardRef(
           onSubmit={handleSubmit(onSubmit)}
           sx={{ px: { md: 4, xs: 2 } }}
         >
-          <Grid container spacing={3}>
+          <Grid container spacing={isMobile ? 1.5 : 3}>
             {showTether && (
-              <Grid item md={2} xs={12}>
+              <Grid item md={2} xs={12} sx={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                pt: isMobile ? '8px !important' : undefined,
+              }}>
                 <Controller
                   name="isTether"
                   control={control}
                   render={({ field }) => (
                     <FormControlLabel
-                      control={<Checkbox />}
+                      control={<Checkbox size={isMobile ? 'small' : 'medium'} />}
                       disabled={isDollarFetching || isLoading || disabled}
                       label={t('USDT Conversion')}
                       checked={!!field.value}
                       sx={{
-                        alignItems: 'flex-end',
-                        span: { paddingBottom: 0 },
+                        margin: 0,
+                        '& .MuiFormControlLabel-label': {
+                          fontSize: isMobile ? '0.875rem' : '1rem',
+                        },
                       }}
                       {...field}
                       onChange={(event) => {
@@ -1154,11 +1166,17 @@ const CreateTriggerForm = forwardRef(
                     control={<Switch color="primary" />}
                     label={t('Auto Repeat')}
                     labelPlacement="start"
+                    sx={{
+                      margin: 0,
+                      '& .MuiFormControlLabel-label': {
+                        fontSize: isMobile ? '0.875rem' : '1rem',
+                      },
+                    }}
                   />
                 </Stack>
               </Grid>
             )}
-            <Grid item md xs={12} sx={{ pt: '12px !important' }}>
+            <Grid item md xs={6} sx={{ pt: '12px !important' }}>
               <Controller
                 name="entry"
                 control={control}
@@ -1184,27 +1202,44 @@ const CreateTriggerForm = forwardRef(
                     error={!!fieldState.error}
                     variant="standard"
                   >
-                    <InputLabel>{betweenFutures ? t('Low Value') : t('Entry')}</InputLabel>
+                    <InputLabel sx={{ fontSize: isMobile ? '0.8rem !important' : '1rem' }}>
+                      {betweenFutures ? t('Low Value') : t('Entry')}
+                    </InputLabel>
                     <Input
                       disabled={disabled}
                       readOnly={
                         isDollarFetching || isLoading || setup === 'auto'
                       }
                       type="number"
-                      startAdornment={
-                        <InputAdornment position="start">
-                          <TrendingDownIcon
-                            color={entry ? 'accent' : undefined}
-                            fontSize="small"
-                          />
-                        </InputAdornment>
-                      }
-                      endAdornment={
-                        <InputAdornment position="end">
-                          {isTether ? t('KRW') : '%'}
-                        </InputAdornment>
-                      }
+                      slotProps={{
+                        input: {
+                          startAdornment: !isMobile && (
+                            <InputAdornment position="start">
+                              <TrendingDownIcon
+                                color={entry ? 'accent' : undefined}
+                                fontSize="small"
+                              />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              {isTether ? t('KRW') : '%'}
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
                       inputProps={{ precision: 2, step: 0.1 }}
+                      placeholder="0"
+                      sx={{ 
+                        '& input': { 
+                          fontSize: isMobile ? '0.875rem' : '1rem',
+                          padding: isMobile ? '4px 0 5px' : undefined,
+                          '&::placeholder': {
+                            fontSize: isMobile ? '1rem' : '1.125rem',
+                            opacity: 0.5
+                          }
+                        } 
+                      }}
                       {...field}
                       onChange={(e) => {
                         const { value } = e.target;
@@ -1218,7 +1253,7 @@ const CreateTriggerForm = forwardRef(
                 )}
               />
             </Grid>
-            <Grid item md xs={12} sx={{ pt: '12px !important' }}>
+            <Grid item md xs={6} sx={{ pt: '12px !important' }}>
               <Controller
                 name="exit"
                 control={control}
@@ -1244,27 +1279,44 @@ const CreateTriggerForm = forwardRef(
                     error={!!fieldState.error}
                     variant="standard"
                   >
-                    <InputLabel>{betweenFutures ? t('High Value') : t('Exit')}</InputLabel>
+                    <InputLabel sx={{ fontSize: isMobile ? '0.8rem !important' : '1rem' }}>
+                      {betweenFutures ? t('High Value') : t('Exit')}
+                    </InputLabel>
                     <Input
                       disabled={disabled}
                       readOnly={
                         isDollarFetching || isLoading || setup === 'auto'
                       }
                       type="number"
-                      startAdornment={
-                        <InputAdornment position="start">
-                          <TrendingUpIcon
-                            color={exit ? 'warning' : undefined}
-                            fontSize="small"
-                          />
-                        </InputAdornment>
-                      }
-                      endAdornment={
-                        <InputAdornment position="end">
-                          {isTether ? t('KRW') : '%'}
-                        </InputAdornment>
-                      }
+                      slotProps={{
+                        input: {
+                          startAdornment: !isMobile && (
+                            <InputAdornment position="start">
+                              <TrendingUpIcon
+                                color={exit ? 'warning' : undefined}
+                                fontSize="small"
+                              />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              {isTether ? t('KRW') : '%'}
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
                       inputProps={{ step: 0.1 }}
+                      placeholder="0"
+                      sx={{ 
+                        '& input': { 
+                          fontSize: isMobile ? '0.875rem' : '1rem',
+                          padding: isMobile ? '4px 0 5px' : undefined,
+                          '&::placeholder': {
+                            fontSize: isMobile ? '1rem' : '1.125rem',
+                            opacity: 0.5
+                          }
+                        } 
+                      }}
                       {...field}
                       onChange={(e) => {
                         const { value } = e.target;
@@ -1287,9 +1339,11 @@ const CreateTriggerForm = forwardRef(
                   rules={{
                     required: true,
                     validate: {
-                      minimum: (value) =>
-                        parseInt(value?.replace(/,/g, ''), 10) >= (betweenFutures ? 10 : 10000) ||
-                        t(`Trade capital must be at least ${betweenFutures ? '10' : '10,000'} or more.`),
+                      minimum: (value) => {
+                        const stringValue = String(value || '');
+                        return parseInt(stringValue.replace(/,/g, ''), 10) >= (betweenFutures ? 10 : 10000) ||
+                          t(`Trade capital must be at least ${betweenFutures ? '10' : '10,000'} or more.`);
+                      },
                     },
                   }}
                   render={({ field, fieldState }) => (
@@ -1302,11 +1356,28 @@ const CreateTriggerForm = forwardRef(
                       error={!!fieldState.error}
                       label={t('Trade Capital')}
                       variant="standard"
+                      helperText={fieldState.error?.message}
+                      placeholder={betweenFutures ? "100" : "100,000"}
+                      InputLabelProps={{
+                        sx: { fontSize: isMobile ? '0.8rem !important' : '1rem' }
+                      }}
                       InputProps={{
+                        sx: {
+                          '& input': {
+                            fontSize: isMobile ? '0.875rem' : '1rem',
+                            padding: isMobile ? '4px 0 5px' : undefined,
+                            '&::placeholder': {
+                              fontSize: isMobile ? '1rem' : '1.125rem',
+                              opacity: 0.5
+                            }
+                          }
+                        },
                         startAdornment: (
-                          <InputAdornment position="start">
-                            <PaymentIcon fontSize="small" />
-                          </InputAdornment>
+                          !isMobile && (
+                            <InputAdornment position="start">
+                              <PaymentIcon fontSize="small" />
+                            </InputAdornment>
+                          )
                         ),
                         endAdornment: (
                           <InputAdornment position="end">
@@ -1320,13 +1391,14 @@ const CreateTriggerForm = forwardRef(
                 />
               </Grid>
             )}
-            <Grid item md xs={12}>
+            <Grid item md xs={12} sx={{ pt: isMobile ? '16px !important' : '12px !important' }}>
               <Stack direction="row" spacing={1}>
                 <Button
                   fullWidth
                   form="create-trigger-form"
                   type="submit"
                   variant="contained"
+                  size={isMobile ? 'medium' : 'large'}
                   disabled={
                     !isValid ||
                     isLoading ||
@@ -1343,7 +1415,12 @@ const CreateTriggerForm = forwardRef(
                 >
                   {t('Register')}
                 </Button>
-                <Button disabled={!isDirty || disabled} onClick={() => reset()}>
+                <Button 
+                  disabled={!isDirty || disabled} 
+                  onClick={() => reset()}
+                  size={isMobile ? 'medium' : 'large'}
+                  sx={{ minWidth: isMobile ? 60 : 80 }}
+                >
                   {t('Clear')}
                 </Button>
               </Stack>

@@ -17,7 +17,7 @@ export default function renderPriceCell({ cell, row: { original } }) {
         direction={{ xs: 'column', sm: 'row' }}
         spacing={{ xs: 0, sm: 0.5 }}
       >
-        <Box sx={{ fontSize: { xs: 11, sm: 12 } }}>
+        <Box sx={{ fontSize: { xs: 9, sm: 12 } }}>
           {formatIntlNumber(cell.getValue(), 1)}
         </Box>
         <Box

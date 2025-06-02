@@ -10,7 +10,7 @@ export default function renderMarketCodesCell({ cell, row, table }) {
   const originMarketIcon = row.original?.originMarketIcon;
   const isMobile = table.options.meta?.isMobile;
 
-  const iconSize = isMobile ? '0.6rem' : '1rem';
+  const iconSize = isMobile ? '0.4rem' : '1rem';
 
   const targetCode = marketCodes?.targetMarketCode;
   const originCode = marketCodes?.originMarketCode;
@@ -35,7 +35,7 @@ export default function renderMarketCodesCell({ cell, row, table }) {
         <Box sx={{ height: iconSize, width: iconSize }} />
       )}
 
-      <SyncAltIcon color="accent" sx={{ fontSize: isMobile ? 8 : 10 }} />
+      <SyncAltIcon color="accent" sx={{ fontSize: isMobile ? 6 : 10 }} />
 
       {originMarketIcon ? (
         <Tooltip title={originCode} placement="top">

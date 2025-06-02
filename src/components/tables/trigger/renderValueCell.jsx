@@ -19,8 +19,8 @@ export default function renderValueCell({ cell, column, row: { original }, table
     <Box
       component="span"
       sx={{
-        fontWeight: 700,
-        fontSize: isMobile ? 6 : 'inherit',
+        fontWeight: 600,
+        fontSize: isMobile ? '0.4rem' : 'inherit',
       }}
     >
       {cell.getValue()}{' '}

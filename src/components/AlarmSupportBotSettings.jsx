@@ -19,6 +19,7 @@ import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import TimesOneMobiledataIcon from '@mui/icons-material/TimesOneMobiledata';
 
 import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { useTranslation } from 'react-i18next';
 
@@ -35,6 +36,7 @@ export default function AlarmSupportBotSettings({
 }) {
   const { t } = useTranslation();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [isEditingCount, setIsEditingCount] = useState(false);
   const [isEditingInterval, setIsEditingInterval] = useState(false);
@@ -115,10 +117,14 @@ export default function AlarmSupportBotSettings({
                   onClick={() => marketCodeSelectorRef.current.toggle()}
                 >
                   {marketCodeCombination?.target.icon}
-                  <Box>{marketCodeCombination?.target.getLabel()}</Box>
+                  <Box sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}>
+                    {marketCodeCombination?.target.getLabel()}
+                  </Box>
                   <SyncAltIcon color="accent" fontSize="small" />
                   {marketCodeCombination?.origin.icon}
-                  <Box>{marketCodeCombination?.origin.getLabel()}</Box>
+                  <Box sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}>
+                    {marketCodeCombination?.origin.getLabel()}
+                  </Box>
                   <Box
                     sx={{
                       alignSelf: 'center',
@@ -128,6 +134,7 @@ export default function AlarmSupportBotSettings({
                       display: 'inline',
                       fontWeight: 700,
                       px: 1,
+                      fontSize: isMobile ? '0.875rem' : '1rem',
                     }}
                   >
                     {marketCodeCombination?.name}
@@ -145,12 +152,12 @@ export default function AlarmSupportBotSettings({
                   <TableCell align="right" sx={{ p: 0, width: 16 }}>
                     <TimesOneMobiledataIcon />
                   </TableCell>
-                  <TableCell sx={{ fontSize: 16 }}>
+                  <TableCell sx={{ fontSize: isMobile ? 14 : 16 }}>
                     {t('Telegram Message Alarm Count')}
                   </TableCell>
                   <TableCell
                     align="right"
-                    sx={{ fontSize: 16, fontWeight: 700, width: 120 }}
+                    sx={{ fontSize: isMobile ? 14 : 16, fontWeight: 700, width: 120 }}
                   >
                     {isEditingCount ? (
                       <Box
@@ -172,6 +179,15 @@ export default function AlarmSupportBotSettings({
                                 autoFocus
                                 type="number"
                                 inputProps={{ step: 1 }}
+                                sx={{
+                                  fontSize: isMobile ? '0.875rem' : '1rem',
+                                  '& input': {
+                                    fontSize: isMobile ? '0.875rem !important' : '1rem',
+                                  },
+                                  '& .MuiInputBase-input': {
+                                    fontSize: isMobile ? '0.875rem !important' : '1rem',
+                                  }
+                                }}
                                 {...field}
                               />
                             </FormControl>
@@ -215,12 +231,12 @@ export default function AlarmSupportBotSettings({
                   <TableCell align="right" sx={{ p: 0, width: 16 }}>
                     <Replay5Icon />
                   </TableCell>
-                  <TableCell sx={{ fontSize: 16 }}>
+                  <TableCell sx={{ fontSize: isMobile ? 14 : 16 }}>
                     {t('Telegram Message Notification Interval')}
                   </TableCell>
                   <TableCell
                     align="right"
-                    sx={{ fontSize: 16, fontWeight: 700, width: 120 }}
+                    sx={{ fontSize: isMobile ? 14 : 16, fontWeight: 700, width: 120 }}
                   >
                     {isEditingInterval ? (
                       <Box
@@ -242,6 +258,15 @@ export default function AlarmSupportBotSettings({
                                 autoFocus
                                 type="number"
                                 inputProps={{ step: 1 }}
+                                sx={{
+                                  fontSize: isMobile ? '0.875rem' : '1rem',
+                                  '& input': {
+                                    fontSize: isMobile ? '0.875rem !important' : '1rem',
+                                  },
+                                  '& .MuiInputBase-input': {
+                                    fontSize: isMobile ? '0.875rem !important' : '1rem',
+                                  }
+                                }}
                                 {...field}
                               />
                             </FormControl>

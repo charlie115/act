@@ -9,7 +9,6 @@ export default function renderColoredSignedNumberCell({ cell }) {
     <Typography
       sx={{
         color: cell.getValue() > 0 ? 'success.main' : 'error.main',
-        fontSize: '1em',
       }}
     >
       {formatIntlNumber(cell.getValue(), 5, 1)}

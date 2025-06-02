@@ -9,7 +9,7 @@ export default function renderCurrencyFormatCell({ cell, table }) {
 
   if (cell.getValue() === null) return '-';
   return (
-    <Typography sx={{ fontSize: isMobile ? 7 : 'inherit' }}>
+    <Typography sx={{ fontSize: isMobile ? '0.4rem !important' : 'inherit' }}>
       {formatIntlNumber(cell.getValue(), 2)}
     </Typography>
   );

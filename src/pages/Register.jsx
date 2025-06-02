@@ -127,11 +127,15 @@ export default function Register() {
               <OutlinedInput
                 autoFocus
                 placeholder={t('Enter username')}
-                startAdornment={
-                  <InputAdornment position="start">
-                    <AlternateEmailIcon />
-                  </InputAdornment>
-                }
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <AlternateEmailIcon />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
               <FormHelperText>{fieldState?.error?.message}</FormHelperText>
             </FormControl>

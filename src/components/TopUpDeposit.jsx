@@ -153,28 +153,32 @@ export default function TopUpDeposit() {
                   readOnly
                   size="small"
                   value={address}
-                  endAdornment={
-                    <InputAdornment position="end">
-                      <IconButton
-                        color="info"
-                        edge="end"
-                        onClick={() => {
-                          copy(address);
-                          openSnackbar(
-                            t(
-                              'The wallet address has been copied to clipboard.'
-                            ),
-                            {
-                              alertProps: { severity: 'info' },
-                              snackbarProps: { autoHideDuration: 1500 },
-                            }
-                          );
-                        }}
-                      >
-                        <ContentCopyIcon />
-                      </IconButton>
-                    </InputAdornment>
-                  }
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            color="info"
+                            edge="end"
+                            onClick={() => {
+                              copy(address);
+                              openSnackbar(
+                                t(
+                                  'The wallet address has been copied to clipboard.'
+                                ),
+                                {
+                                  alertProps: { severity: 'info' },
+                                  snackbarProps: { autoHideDuration: 1500 },
+                                }
+                              );
+                            }}
+                          >
+                            <ContentCopyIcon />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
                   sx={{ color: 'info.main' }}
                 />
                 {/* <Typography sx={{ mt: 4 }}>

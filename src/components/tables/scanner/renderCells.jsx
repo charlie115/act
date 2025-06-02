@@ -45,10 +45,8 @@ export const renderAtpCell = ({ getValue, _cell, table }) => {
   
   return (
     <Typography 
-      variant="body2" 
       component="div"
       sx={{ 
-        fontSize: isMobile ? '0.7rem' : '0.85rem',
         pr: 1
       }}
     >
@@ -72,12 +70,11 @@ export const renderFundingRateCell = ({ getValue, _cell, table }) => {
   const isNegative = percentage < 0;
   
   return (
-    <Typography 
-      variant="body2" 
+    <Typography
       component="div" 
       sx={{ 
-        fontSize: isMobile ? '0.5rem' : '0.7rem',
         color: isNegative ? theme.palette.error.main : 'inherit',
+        fontSize: isMobile ? '0.4rem !important' : 'inherit',
         pr: 1
       }}
     >
@@ -96,16 +93,14 @@ export const renderScannerValueCell = ({ getValue, _cell, table }) => {
   if (value === undefined || value === null) return '-';
   
   return (
-    <Typography 
-      variant="body2" 
+    <Typography
       component="div"
       sx={{ 
         fontWeight: 700,
-        fontSize: isMobile ? 6 : 'inherit',
         pr: 1
       }}
     >
-      {formatNumberWithoutTrailingZeros(value, 6)}
+      {formatNumberWithoutTrailingZeros(value, 6)}%
     </Typography>
   );
 };
@@ -120,11 +115,9 @@ export const renderIterationCell = ({ getValue, _cell, table }) => {
   if (value === undefined || value === null) return '-';
   
   return (
-    <Typography 
-      variant="body2" 
+    <Typography
       component="div" 
       sx={{ 
-        fontSize: isMobile ? '0.5rem' : '0.7rem',
         pr: 1
       }}
     >
@@ -143,11 +136,9 @@ export const renderIntervalCell = ({ getValue, _cell, table }) => {
   if (value === undefined || value === null) return '-';
   
   return (
-    <Typography 
-      variant="body2" 
+    <Typography
       component="div" 
-      sx={{ 
-        fontSize: isMobile ? '0.5rem' : '0.7rem',
+      sx={{
         pr: 1
       }}
     >

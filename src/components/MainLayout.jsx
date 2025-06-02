@@ -11,6 +11,7 @@ import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
+import Zoom from '@mui/material/Zoom';
 
 import { styled } from '@mui/material/styles';
 
@@ -94,57 +95,48 @@ export default function MainLayout() {
         <title>{title || ''} — ArbiCrypto</title>
       </Helmet>
       <GlobalSnackbarProvider>
-        <Box sx={{ display: 'flex' }}>
-          <NavAppBar position="fixed" open={open}>
+        <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+          <NavAppBar position="fixed" open={open} elevation={0}>
             <Header />
           </NavAppBar>
-          <Main ref={mainRef} open={open} sx={{ mb: 4, p: 1 }}>
+          <Main ref={mainRef} open={open}>
             <DrawerHeader />
-            <React.Suspense fallback={<LinearProgress />}>
-              <TVTickerWidget isVisible={currentRoute?.displayTicker} />
-            </React.Suspense>
-            <Box
-              component={Paper}
-              sx={{
-                display: 'flex',
-                flex: 1,
-                overflowX: 'clip',
-                minHeight: { xs: '45vh', lg: '90vh' },
-                position: 'relative',
-              }}
-            >
-              <SwitchTransition>
-                <CSSTransition
-                  unmountOnExit
-                  key={location.pathname}
-                  nodeRef={currentRoute?.ref || undefined}
-                  timeout={3000}
-                  classNames="pages"
-                >
-                  {() => <Outlet />}
-                </CSSTransition>
-              </SwitchTransition>
-            </Box>
-          </Main>
-          {y > 500 && (
-            <Box
-              sx={{
-                position: 'fixed',
-                bottom: 15,
-                right: '50%',
-                transform: 'translateX(50%)',
-                zIndex: 1501,
-              }}
-            >
-              <IconButton
-                size="medium"
-                onClick={() => scrollTo({ top: 0, behavior: 'smooth' })}
-                sx={{ bgcolor: 'grey.900', color: 'light.main' }}
+            <ContentContainer>
+              <React.Suspense fallback={<LinearProgress sx={{ mb: 2 }} />}>
+                <TVTickerWidget isVisible={currentRoute?.displayTicker} />
+              </React.Suspense>
+              <PageContainer
+                elevation={0}
+                sx={{
+                  bgcolor: 'background.paper',
+                  borderRadius: { xs: 1, sm: 1.5 },
+                  overflow: 'hidden',
+                  minHeight: { xs: '50vh', lg: '80vh' },
+                }}
               >
-                <KeyboardArrowUpIcon fontSize="large" />
-              </IconButton>
-            </Box>
-          )}
+                <SwitchTransition>
+                  <CSSTransition
+                    unmountOnExit
+                    key={location.pathname}
+                    nodeRef={currentRoute?.ref || undefined}
+                    timeout={300}
+                    classNames="pages"
+                  >
+                    {() => <Outlet />}
+                  </CSSTransition>
+                </SwitchTransition>
+              </PageContainer>
+            </ContentContainer>
+          </Main>
+          {/* Scroll to top button */}
+          <Zoom in={y > 300}>
+            <ScrollToTopButton
+              onClick={() => scrollTo({ top: 0, behavior: 'smooth' })}
+              size="medium"
+            >
+              <KeyboardArrowUpIcon fontSize="medium" />
+            </ScrollToTopButton>
+          </Zoom>
           <ChatWidget
             isVisible={currentRoute?.displayChat}
             onStateChange={(state) => setOpen(state.open)}
@@ -155,10 +147,22 @@ export default function MainLayout() {
   );
 }
 
+// Modern main content area with smooth transitions
 const Main = styled(Box, { shouldForwardProp: (prop) => prop !== 'open' })(
   ({ theme, open }) => ({
     flexGrow: 1,
-    padding: theme.spacing(3),
+    paddingTop: theme.spacing(2),
+    paddingBottom: theme.spacing(3),
+    paddingLeft: theme.spacing(0.5),
+    paddingRight: theme.spacing(0.5),
+    [theme.breakpoints.up('sm')]: {
+      paddingLeft: theme.spacing(1),
+      paddingRight: theme.spacing(1),
+    },
+    [theme.breakpoints.up('md')]: {
+      paddingLeft: theme.spacing(2),
+      paddingRight: theme.spacing(2),
+    },
     transition: theme.transitions.create('margin', {
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen,
@@ -173,16 +177,33 @@ const Main = styled(Box, { shouldForwardProp: (prop) => prop !== 'open' })(
     }),
     height: '100vh',
     overflowY: 'auto',
+    overflowX: 'hidden',
     position: 'relative',
-    scrollBehavior: 'smooth !important',
+    scrollBehavior: 'smooth',
+    // Custom scrollbar styling
+    '&::-webkit-scrollbar': {
+      width: 8,
+      height: 8,
+    },
+    '&::-webkit-scrollbar-track': {
+      background: theme.palette.background.default,
+    },
+    '&::-webkit-scrollbar-thumb': {
+      background: theme.palette.grey[400],
+      borderRadius: 4,
+      '&:hover': {
+        background: theme.palette.grey[500],
+      },
+    },
   })
 );
 
+// Modern app bar with glassmorphism effect
 const NavAppBar = styled(AppBar, {
   shouldForwardProp: (prop) => prop !== 'open',
 })(({ theme, open }) => ({
-  backgroundColor: theme.palette.dark.light,
-  transition: theme.transitions.create(['margin', 'width'], {
+  backgroundImage: 'none',
+  transition: theme.transitions.create(['margin', 'width', 'box-shadow'], {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
@@ -194,6 +215,51 @@ const NavAppBar = styled(AppBar, {
     }),
     marginRight: RIGHT_SIDEBAR_WIDTH,
   }),
+}));
+
+// Content container with max width
+const ContentContainer = styled(Box)(({ theme }) => ({
+  maxWidth: theme.breakpoints.values.xxl,
+  margin: '0 auto',
+  width: '100%',
+}));
+
+// Page container with modern styling
+const PageContainer = styled(Paper)(({ theme }) => ({
+  display: 'flex',
+  flex: 1,
+  position: 'relative',
+  boxShadow: theme.shadows[1],
+  transition: theme.transitions.create(['box-shadow'], {
+    duration: theme.transitions.duration.short,
+  }),
+  '&:hover': {
+    boxShadow: theme.shadows[2],
+  },
+}));
+
+// Modern scroll to top button
+const ScrollToTopButton = styled(IconButton)(({ theme }) => ({
+  position: 'fixed',
+  bottom: theme.spacing(3),
+  right: theme.spacing(3),
+  backgroundColor: theme.palette.primary.main,
+  color: theme.palette.primary.contrastText,
+  boxShadow: theme.shadows[4],
+  '&:hover': {
+    backgroundColor: theme.palette.primary.dark,
+    transform: 'scale(1.1)',
+  },
+  '&:active': {
+    transform: 'scale(0.95)',
+  },
+  transition: theme.transitions.create(['background-color', 'transform'], {
+    duration: theme.transitions.duration.short,
+  }),
+  [theme.breakpoints.down('sm')]: {
+    bottom: theme.spacing(2),
+    right: theme.spacing(2),
+  },
 }));
 
 const TVTickerWidget = React.lazy(() =>

@@ -86,8 +86,8 @@ export default function CommunityBoardPostsTable({ filters }) {
           mb: 1,  // Reduced margin
           borderRadius: 1,
           cursor: 'pointer',
-          backgroundColor: alpha(category?.color || theme.palette.grey[300], 0.04),
-          borderLeft: `4px solid ${category?.color || theme.palette.grey[300]}`,
+          backgroundColor: alpha(category?.color || theme.palette.grey?.[300] || '#bdbdbd', 0.04),
+          borderLeft: `4px solid ${category?.color || theme.palette.grey?.[300] || '#bdbdbd'}`,
           '&:hover': { 
             backgroundColor: alpha(theme.palette.info.main, 0.15) 
           }
@@ -137,7 +137,7 @@ export default function CommunityBoardPostsTable({ filters }) {
             sx={{ 
               height: 18,  // Smaller height
               fontSize: '0.65rem',  // Smaller font
-              backgroundColor: alpha(category?.color || theme.palette.grey[300], 0.2)
+              backgroundColor: alpha(category?.color || theme.palette.grey?.[300] || '#bdbdbd', 0.2)
             }}
           />
           

@@ -297,21 +297,23 @@ export default function APIKey() {
             label={t('Secret Key')}
             error={!!errors?.secretKey}
             type={showSecretKey ? 'text' : 'password'}
-            InputProps={{
-              inputProps: { autoComplete: 'off' },
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    aria-label="toggle secret key visibility"
-                    color="secondary"
-                    onClick={() => setShowSecretKey((state) => !state)}
-                    sx={{ p: 0 }}
-                  >
-                    {showSecretKey ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                  </IconButton>
-                </InputAdornment>
-              ),
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle secret key visibility"
+                      color="secondary"
+                      onClick={() => setShowSecretKey((state) => !state)}
+                      sx={{ p: 0 }}
+                    >
+                      {showSecretKey ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
             }}
+            inputProps={{ autoComplete: 'off' }}
             {...register('secretKey', { required: true })}
           />
           {marketCodeForm?.exchange === 'OKX' && (
@@ -323,25 +325,27 @@ export default function APIKey() {
               label={t('Passphrase')}
               error={!!errors?.passphrase}
               type={showPassphrase ? 'text' : 'password'}
-              InputProps={{
-                inputProps: { autoComplete: 'off' },
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle passphrase visibility"
-                      color="secondary"
-                      onClick={() => setShowPassphrase((state) => !state)}
-                      sx={{ p: 0 }}
-                    >
-                      {showPassphrase ? (
-                        <VisibilityOffIcon />
-                      ) : (
-                        <VisibilityIcon />
-                      )}
-                    </IconButton>
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle passphrase visibility"
+                        color="secondary"
+                        onClick={() => setShowPassphrase((state) => !state)}
+                        sx={{ p: 0 }}
+                      >
+                        {showPassphrase ? (
+                          <VisibilityOffIcon />
+                        ) : (
+                          <VisibilityIcon />
+                        )}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
               }}
+              inputProps={{ autoComplete: 'off' }}
               {...register('passphrase', { required: true })}
             />
           )}

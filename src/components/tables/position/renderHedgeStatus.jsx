@@ -11,7 +11,6 @@ export default function renderHedgeStatus({ cell }) {
     <Typography
       sx={{
         color: cell.getValue() ? 'success.light' : 'error.light',
-        fontSize: '1.25em',
         textTransform: 'uppercase',
       }}
     >

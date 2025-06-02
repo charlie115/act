@@ -16,10 +16,13 @@ export const DrawerHeader = styled('div')(({ theme }) => ({
   justifyContent: 'flex-start',
 }));
 
-export const LoadMoreLink = styled(Link)(() => ({
-  fontSize: 12,
+export const LoadMoreLink = styled(Link)(({ theme }) => ({
+  fontSize: '0.75rem',
   fontStyle: 'italic',
   fontWeight: 700,
+  [theme.breakpoints.down('sm')]: {
+    fontSize: '0.75rem',
+  },
 }));
 
 export const MessageBox = styled(Box, {
@@ -34,7 +37,7 @@ export const MessageBox = styled(Box, {
   if (!isDark)
     backgroundColor = isOwnMessage
       ? theme.palette.primary.light
-      : alpha(theme.palette.grey[100], 0.5);
+      : alpha(theme.palette.grey?.[100] || '#f5f5f5', 0.5);
 
   return {
     backgroundColor,
@@ -45,6 +48,10 @@ export const MessageBox = styled(Box, {
     borderRadius: 4,
     opacity: isBlocked ? 0.5 : 1,
     position: 'relative',
+    fontSize: '0.875rem',
+    [theme.breakpoints.down('sm')]: {
+      fontSize: '0.875rem',
+    },
   };
 });
 
@@ -72,14 +79,19 @@ export const MessageUrl = styled(Link)(({ theme, color }) => ({
   WebkitHyphens: 'auto',
   hyphens: 'auto',
 
-  ':visited': { color: alpha(theme.palette[color].main, 0.8) },
+  ':visited': { 
+    color: alpha(
+      (color && theme.palette[color]?.main) || theme.palette.primary.main || '#007cff', 
+      0.8
+    ) 
+  },
 }));
 
 export const ScrollToBottomIcon = styled(IconButton)(({ theme }) => ({
   backgroundColor:
     theme.palette.mode === 'dark'
       ? alpha('#000', 0.3)
-      : alpha(theme.palette.grey[100], 0.5),
+      : alpha(theme.palette.grey?.[100] || '#f5f5f5', 0.5),
   position: 'absolute',
   bottom: 10,
   right: 15,
@@ -92,12 +104,12 @@ export const StyledTooltip = styled(({ className, ...props }) => (
     color:
       theme.palette.mode === 'dark'
         ? theme.palette.common.black
-        : alpha(theme.palette.grey[100], 0.5),
+        : alpha(theme.palette.grey?.[100] || '#f5f5f5', 0.5),
   },
   [`& .${tooltipClasses.tooltip}`]: {
     backgroundColor:
       theme.palette.mode === 'dark'
         ? theme.palette.common.black
-        : alpha(theme.palette.grey[100], 0.5),
+        : alpha(theme.palette.grey?.[100] || '#f5f5f5', 0.5),
   },
 }));

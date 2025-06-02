@@ -21,10 +21,10 @@ export default function renderAssetIconCell({ cell, table }) {
           loading="lazy"
           src={cell.getValue()}
           alt=""
-          sx={{ width: isMobile ? '0.7rem' : 20 }}
+          sx={{ width: isMobile ? '0.5rem' : 20 }}
         />
       ) : (
-        <BlockIcon color="secondary" sx={{ fontSize: isMobile ? '0.7rem' : 20 }} />
+        <BlockIcon color="secondary" sx={{ fontSize: isMobile ? '0.5rem' : 20 }} />
       )}
     </Box>
   );

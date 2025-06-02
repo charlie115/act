@@ -72,7 +72,9 @@ import renderFundingRateHeader from 'components/tables/common/renderFundingRateH
 import renderFundingRateCell from 'components/tables/common/renderFundingRateCell';
 import renderDateCell from 'components/tables/common/renderDateCell';
 
+import renderAutoRepeatStatusCell from './renderAutoRepeatStatusCell';
 import renderAutoRepeatSwitchCell from './renderAutoRepeatSwitchCell';
+import renderBaseAssetCell from './renderBaseAssetCell';
 import renderMarketCodesCell from './renderMarketCodesCell';
 import renderSelectCell from './renderSelectCell';
 import renderStatusCell from './renderStatusCell';
@@ -258,7 +260,7 @@ export default function TriggersTable({
         accessorKey: 'select',
         enableGlobalFilter: false,
         enableSorting: false,
-        size: isMobile ? 15 : 30,
+        size: isMobile ? 20 : 30,
         header: renderSelectHeader,
         cell: renderSelectCell,
       }] : []),
@@ -266,23 +268,28 @@ export default function TriggersTable({
         accessorKey: 'icon',
         enableGlobalFilter: false,
         enableSorting: false,
-        size: 5,
+        size: isMobile ? 3 : 5,
         header: <span />,
         cell: renderAssetIconCell,
       },
       {
         accessorKey: 'baseAsset',
-        size: isMobile ? 25 : 50,
+        size: isMobile ? 20 : 50,
         header: t('Base Asset'),
+        cell: renderBaseAssetCell,
       },
       {
         accessorKey: 'marketCodes',
         enableGlobalFilter: false,
         enableSorting: false,
-        size: isMobile ? 40 : 70,
-        header: <SyncAltIcon sx={{ fontSize: isMobile ? '0.8rem' : '1rem' }} />,
+        size: isMobile ? 25 : 35,
+        header: (
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <SyncAltIcon sx={{ fontSize: isMobile ? '0.6rem' : '1rem' }} />
+          </Box>
+        ),
         cell: renderMarketCodesCell,
-        props: { sx: { textAlign: 'center' } },
+        slotProps: { header: { sx: { textAlign: 'center' } } },
       },
       {
         accessorKey: 'entry',
@@ -352,13 +359,18 @@ export default function TriggersTable({
         accessorKey: 'autoRepeatStatus',
         size: isMobile ? 25 : 60,
         header: t('Repeat Transaction Status'),
+        cell: renderAutoRepeatStatusCell,
       },
       {
         accessorKey: 'autoRepeatSwitch',
-        size: isMobile ? 35 : 60,
-        header: t('Auto Repeat'),
+        size: isMobile ? 30 : 60,
+        header: (
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            {t('Auto Repeat')}
+          </Box>
+        ),
         cell: renderAutoRepeatSwitchCell,
-        props: { sx: { textAlign: 'center' } },
+        slotProps: { header: { sx: { textAlign: 'center' } } },
       },
       {
         accessorKey: 'created',
@@ -731,7 +743,7 @@ export default function TriggersTable({
     <Box sx={{ mx: { xs: 0, md: 1 }, p: { xs: 0, md: 1 } }}>
       <Stack
         direction="row"
-        alignItems="flex-start"
+        alignItems="center"
         spacing={1}
         sx={{ mb: 2, flexWrap: 'wrap' }}
       >
@@ -752,7 +764,7 @@ export default function TriggersTable({
           <Box sx={{ 
             ml: 1, 
             mr: 1, 
-            mt: { xs: 1, md: 0 }, 
+            mt: 0, 
             flexShrink: 0, 
             border: 1,
             borderColor: 'divider',
@@ -808,7 +820,7 @@ export default function TriggersTable({
                 ? 'animate__animated animate__pulse animate__repeat-2'
                 : undefined
             }
-            sx={{ ml: 'auto', mt: { xs: 1, md: 0 } }}
+            sx={{ ml: 'auto', mt: 0 }}
           >
             <AssetSearchInput
               showSelect
@@ -890,6 +902,13 @@ export default function TriggersTable({
           sx: {
             bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
             fontSize: isMobile ? '0.6em' : '0.7em',
+            textAlign: isMobile ? 'center' : 'left',
+            padding: isMobile ? theme.spacing(0.5, 0.2) : theme.spacing(1, 1.5),
+            whiteSpace: isMobile ? 'normal' : 'normal',
+            overflow: 'visible',
+            textOverflow: 'clip',
+            lineHeight: isMobile ? 1.2 : 1.5,
+            wordBreak: isMobile ? 'break-word' : 'normal',
           },
         })}
         getCellProps={() => ({ sx: { height: 30 } })}
@@ -906,7 +925,7 @@ export default function TriggersTable({
           sx: {
             border: 1,
             borderColor: 'divider',
-            fontSize: isMobile ? '0.8em' : '1.15em',
+            fontSize: isMobile ? '0.75em' : '1.15em',
           },
         })}
       />

@@ -128,11 +128,20 @@ const AssetSearchInput = forwardRef(
               {...params}
               inputRef={inputRef}
               label={t('Search')}
+              InputLabelProps={{
+                sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+              }}
               InputProps={{
                 ...params.InputProps,
+                sx: {
+                  ...params.InputProps.sx,
+                  '& input': {
+                    fontSize: isMobile ? '0.875rem !important' : '1rem',
+                  }
+                },
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={isMobile ? { fontSize: '0.8em' } : {}} />
+                    <SearchIcon sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }} />
                   </InputAdornment>
                 ),
               }}
@@ -148,16 +157,16 @@ const AssetSearchInput = forwardRef(
               '& .asset-icon': { mr: 1, flexShrink: 0 },
               [`&.${autocompleteClasses.option}`]: {
                 px: 1,
-                py: 0.5,
+                py: isMobile ? 0.75 : 0.5,
                 pr: 0,
-                '& > p': { fontSize: '1em' },
+                '& > p': { fontSize: isMobile ? '1rem' : '1rem' },
               },
             }}
           >
             {assetsData?.[option]?.icon ? (
               <img
                 className="asset-icon"
-                width="12"
+                width={isMobile ? 14 : 12}
                 src={assetsData[option].icon}
                 alt=""
               />
@@ -165,7 +174,7 @@ const AssetSearchInput = forwardRef(
               <BlockIcon
                 className="asset-icon"
                 color="secondary"
-                sx={{ fontSize: 12 }}
+                sx={{ fontSize: isMobile ? 14 : 12 }}
               />
             )}
             <Typography sx={{ mr: 'auto' }}>{option}</Typography>
@@ -185,7 +194,12 @@ const AssetSearchInput = forwardRef(
             )}
           </Box>
         )}
-        sx={isMobile ? { width: 110 } : { width: 215 }}
+        sx={{ 
+          width: isMobile ? 120 : 215,
+          '& .MuiInputBase-root': {
+            height: isMobile ? 40 : undefined
+          }
+        }}
       />
     );
   }

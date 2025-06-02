@@ -155,9 +155,19 @@ export default function ScannerTable({ marketCodeCombination, _queryKey, tradeCo
       enableGlobalFilter: false,
       enableSorting: false,
       size: isMobile ? 40 : 70,
-      header: <SyncAltIcon sx={{ fontSize: isMobile ? '0.8rem' : '1rem' }} />,
+      header: (
+        <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <SyncAltIcon sx={{ fontSize: isMobile ? '0.6rem' : '1rem' }} />
+        </Box>
+      ),
       cell: renderMarketCodesCell,
-      props: { sx: { textAlign: 'center' } },
+      slotProps: { 
+        header: { 
+          sx: { 
+            textAlign: 'center !important' 
+          } 
+        } 
+      },
     },
     {
       accessorKey: 'entry',
@@ -501,6 +511,13 @@ export default function ScannerTable({ marketCodeCombination, _queryKey, tradeCo
           sx: {
             bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
             fontSize: isMobile ? '0.6em' : '0.7em',
+            textAlign: isMobile ? 'center' : 'left',
+            padding: isMobile ? theme.spacing(0.5, 0.2) : theme.spacing(1, 1.5),
+            whiteSpace: isMobile ? 'normal' : 'normal',
+            overflow: 'visible',
+            textOverflow: 'clip',
+            lineHeight: isMobile ? 1.2 : 1.5,
+            wordBreak: isMobile ? 'break-word' : 'normal',
           },
         })}
         getCellProps={() => ({ sx: { height: 30 } })}
@@ -517,7 +534,7 @@ export default function ScannerTable({ marketCodeCombination, _queryKey, tradeCo
           sx: {
             border: 1,
             borderColor: 'divider',
-            fontSize: isMobile ? '0.8em' : '1.15em',
+            fontSize: isMobile ? '0.65em' : '1.15em',
           },
         })}
       />
@@ -539,6 +556,8 @@ export default function ScannerTable({ marketCodeCombination, _queryKey, tradeCo
 // Scanner Form Component
 function ScannerForm({ onSubmit, onCancel }) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   
@@ -705,8 +724,24 @@ function ScannerForm({ onSubmit, onCancel }) {
             required
             error={!!formErrors.low}
             helperText={formErrors.low}
-            inputProps={{ step: "0.001" }}
             disabled={isSubmitting}
+            InputLabelProps={{
+              sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+            }}
+            InputProps={{
+              sx: {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                },
+                '& .MuiInputBase-input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              }
+            }}
+            slotProps={{
+              htmlInput: { step: "0.001" }
+            }}
           />
           
           <TextField
@@ -721,8 +756,24 @@ function ScannerForm({ onSubmit, onCancel }) {
             required
             error={!!formErrors.high}
             helperText={formErrors.high}
-            inputProps={{ step: "0.001" }}
             disabled={isSubmitting}
+            InputLabelProps={{
+              sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+            }}
+            InputProps={{
+              sx: {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                },
+                '& .MuiInputBase-input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              }
+            }}
+            slotProps={{
+              htmlInput: { step: "0.001" }
+            }}
           />
         </Stack>
         
@@ -741,6 +792,17 @@ function ScannerForm({ onSubmit, onCancel }) {
           helperText={formErrors.trade_capital || t('Minimum value is 10000')}
           disabled={isSubmitting}
           sx={{ mb: 2 }}
+          InputLabelProps={{
+            sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+          }}
+          InputProps={{
+            sx: {
+              fontSize: isMobile ? '0.875rem !important' : '1rem',
+              '& input': {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+              }
+            }
+          }}
         />
         
         {/* Min Trading Volume with checkbox and field in the same row */}
@@ -770,9 +832,22 @@ function ScannerForm({ onSubmit, onCancel }) {
             disabled={!formState.enableMinTargetAtp || isSubmitting}
             error={!!formErrors.min_target_atp}
             helperText={formErrors.min_target_atp}
+            InputLabelProps={{
+              sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+            }}
             InputProps={{
+              sx: {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              },
               endAdornment: (
-                <InputAdornment position="end">
+                <InputAdornment position="end" sx={{ 
+                  '& .MuiTypography-root': {
+                    fontSize: isMobile ? '1rem !important' : '1.125rem !important'
+                  }
+                }}>
                   {t('100M')}
                 </InputAdornment>
               ),
@@ -807,9 +882,22 @@ function ScannerForm({ onSubmit, onCancel }) {
             disabled={!formState.enableMinOriginFundingRate || isSubmitting}
             error={!!formErrors.min_origin_funding_rate}
             helperText={formErrors.min_origin_funding_rate}
+            InputLabelProps={{
+              sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+            }}
             InputProps={{
+              sx: {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              },
               endAdornment: (
-                <InputAdornment position="end">
+                <InputAdornment position="end" sx={{ 
+                  '& .MuiTypography-root': {
+                    fontSize: isMobile ? '1rem !important' : '1.125rem !important'
+                  }
+                }}>
                   %
                 </InputAdornment>
               ),
@@ -832,7 +920,23 @@ function ScannerForm({ onSubmit, onCancel }) {
             error={!!formErrors.max_repeat_num}
             helperText={formErrors.max_repeat_num}
             disabled={isSubmitting}
-            inputProps={{ min: "1" }}
+            InputLabelProps={{
+              sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+            }}
+            InputProps={{
+              sx: {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                },
+                '& .MuiInputBase-input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              }
+            }}
+            slotProps={{
+              htmlInput: { min: "1" }
+            }}
           />
           
           <TextField
@@ -848,7 +952,23 @@ function ScannerForm({ onSubmit, onCancel }) {
             error={!!formErrors.repeat_term_secs}
             helperText={formErrors.repeat_term_secs}
             disabled={parseInt(formState.max_repeat_num, 10) === 1 || isSubmitting}
-            inputProps={{ min: "1" }}
+            InputLabelProps={{
+              sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+            }}
+            InputProps={{
+              sx: {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                },
+                '& .MuiInputBase-input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              }
+            }}
+            slotProps={{
+              htmlInput: { min: "1" }
+            }}
           />
         </Stack>
         
@@ -889,6 +1009,8 @@ function UpdateScannerForm({
   toggleExpanded 
 }) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   
@@ -1065,8 +1187,24 @@ function UpdateScannerForm({
             required
             error={!!formErrors.low}
             helperText={formErrors.low}
-            inputProps={{ step: "0.001" }}
             disabled={isSubmitting}
+            InputLabelProps={{
+              sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+            }}
+            InputProps={{
+              sx: {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                },
+                '& .MuiInputBase-input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              }
+            }}
+            slotProps={{
+              htmlInput: { step: "0.001" }
+            }}
           />
           
           <TextField
@@ -1081,8 +1219,24 @@ function UpdateScannerForm({
             required
             error={!!formErrors.high}
             helperText={formErrors.high}
-            inputProps={{ step: "0.001" }}
             disabled={isSubmitting}
+            InputLabelProps={{
+              sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+            }}
+            InputProps={{
+              sx: {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                },
+                '& .MuiInputBase-input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              }
+            }}
+            slotProps={{
+              htmlInput: { step: "0.001" }
+            }}
           />
         </Stack>
         
@@ -1101,6 +1255,17 @@ function UpdateScannerForm({
           helperText={formErrors.trade_capital || t('Minimum value is 10000')}
           disabled={isSubmitting}
           sx={{ mb: 2 }}
+          InputLabelProps={{
+            sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+          }}
+          InputProps={{
+            sx: {
+              fontSize: isMobile ? '0.875rem !important' : '1rem',
+              '& input': {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+              }
+            }
+          }}
         />
         
         {/* Min Trading Volume with checkbox and field in the same row */}
@@ -1130,9 +1295,22 @@ function UpdateScannerForm({
             disabled={!formState.enableMinTargetAtp || isSubmitting}
             error={!!formErrors.min_target_atp}
             helperText={formErrors.min_target_atp}
+            InputLabelProps={{
+              sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+            }}
             InputProps={{
+              sx: {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              },
               endAdornment: (
-                <InputAdornment position="end">
+                <InputAdornment position="end" sx={{ 
+                  '& .MuiTypography-root': {
+                    fontSize: isMobile ? '1rem !important' : '1.125rem !important'
+                  }
+                }}>
                   {t('100M')}
                 </InputAdornment>
               ),
@@ -1167,9 +1345,22 @@ function UpdateScannerForm({
             disabled={!formState.enableMinOriginFundingRate || isSubmitting}
             error={!!formErrors.min_origin_funding_rate}
             helperText={formErrors.min_origin_funding_rate}
+            InputLabelProps={{
+              sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+            }}
             InputProps={{
+              sx: {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              },
               endAdornment: (
-                <InputAdornment position="end">
+                <InputAdornment position="end" sx={{ 
+                  '& .MuiTypography-root': {
+                    fontSize: isMobile ? '1rem !important' : '1.125rem !important'
+                  }
+                }}>
                   %
                 </InputAdornment>
               ),
@@ -1192,7 +1383,23 @@ function UpdateScannerForm({
             error={!!formErrors.max_repeat_num}
             helperText={formErrors.max_repeat_num}
             disabled={isSubmitting}
-            inputProps={{ min: "1" }}
+            InputLabelProps={{
+              sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+            }}
+            InputProps={{
+              sx: {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                },
+                '& .MuiInputBase-input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              }
+            }}
+            slotProps={{
+              htmlInput: { min: "1" }
+            }}
           />
           
           <TextField
@@ -1208,7 +1415,23 @@ function UpdateScannerForm({
             error={!!formErrors.repeat_term_secs}
             helperText={formErrors.repeat_term_secs}
             disabled={parseInt(formState.max_repeat_num, 10) === 1 || isSubmitting}
-            inputProps={{ min: "1" }}
+            InputLabelProps={{
+              sx: { fontSize: isMobile ? '0.875rem !important' : undefined }
+            }}
+            InputProps={{
+              sx: {
+                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                },
+                '& .MuiInputBase-input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              }
+            }}
+            slotProps={{
+              htmlInput: { min: "1" }
+            }}
           />
         </Stack>
         

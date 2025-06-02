@@ -153,8 +153,11 @@ export default function ChatMessage({
               sx={{
                 display: 'inline',
                 color: 'secondary.main',
-                fontSize: 11,
+                fontSize: '0.75rem',
                 mb: 0.25,
+                '@media (max-width:600px)': {
+                  fontSize: '0.75rem',
+                }
               }}
             >
               <span style={{ color: stringToColor(username), fontSize: 15 }}>

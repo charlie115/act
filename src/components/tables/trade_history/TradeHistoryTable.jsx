@@ -248,12 +248,6 @@ export default function TradeHistoryTable({
         header: t('Total PnL After Fee'),
         cell: renderColoredSignedNumberCell,
       },
-      {
-        accessorKey: 'total_pnl_after_fee_kimp',
-        enableSorting: false,
-        size: isMobile ? 30 : 80,
-        header: t('Total PnL After Fee KIMP'),
-      },
     ],
     [i18n.language, isMobile]
   );
@@ -381,7 +375,7 @@ export default function TradeHistoryTable({
         <Box
           className="animate__animated animate__fadeIn"
           sx={{
-            bgcolor: alpha(theme.palette.primary.main, 0.1),
+            bgcolor: alpha(theme.palette.primary?.main || '#007cff', 0.1),
             p: 1,
             textAlign: 'center',
           }}
@@ -441,7 +435,7 @@ export default function TradeHistoryTable({
           ...(row.getIsExpanded() ||
           row.id === selectedTradeHistoryPair?.enter ||
           row.id === selectedTradeHistoryPair?.exit
-            ? { bgcolor: alpha(theme.palette.primary.main, 0.15) }
+            ? { bgcolor: alpha(theme.palette.primary?.main || '#007cff', 0.15) }
             : {}),
         },
       })}

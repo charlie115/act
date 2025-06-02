@@ -39,24 +39,28 @@ export default function CollapsibleSearch({ onChange }) {
             placeholder={t('Search')}
             onChange={(e) => setValue(e.target.value)}
             value={value}
-            startAdornment={
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            }
-            endAdornment={
-              <InputAdornment position="end">
-                <IconButton
-                  edge="end"
-                  onClick={() => {
-                    setValue('');
-                    onChange('');
-                  }}
-                >
-                  <CloseIcon />
-                </IconButton>
-              </InputAdornment>
-            }
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      edge="end"
+                      onClick={() => {
+                        setValue('');
+                        onChange('');
+                      }}
+                    >
+                      <CloseIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
         </Collapse>
         {!open && (

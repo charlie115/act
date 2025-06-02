@@ -15,14 +15,17 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Skeleton from '@mui/material/Skeleton';
 import TablePagination from '@mui/material/TablePagination';
 import Typography from '@mui/material/Typography';
+import Paper from '@mui/material/Paper';
 
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { alpha, styled, useTheme } from '@mui/material/styles';
+import { styled, useTheme } from '@mui/material/styles';
 
 import { useTranslation } from 'react-i18next';
+
+import alpha from '../configs/theme/safeAlpha';
 
 const ReactTableUI = forwardRef(
   (
@@ -70,81 +73,61 @@ const ReactTableUI = forwardRef(
     if (ref) ref.current = table;
 
     return (
-      <Box>
-        {showProgressBar && <LinearProgress />}
+      <TableContainer elevation={0}>
+        {showProgressBar && (
+          <LinearProgress 
+            sx={{ 
+              position: 'absolute', 
+              top: 0, 
+              left: 0, 
+              right: 0,
+              zIndex: 1,
+            }} 
+          />
+        )}
         <Table {...(getTableProps ? getTableProps(table) : {})}>
-          <thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    colSpan={header.colSpan}
-                    onClick={header.column.getToggleSortingHandler()}
-                    sx={{
-                      width: header.getSize(),
-                      color: header.column.getIsSorted()
-                        ? theme.palette.text.main
-                        : theme.palette.grey[
-                            theme.palette.mode === 'dark' ? '200' : '700'
-                          ],
-                      fontSize: {
-                        xs: '0.5rem',
-                        md: '0.6rem',
-                        lg: '0.7rem',
-                      },
-                      lineHeight: 1.1,
-                      userSelect: 'none',
-                      verticalAlign: 'middle',
-                      whiteSpace: 'normal',
-                      wordWrap: 'break-word',
-                      ...(getHeaderProps ? getHeaderProps(header)?.sx : {}),
-                      ...header.column.columnDef.props?.sx,
-                      ...header.column.columnDef.slotProps?.header?.sx,
-                      cursor: header.column.getCanSort()
-                        ? 'pointer'
-                        : undefined,
-                      ...(header.isPlaceholder ? { opacity: 0 } : {}),
-                      ...(hideHeader ? { height: 0 } : {}),
-                    }}
-                  >
-                    {hideHeader || header.isPlaceholder ? null : (
-                      <Box component="span" sx={{ position: 'relative' }}>
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                        {{
-                          asc: (
-                            <ArrowDropUpIcon
-                              sx={{
-                                color: 'text.main',
-                                position: 'absolute',
-                                bottom: '50%',
-                                right: '-1em',
-                                transform: 'translateY(50%)',
-                              }}
-                            />
-                          ),
-                          desc: (
-                            <ArrowDropDownIcon
-                              sx={{
-                                color: 'text.main',
-                                position: 'absolute',
-                                bottom: '50%',
-                                right: '-1em',
-                                transform: 'translateY(50%)',
-                              }}
-                            />
-                          ),
-                        }[header.column.getIsSorted()] ?? null}
-                      </Box>
-                    )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </thead>
+          {!hideHeader && (
+            <TableHead component="thead">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHeaderCell
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      onClick={header.column.getToggleSortingHandler()}
+                      $canSort={header.column.getCanSort()}
+                      $isSorted={header.column.getIsSorted()}
+                      sx={{
+                        width: header.getSize(),
+                        ...(getHeaderProps ? getHeaderProps(header)?.sx : {}),
+                        ...header.column.columnDef.props?.sx,
+                        ...header.column.columnDef.slotProps?.header?.sx,
+                        ...(header.isPlaceholder ? { opacity: 0 } : {}),
+                      }}
+                    >
+                      {!header.isPlaceholder && (
+                        <HeaderContent>
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {header.column.getIsSorted() && (
+                            <SortIcon>
+                              {header.column.getIsSorted() === 'asc' ? (
+                                <ArrowDropUpIcon fontSize="small" />
+                              ) : (
+                                <ArrowDropDownIcon fontSize="small" />
+                              )}
+                            </SortIcon>
+                          )}
+                        </HeaderContent>
+                      )}
+                    </TableHeaderCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHead>
+          )}
 
           <tbody>
             {!isLoading
@@ -178,13 +161,13 @@ const ReactTableUI = forwardRef(
                           key={`${item}-${column.id}`}
                           align="center"
                           {...(getCellProps ? getCellProps() : {})}
-                          height={40}
+                          height={48}
                         >
                           <Skeleton
                             animation="wave"
                             variant="text"
                             sx={{ width: column.getSize() < 2 ? 0 : '90%' }}
-                            height={isMobile ? 10 : 15}
+                            height={isMobile ? 12 : 16}
                           />
                         </TableCell>
                       ))}
@@ -197,9 +180,6 @@ const ReactTableUI = forwardRef(
                 <TablePagination
                   count={table.getFilteredRowModel().rows.length}
                   rowsPerPageOptions={[
-                    // 5,
-                    // 10,
-                    // 25,
                     { label: t('All'), value: data.length },
                   ]}
                   colSpan={columns.length}
@@ -217,30 +197,29 @@ const ReactTableUI = forwardRef(
                   }}
                   sx={{
                     borderBottom: 0,
-                    '& .MuiTablePagination-toolbar': { minHeight: 0 },
+                    '& .MuiTablePagination-toolbar': { 
+                      minHeight: 48,
+                      paddingLeft: 2,
+                      paddingRight: 2,
+                    },
                   }}
                 />
               </TableRow>
             </tfoot>
           )}
         </Table>
-        {!isLoading && (
-          <Box sx={{ textAlign: 'center' }}>
-            {rows.length === 0 && (
-              <Typography
-                sx={{
-                  color: 'secondary.main',
-                  fontSize: '0.85rem',
-                  fontStyle: 'italic',
-                  py: 5,
-                }}
-              >
-                {noDisplayMessage || t('No data to display')}
-              </Typography>
-            )}
-          </Box>
+        {!isLoading && rows.length === 0 && (
+          <EmptyState>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ fontStyle: 'italic' }}
+            >
+              {noDisplayMessage || t('No data to display')}
+            </Typography>
+          </EmptyState>
         )}
-      </Box>
+      </TableContainer>
     );
   }
 );
@@ -248,7 +227,10 @@ const ReactTableUI = forwardRef(
 const MemoizedRow = React.memo(
   ({ row, table, renderSubComponent, getCellProps, getRowProps }) => (
     <>
-      <TableRow {...(getRowProps ? getRowProps(row, { table }) : {})}>
+      <TableRow 
+        $isExpanded={row.getIsExpanded()}
+        {...(getRowProps ? getRowProps(row, { table }) : {})}
+      >
         {row.getVisibleCells().map((cell) => (
           <TableCell
             key={cell.id}
@@ -264,7 +246,13 @@ const MemoizedRow = React.memo(
       </TableRow>
       {row.getIsExpanded() && renderSubComponent && (
         <TableRow key={`${row.id}-expand-panel`}>
-          <TableCell colSpan={row.getVisibleCells().length} sx={{ p: 0 }}>
+          <TableCell 
+            colSpan={row.getVisibleCells().length} 
+            sx={{ 
+              p: 0,
+              backgroundColor: (theme) => alpha(theme.palette.primary?.main || '#007cff', 0.02),
+            }}
+          >
             {renderSubComponent({ row, meta: table.options.meta })}
           </TableCell>
         </TableRow>
@@ -273,33 +261,120 @@ const MemoizedRow = React.memo(
   )
 );
 
-export const Table = styled('table')(() => ({
+// Modern table container
+const TableContainer = styled(Paper)(({ theme }) => ({
+  borderRadius: '6px !important',
+  overflow: 'hidden',
+  border: `1px solid ${theme.palette.divider}`,
+  position: 'relative',
+  backgroundColor: theme.palette.background.paper,
+  transition: theme.transitions.create(['box-shadow'], {
+    duration: theme.transitions.duration.short,
+  }),
+  '&:hover': {
+    boxShadow: theme.shadows[2],
+  },
+}));
+
+// Enhanced table styling
+export const Table = styled('table')(({ theme }) => ({
   borderCollapse: 'collapse',
-  fontSize: '0.88em',
-  paddingLeft: '4px',
-  paddingRight: '4px',
+  fontSize: theme.typography.fontSize,
   tableLayout: 'fixed',
   width: '100%',
 }));
+
+// Modern table cell
 export const TableCell = styled('td')(({ theme }) => ({
-  // height: 50,
+  padding: theme.spacing(1, 1.5),
   overflowWrap: 'break-word',
   textAlign: 'left',
-  paddingLeft: '4px',
-  paddingRight: '4px',
-  [theme.breakpoints.down('md')]: { fontSize: '0.75em' },
+  fontSize: theme.typography.body2.fontSize,
+  borderBottom: `1px solid ${alpha(theme.palette.divider || '#E0E0E0', 0.5)}`,
+  [theme.breakpoints.down('md')]: { 
+    padding: theme.spacing(0.75, 0.25),
+    fontSize: '0.45rem',
+    lineHeight: 1.1,
+  },
 }));
-export const TableHead = styled('th')(({ theme }) => ({
-  backgroundColor: alpha(theme.palette.background.paper, 0.5),
-  height: 30,
-  textAlign: 'left',
+
+// Enhanced table header
+export const TableHead = styled('thead')(({ theme }) => ({
+  borderBottom: `2px solid ${theme.palette.divider}`,
 }));
-export const TableRow = styled('tr')(({ theme }) => ({
-  borderBottom: `1px solid ${
-    theme.palette.mode === 'dark'
-      ? theme.palette.grey['900']
-      : alpha(theme.palette.grey['100'], 0.5)
-  }`,
+
+// Modern table header cell
+export const TableHeaderCell = styled('th', {
+  shouldForwardProp: (prop) => !['$canSort', '$isSorted'].includes(prop),
+})(({ theme, $canSort, $isSorted }) => ({
+    backgroundColor: theme.palette.mode === 'dark' 
+      ? theme.palette.background.paper 
+      : theme.palette.grey[50],
+    padding: theme.spacing(1.5, 1.5),
+    textAlign: 'center',
+    fontWeight: theme.typography.fontWeightBold,
+    fontSize: theme.typography.body2.fontSize,
+    color: $isSorted ? theme.palette.primary.main : theme.palette.text.primary,
+    userSelect: 'none',
+    position: 'relative',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    cursor: $canSort ? 'pointer' : 'default',
+    transition: theme.transitions.create(['background-color', 'color'], {
+      duration: theme.transitions.duration.short,
+    }),
+    '&:hover': $canSort ? {
+      backgroundColor: alpha(theme.palette.primary?.main || '#007cff', 0.04),
+    } : {},
+    [theme.breakpoints.down('md')]: {
+      padding: theme.spacing(0.75, 0.25),
+      fontSize: '0.45rem',
+      textAlign: 'center',
+      whiteSpace: 'normal',
+      lineHeight: 1.1,
+      wordBreak: 'break-word',
+    },
+  })
+);
+
+// Header content wrapper
+const HeaderContent = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 4,
+});
+
+// Sort icon wrapper
+const SortIcon = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  color: theme.palette.primary.main,
+  marginLeft: 4,
+}));
+
+// Enhanced table row
+export const TableRow = styled('tr', {
+  shouldForwardProp: (prop) => prop !== '$isExpanded',
+})(({ theme, $isExpanded }) => ({
+  borderBottom: `1px solid ${alpha(theme.palette.divider || '#E0E0E0', 0.5)}`,
+  backgroundColor: $isExpanded ? alpha(theme.palette.primary?.main || '#007cff', 0.02) : 'transparent',
+  transition: theme.transitions.create(['background-color'], {
+    duration: theme.transitions.duration.shortest,
+  }),
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.primary?.main || '#007cff', 0.04),
+  },
+  '&:last-child': {
+    borderBottom: 'none',
+  },
+}));
+
+// Empty state
+const EmptyState = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(8, 2),
+  textAlign: 'center',
 }));
 
 export default React.memo(ReactTableUI);

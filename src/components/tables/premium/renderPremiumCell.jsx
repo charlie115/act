@@ -8,17 +8,22 @@ import isUndefined from 'lodash/isUndefined';
 
 export default function renderPremiumCell({ cell, row: { original }, table }) {
   if (isUndefined(cell.getValue())) return '...';
-  return table.options.meta.isTetherPriceView ? (
-    <Box component="span" sx={{ fontWeight: 700 }}>
-      {formatIntlNumber(original.dollar * (1 + cell.getValue() * 0.01), 2)}
+  const { isMobile, isTetherPriceView } = table.options.meta;
+  
+  return isTetherPriceView ? (
+    <Box component="span" sx={{ fontSize: { xs: 8, sm: 12 }, fontWeight: { xs: 400, sm: 700 } }}>
+      {formatIntlNumber(
+        original.dollar * (1 + cell.getValue() * 0.01), 
+        isMobile ? 1 : 2
+      )}
     </Box>
   ) : (
     <>
       <Box
         component="span"
-        sx={{ fontSize: { xs: 10, sm: 12 }, fontWeight: 700 }}
+        sx={{ fontSize: { xs: 10, sm: 12 }, fontWeight: { xs: 400, sm: 700 } }}
       >
-        {formatIntlNumber(cell.getValue(), 3)}
+        {formatIntlNumber(cell.getValue(), isMobile ? 2 : 3)}
       </Box>{' '}      
     </>
   );

@@ -30,7 +30,6 @@ const api = websocketApi.injectEndpoints({
         let socket = null;
         let heartbeatInterval = null;
         let lastMessageTime = 0;
-        let lastConnectionState = null;
         let activelyClosing = false;
         
         // Declare connectWebSocket function first (but don't implement it yet)
@@ -133,7 +132,7 @@ const api = websocketApi.injectEndpoints({
         // Handle visibility change
         const handleVisibilityChange = () => {
           if (document.visibilityState === 'hidden') {
-            lastConnectionState = socket?.readyState || null;
+            // Store connection state when page becomes hidden
             // Don't close the websocket when page is hidden
           } else if (document.visibilityState === 'visible') {
             // Only reconnect if the connection was actually lost

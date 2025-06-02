@@ -1,10 +1,9 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import SyncAltIcon from '@mui/icons-material/SyncAlt';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -32,9 +31,10 @@ import renderExpandCell from 'components/tables/common/renderExpandCell';
 import renderUuidCell from 'components/tables/common/renderUuidCell';
 import renderCheckbox from 'components/tables/trigger/renderCheckbox';
 
-import renderMarketCodesCell from 'components/tables/trigger/renderMarketCodesCell';
 import renderTradeCapitalCell from 'components/tables/trigger/renderTransactionAmountCell';
 import renderValueCell from 'components/tables/trigger/renderValueCell';
+
+import BlockIcon from '@mui/icons-material/Block';
 
 export default function PnLHistoryTable({
   marketCodeCombination,
@@ -43,11 +43,13 @@ export default function PnLHistoryTable({
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const tableRef = useRef();
 
   const { i18n, t } = useTranslation();
 
   const [expanded, setExpanded] = useState({});
   const [selectedUuid, setSelectedUuid] = useState({});
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   
   // Get PnL history data
   const { data, isFetching } = useGetPnlHistoryQuery({
@@ -75,27 +77,41 @@ export default function PnLHistoryTable({
   // Track which trade UUIDs we've processed
   const [processedTrades, setProcessedTrades] = useState({});
 
-  // Fetch trade logs when PnL data changes
-  useEffect(() => {
-    if (!data) return;
+  // Prepare sorted table data first (without base assets)
+  const sortedTableData = useMemo(
+    () => {
+      if (!data) return [];
+      
+      return orderBy(
+        data,
+        (o) => o.registered_datetime,
+        'desc'
+      );
+    },
+    [data]
+  );
 
-    // Get trades that need to be processed
-    const tradesToProcess = data.filter((item) => (
+  // Get currently visible rows based on pagination
+  const visibleRows = useMemo(() => {
+    const startIndex = pagination.pageIndex * pagination.pageSize;
+    const endIndex = startIndex + pagination.pageSize;
+    return sortedTableData.slice(startIndex, endIndex);
+  }, [sortedTableData, pagination.pageIndex, pagination.pageSize]);
+
+  // Fetch base assets only for currently visible rows
+  useEffect(() => {
+    if (!visibleRows.length) return;
+
+    // Get trades that need to be processed from visible rows only
+    const tradesToProcess = visibleRows.filter((item) => (
       item.trade_uuid && 
       !processedTrades[item.trade_uuid] && 
       !baseAssetMap[item.trade_uuid]
     ));
 
-    // Sort by datetime descending to process newest first
-    const sortedTrades = orderBy(
-      tradesToProcess,
-      (item) => item.registered_datetime,
-      'desc'
-    );
-
-    // Process the first unprocessed trade
-    if (sortedTrades.length > 0) {
-      const tradeToProcess = sortedTrades[0];
+    // Process trades one by one to avoid overwhelming the API
+    if (tradesToProcess.length > 0) {
+      const tradeToProcess = tradesToProcess[0];
       
       // Mark as being processed
       setProcessedTrades((prev) => ({
@@ -123,15 +139,60 @@ export default function PnLHistoryTable({
             [tradeToProcess.trade_uuid]: 'complete'
           }));
         })
-        .catch((error) => {
-          console.error('Error fetching trade log:', error);
+        .catch((_error) => {
+          // Silently handle error and mark as error state
           setProcessedTrades((prev) => ({
             ...prev,
             [tradeToProcess.trade_uuid]: 'error'
           }));
         });
     }
-  }, [data, baseAssetMap, processedTrades, getTradeLog, tradeConfigUuid]);
+  }, [visibleRows, baseAssetMap, processedTrades, getTradeLog, tradeConfigUuid]);
+
+  // Final table data - keep this stable to prevent page resets
+  const tableData = useMemo(
+    () => sortedTableData.map((item) => ({
+        ...item,
+        datetime: item.registered_datetime,
+        // Don't include baseAsset, name, or icon here to keep data stable
+      })),
+    [sortedTableData] // Only depend on sortedTableData, not baseAssetMap
+  );
+
+  // Custom cell renderer for base asset that looks up dynamically
+  const renderBaseAssetCell = useCallback(({ row }) => {
+    const baseAsset = baseAssetMap[row.original.trade_uuid] || '';
+    return baseAsset || ''; // Return empty string if not loaded yet
+  }, [baseAssetMap]);
+
+  // Custom cell renderer for asset icon that looks up dynamically  
+  const renderAssetIconCellDynamic = useCallback(({ row, table: _table }) => {
+    const baseAsset = baseAssetMap[row.original.trade_uuid] || '';
+    const icon = baseAsset && assetsData ? assetsData[baseAsset]?.icon : null;
+    
+    // Implement the same logic as renderAssetIconCell directly
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          textAlign: 'center',
+        }}
+      >
+        {icon ? (
+          <Box
+            component="img"
+            loading="lazy"
+            src={icon}
+            alt=""
+            sx={{ width: isMobile ? '0.7rem' : 20 }}
+          />
+        ) : (
+          <BlockIcon color="secondary" sx={{ fontSize: isMobile ? '0.7rem' : 20 }} />
+        )}
+      </Box>
+    );
+  }, [baseAssetMap, assetsData, isMobile]);
 
   const columns = useMemo(
     () => [
@@ -141,12 +202,13 @@ export default function PnLHistoryTable({
         enableSorting: false,
         size: 5,
         header: <span />,
-        cell: renderAssetIconCell,
+        cell: renderAssetIconCellDynamic,
       },
       {
         accessorKey: 'baseAsset',
         size: isMobile ? 25 : 45,
         header: t('Base Asset'),
+        cell: renderBaseAssetCell,
       },
       {
         accessorKey: 'datetime',
@@ -212,36 +274,13 @@ export default function PnLHistoryTable({
         header: <span />,
       },
     ],
-    [i18n.language, isMobile, t]
+    [i18n.language, isMobile, t, renderAssetIconCellDynamic, renderBaseAssetCell]
   );
 
   // Filter out columns that should be hidden on mobile
   const visibleColumns = useMemo(() => (
     columns.filter((column) => !(isMobile && column.hidden))
   ), [columns, isMobile]);
-
-  const tableData = useMemo(
-    () => {
-      if (!data) return [];
-      
-      return orderBy(
-        data,
-        (o) => o.registered_datetime,
-        'desc'
-      ).map((item) => {
-        const baseAsset = baseAssetMap[item.trade_uuid] || '';
-        
-        return {
-          ...item,
-          datetime: item.registered_datetime,
-          baseAsset,
-          name: baseAsset,
-          icon: baseAsset && assetsData ? assetsData[baseAsset]?.icon : null,
-        };
-      });
-    },
-    [data, baseAssetMap, assetsData]
-  );
 
   const tradeColumns = useMemo(
     () => [
@@ -346,7 +385,7 @@ export default function PnLHistoryTable({
         return (
           <Box
             className="animate__animated animate__fadeIn"
-            sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}
+            sx={{ bgcolor: alpha(theme.palette.primary?.main || '#007cff', 0.05) }}
           >
             <Box sx={{ p: 1, textAlign: 'center' }}>
               <Typography gutterBottom variant="h6" sx={{ fontWeight: 700 }}>
@@ -363,7 +402,7 @@ export default function PnLHistoryTable({
       return (
         <Box
           className="animate__animated animate__fadeIn"
-          sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}
+          sx={{ bgcolor: alpha(theme.palette.primary?.main || '#007cff', 0.05) }}
         >
           <Box sx={{ p: 1, textAlign: 'center' }}>
             <Typography gutterBottom variant="h6" sx={{ fontWeight: 700 }}>
@@ -385,12 +424,14 @@ export default function PnLHistoryTable({
   return (
     <ReactTableUI
       enableTablePaginationUI
+      ref={tableRef}
       columns={visibleColumns}
       data={tableData}
       options={{
         getRowId,
-        state: { expanded },
+        state: { expanded, pagination },
         onExpandedChange: (newExpanded) => setExpanded(newExpanded() || {}),
+        onPaginationChange: setPagination,
         meta: {
           isMobile,
           onUuidClick,
@@ -399,15 +440,35 @@ export default function PnLHistoryTable({
         },
       }}
       renderSubComponent={renderSubComponent}
+      getHeaderProps={() => ({
+        sx: {
+          bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+          fontSize: isMobile ? '0.6em' : '0.7em',
+          textAlign: isMobile ? 'center' : 'left',
+          padding: isMobile ? theme.spacing(0.5, 0.2) : theme.spacing(1, 1.5),
+          whiteSpace: isMobile ? 'normal' : 'normal',
+          overflow: 'visible',
+          textOverflow: 'clip',
+          lineHeight: isMobile ? 1.2 : 1.5,
+          wordBreak: isMobile ? 'break-word' : 'normal',
+        },
+      })}
       getCellProps={() => ({ sx: { height: 40 } })}
       getRowProps={(row, { table }) => ({
         sx: {
           ...(row.getIsExpanded()
-            ? { bgcolor: alpha(theme.palette.primary.main, 0.05) }
+            ? { bgcolor: alpha(theme.palette.primary?.main || '#007cff', 0.05) }
             : {}),
           ...(!row.getIsExpanded() && table.getIsSomeRowsExpanded()
             ? { opacity: 0.2 }
             : {}),
+        },
+      })}
+      getTableProps={() => ({
+        sx: {
+          border: 1,
+          borderColor: 'divider',
+          fontSize: isMobile ? '0.65em' : '1.15em',
         },
       })}
       showProgressBar={isFetching}

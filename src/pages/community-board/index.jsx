@@ -135,25 +135,27 @@ export default function CommunityBoard() {
                 height: { xs: '40px', sm: '40px' },
                 fontSize: { xs: '0.875rem', sm: '1rem' }
               }}
-              startAdornment={
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              }
-              endAdornment={
-                searchValue ? (
-                  <InputAdornment position="end">
-                    <IconButton
-                      edge="end"
-                      onClick={() => {
-                        setSearchValue('');
-                      }}
-                    >
-                      <CloseIcon />
-                    </IconButton>
-                  </InputAdornment>
-                ) : null
-              }
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchValue ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        edge="end"
+                        onClick={() => {
+                          setSearchValue('');
+                        }}
+                      >
+                        <CloseIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null,
+                },
+              }}
             />
           </Grid>
         </Grid>

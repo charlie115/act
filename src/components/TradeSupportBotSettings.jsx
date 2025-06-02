@@ -23,6 +23,9 @@ import InputAdornment from '@mui/material/InputAdornment';
 
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+
 import { useTranslation } from 'react-i18next';
 
 import { Controller, useForm } from 'react-hook-form';
@@ -36,6 +39,8 @@ import castString from 'utils/castString';
 
 export default function TradeSupportBotSettings({ marketCodeCombination }) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [putTradeConfig, { isLoading: isPutTradeConfigLoading }] =
     usePutTradeConfigMutation();
@@ -99,13 +104,15 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
           <RadioGroup row {...field}>
             <FormControlLabel
               value="false"
-              control={<Radio />}
+              control={<Radio size={isMobile ? 'small' : 'medium'} />}
               label={t('Isolated')}
+              sx={{ '& .MuiFormControlLabel-label': { fontSize: isMobile ? '0.875rem' : '1rem' } }}
             />
             <FormControlLabel
               value="true"
-              control={<Radio />}
+              control={<Radio size={isMobile ? 'small' : 'medium'} />}
               label={t('Cross')}
+              sx={{ '& .MuiFormControlLabel-label': { fontSize: isMobile ? '0.875rem' : '1rem' } }}
             />
           </RadioGroup>
         </FormControl>
@@ -124,18 +131,21 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
           <RadioGroup row {...field}>
             <FormControlLabel
               value="null"
-              control={<Radio />}
+              control={<Radio size={isMobile ? 'small' : 'medium'} />}
               label={t('Off')}
+              sx={{ '& .MuiFormControlLabel-label': { fontSize: isMobile ? '0.875rem' : '1rem' } }}
             />
             <FormControlLabel
               value="1"
-              control={<Radio />}
+              control={<Radio size={isMobile ? 'small' : 'medium'} />}
               label={t('Warning Notification')}
+              sx={{ '& .MuiFormControlLabel-label': { fontSize: isMobile ? '0.75rem' : '1rem' } }}
             />
             <FormControlLabel
               value="2"
-              control={<Radio />}
+              control={<Radio size={isMobile ? 'small' : 'medium'} />}
               label={t('Warning and Close Position')}
+              sx={{ '& .MuiFormControlLabel-label': { fontSize: isMobile ? '0.75rem' : '1rem' } }}
             />
           </RadioGroup>
         </FormControl>
@@ -164,8 +174,8 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
             spacing={2}
             sx={{ mb: 2 }}
           >
-            <FormLabel>
-              {t('Leverage')} <small>[1 ~ 20]</small>
+            <FormLabel sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}>
+              {t('Leverage')} <small style={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>[1 ~ 20]</small>
             </FormLabel>
             <Input
               inputProps={{ min: 1, max: 20, step: 1, type: 'number' }}
@@ -174,7 +184,13 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
                 const value = Number(e.target.value);
                 field.onChange(value);
               }}
-              sx={{ width: '5em' }}
+              sx={{ 
+                width: '5em',
+                fontSize: isMobile ? '0.875rem' : '1rem',
+                '& input': {
+                  fontSize: isMobile ? '0.875rem !important' : '1rem',
+                }
+              }}
             />
           </Stack>
           <Slider
@@ -215,7 +231,7 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
               <TableCell
                 align="center"
                 sx={{
-                  fontSize: 14,
+                  fontSize: isMobile ? 12 : 14,
                   fontWeight: 700,
                   width: { xs: '35%', md: 240 },
                 }}
@@ -226,7 +242,7 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
               <TableCell
                 align="center"
                 sx={{
-                  fontSize: 14,
+                  fontSize: isMobile ? 12 : 14,
                   fontWeight: 700,
                   width: { xs: '30%', md: 240 },
                 }}
@@ -238,7 +254,9 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
           </TableHead>
           <TableBody>
             <TableRow>
-              <TableCell>{t('Margin Mode')}</TableCell>
+              <TableCell sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}>
+                {t('Margin Mode')}
+              </TableCell>
               <TableCell
                 rowSpan={marketCodeCombination.target.isSpot ? 3 : undefined}
                 sx={
@@ -265,7 +283,9 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
               </TableCell>
             </TableRow>
             <TableRow>
-              <TableCell>{t('Liquidation Detection')}</TableCell>
+              <TableCell sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}>
+                {t('Liquidation Detection')}
+              </TableCell>
               {!marketCodeCombination.target.isSpot && (
                 <TableCell>
                   {renderLiquidationDetection('target_market_margin_call')}
@@ -278,7 +298,9 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
               )}
             </TableRow>
             <TableRow>
-              <TableCell>{t('Leverage')}</TableCell>
+              <TableCell sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}>
+                {t('Leverage')}
+              </TableCell>
               {!marketCodeCombination.target.isSpot && (
                 <TableCell>
                   {renderLeverage('target_market_leverage')}
@@ -291,7 +313,9 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
               )}
             </TableRow>
             <TableRow>
-              <TableCell>{t('Trade Failsafe')}</TableCell>
+              <TableCell sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}>
+                {t('Trade Failsafe')}
+              </TableCell>
               <TableCell colSpan={2}>
                 <Controller
                   name="safe_reverse"
@@ -307,13 +331,15 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
                       >
                         <FormControlLabel
                           value="false"
-                          control={<Radio />}
+                          control={<Radio size={isMobile ? 'small' : 'medium'} />}
                           label={t('Off')}
+                          sx={{ '& .MuiFormControlLabel-label': { fontSize: isMobile ? '0.875rem' : '1rem' } }}
                         />
                         <FormControlLabel
                           value="true"
-                          control={<Radio />}
+                          control={<Radio size={isMobile ? 'small' : 'medium'} />}
                           label={t('On')}
+                          sx={{ '& .MuiFormControlLabel-label': { fontSize: isMobile ? '0.875rem' : '1rem' } }}
                         />
                       </RadioGroup>
                     </FormControl>
@@ -323,7 +349,9 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
             </TableRow>
             {(marketCodeCombination.target.isSpot || marketCodeCombination.origin.isSpot) && (
               <TableRow>
-                <TableCell>{t('Repetitive Trade Condition')}</TableCell>
+                <TableCell sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}>
+                  {t('Repetitive Trade Condition')}
+                </TableCell>
                 <TableCell align="center" colSpan={2}>
                   <Controller
                     name="repeat_limit_p"
@@ -350,9 +378,9 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
                           spacing={2}
                           sx={{ mb: 2 }}
                         >
-                          <FormLabel>
+                          <FormLabel sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}>
                             {t('Repetitive Trade Condition')}{' '}
-                            <small>[-20% ~ 30%]</small>
+                            <small style={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>[-20% ~ 30%]</small>
                           </FormLabel>
                           <Input
                             inputProps={{
@@ -366,10 +394,24 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
                               const value = Number(e.target.value);
                               field.onChange(value);
                             }}
-                            sx={{ width: '5em' }}
-                            endAdornment={
-                              <InputAdornment position="end">%</InputAdornment>
-                            }
+                            sx={{ 
+                              width: '5em',
+                              fontSize: isMobile ? '0.875rem' : '1rem',
+                              '& input': {
+                                fontSize: isMobile ? '0.875rem !important' : '1rem',
+                              }
+                            }}
+                            slotProps={{
+                              input: {
+                                endAdornment: (
+                                  <InputAdornment position="end" sx={{ 
+                                    '& .MuiTypography-root': {
+                                      fontSize: isMobile ? '1rem !important' : '1.125rem !important'
+                                    }
+                                  }}>%</InputAdornment>
+                                ),
+                              },
+                            }}
                           />
                         </Stack>
                         <Slider
@@ -392,7 +434,7 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
               </TableRow>
             )}
             <TableRow>
-              <TableCell>
+              <TableCell sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}>
                 {t('Telegram Message Notification Interval')}
               </TableCell>
               <TableCell colSpan={2}>
@@ -409,6 +451,12 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
                       variant="standard"
                       InputProps={{
                         inputProps: { min: 0, step: 1, type: 'number' },
+                        sx: {
+                          fontSize: isMobile ? '0.875rem !important' : '1rem',
+                          '& input': {
+                            fontSize: isMobile ? '0.875rem !important' : '1rem',
+                          }
+                        }
                       }}
                       {...field}
                       sx={{ width: '12em' }}
@@ -418,7 +466,9 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
               </TableCell>
             </TableRow>
             <TableRow>
-              <TableCell>{t('Telegram Message Alarm Count')}</TableCell>
+              <TableCell sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}>
+                {t('Telegram Message Alarm Count')}
+              </TableCell>
               <TableCell colSpan={2}>
                 <Controller
                   name="send_times"
@@ -433,6 +483,12 @@ export default function TradeSupportBotSettings({ marketCodeCombination }) {
                       variant="standard"
                       InputProps={{
                         inputProps: { min: 0, step: 1, type: 'number' },
+                        sx: {
+                          fontSize: isMobile ? '0.875rem !important' : '1rem',
+                          '& input': {
+                            fontSize: isMobile ? '0.875rem !important' : '1rem',
+                          }
+                        }
                       }}
                       {...field}
                       sx={{ width: '12em' }}
