@@ -655,8 +655,8 @@ class UserBithumbAdaptor:
                 market=symbol,
                 side='ask',
                 volume=str(qty),
-                price=None,
-                ord_type='market'
+                price=str(calculate_bithumb_price(price*0.75)),
+                ord_type='limit'
             )
             res = {**res, 'retry_count': retry_count, 'retry_count_limit': self.trade_retry_limit, 'retry_term_sec': self.trade_retry_term_sec}
             if retry_count != 0:
@@ -668,6 +668,7 @@ class UserBithumbAdaptor:
                     return
                 return res
             retry_error_case = False
+            self.logger.error(f"market_short|res: {res}, symbol: {symbol}") # TEST
             if '알수없는' in res['result']['error']['message']:
                 retry_error_case = True
             if '일시적인 거래량 급증' in res['result']['error']['message']:
