@@ -38,9 +38,8 @@ def get_volatility_data(market_code_combination, mongodb_client, collection_name
     # Convert the data to a pandas DataFrame
     volatility_data_df = pd.DataFrame(list(volatility_data))
 
-    # close the connection
-    mongo_db_conn.close()
-    
+    # NOTE: Do NOT close the connection - we use connection pooling now
+
     return volatility_data_df
 
 market_code_combination = 'UPBIT_SPOT/KRW:BINANCE_USD_M/USDT'
@@ -85,9 +84,8 @@ def get_funding_data(market_code, mongodb_client):
     # Convert the data to a pandas DataFrame
     funding_data_df = pd.DataFrame(list(funding_data))
 
-    # close the connection
-    mongo_db_conn.close()
-    
+    # NOTE: Do NOT close the connection - we use connection pooling now
+
     return funding_data_df
 
 def get_kline_now_data(market_code_combination, local_redis):
@@ -301,8 +299,7 @@ def store_ai_recommendation_data(market_code_combination, ai_api_key, mongo_db_d
         logger.info(f"AI recommendation data for {market_code_combination}, length: {len(ai_recommendation_data_list)}, stored in {database}.")
     except Exception as e:
         logger.error(f"An error occurred during storing ai recommendation data: {e}\n{traceback.format_exc()}")
-    finally:
-        mongo_db_conn.close()
+    # NOTE: Do NOT close the connection - we use connection pooling now
         
 def store_ai_recommendation_data_loop(market_code_combination, ai_api_key, mongo_db_dict, logger):
     if 'SPOT' in market_code_combination.split(':')[0] and 'SPOT' not in market_code_combination.split(':')[1]:

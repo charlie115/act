@@ -14,6 +14,14 @@ from standalone_func.premium_data_generator import get_premium_df
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
 def store_kline_volatility_info(mongo_db_client, market_code_combination, logger, last_n=180):
+    """
+    Store volatility info for all 1T kline collections.
+
+    Optimizations:
+    - Uses connection pooling (do not close connection - it's shared)
+    - Uses datetime_now index for faster sorted queries
+    - Ensures indexes exist before querying
+    """
     try:
         database = market_code_combination.replace('/', '__').replace(':', '-')
         mongo_db_conn = mongo_db_client.get_conn()
@@ -33,18 +41,29 @@ def store_kline_volatility_info(mongo_db_client, market_code_combination, logger
         data_list = []
 
         for collection_name in collections_1T:
+            # Ensure index exists for this collection (cached, fast check)
+            mongo_db_client.ensure_indexes(database, collection_name)
+
             collection = db[collection_name]
-            
+
             # Fetch the last n records sorted by 'datetime_now' in descending order
-            records_cursor = collection.find(
-                {},
-                {'_id': 0, 'base_asset': 1, 'LS_high': 1, 'LS_low': 1, 'datetime_now': 1}
-            ).sort('datetime_now', -1).limit(last_n)
-            
+            # Use hint to force index usage for O(n) instead of O(n log n) sort
+            try:
+                records_cursor = collection.find(
+                    {},
+                    {'_id': 0, 'base_asset': 1, 'LS_high': 1, 'LS_low': 1, 'datetime_now': 1}
+                ).sort('datetime_now', -1).limit(last_n).hint([('datetime_now', -1)])
+            except Exception:
+                # Fallback if hint fails (index might not exist yet)
+                records_cursor = collection.find(
+                    {},
+                    {'_id': 0, 'base_asset': 1, 'LS_high': 1, 'LS_low': 1, 'datetime_now': 1}
+                ).sort('datetime_now', -1).limit(last_n)
+
             # Convert the cursor to a list of dictionaries
             records = list(records_cursor)
             records_df = pd.DataFrame(records)
-            
+
             # Check if DataFrame is not empty
             if not records_df.empty:
                 # Get difference between high and low
@@ -57,7 +76,7 @@ def store_kline_volatility_info(mongo_db_client, market_code_combination, logger
                     'mean_diff': mean_diff,
                     'datetime_now': datetime.datetime.utcnow()
                 }
-                data_list.append(data)    
+                data_list.append(data)
 
         # Clear the temporary collection (optional, since we're overwriting)
         temp_collection.delete_many({})
@@ -67,13 +86,14 @@ def store_kline_volatility_info(mongo_db_client, market_code_combination, logger
             temp_collection.insert_many(data_list)
         else:
             logger.info("No data to insert.")
-            
+
         # Rename 'volatility_info_temp' to 'volatility_info', dropping the target if it exists
         temp_collection.rename('volatility_info', dropTarget=True)
-        mongo_db_conn.close()
+        # NOTE: Do NOT close the connection - we use connection pooling now
+        # The connection is shared and managed by InitDBClient singleton
     except Exception as e:
         logger.error(f"An error occurred during storing volatility data: {e}\n{traceback.format_exc()}")
-        mongo_db_conn.close()
+        # NOTE: Do NOT close the connection - we use connection pooling now
         
 def store_kline_volatility_info_loop(enabled_market_klines, mongodb_dict, logging_dir, last_n, loop_time_secs=60):
     logger = InfoCoreLogger("arbitrage_core", logging_dir).logger
@@ -96,7 +116,16 @@ def store_kline_volatility_info_loop(enabled_market_klines, mongodb_dict, loggin
         time.sleep(loop_time_secs)
 
 def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict, admin_id, node, logger):
+    """
+    Insert kline data to MongoDB with optimizations:
+    - Connection pooling (reuses MongoClient via InitDBClient singleton)
+    - Redis caching for last timestamps (avoids repeated MongoDB queries)
+    - Batch inserts per collection (reduces round trips)
+    - Efficient collection empty check (uses estimated_document_count)
+    - Automatic index creation on datetime_now
+    """
     remote_redis = RedisHelper(**redis_dict)
+    local_redis = RedisHelper()  # For caching last timestamps
     try:
         service_name = channel_name.split('|')[0].lower()
         market_kline_name = channel_name.split('|')[1]
@@ -121,57 +150,89 @@ def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict
             logger.info(f"insert_kline_to_db|channel_name:{channel_name}, kline_type:{kline_type} has been skipped due to server check.")
             return
 
+        # Use connection pooling - InitDBClient.get_conn() returns cached MongoClient
         mongodb_client = InitDBClient(**mongodb_dict)
         mongodb_conn = mongodb_client.get_conn()
         db = mongodb_conn[converted_market_code_combination]
 
-        closed_kline_df = kline_df[kline_df['closed']==True]
+        closed_kline_df = kline_df[kline_df['closed']==True].copy()
         closed_kline_df['datetime_now'] = pd.to_datetime(closed_kline_df['datetime_now']).dt.tz_localize(None)
         if len(closed_kline_df) == 0:
             logger.info(f'insert_kline_to_db|{channel_name} No klines to be inserted')
-            # print(f'insert_kline_to_db|{channel_name} No klines to be inserted') # TEST
         else:
-            # Filter the klines to be inserted
             start = time.time()
             base_asset_list = closed_kline_df['base_asset'].unique()
             count = 0
             inserted_coin_list = []
-            filtering_time = 0 # TEST
-            insert_time = 0 # TEST
+
+            # Redis cache key prefix for last timestamps
+            cache_key_prefix = f"KLINE_LAST_TS|{converted_market_code_combination}|{kline_type}"
+
+            # Batch all documents to insert per collection, then insert in batches
             for each_base_asset in base_asset_list:
-                # start2 = time.time()
                 collection_name = f"{each_base_asset}_{kline_type}"
-                collection = db[collection_name]
-                document_count = collection.count_documents({})
-                if document_count == 0:
-                    df_to_insert = closed_kline_df[closed_kline_df['base_asset']==each_base_asset]
+                cache_key = f"{cache_key_prefix}|{each_base_asset}"
+
+                # First, try to get last timestamp from Redis cache
+                cached_ts = local_redis.get_data(cache_key)
+                last_datetime = None
+
+                if cached_ts is not None:
+                    # Cache hit - use cached timestamp
+                    try:
+                        last_datetime = pd.to_datetime(float(cached_ts.decode('utf-8')), unit='s')
+                    except (ValueError, AttributeError):
+                        last_datetime = None
+
+                if last_datetime is None:
+                    # Cache miss - check if collection is empty using efficient method
+                    is_empty = mongodb_client.is_collection_empty(
+                        converted_market_code_combination, collection_name
+                    )
+
+                    if is_empty:
+                        # Collection is empty, insert all data for this asset
+                        df_to_insert = closed_kline_df[closed_kline_df['base_asset']==each_base_asset]
+                    else:
+                        # Collection has data - get last timestamp using indexed query
+                        last_datetime = mongodb_client.get_last_datetime(
+                            converted_market_code_combination, collection_name
+                        )
+                        if last_datetime is not None:
+                            df_to_insert = closed_kline_df[
+                                (closed_kline_df['base_asset']==each_base_asset) &
+                                (closed_kline_df['datetime_now'] > last_datetime)
+                            ]
+                        else:
+                            # Couldn't get last datetime, insert all
+                            df_to_insert = closed_kline_df[closed_kline_df['base_asset']==each_base_asset]
                 else:
-                    # TEST
-                    start_filter = time.time()
-                    df_to_insert = closed_kline_df[(closed_kline_df['base_asset']==each_base_asset)&(closed_kline_df['datetime_now']>collection.find_one(sort=[("datetime_now", -1)])['datetime_now'])]
-                    # TEST
-                    filtering_time += (time.time() - start_filter)
+                    # Cache hit - filter using cached timestamp
+                    df_to_insert = closed_kline_df[
+                        (closed_kline_df['base_asset']==each_base_asset) &
+                        (closed_kline_df['datetime_now'] > last_datetime)
+                    ]
+
                 if len(df_to_insert) != 0:
-                    # TEST
-                    start_insert = time.time()       
-                    collection.insert_many(df_to_insert.to_dict('records'))
-                    # TEST
-                    insert_time += (time.time() - start_insert)
+                    # Ensure index exists before insert (cached check, fast)
+                    mongodb_client.ensure_indexes(converted_market_code_combination, collection_name)
+
+                    # Insert documents
+                    collection = db[collection_name]
+                    collection.insert_many(df_to_insert.to_dict('records'), ordered=False)
+
                     count += len(df_to_insert)
                     inserted_coin_list.append(each_base_asset)
-                    # self.kline_logger.info(f"insert_kline_to_db|database: {market_code_combination}, collection:{collection_name}, Inserting {len(df_to_insert)} klines took {time.time() - start2} seconds")
+
+                    # Update Redis cache with the new last timestamp
+                    new_last_ts = df_to_insert['datetime_now'].max().timestamp()
+                    local_redis.set_data(cache_key, str(new_last_ts), ex=3600)  # Cache for 1 hour
+
             if count != 0:
-                # TEST
-                # logger.info(f"insert_kline_to_db|database: {market_code_combination} {kline_type}, Filtering {count} klines for {len(inserted_coin_list)} unique base_assets took {filtering_time} seconds")
-                # logger.info(f"insert_kline_to_db|database: {market_code_combination} {kline_type}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {insert_time} seconds")
-                # TEST
-                logger.info(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds")
+                logger.info(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start:.3f} seconds")
                 if count != len(inserted_coin_list):
                     logger.error(f"kline mismatch: {count} != {len(inserted_coin_list)}")
                     logger.error(f"closed_kline_df: {closed_kline_df}")
-                    logger.error(f"df_to_insert: {df_to_insert}")
-            # print(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start} seconds") # TEST
-        # mongo_client.close()
     except:
         logger.error(f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}")
         acw_api.create_message_thread(admin_id, 'Error in insert_kline_to_db', content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()[:1995]}")

@@ -73,9 +73,25 @@ The `InitCore` class orchestrates:
 
 **etc/** - Shared infrastructure:
 - `redis_connector/redis_helper.py` - Thread-safe Redis client wrapper
-- `db_handler/mongodb_client.py` - MongoDB operations
+- `db_handler/mongodb_client.py` - MongoDB client with connection pooling (singleton pattern)
 - `acw_api.py` - API client for community_drf backend
 - `command_handler.py` - Remote command processing
+
+### MongoDB Optimizations
+
+The MongoDB client (`etc/db_handler/mongodb_client.py`) implements several performance optimizations:
+
+1. **Connection Pooling**: Uses singleton pattern to reuse `MongoClient` instances per URI. Never call `close()` on connections - they are managed by the pool.
+
+2. **Automatic Indexing**: `ensure_indexes()` method creates `datetime_now` descending index on collections for fast sorted queries.
+
+3. **Efficient Methods**:
+   - `is_collection_empty()` - Uses `estimated_document_count()` (O(1)) instead of `count_documents({})` (full scan)
+   - `get_last_datetime()` - Uses index hint for O(1) lookup of last document
+
+4. **Redis Timestamp Caching**: `insert_kline_to_db()` caches last inserted timestamps in local Redis to avoid repeated MongoDB queries.
+
+**Important**: Do NOT call `mongo_db_conn.close()` in any function - the connection pool manages connection lifecycle.
 
 **standalone_func/** - Background data processors:
 - `kline_data_generator.py` - OHLC generation

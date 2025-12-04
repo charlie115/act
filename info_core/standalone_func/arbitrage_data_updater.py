@@ -111,7 +111,7 @@ def store_funding_diff(mongo_db_client, total_enabled_market_klines, head=None, 
         temp_fundingrate_diff_collection.delete_many({})
         temp_fundingrate_diff_collection.insert_many(total_df.to_dict('records'))
         fundingrate_diff_db['temp_diff'].rename('diff', dropTarget=True)
-        mongo_db_conn.close()
+        # NOTE: Do NOT close the connection - we use connection pooling now
         return total_df
     
 def store_funding_diff_loop(total_enabled_market_klines, mongodb_dict, logging_dir, loop_time_secs=60):
@@ -215,7 +215,7 @@ def store_average_funding_rate(mongo_db_client, total_enabled_market_klines, log
             temp_arbitrage_fundingrate_collection.delete_many({})
             temp_arbitrage_fundingrate_collection.insert_many(average_df.sort_values('funding_rate', ascending=False).to_dict('records'))
             temp_arbitrage_fundingrate_collection.rename(arbitrage_collection_name, dropTarget=True)
-        mongo_db_conn.close()
+        # NOTE: Do NOT close the connection - we use connection pooling now
         return
     
 def store_average_funding_loop(total_enabled_market_klines, mongodb_dict, logging_dir, loop_time_secs=120):
@@ -285,7 +285,7 @@ def remove_delisted_funding_rate(mongo_db_client, total_enabled_market_klines, l
             mongo_db_collection.delete_many({"symbol": {"$in": delisted_symbols}})
             # Log
             logger.info(f"Deleting funding_rate data for {exchange}_{market_type} delisted symbols: {delisted_symbols}")
-        mongo_db_conn.close()
+        # NOTE: Do NOT close the connection - we use connection pooling now
         return
     
 def remove_delisted_funding_rate_loop(total_enabled_market_klines, mongodb_dict, logging_dir, loop_time_secs=3600):
