@@ -58,19 +58,25 @@ class InitKlineCore:
         self.store_kline_volatility_info_proc.start()
 
     def _start_generating_kline(self):
-        # Start generating kline        
+        # Start generating kline
         for market_combination in self.enabled_market_klines:
             target_market_code = market_combination.split(':')[0]
             origin_market_code = market_combination.split(':')[1]
             for each_kline_type in self.enabled_kline_types:
-                def create_kline_process():
-                    if each_kline_type == "1T":
+                # Use default arguments to capture loop variables by value (not by reference)
+                # This fixes the closure bug where all monitors would reference the last loop values
+                def create_kline_process(
+                    kline_type=each_kline_type,
+                    target_mc=target_market_code,
+                    origin_mc=origin_market_code
+                ):
+                    if kline_type == "1T":
                         return Process(
                             target=ohlc_1T_generator,
                             args=(
                                 insert_kline_to_db,
-                                target_market_code,
-                                origin_market_code,
+                                target_mc,
+                                origin_mc,
                                 self.acw_api,
                                 self.admin_id,
                                 self.node,
@@ -84,10 +90,10 @@ class InitKlineCore:
                         return Process(
                             target=ohlc_interval_generator,
                             args=(
-                                each_kline_type,
+                                kline_type,
                                 insert_kline_to_db,
-                                target_market_code,
-                                origin_market_code,
+                                target_mc,
+                                origin_mc,
                                 self.acw_api,
                                 self.admin_id,
                                 self.node,
@@ -97,21 +103,27 @@ class InitKlineCore:
                             ),
                             daemon=True
                         )
-                self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"] = create_kline_process()
-                self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].start()
-                
+
+                proc_key = f"{market_combination}_{each_kline_type}_loader"
+                self.kline_proc_dict[proc_key] = create_kline_process()
+                self.kline_proc_dict[proc_key].start()
+
                 time.sleep(0.5)
-                
+
                 # Add monitoring thread
-                def monitor_kline_process():
+                # Use default arguments to capture loop variables by value
+                def monitor_kline_process(
+                    proc_key=proc_key,
+                    create_proc=create_kline_process
+                ):
                     while True:
-                        if not self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].is_alive():
-                            self.kline_logger.error(f"Kline process {market_combination}_{each_kline_type}_loader is dead, restarting..")
-                            self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"] = create_kline_process()
-                            self.kline_proc_dict[f"{market_combination}_{each_kline_type}_loader"].start()
+                        if not self.kline_proc_dict[proc_key].is_alive():
+                            self.kline_logger.error(f"Kline process {proc_key} is dead, restarting..")
+                            self.kline_proc_dict[proc_key] = create_proc()
+                            self.kline_proc_dict[proc_key].start()
                         time.sleep(2)
                 Thread(target=monitor_kline_process, daemon=True).start()
-                self.kline_logger.info(f"Kline process monitor for {market_combination}_{each_kline_type}_loader started.")
+                self.kline_logger.info(f"Kline process monitor for {proc_key} started.")
                     
                 
                 

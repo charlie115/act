@@ -498,22 +498,37 @@ def generate_interval_kline(
         ohlc_df['dollar'] = get_dollar_dict(local_redis)['price']
         ohlc_df['closed'] = True
         
-        last_ohlc_1T_kline_df = last_ohlc_1T_kline_df[last_ohlc_1T_kline_df['base_asset'].isin(ohlc_df['base_asset'].unique())]
-        
-        # overwrite close data with the last 1T close data
-        for prefix in prefixes:
-            try:
-                ohlc_df[f'{prefix}_close'] = last_ohlc_1T_kline_df[f'{prefix}_close'].values
-            except Exception as e:
-                logger.error(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Error: {e}")
-                logger.error(f"last_ohlc_1T_kline_df: {last_ohlc_1T_kline_df}")
-                logger.error(f"ohlc_df: {ohlc_df}")
-                raise e
-            
-        # Compare the high and low with the last 1T high and low
-        for prefix in prefixes:
-            ohlc_df[f'{prefix}_high'] = np.maximum(ohlc_df[f'{prefix}_high'], last_ohlc_1T_kline_df[f'{prefix}_high'].values)
-            ohlc_df[f'{prefix}_low'] = np.minimum(ohlc_df[f'{prefix}_low'], last_ohlc_1T_kline_df[f'{prefix}_low'].values)
+        # Find symbols in each DataFrame to handle new symbols safely
+        ohlc_symbols = set(ohlc_df['base_asset'].unique())
+        last_1T_symbols = set(last_ohlc_1T_kline_df['base_asset'].unique())
+        common_symbols = ohlc_symbols & last_1T_symbols
+        new_symbols = ohlc_symbols - last_1T_symbols  # Symbols only in ohlc_df (newly listed)
+
+        if new_symbols:
+            logger.info(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, New symbols detected (keeping existing values): {new_symbols}")
+
+        # Split ohlc_df into common symbols and new symbols
+        ohlc_df_common = ohlc_df[ohlc_df['base_asset'].isin(common_symbols)].copy()
+        ohlc_df_new = ohlc_df[ohlc_df['base_asset'].isin(new_symbols)].copy()
+
+        # Process common symbols: update close/high/low from 1T data
+        if len(ohlc_df_common) > 0:
+            # Filter and sort both DataFrames by base_asset to ensure row alignment
+            last_ohlc_1T_common = last_ohlc_1T_kline_df[last_ohlc_1T_kline_df['base_asset'].isin(common_symbols)].copy()
+            ohlc_df_common = ohlc_df_common.sort_values('base_asset').reset_index(drop=True)
+            last_ohlc_1T_common = last_ohlc_1T_common.sort_values('base_asset').reset_index(drop=True)
+
+            # Overwrite close data with the last 1T close data
+            for prefix in prefixes:
+                ohlc_df_common[f'{prefix}_close'] = last_ohlc_1T_common[f'{prefix}_close'].values
+
+            # Compare the high and low with the last 1T high and low
+            for prefix in prefixes:
+                ohlc_df_common[f'{prefix}_high'] = np.maximum(ohlc_df_common[f'{prefix}_high'], last_ohlc_1T_common[f'{prefix}_high'].values)
+                ohlc_df_common[f'{prefix}_low'] = np.minimum(ohlc_df_common[f'{prefix}_low'], last_ohlc_1T_common[f'{prefix}_low'].values)
+
+        # Recombine: common symbols (updated) + new symbols (keep existing values)
+        ohlc_df = pd.concat([ohlc_df_common, ohlc_df_new], ignore_index=True)
 
         # Append into Redis for historical data
         old_ohlc_kline = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_kline')
