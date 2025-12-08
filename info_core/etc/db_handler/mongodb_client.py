@@ -40,9 +40,16 @@ class InitDBClient:
 
         Uses a class-level cache to reuse MongoClient instances.
         PyMongo's MongoClient is thread-safe and handles connection pooling internally.
+
+        Note: Cache key includes PID to ensure each forked process gets its own
+        connection pool, avoiding PyMongo's "opened before fork" warning.
         """
+        # Include PID in cache key to make connections fork-safe
+        # Each child process will create its own connection pool
+        cache_key = f"{self.uri}:{os.getpid()}"
+
         with InitDBClient._cache_lock:
-            if self.uri not in InitDBClient._client_cache:
+            if cache_key not in InitDBClient._client_cache:
                 # Configure connection pool settings for high-throughput workloads
                 # Note: At interval boundaries (e.g., :00, :30), multiple kline processes
                 # insert simultaneously, causing insert times to spike from ~2s to ~28s.
@@ -59,10 +66,10 @@ class InitDBClient:
                     connectTimeoutMS=10000,    # Connection timeout (10s for network latency)
                     socketTimeoutMS=120000,    # Socket timeout for operations (120s for large batch inserts)
                 )
-                InitDBClient._client_cache[self.uri] = mongo_client
+                InitDBClient._client_cache[cache_key] = mongo_client
                 if self.logger:
-                    self.logger.info(f"Created new MongoDB connection pool for {self.host}:{self.port}")
-            return InitDBClient._client_cache[self.uri]
+                    self.logger.info(f"Created new MongoDB connection pool for {self.host}:{self.port} (PID:{os.getpid()})")
+            return InitDBClient._client_cache[cache_key]
 
     def ensure_indexes(self, database_name, collection_name):
         """

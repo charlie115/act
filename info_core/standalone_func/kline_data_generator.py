@@ -814,7 +814,9 @@ def ohlc_interval_generator(
                 per_interval_ohlc_df.loc[mask_existing, f'{prefix}_close'] = temp_df.loc[mask_existing, f'{prefix}_close']
 
             # Update other columns for existing assets
-            per_interval_ohlc_df.loc[mask_existing, other_columns] = temp_df.loc[mask_existing, other_columns]
+            # Use .values to avoid pandas dtype inference issues with mixed types
+            if mask_existing.any():
+                per_interval_ohlc_df.loc[mask_existing, other_columns] = temp_df.loc[mask_existing, other_columns].values
 
             # Update per_interval_ohlc_df in the Redis 'now' data
             ohlc_now_df = per_interval_ohlc_df.reset_index()
