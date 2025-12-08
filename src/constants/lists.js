@@ -233,7 +233,7 @@ export const MARKET_CODE_LIST = [
   {
     getLabel: () => i18n.t('Gate USDⓈ-M (USDT)'),
     value: 'GATE_USD_M/USDT',
-    exchange: 'OKX',
+    exchange: 'GATE',
     icon: GateSvg,
   },
 ];

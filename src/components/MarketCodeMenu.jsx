@@ -154,18 +154,21 @@ function MarketCodeMenu({ onChange }) {
       const marketCodeCombinations = [];
       Object.entries(bookmarkedMarketCodes).forEach(([target, origins]) => {
         const targetObj = marketCodeList[target];
+        if (!targetObj) return; // Skip if target doesn't exist
         Object.keys(origins)
           .filter((origin) => origins[origin])
-          .forEach((origin) =>
+          .forEach((origin) => {
+            const originObj = marketCodeList[origin];
+            if (!originObj) return; // Skip if origin doesn't exist
             marketCodeCombinations.push([
               {
                 ...targetObj,
                 disabled: !data?.[targetObj.value],
                 origins: data?.[targetObj.value] || [],
               },
-              marketCodeList[origin],
-            ])
-          );
+              originObj,
+            ]);
+          });
       });
       setBookmarkedCombinations(marketCodeCombinations);
     }
