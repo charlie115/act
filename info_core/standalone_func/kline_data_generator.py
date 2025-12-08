@@ -6,12 +6,19 @@ from etc.db_handler.mongodb_client import InitDBClient
 import pickle
 import datetime
 from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
 import time
 import numpy as np
 import re
+from pymongo.errors import BulkWriteError
 from standalone_func.get_dollar_dict import get_dollar_dict
 from standalone_func.premium_data_generator import get_premium_df
 from standalone_func.store_exchange_status import fetch_market_servercheck
+
+# Module-level thread pool for insert operations
+# Limits concurrent inserts per process (prevents overwhelming MongoDB)
+# 4 workers is optimal: balances throughput with connection pool usage
+_INSERT_THREAD_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="kline_insert")
 
 def store_kline_volatility_info(mongo_db_client, market_code_combination, logger, last_n=180):
     """
@@ -115,13 +122,62 @@ def store_kline_volatility_info_loop(enabled_market_klines, mongodb_dict, loggin
             logger.error(f"Error in store_kline_volatility_info_loop: {e}\n{traceback.format_exc()}")
         time.sleep(loop_time_secs)
 
+def _bulk_insert_with_retry(db, collection_name, docs, mongodb_client, database_name, max_retries=3):
+    """
+    Insert documents to a collection with retry logic for transient failures.
+
+    Args:
+        db: MongoDB database object
+        collection_name: Name of the collection
+        docs: List of documents to insert
+        mongodb_client: InitDBClient instance for ensure_indexes
+        database_name: Database name for ensure_indexes
+        max_retries: Maximum retry attempts
+
+    Returns:
+        tuple: (inserted_count, failed)
+    """
+    if not docs:
+        return 0, False
+
+    # Ensure index exists before insert (cached check, fast)
+    mongodb_client.ensure_indexes(database_name, collection_name)
+    collection = db[collection_name]
+
+    for attempt in range(max_retries):
+        try:
+            result = collection.insert_many(docs, ordered=False)
+            return len(result.inserted_ids), False
+        except BulkWriteError as bwe:
+            # Some documents may have succeeded
+            inserted = bwe.details.get('nInserted', 0)
+            if inserted == len(docs):
+                # All docs inserted despite error (e.g., duplicate key warnings)
+                return inserted, False
+
+            # Get documents that failed (for potential retry)
+            write_errors = bwe.details.get('writeErrors', [])
+            if attempt == max_retries - 1:
+                # Last attempt failed
+                return inserted, True
+            # Wait before retry with exponential backoff
+            time.sleep(0.1 * (attempt + 1))
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise  # Re-raise on final attempt
+            time.sleep(0.1 * (attempt + 1))
+
+    return 0, True
+
+
 def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict, admin_id, node, logger):
     """
     Insert kline data to MongoDB with optimizations:
     - Connection pooling (reuses MongoClient via InitDBClient singleton)
-    - Redis caching for last timestamps (avoids repeated MongoDB queries)
-    - Batch inserts per collection (reduces round trips)
-    - Efficient collection empty check (uses estimated_document_count)
+    - Batch Redis MGET for cache warming (single round-trip for all keys)
+    - DataFrame groupby optimization (single operation vs repeated filtering)
+    - Bulk insert with retry logic (handles transient failures)
+    - Batch Redis cache updates (single pipeline for all updates)
     - Automatic index creation on datetime_now
     """
     remote_redis = RedisHelper(**redis_dict)
@@ -159,81 +215,96 @@ def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict
         closed_kline_df['datetime_now'] = pd.to_datetime(closed_kline_df['datetime_now']).dt.tz_localize(None)
         if len(closed_kline_df) == 0:
             logger.info(f'insert_kline_to_db|{channel_name} No klines to be inserted')
-        else:
-            start = time.time()
-            base_asset_list = closed_kline_df['base_asset'].unique()
-            count = 0
-            inserted_coin_list = []
+            return
 
-            # Redis cache key prefix for last timestamps
-            cache_key_prefix = f"KLINE_LAST_TS|{converted_market_code_combination}|{kline_type}"
+        start = time.time()
+        base_asset_list = list(closed_kline_df['base_asset'].unique())
+        cache_key_prefix = f"KLINE_LAST_TS|{converted_market_code_combination}|{kline_type}"
 
-            # Batch all documents to insert per collection, then insert in batches
-            for each_base_asset in base_asset_list:
-                collection_name = f"{each_base_asset}_{kline_type}"
-                cache_key = f"{cache_key_prefix}|{each_base_asset}"
+        # OPTIMIZATION 1: Batch Redis MGET - single round-trip for all cache keys
+        cache_keys = [f"{cache_key_prefix}|{asset}" for asset in base_asset_list]
+        cached_values = local_redis.mget_data(cache_keys)
 
-                # First, try to get last timestamp from Redis cache
-                cached_ts = local_redis.get_data(cache_key)
-                last_datetime = None
+        # Build cached timestamps dict
+        cached_timestamps = {}
+        for asset, cached_ts in zip(base_asset_list, cached_values):
+            if cached_ts is not None:
+                try:
+                    cached_timestamps[asset] = pd.to_datetime(float(cached_ts.decode('utf-8')), unit='s')
+                except (ValueError, AttributeError):
+                    cached_timestamps[asset] = None
+            else:
+                cached_timestamps[asset] = None
 
-                if cached_ts is not None:
-                    # Cache hit - use cached timestamp
-                    try:
-                        last_datetime = pd.to_datetime(float(cached_ts.decode('utf-8')), unit='s')
-                    except (ValueError, AttributeError):
-                        last_datetime = None
+        # OPTIMIZATION 2: Pre-group DataFrame by base_asset (single pandas operation)
+        grouped = closed_kline_df.groupby('base_asset')
 
-                if last_datetime is None:
-                    # Cache miss - check if collection is empty using efficient method
-                    is_empty = mongodb_client.is_collection_empty(
+        # Prepare insert batches and cache updates
+        count = 0
+        inserted_coin_list = []
+        cache_updates = {}  # {cache_key: new_timestamp_str}
+        failed_collections = []
+
+        for base_asset, group_df in grouped:
+            collection_name = f"{base_asset}_{kline_type}"
+            cache_key = f"{cache_key_prefix}|{base_asset}"
+            last_datetime = cached_timestamps.get(base_asset)
+
+            # Determine which records to insert
+            if last_datetime is not None:
+                # Cache hit - filter using cached timestamp
+                df_to_insert = group_df[group_df['datetime_now'] > last_datetime]
+            else:
+                # Cache miss - check if collection is empty using efficient method
+                is_empty = mongodb_client.is_collection_empty(
+                    converted_market_code_combination, collection_name
+                )
+
+                if is_empty:
+                    # Collection is empty, insert all data for this asset
+                    df_to_insert = group_df
+                else:
+                    # Collection has data - get last timestamp using indexed query
+                    last_datetime = mongodb_client.get_last_datetime(
                         converted_market_code_combination, collection_name
                     )
-
-                    if is_empty:
-                        # Collection is empty, insert all data for this asset
-                        df_to_insert = closed_kline_df[closed_kline_df['base_asset']==each_base_asset]
+                    if last_datetime is not None:
+                        df_to_insert = group_df[group_df['datetime_now'] > last_datetime]
                     else:
-                        # Collection has data - get last timestamp using indexed query
-                        last_datetime = mongodb_client.get_last_datetime(
-                            converted_market_code_combination, collection_name
-                        )
-                        if last_datetime is not None:
-                            df_to_insert = closed_kline_df[
-                                (closed_kline_df['base_asset']==each_base_asset) &
-                                (closed_kline_df['datetime_now'] > last_datetime)
-                            ]
-                        else:
-                            # Couldn't get last datetime, insert all
-                            df_to_insert = closed_kline_df[closed_kline_df['base_asset']==each_base_asset]
-                else:
-                    # Cache hit - filter using cached timestamp
-                    df_to_insert = closed_kline_df[
-                        (closed_kline_df['base_asset']==each_base_asset) &
-                        (closed_kline_df['datetime_now'] > last_datetime)
-                    ]
+                        # Couldn't get last datetime, insert all
+                        df_to_insert = group_df
 
-                if len(df_to_insert) != 0:
-                    # Ensure index exists before insert (cached check, fast)
-                    mongodb_client.ensure_indexes(converted_market_code_combination, collection_name)
+            if len(df_to_insert) > 0:
+                docs = df_to_insert.to_dict('records')
 
-                    # Insert documents
-                    collection = db[collection_name]
-                    collection.insert_many(df_to_insert.to_dict('records'), ordered=False)
+                # OPTIMIZATION 3: Bulk insert with retry logic
+                inserted, failed = _bulk_insert_with_retry(
+                    db, collection_name, docs, mongodb_client, converted_market_code_combination
+                )
 
-                    count += len(df_to_insert)
-                    inserted_coin_list.append(each_base_asset)
-
-                    # Update Redis cache with the new last timestamp
+                count += inserted
+                if inserted > 0:
+                    inserted_coin_list.append(base_asset)
+                    # Prepare cache update
                     new_last_ts = df_to_insert['datetime_now'].max().timestamp()
-                    local_redis.set_data(cache_key, str(new_last_ts), ex=3600)  # Cache for 1 hour
+                    cache_updates[cache_key] = str(new_last_ts)
 
-            if count != 0:
-                logger.info(f"insert_kline_to_db|channel_name: {channel_name}, Inserting {count} klines for {len(inserted_coin_list)} unique base_assets took {time.time() - start:.3f} seconds")
-                if count != len(inserted_coin_list):
-                    logger.error(f"kline mismatch: {count} != {len(inserted_coin_list)}")
-                    logger.error(f"closed_kline_df: {closed_kline_df}")
-    except:
+                if failed:
+                    failed_collections.append(collection_name)
+
+        # OPTIMIZATION 4: Batch Redis cache updates - single pipeline
+        if cache_updates:
+            local_redis.mset_data_with_expiry(cache_updates, ex=3600)  # Cache for 1 hour
+
+        if count > 0:
+            elapsed = time.time() - start
+            logger.info(f"insert_kline_to_db|channel_name: {channel_name}, Inserted {count} klines for {len(inserted_coin_list)} unique base_assets took {elapsed:.3f} seconds")
+            if failed_collections:
+                logger.warning(f"insert_kline_to_db|{channel_name} Failed collections (after retries): {failed_collections}")
+            if count != len(inserted_coin_list):
+                logger.error(f"kline mismatch: {count} != {len(inserted_coin_list)}")
+                logger.error(f"closed_kline_df: {closed_kline_df}")
+    except Exception:
         logger.error(f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}")
         acw_api.create_message_thread(admin_id, 'Error in insert_kline_to_db', content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()[:1995]}")
 
@@ -459,23 +530,18 @@ def ohlc_1T_generator(
                 # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Minute transition processing took {minute_transition_time:.4f} seconds")
                 logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Finalized {len(ohlc_df)} klines for {ohlc_df['base_asset'].nunique()} unique base_assets")
                 
-                # # Performance tracking - DB insert
-                # db_insert_start = time.time()
-                # Insert into the database
-                insert_db_thread = Thread(
-                    target=insert_kline_to_db,
-                    args=(
-                        new_ohlc_1T_kline,
-                        f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline",
-                        acw_api,
-                        redis_dict,
-                        mongodb_dict,
-                        admin_id,
-                        node,
-                        logger
-                    )
+                # Insert into the database using thread pool (reuses threads, limits concurrency)
+                _INSERT_THREAD_POOL.submit(
+                    insert_kline_to_db,
+                    new_ohlc_1T_kline,
+                    f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline",
+                    acw_api,
+                    redis_dict,
+                    mongodb_dict,
+                    admin_id,
+                    node,
+                    logger
                 )
-                insert_db_thread.start()
                 # db_insert_time = time.time() - db_insert_start
                 # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, DB insert thread creation took {db_insert_time:.4f} seconds")
                 
@@ -786,30 +852,26 @@ def ohlc_interval_generator(
             if (finalize_interval and
                 ohlc_1T_df_datetime_upto_minute == previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1)):
                 
-                # TEST
-                logger.info(f"ohlc_interval_generator|{target_market_code}:{origin_market_code}, {interval_label}, Finalizing the interval. Thread will be started.")
-                generate_interval_kline_thread = Thread(
-                    target=generate_interval_kline,
-                    args=(
-                        per_interval_ohlc_df,
-                        previous_interval_start,
-                        interval_minutes,
-                        prefixes,
-                        insert_kline_to_db,
-                        interval_label,
-                        target_market_code,
-                        origin_market_code,
-                        acw_api,
-                        admin_id,
-                        node,
-                        redis_dict,
-                        mongodb_dict,
-                        logger,
-                        max_length
-                    ),
-                    daemon=True
+                # Finalize interval using thread pool (reuses threads, limits concurrency)
+                logger.info(f"ohlc_interval_generator|{target_market_code}:{origin_market_code}, {interval_label}, Finalizing the interval.")
+                _INSERT_THREAD_POOL.submit(
+                    generate_interval_kline,
+                    per_interval_ohlc_df,
+                    previous_interval_start,
+                    interval_minutes,
+                    prefixes,
+                    insert_kline_to_db,
+                    interval_label,
+                    target_market_code,
+                    origin_market_code,
+                    acw_api,
+                    admin_id,
+                    node,
+                    redis_dict,
+                    mongodb_dict,
+                    logger,
+                    max_length
                 )
-                generate_interval_kline_thread.start()
 
                 # Reset per_interval_ohlc_df for the new interval
                 per_interval_ohlc_df = pd.DataFrame()

@@ -47,10 +47,12 @@ class InitDBClient:
                 # Note: At interval boundaries (e.g., :00, :30), multiple kline processes
                 # insert simultaneously, causing insert times to spike from ~2s to ~28s.
                 # Timeout values are set to handle these concurrent operation storms.
+                # Pool size reduced: 24 processes × 25 max = 600 total connections
+                # This reduces memory overhead and connection churn while maintaining throughput
                 mongo_client = pymongo.MongoClient(
                     self.uri,
-                    maxPoolSize=100,           # Max connections in pool (default: 100)
-                    minPoolSize=10,            # Min connections to keep alive
+                    maxPoolSize=25,            # Reduced from 100 (24 processes share the load)
+                    minPoolSize=5,             # Reduced from 10 (faster startup, lower baseline)
                     maxIdleTimeMS=60000,       # Close idle connections after 60s
                     waitQueueTimeoutMS=10000,  # Wait up to 10s for available connection
                     serverSelectionTimeoutMS=30000,  # Timeout for server selection (30s for failover)

@@ -35,6 +35,40 @@ class RedisHelper:
         redis_conn = self.get_redis_client()
         return redis_conn.get(key_name)
 
+    def mget_data(self, keys):
+        """
+        Get multiple keys in a single Redis MGET call.
+
+        Args:
+            keys: List of key names to retrieve
+
+        Returns:
+            List of values (None for missing keys), same order as input keys
+        """
+        if not keys:
+            return []
+        redis_conn = self.get_redis_client()
+        return redis_conn.mget(keys)
+
+    def mset_data_with_expiry(self, key_value_dict, ex=None):
+        """
+        Set multiple keys with optional expiry using a pipeline.
+
+        Args:
+            key_value_dict: Dict of {key: value} pairs to set
+            ex: Optional expiry time in seconds (applied to all keys)
+        """
+        if not key_value_dict:
+            return
+        redis_conn = self.get_redis_client()
+        pipeline = redis_conn.pipeline()
+        for key, value in key_value_dict.items():
+            if ex is not None:
+                pipeline.setex(key, ex, value)
+            else:
+                pipeline.set(key, value)
+        pipeline.execute()
+
     def set_dict(self, key_name, dict_obj, ex=None):
         redis_conn = self.get_redis_client()
         redis_conn.set(key_name, json.dumps(dict_obj, ensure_ascii=False), ex=ex)
