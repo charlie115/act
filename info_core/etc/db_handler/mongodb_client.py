@@ -44,15 +44,18 @@ class InitDBClient:
         with InitDBClient._cache_lock:
             if self.uri not in InitDBClient._client_cache:
                 # Configure connection pool settings for high-throughput workloads
+                # Note: At interval boundaries (e.g., :00, :30), multiple kline processes
+                # insert simultaneously, causing insert times to spike from ~2s to ~28s.
+                # Timeout values are set to handle these concurrent operation storms.
                 mongo_client = pymongo.MongoClient(
                     self.uri,
                     maxPoolSize=100,           # Max connections in pool (default: 100)
                     minPoolSize=10,            # Min connections to keep alive
                     maxIdleTimeMS=60000,       # Close idle connections after 60s
                     waitQueueTimeoutMS=10000,  # Wait up to 10s for available connection
-                    serverSelectionTimeoutMS=5000,  # Timeout for server selection
-                    connectTimeoutMS=5000,     # Connection timeout
-                    socketTimeoutMS=30000,     # Socket timeout for operations
+                    serverSelectionTimeoutMS=30000,  # Timeout for server selection (30s for failover)
+                    connectTimeoutMS=10000,    # Connection timeout (10s for network latency)
+                    socketTimeoutMS=120000,    # Socket timeout for operations (120s for large batch inserts)
                 )
                 InitDBClient._client_cache[self.uri] = mongo_client
                 if self.logger:

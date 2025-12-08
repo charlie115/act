@@ -48,9 +48,11 @@ The `InitCore` class orchestrates:
 - `upbit_plug.py` - Korean exchange (KRW pairs)
 - `bithumb_plug.py` - Korean exchange
 - `bybit_plug.py` - Spot and futures
+- `gate_plug.py` - Gate.io USD-M futures
 
 **exchange_websocket/** - Real-time WebSocket clients:
 - Each exchange has classes for spot and futures (e.g., `BinanceWebsocket`, `BinanceUSDMWebsocket`, `BinanceCOINMWebsocket`)
+- `gate_websocket.py` - Gate.io USD-M futures WebSocket (URL: `wss://fx-ws.gateio.ws/v4/ws/usdt`)
 - `dict_convert.py` - Normalizes different exchange data formats
 
 ### Data Generators
@@ -118,8 +120,14 @@ See `.env.example` for required variables:
 - `PROC_N` - Number of WebSocket handler processes
 - `ENABLED_MARKET_KLINES` - Comma-separated market pairs for kline generation (e.g., `UPBIT_SPOT/KRW:BINANCE_USD_M/USDT`)
 - `ENALBED_ARBITRAGE_MARKETS` - Market pairs for arbitrage tracking
-- Exchange API keys (read-only): Binance, OKX, Upbit, Bithumb, Bybit
+- Exchange API keys (read-only): Binance, OKX, Upbit, Bithumb, Bybit, Gate.io
 - Database connections: MongoDB, Redis
+
+### Supported Market Combinations for Gate.io
+
+- `UPBIT_SPOT/KRW:GATE_USD_M/USDT` - Korean Upbit vs Gate.io USD-M futures
+- `BITHUMB_SPOT/KRW:GATE_USD_M/USDT` - Bithumb vs Gate.io USD-M futures
+- `GATE_USD_M/USDT:BINANCE_USD_M/USDT` - Gate.io vs Binance futures arbitrage
 
 ## Key Data Structures
 

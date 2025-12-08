@@ -63,6 +63,8 @@ if __name__ == '__main__':
     BITHUMB_SECRET_KEY = os.getenv('BITHUMB_SECRET_KEY')
     BYBIT_ACCESS_KEY = os.getenv('BYBIT_ACCESS_KEY')
     BYBIT_SECRET_KEY = os.getenv('BYBIT_SECRET_KEY')
+    GATE_ACCESS_KEY = os.getenv('GATE_ACCESS_KEY')
+    GATE_SECRET_KEY = os.getenv('GATE_SECRET_KEY')
     AIENGINE_API_KEY = os.getenv('AIENGINE_API_KEY')
     ENABLED_MARKET_KLINES = [x for x in [x.strip() for x in os.getenv('ENABLED_MARKET_KLINES').split(',')] if x != ""]
     ENALBED_ARBITRAGE_MARKETS = [x for x in [x.strip() for x in os.getenv('ENALBED_ARBITRAGE_MARKETS').split(',')] if x != ""]
@@ -89,6 +91,10 @@ if __name__ == '__main__':
         "bybit_read_only": {
             "api_key": BYBIT_ACCESS_KEY,
             "secret_key": BYBIT_SECRET_KEY,
+        },
+        "gate_read_only": {
+            "api_key": GATE_ACCESS_KEY,
+            "secret_key": GATE_SECRET_KEY,
         },
     }
 

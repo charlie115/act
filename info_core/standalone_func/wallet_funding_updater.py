@@ -3,6 +3,7 @@ from exchange_plugin.upbit_plug import InitUpbitAdaptor
 from exchange_plugin.binance_plug import InitBinanceAdaptor
 from exchange_plugin.bithumb_plug import InitBithumbAdaptor
 from exchange_plugin.bybit_plug import InitBybitAdaptor
+from exchange_plugin.gate_plug import InitGateAdaptor
 from loggers.logger import InfoCoreLogger
 import time
 import datetime
@@ -39,6 +40,11 @@ def start_wallet_funding_update(admin_id, node, acw_api, logging_dir, db_dict, e
         exchange_api_key_dict['bybit_read_only']['secret_key'],
         logging_dir
     )
+    gate_adaptor = InitGateAdaptor(
+        exchange_api_key_dict['gate_read_only']['api_key'],
+        exchange_api_key_dict['gate_read_only']['secret_key'],
+        logging_dir
+    )
 
     # Initialize the database client within the child process
     db_client = InitDBClient(**db_dict)
@@ -48,6 +54,7 @@ def start_wallet_funding_update(admin_id, node, acw_api, logging_dir, db_dict, e
     update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, acw_api, logger, db_client, "BINANCE", binance_adaptor), daemon=True))
     update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, acw_api, logger, db_client, "OKX", okx_adaptor, 180), daemon=True))
     update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, acw_api, logger, db_client, "BYBIT", bybit_adaptor), daemon=True))
+    update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, acw_api, logger, db_client, "GATE", gate_adaptor), daemon=True))
     update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "UPBIT", upbit_adaptor), daemon=True))
     update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "BINANCE", binance_adaptor), daemon=True))
     update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "OKX", okx_adaptor), daemon=True))
@@ -98,6 +105,9 @@ def update_fundingrate(admin_id, node, acw_api, logger, db_client, exchange_name
 
                 if len(df) == 0:
                     # Store initial data
+                    if len(funding_df) == 0:
+                        logger.info(f"update_fundingrate|{exchange_name} {futures_type}: No funding rate data available from exchange API, skipping")
+                        continue
                     funding_dict = funding_df.to_dict('records')
                     collection.insert_many(funding_dict)
                     logger.info(f"Collection empty. Inserting {futures_type} funding rate to MongoDB")

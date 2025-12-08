@@ -5,11 +5,13 @@ from exchange_plugin.upbit_plug import InitUpbitAdaptor
 from exchange_plugin.binance_plug import InitBinanceAdaptor
 from exchange_plugin.bithumb_plug import InitBithumbAdaptor
 from exchange_plugin.bybit_plug import InitBybitAdaptor
+from exchange_plugin.gate_plug import InitGateAdaptor
 from exchange_websocket.binance_websocket import BinanceWebsocket, BinanceUSDMWebsocket, BinanceCOINMWebsocket
 from exchange_websocket.upbit_websocket import UpbitWebsocket
 from exchange_websocket.okx_websocket import OkxWebsocket, OkxUSDMWebsocket, OkxCOINMWebsocket
 from exchange_websocket.bithumb_websocket import BithumbWebsocket
 from exchange_websocket.bybit_websocket import BybitWebsocket, BybitUSDMWebsocket, BybitCOINMWebsocket
+from exchange_websocket.gate_websocket import GateWebsocket, GateUSDMWebsocket
 from loggers.logger import InfoCoreLogger
 from etc.redis_connector.redis_helper import RedisHelper
 from etc.db_handler.mongodb_client import InitDBClient
@@ -92,7 +94,12 @@ class InitCore:
         self.binance_adaptor = InitBinanceAdaptor(self.exchange_api_key_dict['binance_read_only']['api_key'], self.exchange_api_key_dict['binance_read_only']['secret_key'], logging_dir=self.logging_dir)
         self.bithumb_adaptor = InitBithumbAdaptor(logging_dir=self.logging_dir)
         self.bybit_adaptor = InitBybitAdaptor(self.exchange_api_key_dict['bybit_read_only']['api_key'], self.exchange_api_key_dict['bybit_read_only']['secret_key'], self.logging_dir)
-        
+        self.gate_adaptor = InitGateAdaptor(
+            self.exchange_api_key_dict.get('gate_read_only', {}).get('api_key'),
+            self.exchange_api_key_dict.get('gate_read_only', {}).get('secret_key'),
+            self.logging_dir
+        )
+
         # Initiate Fetching USDT from Bithumb
         self.update_usdt_thread = Thread(target=self.fetch_usdt, daemon=True)
         self.update_usdt_thread.start()
@@ -122,7 +129,9 @@ class InitCore:
             "bybit_usd_m_info_df",
             "bybit_usd_m_ticker_df",
             "bybit_coin_m_info_df",
-            "bybit_coin_m_ticker_df"
+            "bybit_coin_m_ticker_df",
+            "gate_usd_m_info_df",
+            "gate_usd_m_ticker_df"
         ]
         
         # Remove all info data from the local redis
@@ -182,6 +191,8 @@ class InitCore:
                 self.exchange_websocket_dict[enabled_websocket_name] = BybitUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "USD_M", logging_dir)
             elif enabled_websocket_name == "BYBIT_COIN_M":
                 self.exchange_websocket_dict[enabled_websocket_name] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "COIN_M", logging_dir)
+            elif enabled_websocket_name == "GATE_USD_M":
+                self.exchange_websocket_dict[enabled_websocket_name] = GateUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "USD_M", logging_dir)
             else:
                 self.logger.error(f"InitCore|{enabled_websocket_name} is not valid.")
                 self.acw_api.create_message_thread(self.admin_id, f"InitCore|{enabled_websocket_name} is not valid.", f"InitCore|{enabled_websocket_name} is not valid.")
@@ -268,10 +279,14 @@ class InitCore:
                 if each_market.lower() in each_data_name:
                     enabled_data_name_list.append(each_data_name)
             exchange_name = each_market.split('_')[0].lower()
-            if f"{exchange_name}_spot_info_df" not in enabled_data_name_list:
-                enabled_data_name_list.append(f"{exchange_name}_spot_info_df")
-            if f"{exchange_name}_spot_ticker_df" not in enabled_data_name_list:
-                enabled_data_name_list.append(f"{exchange_name}_spot_ticker_df")
+            spot_info = f"{exchange_name}_spot_info_df"
+            spot_ticker = f"{exchange_name}_spot_ticker_df"
+            # Only add spot data names if they exist in total_data_name_list
+            # (some exchanges like Gate.io only have futures, not spot)
+            if spot_info not in enabled_data_name_list and spot_info in self.total_data_name_list:
+                enabled_data_name_list.append(spot_info)
+            if spot_ticker not in enabled_data_name_list and spot_ticker in self.total_data_name_list:
+                enabled_data_name_list.append(spot_ticker)
         return list(set(enabled_data_name_list))
     
     def store_info_dict_to_redis(self, data_name, fetched_df):
@@ -343,6 +358,10 @@ class InitCore:
                     self.store_info_dict_to_redis(data_name, self.bybit_adaptor.coin_m_exchange_info())
                 elif data_name == "bybit_coin_m_ticker_df":
                     self.store_info_dict_to_redis(data_name, self.bybit_adaptor.coin_m_all_tickers())
+                elif data_name == "gate_usd_m_info_df":
+                    self.store_info_dict_to_redis(data_name, self.gate_adaptor.usd_m_exchange_info())
+                elif data_name == "gate_usd_m_ticker_df":
+                    self.store_info_dict_to_redis(data_name, self.gate_adaptor.usd_m_all_tickers())
                 else:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name} is not valid.")
                     self.acw_api.create_message_thread(self.admin_id, f"update_exchange_info_as_df|name:{data_name} is not valid.", f"update_exchange_info_as_df|name:{data_name} is not valid.")
@@ -466,12 +485,21 @@ class InitCore:
             target_quote_asset = "USDT"
         if origin_quote_asset == target_quote_asset:
             return 1
-        origin_market_spot_info_df = pickle.loads(self.local_redis.get_data(f"{origin_market.lower().split('_')[0]}_spot_ticker_df"))
+
+        # Try to load spot ticker data, fall back to Binance if not available
+        origin_exchange = origin_market.lower().split('_')[0]
+        spot_data = self.local_redis.get_data(f"{origin_exchange}_spot_ticker_df")
+        if spot_data is None:
+            # Exchange doesn't have spot data (e.g., Gate.io), use Binance spot instead
+            spot_data = self.local_redis.get_data("binance_spot_ticker_df")
+        origin_market_spot_info_df = pickle.loads(spot_data) if spot_data else None
         # First try to find the rate from the origin_market_spot_info_df
 
-        def convert_between_coins(origin_market_spot_info_df, origin_quote_asset, target_quote_asset):
-            df = origin_market_spot_info_df[(origin_market_spot_info_df['base_asset']==origin_quote_asset)&(origin_market_spot_info_df['quote_asset']==target_quote_asset)]
-            reverse_df = origin_market_spot_info_df[(origin_market_spot_info_df['quote_asset']==origin_quote_asset)&(origin_market_spot_info_df['base_asset']==target_quote_asset)]
+        def convert_between_coins(spot_info_df, origin_quote_asset, target_quote_asset):
+            if spot_info_df is None:
+                return None
+            df = spot_info_df[(spot_info_df['base_asset']==origin_quote_asset)&(spot_info_df['quote_asset']==target_quote_asset)]
+            reverse_df = spot_info_df[(spot_info_df['quote_asset']==origin_quote_asset)&(spot_info_df['base_asset']==target_quote_asset)]
             if len(df) == 1:
                 convert_rate = df['lastPrice'].values[0]
             elif len(reverse_df) == 1:
