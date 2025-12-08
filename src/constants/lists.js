@@ -10,6 +10,7 @@ import BithumbSvg from 'assets/svg/bithumb.svg';
 import BybitSvg from 'assets/svg/bybit.svg';
 import OkxSvg from 'assets/svg/okx.svg';
 import UPbitSvg from 'assets/svg/upbit.svg';
+import GateSvg from 'assets/svg/gate.svg';
 
 export const CHART_DATA_TYPE = [
   {
@@ -79,6 +80,11 @@ export const EXCHANGE_LIST = [
     value: 'OKX',
     icon: OkxSvg,
   },
+  {
+    getLabel: () => i18n.t('Gate'),
+    value: 'GATE',
+    icon: GateSvg,
+  },
 ];
 
 export const INTERVAL_LIST = [
@@ -134,95 +140,101 @@ export const MARKET_CODE_LIST = [
     exchange: 'UPBIT',
     icon: UPbitSvg,
   },
-  {
-    getLabel: () => i18n.t('UPbit (BTC)'),
-    value: 'UPBIT_SPOT/BTC',
-    exchange: 'UPBIT',
-    icon: UPbitSvg,
-  },
+  // {
+  //   getLabel: () => i18n.t('UPbit (BTC)'),
+  //   value: 'UPBIT_SPOT/BTC',
+  //   exchange: 'UPBIT',
+  //   icon: UPbitSvg,
+  // },
   {
     getLabel: () => i18n.t('Bithumb'),
     value: 'BITHUMB_SPOT/KRW',
     exchange: 'BITHUMB',
     icon: BithumbSvg,
   },
-  {
-    getLabel: () => i18n.t('Bithumb (BTC)'),
-    value: 'BITHUMB_SPOT/BTC',
-    exchange: 'BITHUMB',
-    icon: BithumbSvg,
-  },
+  // {
+  //   getLabel: () => i18n.t('Bithumb (BTC)'),
+  //   value: 'BITHUMB_SPOT/BTC',
+  //   exchange: 'BITHUMB',
+  //   icon: BithumbSvg,
+  // },
   {
     getLabel: () => i18n.t('Binance (USDT)'),
     value: 'BINANCE_SPOT/USDT',
     exchange: 'BINANCE',
     icon: BinanceSvg,
   },
-  {
-    getLabel: () => i18n.t('Binance (BTC)'),
-    value: 'BINANCE_SPOT/BTC',
-    exchange: 'BINANCE',
-    icon: BinanceSvg,
-  },
-  {
-    getLabel: () => i18n.t('Binance (BUSD)'),
-    value: 'BINANCE_SPOT/BUSD',
-    exchange: 'BINANCE',
-    icon: BinanceSvg,
-  },
+  // {
+  //   getLabel: () => i18n.t('Binance (BTC)'),
+  //   value: 'BINANCE_SPOT/BTC',
+  //   exchange: 'BINANCE',
+  //   icon: BinanceSvg,
+  // },
+  // {
+  //   getLabel: () => i18n.t('Binance (BUSD)'),
+  //   value: 'BINANCE_SPOT/BUSD',
+  //   exchange: 'BINANCE',
+  //   icon: BinanceSvg,
+  // },
   {
     getLabel: () => i18n.t('Binance USDⓈ-M (USDT)'),
     value: 'BINANCE_USD_M/USDT',
     exchange: 'BINANCE',
     icon: BinanceSvg,
   },
-  {
-    getLabel: () => i18n.t('Binance USDⓈ-M (BUSD)'),
-    value: 'BINANCE_USD_M/BUSD',
-    exchange: 'BINANCE',
-    icon: BinanceSvg,
-  },
-  {
-    getLabel: () => i18n.t('Binance COIN-M (USD)'),
-    value: 'BINANCE_COIN_M/USD',
-    exchange: 'BINANCE',
-    icon: BinanceSvg,
-  },
-  {
-    getLabel: () => i18n.t('Bybit (USDT)'),
-    value: 'BYBIT_SPOT/USDT',
-    exchange: 'BYBIT',
-    icon: BybitSvg,
-  },
+  // {
+  //   getLabel: () => i18n.t('Binance USDⓈ-M (BUSD)'),
+  //   value: 'BINANCE_USD_M/BUSD',
+  //   exchange: 'BINANCE',
+  //   icon: BinanceSvg,
+  // },
+  // {
+  //   getLabel: () => i18n.t('Binance COIN-M (USD)'),
+  //   value: 'BINANCE_COIN_M/USD',
+  //   exchange: 'BINANCE',
+  //   icon: BinanceSvg,
+  // },
+  // {
+  //   getLabel: () => i18n.t('Bybit (USDT)'),
+  //   value: 'BYBIT_SPOT/USDT',
+  //   exchange: 'BYBIT',
+  //   icon: BybitSvg,
+  // },
   {
     getLabel: () => i18n.t('Bybit USDⓈ-M (USDT)'),
     value: 'BYBIT_USD_M/USDT',
     exchange: 'BYBIT',
     icon: BybitSvg,
   },
-  {
-    getLabel: () => i18n.t('Bybit COIN-M (USD)'),
-    value: 'BYBIT_COIN_M/USD',
-    exchange: 'BYBIT',
-    icon: BybitSvg,
-  },
-  {
-    getLabel: () => i18n.t('OKX (USDT)'),
-    value: 'OKX_SPOT/USDT',
-    exchange: 'OKX',
-    icon: OkxSvg,
-  },
+  // {
+  //   getLabel: () => i18n.t('Bybit COIN-M (USD)'),
+  //   value: 'BYBIT_COIN_M/USD',
+  //   exchange: 'BYBIT',
+  //   icon: BybitSvg,
+  // },
+  // {
+  //   getLabel: () => i18n.t('OKX (USDT)'),
+  //   value: 'OKX_SPOT/USDT',
+  //   exchange: 'OKX',
+  //   icon: OkxSvg,
+  // },
   {
     getLabel: () => i18n.t('OKX USDⓈ-M (USDT)'),
     value: 'OKX_USD_M/USDT',
     exchange: 'OKX',
     icon: OkxSvg,
   },
+  // {
+  //   getLabel: () => i18n.t('OKX COIN-M (USD)'),
+  //   value: 'OKX_COIN_M/USD',
+  //   exchange: 'OKX',
+  //   icon: OkxSvg,
+  // },
   {
-    getLabel: () => i18n.t('OKX COIN-M (USD)'),
-    value: 'OKX_COIN_M/USD',
+    getLabel: () => i18n.t('Gate USDⓈ-M (USDT)'),
+    value: 'GATE_USD_M/USDT',
     exchange: 'OKX',
-    icon: OkxSvg,
+    icon: GateSvg,
   },
 ];
 
