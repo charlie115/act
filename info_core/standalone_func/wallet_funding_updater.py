@@ -4,6 +4,7 @@ from exchange_plugin.binance_plug import InitBinanceAdaptor
 from exchange_plugin.bithumb_plug import InitBithumbAdaptor
 from exchange_plugin.bybit_plug import InitBybitAdaptor
 from exchange_plugin.gate_plug import InitGateAdaptor
+from exchange_plugin.coinone_plug import InitCoinoneAdaptor
 from loggers.logger import InfoCoreLogger
 import time
 import datetime
@@ -45,6 +46,11 @@ def start_wallet_funding_update(admin_id, node, acw_api, logging_dir, db_dict, e
         exchange_api_key_dict['gate_read_only']['secret_key'],
         logging_dir
     )
+    coinone_adaptor = InitCoinoneAdaptor(
+        exchange_api_key_dict.get('coinone_read_only', {}).get('api_key'),
+        exchange_api_key_dict.get('coinone_read_only', {}).get('secret_key'),
+        logging_dir
+    )
 
     # Initialize the database client within the child process
     db_client = InitDBClient(**db_dict)
@@ -60,6 +66,7 @@ def start_wallet_funding_update(admin_id, node, acw_api, logging_dir, db_dict, e
     update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "OKX", okx_adaptor), daemon=True))
     update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "BITHUMB", bithumb_adaptor), daemon=True))
     update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "BYBIT", bybit_adaptor), daemon=True))
+    update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "COINONE", coinone_adaptor), daemon=True))
 
     for each_thread in update_thread_list:
         each_thread.start()
@@ -153,7 +160,7 @@ def update_wallet_status(admin_id, node, acw_api, logger, db_client, exchange_na
     while True:
         try:
             # Check whether {exchange_name}_SPOT/{quote_asset} is in maintenance
-            if exchange_name in ["UPBIT", "BITHUMB"]:
+            if exchange_name in ["UPBIT", "BITHUMB", "COINONE"]:
                 quote_asset = "KRW"
             else:
                 quote_asset = "USDT"

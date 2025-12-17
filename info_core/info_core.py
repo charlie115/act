@@ -6,12 +6,14 @@ from exchange_plugin.binance_plug import InitBinanceAdaptor
 from exchange_plugin.bithumb_plug import InitBithumbAdaptor
 from exchange_plugin.bybit_plug import InitBybitAdaptor
 from exchange_plugin.gate_plug import InitGateAdaptor
+from exchange_plugin.coinone_plug import InitCoinoneAdaptor
 from exchange_websocket.binance_websocket import BinanceWebsocket, BinanceUSDMWebsocket, BinanceCOINMWebsocket
 from exchange_websocket.upbit_websocket import UpbitWebsocket
 from exchange_websocket.okx_websocket import OkxWebsocket, OkxUSDMWebsocket, OkxCOINMWebsocket
 from exchange_websocket.bithumb_websocket import BithumbWebsocket
 from exchange_websocket.bybit_websocket import BybitWebsocket, BybitUSDMWebsocket, BybitCOINMWebsocket
 from exchange_websocket.gate_websocket import GateWebsocket, GateUSDMWebsocket
+from exchange_websocket.coinone_websocket import CoinoneWebsocket
 from loggers.logger import InfoCoreLogger
 from etc.redis_connector.redis_helper import RedisHelper
 from etc.db_handler.mongodb_client import InitDBClient
@@ -99,6 +101,11 @@ class InitCore:
             self.exchange_api_key_dict.get('gate_read_only', {}).get('secret_key'),
             self.logging_dir
         )
+        self.coinone_adaptor = InitCoinoneAdaptor(
+            self.exchange_api_key_dict.get('coinone_read_only', {}).get('api_key'),
+            self.exchange_api_key_dict.get('coinone_read_only', {}).get('secret_key'),
+            self.logging_dir
+        )
 
         # Initiate Fetching USDT from Bithumb
         self.update_usdt_thread = Thread(target=self.fetch_usdt, daemon=True)
@@ -131,7 +138,9 @@ class InitCore:
             "bybit_coin_m_info_df",
             "bybit_coin_m_ticker_df",
             "gate_usd_m_info_df",
-            "gate_usd_m_ticker_df"
+            "gate_usd_m_ticker_df",
+            "coinone_spot_info_df",
+            "coinone_spot_ticker_df"
         ]
         
         # Remove all info data from the local redis
@@ -193,6 +202,8 @@ class InitCore:
                 self.exchange_websocket_dict[enabled_websocket_name] = BybitCOINMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "COIN_M", logging_dir)
             elif enabled_websocket_name == "GATE_USD_M":
                 self.exchange_websocket_dict[enabled_websocket_name] = GateUSDMWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, "USD_M", logging_dir)
+            elif enabled_websocket_name == "COINONE_SPOT":
+                self.exchange_websocket_dict[enabled_websocket_name] = CoinoneWebsocket(self.admin_id, self.node, self.proc_n, partial(self.get_symbol_list, enabled_websocket_name), self.acw_api, logging_dir)
             else:
                 self.logger.error(f"InitCore|{enabled_websocket_name} is not valid.")
                 self.acw_api.create_message_thread(self.admin_id, f"InitCore|{enabled_websocket_name} is not valid.", f"InitCore|{enabled_websocket_name} is not valid.")
@@ -362,6 +373,10 @@ class InitCore:
                     self.store_info_dict_to_redis(data_name, self.gate_adaptor.usd_m_exchange_info())
                 elif data_name == "gate_usd_m_ticker_df":
                     self.store_info_dict_to_redis(data_name, self.gate_adaptor.usd_m_all_tickers())
+                elif data_name == "coinone_spot_info_df":
+                    self.store_info_dict_to_redis(data_name, self.coinone_adaptor.spot_exchange_info())
+                elif data_name == "coinone_spot_ticker_df":
+                    self.store_info_dict_to_redis(data_name, self.coinone_adaptor.spot_all_tickers())
                 else:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name} is not valid.")
                     self.acw_api.create_message_thread(self.admin_id, f"update_exchange_info_as_df|name:{data_name} is not valid.", f"update_exchange_info_as_df|name:{data_name} is not valid.")

@@ -93,6 +93,97 @@ def get_upbit_price_df(redis_client):
     upbit_merged_df['scr'] = upbit_merged_df['scr'] * 100
     return upbit_merged_df
 
+def get_coinone_price_df(redis_client):
+    """
+    Get price DataFrame for Coinone spot.
+
+    Coinone ticker data format (from websocket):
+    - symbol: trading pair (e.g., BTC_KRW)
+    - lastPrice: last price
+    - atp24h: 24h quote volume (KRW)
+    - highPrice, lowPrice, openPrice: price data
+
+    Coinone orderbook data format:
+    - symbol: trading pair
+    - asks: list of {"price": "123", "qty": "456"} dicts, sorted DESCENDING (highest first)
+    - bids: list of {"price": "123", "qty": "456"} dicts, sorted DESCENDING (highest first)
+
+    Note: Best ask = min(asks prices), Best bid = max(bids prices) = bids[0]
+    """
+    ticker_data = redis_client.get_all_exchange_stream_data("ticker", "COINONE_SPOT")
+    orderbook_data = redis_client.get_all_exchange_stream_data("orderbook", "COINONE_SPOT")
+
+    if not ticker_data or not orderbook_data:
+        return pd.DataFrame(columns=['symbol', 'base_asset', 'quote_asset', 'tp', 'bp', 'ap', 'scr', 'atp24h'])
+
+    ticker_df = pd.DataFrame(ticker_data).T.reset_index(drop=True)
+    orderbook_df = pd.DataFrame(orderbook_data).T.reset_index(drop=True)
+
+    # Ticker columns: symbol, lastPrice, atp24h, openPrice, etc.
+    ticker_df = ticker_df[['symbol', 'lastPrice', 'atp24h', 'openPrice']].copy()
+    ticker_df = ticker_df.rename(columns={'lastPrice': 'tp'})
+
+    # Calculate scr (signed change rate) as percentage
+    ticker_df[['tp', 'atp24h', 'openPrice']] = ticker_df[['tp', 'atp24h', 'openPrice']].astype(float)
+    ticker_df['scr'] = ((ticker_df['tp'] - ticker_df['openPrice']) / ticker_df['openPrice']) * 100
+    ticker_df.drop('openPrice', axis=1, inplace=True)
+
+    # Orderbook: extract best ask and best bid
+    # Coinone WebSocket returns asks sorted DESCENDING (highest first), bids sorted DESCENDING (highest first)
+    # Best ask = minimum price in asks list
+    # Best bid = maximum price in bids list (first element)
+    def extract_best_ask(order_list):
+        """Extract best (lowest) ask price from Coinone orderbook."""
+        if not order_list or len(order_list) == 0:
+            return np.nan
+        try:
+            prices = []
+            for order in order_list:
+                if isinstance(order, dict):
+                    price = float(order.get('price', 0))
+                elif isinstance(order, (list, tuple)):
+                    price = float(order[0])
+                else:
+                    continue
+                if price > 0:
+                    prices.append(price)
+            return min(prices) if prices else np.nan
+        except (ValueError, TypeError):
+            return np.nan
+
+    def extract_best_bid(order_list):
+        """Extract best (highest) bid price from Coinone orderbook."""
+        if not order_list or len(order_list) == 0:
+            return np.nan
+        try:
+            # Bids are sorted descending, so first element is the best (highest) bid
+            first_order = order_list[0]
+            if isinstance(first_order, dict):
+                price = float(first_order.get('price', 0))
+            elif isinstance(first_order, (list, tuple)):
+                price = float(first_order[0])
+            else:
+                return np.nan
+            return price if price > 0 else np.nan
+        except (ValueError, TypeError):
+            return np.nan
+
+    orderbook_df['ap'] = orderbook_df['asks'].apply(extract_best_ask)
+    orderbook_df['bp'] = orderbook_df['bids'].apply(extract_best_bid)
+    orderbook_df = orderbook_df[['symbol', 'ap', 'bp']]
+
+    # Merge ticker and orderbook
+    merged_df = ticker_df.merge(orderbook_df, on='symbol', how='inner')
+
+    # Drop rows with NaN values
+    merged_df = merged_df.dropna(subset=['tp', 'ap', 'bp'])
+
+    # Extract base_asset and quote_asset from symbol (e.g., BTC_KRW)
+    merged_df[['base_asset', 'quote_asset']] = merged_df['symbol'].str.split('_', expand=True)
+
+    return merged_df[['symbol', 'base_asset', 'quote_asset', 'tp', 'bp', 'ap', 'scr', 'atp24h']]
+
+
 def get_gate_price_df(redis_client, market_type):
     """
     Get price DataFrame for Gate.io futures.
@@ -145,7 +236,8 @@ EXCHANGE_HANDLERS = {
     "BYBIT": get_bybit_price_df,
     "OKX": get_okx_price_df,
     "UPBIT": get_upbit_price_df,
-    "GATE": get_gate_price_df
+    "GATE": get_gate_price_df,
+    "COINONE": get_coinone_price_df
 }
 
 def get_price_df(redis_client, market_code):
