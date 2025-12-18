@@ -64,7 +64,10 @@ def store_funding_diff(mongo_db_client, total_enabled_market_klines, head=None, 
             # Convert the result into a DataFrame
             # The latest documents are under 'latest_document' in the result
             latest_documents = [doc['latest_document'] for doc in result]
-            funding_df1 = pd.DataFrame(latest_documents).drop(columns=["_id", "perpetual"])
+            if not latest_documents:
+                # Skip if no funding data available for this exchange/market_type
+                continue
+            funding_df1 = pd.DataFrame(latest_documents).drop(columns=["_id", "perpetual"], errors='ignore')
             funding_df1['market_code'] = f"{perpetual_one[0]}_{perpetual_one[1]}"
             funding_df1['exchange'] = perpetual_one[0]
 
@@ -89,12 +92,20 @@ def store_funding_diff(mongo_db_client, total_enabled_market_klines, head=None, 
             # Convert the result into a DataFrame
             # The latest documents are under 'latest_document' in the result
             latest_documents = [doc['latest_document'] for doc in result]
-            funding_df2 = pd.DataFrame(latest_documents).drop(columns=["_id", "perpetual"])
+            if not latest_documents:
+                # Skip if no funding data available for this exchange/market_type
+                continue
+            funding_df2 = pd.DataFrame(latest_documents).drop(columns=["_id", "perpetual"], errors='ignore')
             funding_df2['market_code'] = f"{perpetual_two[0]}_{perpetual_two[1]}"
             funding_df2['exchange'] = perpetual_two[0]
 
             merged_df = funding_df1.merge(funding_df2, on='base_asset', how='inner')
             total_df = pd.concat([total_df, merged_df], axis=0)
+
+        # Handle empty total_df (no funding data available for any exchange combination)
+        if total_df.empty:
+            return total_df
+
         total_df['funding_rate_diff'] = (total_df['funding_rate_x'] - total_df['funding_rate_y']).abs()
         total_df['last_update'] = datetime.datetime.utcnow()
         total_df = total_df.sort_values(by=['funding_rate_diff'], ascending=False).reset_index(drop=True)
@@ -188,9 +199,16 @@ def store_average_funding_rate(mongo_db_client, total_enabled_market_klines, log
             # The latest documents are under 'latest_document' in the result
             nested_recent_documents = [doc['recent_documents'] for doc in result]
             flattened_recent_documents = [item for sublist in nested_recent_documents for item in sublist]
-            funding_df = pd.DataFrame(flattened_recent_documents).drop(columns=["_id", "perpetual"])
+            if not flattened_recent_documents:
+                # Skip if no funding data available for this exchange/market_type
+                continue
+            funding_df = pd.DataFrame(flattened_recent_documents).drop(columns=["_id", "perpetual"], errors='ignore')
             funding_df['market_code'] = f"{exchange}_{market_type}"
             total_df = pd.concat([total_df, funding_df], axis=0)
+
+        # Handle empty total_df (no funding data available for any exchange)
+        if total_df.empty:
+            return
 
         total_df = total_df.sort_values('funding_time', ascending=False).reset_index(drop=True)
 
@@ -275,8 +293,11 @@ def remove_delisted_funding_rate(mongo_db_client, total_enabled_market_klines, l
             # Convert the result into a DataFrame
             # The latest documents are under 'latest_document' in the result
             latest_documents = [doc['latest_document'] for doc in result]
-            funding_df = pd.DataFrame(latest_documents).drop(columns=["_id", "perpetual"])
-            
+            if not latest_documents:
+                # Skip if no funding data available for this exchange/market_type
+                continue
+            funding_df = pd.DataFrame(latest_documents).drop(columns=["_id", "perpetual"], errors='ignore')
+
             # Find symbols whose funding_time is older than current time - old_timewindow_hours
             funding_df['funding_time'] = pd.to_datetime(funding_df['funding_time'])
             funding_df = funding_df[funding_df['funding_time'] < datetime.datetime.utcnow() - datetime.timedelta(hours=old_timewindow_hours)]

@@ -5,6 +5,7 @@ from exchange_plugin.bithumb_plug import InitBithumbAdaptor
 from exchange_plugin.bybit_plug import InitBybitAdaptor
 from exchange_plugin.gate_plug import InitGateAdaptor
 from exchange_plugin.coinone_plug import InitCoinoneAdaptor
+from exchange_plugin.hyperliquid_plug import InitHyperliquidAdaptor
 from loggers.logger import InfoCoreLogger
 import time
 import datetime
@@ -42,8 +43,8 @@ def start_wallet_funding_update(admin_id, node, acw_api, logging_dir, db_dict, e
         logging_dir
     )
     gate_adaptor = InitGateAdaptor(
-        exchange_api_key_dict['gate_read_only']['api_key'],
-        exchange_api_key_dict['gate_read_only']['secret_key'],
+        exchange_api_key_dict.get('gate_read_only', {}).get('api_key'),
+        exchange_api_key_dict.get('gate_read_only', {}).get('secret_key'),
         logging_dir
     )
     coinone_adaptor = InitCoinoneAdaptor(
@@ -51,6 +52,8 @@ def start_wallet_funding_update(admin_id, node, acw_api, logging_dir, db_dict, e
         exchange_api_key_dict.get('coinone_read_only', {}).get('secret_key'),
         logging_dir
     )
+    # Hyperliquid (DEX) - no API keys required
+    hyperliquid_adaptor = InitHyperliquidAdaptor(logging_dir)
 
     # Initialize the database client within the child process
     db_client = InitDBClient(**db_dict)
@@ -61,6 +64,7 @@ def start_wallet_funding_update(admin_id, node, acw_api, logging_dir, db_dict, e
     update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, acw_api, logger, db_client, "OKX", okx_adaptor, 180), daemon=True))
     update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, acw_api, logger, db_client, "BYBIT", bybit_adaptor), daemon=True))
     update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, acw_api, logger, db_client, "GATE", gate_adaptor), daemon=True))
+    update_thread_list.append(Thread(target=update_fundingrate, args=(admin_id, node, acw_api, logger, db_client, "HYPERLIQUID", hyperliquid_adaptor), daemon=True))
     update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "UPBIT", upbit_adaptor), daemon=True))
     update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "BINANCE", binance_adaptor), daemon=True))
     update_thread_list.append(Thread(target=update_wallet_status, args=(admin_id, node, acw_api, logger, db_client, "OKX", okx_adaptor), daemon=True))
@@ -89,7 +93,8 @@ def update_fundingrate(admin_id, node, acw_api, logger, db_client, exchange_name
             for futures_type in ["USD_M", "COIN_M"]:
                 # Check whether {exchange_name}_FUTURES is in maintenance
                 if futures_type == "USD_M":
-                    quote_asset = "USDT"
+                    # Hyperliquid uses USDC, other exchanges use USDT
+                    quote_asset = "USDC" if exchange_name == "HYPERLIQUID" else "USDT"
                 else:
                     quote_asset = "USD"
                 if fetch_market_servercheck(f"{exchange_name}_{futures_type}/{quote_asset}"):
