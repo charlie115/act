@@ -230,6 +230,101 @@ def get_gate_price_df(redis_client, market_type):
     return merged_df
 
 
+def get_hyperliquid_price_df(redis_client, market_type):
+    """
+    Get price DataFrame for Hyperliquid perpetuals.
+
+    Hyperliquid ticker data format (from websocket allMids):
+    - s: symbol (e.g., BTC_USDC)
+    - c: mid price (approximation of last price)
+    - Other ticker data (atp24h, scr) comes from REST API
+
+    Hyperliquid orderbook data format (from websocket l2Book):
+    - s: symbol
+    - b: best bid price
+    - a: best ask price
+    - B: best bid quantity
+    - A: best ask quantity
+
+    Note: Hyperliquid uses USDC as quote currency for all perpetuals.
+    """
+    ticker_data = redis_client.get_all_exchange_stream_data("ticker", f"HYPERLIQUID_{market_type}")
+    orderbook_data = redis_client.get_all_exchange_stream_data("orderbook", f"HYPERLIQUID_{market_type}")
+
+    if not ticker_data or not orderbook_data:
+        return pd.DataFrame(columns=['symbol', 'base_asset', 'quote_asset', 'tp', 'bp', 'ap', 'scr', 'atp24h'])
+
+    ticker_df = pd.DataFrame(ticker_data).T.reset_index(drop=True)
+    orderbook_df = pd.DataFrame(orderbook_data).T.reset_index(drop=True)
+
+    # Ticker from WebSocket only has mid price (c)
+    # We need atp24h and scr from REST API info
+    ticker_df = ticker_df[['s', 'c']].copy()
+    ticker_df = ticker_df.rename(columns={'c': 'tp'})
+
+    # Orderbook: s=symbol, b=bid, a=ask
+    orderbook_df = orderbook_df[['s', 'b', 'a']].copy()
+    orderbook_df = orderbook_df.rename(columns={'b': 'bp', 'a': 'ap'})
+
+    # Merge ticker and orderbook
+    merged_df = ticker_df.merge(orderbook_df, on='s', how='inner')
+
+    # Convert to float
+    merged_df[['tp', 'bp', 'ap']] = merged_df[['tp', 'bp', 'ap']].astype(float)
+
+    # Filter out rows with zero or invalid prices (causes division by zero in premium calculation)
+    merged_df = merged_df[(merged_df['tp'] > 0) & (merged_df['bp'] > 0) & (merged_df['ap'] > 0)]
+
+    if merged_df.empty:
+        return pd.DataFrame(columns=['base_asset', 'quote_asset', 'tp', 'bp', 'ap', 'scr', 'atp24h'])
+
+    # Get additional info (atp24h, priceChangePercent) from REST API ticker cache
+    try:
+        hyperliquid_ticker_cache = redis_client.get_data(f'hyperliquid_{market_type.lower()}_ticker_df')
+        if hyperliquid_ticker_cache:
+            rest_ticker_df = pickle.loads(hyperliquid_ticker_cache)
+            if not rest_ticker_df.empty and 'atp24h' in rest_ticker_df.columns:
+                # Merge to get atp24h and priceChangePercent
+                rest_cols = rest_ticker_df[['symbol', 'atp24h', 'priceChangePercent']].copy()
+                rest_cols = rest_cols.rename(columns={'priceChangePercent': 'scr'})
+                merged_df = merged_df.merge(rest_cols, left_on='s', right_on='symbol', how='left')
+                merged_df.drop('symbol', axis=1, inplace=True)
+            else:
+                merged_df['atp24h'] = 0.0
+                merged_df['scr'] = 0.0
+        else:
+            merged_df['atp24h'] = 0.0
+            merged_df['scr'] = 0.0
+    except Exception:
+        merged_df['atp24h'] = 0.0
+        merged_df['scr'] = 0.0
+
+    # Get info for base_asset and quote_asset
+    try:
+        hyperliquid_info_df = pickle.loads(redis_client.get_data(f'hyperliquid_{market_type.lower()}_info_df'))
+        if hyperliquid_info_df is not None and not hyperliquid_info_df.empty:
+            info_cols = hyperliquid_info_df[['symbol', 'base_asset', 'quote_asset']]
+            merged_df = merged_df.merge(info_cols, left_on='s', right_on='symbol', how='inner')
+            merged_df.drop(['symbol', 's'], axis=1, inplace=True)
+        else:
+            # Fallback: extract from symbol (BTC_USDC -> BTC, USDC)
+            merged_df['base_asset'] = merged_df['s'].apply(lambda x: x.split('_')[0] if '_' in x else x)
+            merged_df['quote_asset'] = 'USDC'
+            merged_df.drop('s', axis=1, inplace=True)
+            merged_df['symbol'] = merged_df['base_asset'] + '_USDC'
+    except Exception:
+        # Fallback: extract from symbol
+        merged_df['base_asset'] = merged_df['s'].apply(lambda x: x.split('_')[0] if '_' in x else x)
+        merged_df['quote_asset'] = 'USDC'
+        merged_df['symbol'] = merged_df['base_asset'] + '_USDC'
+        merged_df.drop('s', axis=1, inplace=True)
+
+    # Ensure numeric columns
+    merged_df[['tp', 'bp', 'ap', 'atp24h', 'scr']] = merged_df[['tp', 'bp', 'ap', 'atp24h', 'scr']].astype(float)
+
+    return merged_df[['base_asset', 'quote_asset', 'tp', 'bp', 'ap', 'scr', 'atp24h']]
+
+
 EXCHANGE_HANDLERS = {
     "BINANCE": get_binance_price_df,
     "BITHUMB": get_bithumb_price_df,
@@ -237,7 +332,8 @@ EXCHANGE_HANDLERS = {
     "OKX": get_okx_price_df,
     "UPBIT": get_upbit_price_df,
     "GATE": get_gate_price_df,
-    "COINONE": get_coinone_price_df
+    "COINONE": get_coinone_price_df,
+    "HYPERLIQUID": get_hyperliquid_price_df
 }
 
 def get_price_df(redis_client, market_code):
@@ -249,7 +345,7 @@ def get_price_df(redis_client, market_code):
 
     handler = EXCHANGE_HANDLERS.get(exchange)
     if handler:
-        if exchange in ["BINANCE", "BYBIT", "OKX", "GATE"]:
+        if exchange in ["BINANCE", "BYBIT", "OKX", "GATE", "HYPERLIQUID"]:
             return handler(redis_client, market_type)
         else:
             return handler(redis_client)
