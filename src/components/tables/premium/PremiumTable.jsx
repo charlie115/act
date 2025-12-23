@@ -335,6 +335,7 @@ function PremiumTable({
         size: isMobile ? 30 : 40,
         header: t('Volatility'),
         cell: renderVolatilityCell,
+        sortingFn: sortVolatilityWithStarred,
       },
       ...(!marketCodes?.targetMarketCode.includes('SPOT')
         ? [
@@ -651,6 +652,36 @@ function PremiumTable({
       return 0;
     if (rowA.original[columnId] > rowB.original[columnId]) return 1;
     if (rowA.original[columnId] < rowB.original[columnId]) return -1;
+    return 0;
+  }, []);
+
+  const sortVolatilityWithStarred = useCallback((rowA, rowB, columnId) => {
+    // Prioritize starred items
+    if (
+      !isUndefined(rowA.original.favoriteAssetId) &&
+      isUndefined(rowB.original.favoriteAssetId)
+    )
+      return -1;
+    if (
+      !isUndefined(rowB.original.favoriteAssetId) &&
+      isUndefined(rowA.original.favoriteAssetId)
+    )
+      return 0;
+
+    // Handle undefined/null values
+    const valueA = rowA.original[columnId];
+    const valueB = rowB.original[columnId];
+
+    if (isUndefined(valueA) && isUndefined(valueB)) return 0;
+    if (isUndefined(valueA)) return 1;
+    if (isUndefined(valueB)) return -1;
+
+    // Numeric comparison (handles negative numbers properly)
+    const numA = Number(valueA);
+    const numB = Number(valueB);
+
+    if (numA > numB) return 1;
+    if (numA < numB) return -1;
     return 0;
   }, []);
 

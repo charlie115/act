@@ -7,10 +7,12 @@ import colors from 'configs/theme/colors';
 
 import BinanceSvg from 'assets/svg/binance.svg';
 import BithumbSvg from 'assets/svg/bithumb.svg';
+import CoinoneSvg from 'assets/svg/coinone.svg';
 import BybitSvg from 'assets/svg/bybit.svg';
 import OkxSvg from 'assets/svg/okx.svg';
 import UPbitSvg from 'assets/svg/upbit.svg';
 import GateSvg from 'assets/svg/gate.svg';
+import HyperliquidSvg from 'assets/svg/hyperliquid.svg';
 
 export const CHART_DATA_TYPE = [
   {
@@ -64,6 +66,11 @@ export const EXCHANGE_LIST = [
     getLabel: () => i18n.t('Bithumb'),
     value: 'BITHUMB',
     icon: BithumbSvg,
+  },
+  {
+    getLabel: () => i18n.t('Coinone'),
+    value: 'COINONE',
+    icon: CoinoneSvg,
   },
   {
     getLabel: () => i18n.t('Binance'),
@@ -159,6 +166,12 @@ export const MARKET_CODE_LIST = [
   //   icon: BithumbSvg,
   // },
   {
+    getLabel: () => i18n.t('Coinone'),
+    value: 'COINONE_SPOT/KRW',
+    exchange: 'COINONE',
+    icon: CoinoneSvg,
+  },
+  {
     getLabel: () => i18n.t('Binance (USDT)'),
     value: 'BINANCE_SPOT/USDT',
     exchange: 'BINANCE',
@@ -235,6 +248,12 @@ export const MARKET_CODE_LIST = [
     value: 'GATE_USD_M/USDT',
     exchange: 'GATE',
     icon: GateSvg,
+  },
+  {
+    getLabel: () => i18n.t('Hyperliquid USDⓈ-M (USDC)'),
+    value: 'HYPERLIQUID_USD_M/USDC',
+    exchange: 'HYPERLIQUID',
+    icon: HyperliquidSvg,
   },
 ];
 
