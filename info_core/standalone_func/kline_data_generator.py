@@ -55,16 +55,17 @@ def store_kline_volatility_info(mongo_db_client, market_code_combination, logger
 
             # Fetch the last n records sorted by 'datetime_now' in descending order
             # Use hint to force index usage for O(n) instead of O(n log n) sort
+            # Fetch SL_high and LS_low to calculate spread-adjusted volatility (SL_high - LS_low)
             try:
                 records_cursor = collection.find(
                     {},
-                    {'_id': 0, 'base_asset': 1, 'LS_high': 1, 'LS_low': 1, 'datetime_now': 1}
+                    {'_id': 0, 'base_asset': 1, 'SL_high': 1, 'LS_low': 1, 'datetime_now': 1}
                 ).sort('datetime_now', -1).limit(last_n).hint([('datetime_now', -1)])
             except Exception:
                 # Fallback if hint fails (index might not exist yet)
                 records_cursor = collection.find(
                     {},
-                    {'_id': 0, 'base_asset': 1, 'LS_high': 1, 'LS_low': 1, 'datetime_now': 1}
+                    {'_id': 0, 'base_asset': 1, 'SL_high': 1, 'LS_low': 1, 'datetime_now': 1}
                 ).sort('datetime_now', -1).limit(last_n)
 
             # Convert the cursor to a list of dictionaries
@@ -73,8 +74,9 @@ def store_kline_volatility_info(mongo_db_client, market_code_combination, logger
 
             # Check if DataFrame is not empty
             if not records_df.empty:
-                # Get difference between high and low
-                records_df['difference'] = records_df['LS_high'] - records_df['LS_low']
+                # Calculate spread-adjusted volatility: SL_high - LS_low
+                # This accounts for the LS-SL spread, giving a more realistic arbitrage profitability measure
+                records_df['difference'] = records_df['SL_high'] - records_df['LS_low']
                 # Get the mean of the difference
                 mean_diff = float(records_df['difference'].mean())
                 # Prepare the data dictionary
