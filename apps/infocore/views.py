@@ -1,8 +1,10 @@
+import hashlib
 import json
 import pandas as pd
 import pickle
 
 from django.conf import settings
+from django.core.cache import cache
 from django_filters import FilterSet
 from django_filters.rest_framework import DjangoFilterBackend
 from django_redis import get_redis_connection
@@ -335,6 +337,7 @@ class KlineVolatilityView(views.APIView):
 class FundingRateDataView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    CACHE_TTL = 10  # 10 seconds - short TTL to minimize staleness
 
     def get(self, request):
         query_params = FundingRateDataQueryParamsSerializer(data=request.query_params)
@@ -352,76 +355,111 @@ class FundingRateDataView(views.APIView):
 
         return response.Response(data)
 
+    def _get_cache_key(self, market_code, base_assets, last_n, start_funding_time, end_funding_time):
+        """Generate a unique cache key based on query parameters."""
+        # Sort base_assets for consistent cache key
+        sorted_assets = sorted(base_assets) if base_assets else []
+        key_data = f"funding_rate:{market_code}:{','.join(sorted_assets)}:{last_n}:{start_funding_time}:{end_funding_time}"
+        return f"fr:{hashlib.md5(key_data.encode()).hexdigest()}"
+
     def get_data(
         self, market_code, base_assets, last_n, start_funding_time, end_funding_time, tz
     ):
         try:
-            market_code, quote_asset = market_code.split("/")
+            market_code_parsed, quote_asset = market_code.split("/")
         except ValueError as err:
-            # TODO: Add logging
-            print(err)
-            raise exceptions.ValidationError()
+            raise exceptions.ValidationError({"detail": "Invalid market code format."})
 
-        database = f"{market_code.split('_')[0]}_fundingrate"
-        collection = "_".join(market_code.split("_")[1:])
+        # Check cache first (cache raw data without timezone conversion)
+        cache_key = self._get_cache_key(market_code, base_assets, last_n, start_funding_time, end_funding_time)
+        cached_data = cache.get(cache_key)
 
-        # Get database
-        databases = MONGODB_CLI.list_database_names()
-        if database not in databases:
-            raise exceptions.ValidationError({"detail": "Invalid market code."})
+        if cached_data is not None:
+            # Apply timezone conversion to cached data
+            return self._apply_timezone(cached_data, tz)
 
+        database = f"{market_code_parsed.split('_')[0]}_fundingrate"
+        collection = "_".join(market_code_parsed.split("_")[1:])
+
+        # Direct database access without expensive metadata queries
         db = MONGODB_CLI.get_database(database)
-
-        # Get collection
-        collections = db.list_collection_names()
-        if collection not in collections:
-            raise exceptions.ValidationError({"detail": "Invalid market code."})
-
         coll = db.get_collection(collection)
 
-        query_filter = {
-            "base_asset": {"$in": base_assets},
-            "quote_asset": quote_asset,
-            "perpetual": True,
-        }
+        # Use MongoDB aggregation pipeline for efficient server-side processing
+        pipeline = [
+            {
+                "$match": {
+                    "base_asset": {"$in": base_assets},
+                    "quote_asset": quote_asset,
+                    "perpetual": True,
+                }
+            },
+        ]
 
+        # Add time range filter if specified
         if start_funding_time and end_funding_time:
-            query_filter["funding_time"] = {
+            pipeline[0]["$match"]["funding_time"] = {
                 "$gte": start_funding_time,
                 "$lte": end_funding_time,
             }
 
-        projection = {
-            "_id": False,
-        }
+        # Sort and group by base_asset in MongoDB
+        pipeline.extend([
+            {"$sort": {"datetime_now": -1}},  # Sort descending first
+            {
+                "$group": {
+                    "_id": "$base_asset",
+                    "documents": {"$push": {
+                        "symbol": "$symbol",
+                        "funding_rate": "$funding_rate",
+                        "funding_time": "$funding_time",
+                        "datetime_now": "$datetime_now",
+                    }}
+                }
+            },
+        ])
 
-        # Query collection
-        cursor = coll.find(
-            filter=query_filter,
-            projection=projection,
-        )
+        # Limit documents per group if last_n is specified
+        if last_n != -1 and last_n is not None:
+            pipeline.append({
+                "$project": {
+                    "_id": 1,
+                    "documents": {"$slice": ["$documents", last_n]}
+                }
+            })
 
-        # Serialize & filter
-        df = pd.DataFrame(cursor)
+        # Execute aggregation
+        cursor = coll.aggregate(pipeline)
 
+        # Build results dict - documents are already sorted desc, reverse for asc order
         results = {}
+        for item in cursor:
+            base_asset = item["_id"]
+            docs = item["documents"]
+            docs.reverse()  # Reverse to get ascending order (oldest first)
+            results[base_asset] = docs
+
+        # Ensure all requested base_assets are in results (even if empty)
         for base_asset in base_assets:
-            base_asset_data = df[df["base_asset"] == base_asset].sort_values(
-                by="datetime_now"
-            )
+            if base_asset not in results:
+                results[base_asset] = []
 
-            if last_n != -1:
-                base_asset_data = base_asset_data.tail(last_n)
+        # Cache the raw results (without timezone conversion)
+        cache.set(cache_key, results, self.CACHE_TTL)
 
-            base_asset_data = base_asset_data.to_dict(orient="records")
+        # Apply timezone conversion and serialize
+        return self._apply_timezone(results, tz)
 
-            results[base_asset] = FundingRateDataSerializer(
-                base_asset_data,
+    def _apply_timezone(self, results, tz):
+        """Apply timezone conversion and serialization to results."""
+        serialized_results = {}
+        for base_asset, docs in results.items():
+            serialized_results[base_asset] = FundingRateDataSerializer(
+                docs,
                 many=True,
                 context={"tz": tz},
             ).data
-
-        return results
+        return serialized_results
 
 
 @extend_schema_view(
@@ -436,6 +474,7 @@ class FundingRateDataView(views.APIView):
 class AverageFundingRateDataView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    CACHE_TTL = 10  # 10 seconds - short TTL to minimize staleness
 
     def get(self, request):
         query_params = AverageFundingRateDataQueryParamsSerializer(
@@ -451,7 +490,18 @@ class AverageFundingRateDataView(views.APIView):
 
         return response.Response(data)
 
+    def _get_cache_key(self, n, market_code):
+        """Generate a unique cache key based on query parameters."""
+        return f"avg_fr:{n}:{market_code or 'all'}"
+
     def get_data(self, n, market_code):
+        # Check cache first
+        cache_key = self._get_cache_key(n, market_code)
+        cached_data = cache.get(cache_key)
+
+        if cached_data is not None:
+            return cached_data
+
         # Get database
         db = MONGODB_CLI.get_database("arbitrage_fundingrate")
 
@@ -473,8 +523,11 @@ class AverageFundingRateDataView(views.APIView):
             projection=projection,
         )
 
-        # Serialize
-        results = [AverageFundingRateDataSerializer(item).data for item in cursor]
+        # Serialize using many=True for better performance
+        results = AverageFundingRateDataSerializer(list(cursor), many=True).data
+
+        # Cache results
+        cache.set(cache_key, results, self.CACHE_TTL)
 
         return results
 
@@ -491,6 +544,7 @@ class AverageFundingRateDataView(views.APIView):
 class FundingRateDiffDataView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    CACHE_TTL = 10  # 10 seconds - short TTL to minimize staleness
 
     def get(self, request):
         query_params = FundingRateDiffDataQueryParamsSerializer(
@@ -509,7 +563,19 @@ class FundingRateDiffDataView(views.APIView):
 
         return response.Response(data)
 
+    def _get_cache_key(self, market_code_x, exchange_x, market_code_y, exchange_y):
+        """Generate a unique cache key based on query parameters."""
+        return f"fr_diff:{market_code_x or 'all'}:{exchange_x or 'all'}:{market_code_y or 'all'}:{exchange_y or 'all'}"
+
     def get_data(self, market_code_x, exchange_x, market_code_y, exchange_y, tz):
+        # Check cache first (cache raw data without timezone conversion)
+        cache_key = self._get_cache_key(market_code_x, exchange_x, market_code_y, exchange_y)
+        cached_data = cache.get(cache_key)
+
+        if cached_data is not None:
+            # Apply timezone conversion to cached data
+            return FundingRateDiffDataSerializer(cached_data, many=True, context={"tz": tz}).data
+
         # Get database
         db = MONGODB_CLI.get_database("arbitrage_fundingrate")
 
@@ -537,11 +603,14 @@ class FundingRateDiffDataView(views.APIView):
             projection=projection,
         )
 
-        # Serialize
-        results = [
-            FundingRateDiffDataSerializer(item, context={"tz": tz}).data
-            for item in cursor
-        ]
+        # Convert to list for caching (raw data without timezone conversion)
+        raw_results = list(cursor)
+
+        # Cache raw results
+        cache.set(cache_key, raw_results, self.CACHE_TTL)
+
+        # Serialize with timezone conversion using many=True
+        results = FundingRateDiffDataSerializer(raw_results, many=True, context={"tz": tz}).data
 
         return results
 
