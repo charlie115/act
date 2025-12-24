@@ -17,6 +17,10 @@ export default function renderFundingRateCell({ cell, row, isMobile }) {
     ? row.original.fundingTimeX
     : row.original.fundingTimeY;
 
+  const fundingIntervalHours = cell.column.getIsVisible()
+    ? row.original.funding_interval_hours_x
+    : row.original.funding_interval_hours_y;
+
   const diff = fundingTime
     ? DateTime.fromISO(fundingTime)
         .diff(DateTime.now(), ['hours', 'minutes', 'seconds'])
@@ -30,6 +34,7 @@ export default function renderFundingRateCell({ cell, row, isMobile }) {
         value={value}
         decimal={5}
         fundingTime={fundingTime}
+        fundingIntervalHours={fundingIntervalHours}
         isMobile={isMobile}
         sx={{ fontSize: { xs: 12, sm: 14 } }}
       />

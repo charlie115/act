@@ -64,6 +64,7 @@ export default function renderFundingRateCell({ cell, column, row, table }) {
         diff={diff}
         value={value}
         fundingTime={fundingRate?.funding_time}
+        fundingIntervalHours={fundingRate?.funding_interval_hours}
         isMobile={isMobile}
       />
     </>
