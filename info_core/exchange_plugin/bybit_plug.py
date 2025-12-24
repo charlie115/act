@@ -158,10 +158,11 @@ class InitBybitAdaptor:
         else:
             ticker_df = self.coin_m_all_tickers()
 
-        # Include fundingInterval if available in ticker data
+        # Include fundingIntervalHour if available in ticker data
+        # Note: Bybit API uses 'fundingIntervalHour' (singular, already in hours)
         columns_to_select = ['symbol', 'base_asset', 'quote_asset', 'fundingRate', 'nextFundingTime']
-        if 'fundingInterval' in ticker_df.columns:
-            columns_to_select.append('fundingInterval')
+        if 'fundingIntervalHour' in ticker_df.columns:
+            columns_to_select.append('fundingIntervalHour')
 
         funding_df = ticker_df.loc[:, columns_to_select].copy()
         funding_df['perpetual'] = funding_df.loc[:, 'fundingRate'].apply(lambda x: True if x != '' else False)
@@ -172,12 +173,12 @@ class InitBybitAdaptor:
         funding_df = funding_df.rename(columns={'fundingRate': "funding_rate", "nextFundingTime": "funding_time"})
 
         # Add funding_interval_hours
-        # Bybit fundingInterval is in minutes (e.g., 480 for 8 hours)
-        if 'fundingInterval' in funding_df.columns:
-            funding_df['funding_interval_hours'] = (pd.to_numeric(funding_df['fundingInterval'], errors='coerce') / 60)
+        # Bybit fundingIntervalHour is already in hours (e.g., 8 for 8 hours)
+        if 'fundingIntervalHour' in funding_df.columns:
+            funding_df['funding_interval_hours'] = pd.to_numeric(funding_df['fundingIntervalHour'], errors='coerce')
             # Convert to nullable Int64 to preserve NaN as None
             funding_df['funding_interval_hours'] = funding_df['funding_interval_hours'].astype('Int64')
-            funding_df.drop(columns=['fundingInterval'], inplace=True)
+            funding_df.drop(columns=['fundingIntervalHour'], inplace=True)
         else:
             funding_df['funding_interval_hours'] = None
 
