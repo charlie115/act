@@ -115,15 +115,19 @@ export const renderSpreadCell = memo(({ cell, table }) => {
 // Memoized volatility cell renderer
 export const renderVolatilityCell = memo(({ cell }) => {
   const value = cell.getValue();
-  
+
   if (isUndefined(value)) return '...';
-  
+
   return (
     <Box
       component="span"
-      sx={{ fontSize: { xs: 10, sm: 12 }, fontWeight: 400 }}
+      sx={{
+        fontSize: { xs: 10, sm: 12 },
+        fontWeight: 400,
+        color: value < 0 ? 'error.main' : 'inherit'
+      }}
     >
-      {formatIntlNumber(cell.getValue(), 5, 1)}
+      {formatIntlNumber(value, 5, 1)}
     </Box>
   );
 }, (prevProps, nextProps) => prevProps.cell.getValue() === nextProps.cell.getValue());

@@ -8,7 +8,6 @@ import isUndefined from 'lodash/isUndefined';
 
 export default function renderVolatilityCell({ cell }) {
   const value = cell.getValue();
-  const isNegative = !isUndefined(value) && value < 0;
 
   return isUndefined(value) ? (
     '...'
@@ -18,7 +17,7 @@ export default function renderVolatilityCell({ cell }) {
       sx={{
         fontSize: { xs: 10, sm: 12 },
         fontWeight: 400,
-        color: isNegative ? 'error.main' : 'inherit'
+        color: value < 0 ? 'error.main' : 'inherit'
       }}
     >
       {formatIntlNumber(value, 5, 1)}
