@@ -111,6 +111,8 @@ services:
     image: community-celery-worker
     command: celery -A config worker -l INFO
     container_name: prod-community-celery-worker
+    volumes:
+      - $HOME/prod-community-drf/media:/opt/community_drf/media
     networks:
       - prod-community-network
     restart: always
@@ -119,6 +121,8 @@ services:
     image: community-celery-beat
     command: celery -A config beat -l INFO
     container_name: prod-community-celery-beat
+    volumes:
+      - $HOME/prod-community-drf/media:/opt/community_drf/media
     networks:
       - prod-community-network
     restart: always
