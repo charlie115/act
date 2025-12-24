@@ -332,12 +332,20 @@ export default function Bot() {
   useEffect(() => {
     if (
       MARKET_CODES_REQUIRED.includes(location.pathname) &&
+      location.pathname !== '/bot/settings' && // Allow settings page to show with ALL
       ((!selectedMarketCodeCombination &&
         !location.state?.marketCodeCombination) ||
         selectedMarketCodeCombination?.value === 'ALL')
     )
       marketCodeSelectorRef?.current?.open();
   }, [location.pathname, location.state, selectedMarketCodeCombination]);
+
+  // Auto-open selector when first navigating to settings page
+  useEffect(() => {
+    if (location.pathname === '/bot/settings' && !selectedMarketCodeCombination) {
+      marketCodeSelectorRef?.current?.open();
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (
@@ -441,9 +449,10 @@ export default function Bot() {
                 options={marketCodeCombinationList}
                 value={selectedMarketCodeCombination}
                 loading={tradeConfigResults.isLoading}
-                marketCodesRequired={MARKET_CODES_REQUIRED.includes(
-                  location.pathname
-                )}
+                marketCodesRequired={
+                  MARKET_CODES_REQUIRED.includes(location.pathname) &&
+                  location.pathname !== '/bot/settings' // Allow selector to close on settings page
+                }
                 tradeSupportRequired={TRADE_SUPPORT_REQUIRED.includes(
                   location.pathname
                 )}
@@ -451,6 +460,7 @@ export default function Bot() {
                   if (
                     (MARKET_CODES_REQUIRED.includes(location.pathname) ||
                       TRADE_SUPPORT_REQUIRED.includes(location.pathname)) &&
+                    location.pathname !== '/bot/settings' && // Allow ALL for settings
                     newValue.value === 'ALL'
                   )
                     navigate('/bot');
@@ -463,6 +473,7 @@ export default function Bot() {
         <Box sx={{ overflowX: 'hidden', mb: 2, p: 1 }}>
           {!selectedMarketCodeCombination ||
           (MARKET_CODES_REQUIRED.includes(location.pathname) &&
+            location.pathname !== '/bot/settings' && // Allow settings to render with ALL
             selectedMarketCodeCombination.value === 'ALL') ? (
             <Box />
           ) : (

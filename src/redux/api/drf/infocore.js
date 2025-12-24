@@ -127,6 +127,37 @@ const api = drfApi.injectEndpoints({
       query: (body) => ({ url: '/infocore/assets/', method: 'POST', body }),
       invalidatesTags: ['Assets'],
     }),
+    getVolatilityNotifications: builder.query({
+      keepUnusedDataFor: 5,
+      providesTags: ['VolatilityNotifications'],
+      query: (params) => ({
+        url: '/infocore/volatility-notifications/',
+        params,
+      }),
+    }),
+    createVolatilityNotification: builder.mutation({
+      query: (body) => ({
+        url: '/infocore/volatility-notifications/',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['VolatilityNotifications'],
+    }),
+    updateVolatilityNotification: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/infocore/volatility-notifications/${id}/`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: ['VolatilityNotifications'],
+    }),
+    deleteVolatilityNotification: builder.mutation({
+      query: (id) => ({
+        url: `/infocore/volatility-notifications/${id}/`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['VolatilityNotifications'],
+    }),
   }),
 });
 
@@ -146,4 +177,8 @@ export const {
   useGetAiRankRecommendationQuery,
   useLazyGetFundingRateQuery,
   usePostAssetMutation,
+  useGetVolatilityNotificationsQuery,
+  useCreateVolatilityNotificationMutation,
+  useUpdateVolatilityNotificationMutation,
+  useDeleteVolatilityNotificationMutation,
 } = api;
