@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from django.urls import include, path
-from rest_framework import response
+from rest_framework import response, routers
 from urllib.parse import urljoin
 
 from infocore.views import (
@@ -12,8 +12,18 @@ from infocore.views import (
     WalletStatusView,
     RankIndicatorView,
     AiRankRecommendationView,
+    VolatilityNotificationConfigViewSet,
 )
 from lib.views import BaseAPIListView
+
+
+# Router for ViewSets
+router = routers.DefaultRouter()
+router.register(
+    r"volatility-notifications",
+    VolatilityNotificationConfigViewSet,
+    basename="volatility-notifications",
+)
 
 
 class InfoCoreAPIListView(BaseAPIListView):
@@ -82,4 +92,6 @@ urlpatterns = [
         AiRankRecommendationView.as_view(),
         name="ai-rank-recommendation",
     ),
+    # Volatility notification configs (ViewSet with router)
+    path("", include(router.urls)),
 ]

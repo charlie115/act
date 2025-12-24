@@ -3,7 +3,7 @@ from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 
 from infocore.mixins import AssetMixin
-from infocore.models import Asset
+from infocore.models import Asset, VolatilityNotificationConfig
 from lib.datetime import DATE_TIME_FORMAT, DATE_TIME_TZ_FORMAT, UTC, TZ_UTC
 from lib.fields import (
     CharacterSeparatedField,
@@ -237,3 +237,63 @@ class AiRankRecommendationSerializer(serializers.Serializer):
 class AiRankRecommendationQueryParamsSerializer(serializers.Serializer):
     target_market_code = serializers.CharField(required=True)
     origin_market_code = serializers.CharField(required=True)
+
+
+class VolatilityNotificationConfigSerializer(serializers.ModelSerializer):
+    """Serializer for VolatilityNotificationConfig model."""
+
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = VolatilityNotificationConfig
+        fields = [
+            "id",
+            "user",
+            "target_market_code",
+            "origin_market_code",
+            "base_assets",
+            "volatility_threshold",
+            "notification_interval_minutes",
+            "enabled",
+            "last_notified_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "last_notified_at", "created_at", "updated_at"]
+
+    def validate_base_assets(self, value):
+        """Validate that base_assets is a list of strings if provided."""
+        if value is not None:
+            if not isinstance(value, list):
+                raise serializers.ValidationError("base_assets must be a list")
+            for asset in value:
+                if not isinstance(asset, str):
+                    raise serializers.ValidationError(
+                        "Each item in base_assets must be a string"
+                    )
+        return value
+
+    def validate(self, attrs):
+        """Validate market code combination exists and user hasn't already configured it."""
+        user = attrs.get("user") or self.context["request"].user
+        target = attrs.get("target_market_code")
+        origin = attrs.get("origin_market_code")
+
+        # Check for duplicate config (only on create)
+        if not self.instance:
+            exists = VolatilityNotificationConfig.objects.filter(
+                user=user,
+                target_market_code=target,
+                origin_market_code=origin,
+            ).exists()
+
+            if exists:
+                raise serializers.ValidationError(
+                    {
+                        "non_field_errors": [
+                            "You already have a notification config for this market combination."
+                        ]
+                    }
+                )
+
+        return attrs

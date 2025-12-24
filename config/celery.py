@@ -28,8 +28,12 @@ celery.conf.beat_schedule = {
     # },
     "compute_user_fee_level": {
         "task": "fee.tasks.compute_user_fee_level",
-        "schedule": crontab(minute="*"), # Runs every minute
-    }
+        "schedule": crontab(minute="*"),  # Runs every minute
+    },
+    "check_volatility_notifications": {
+        "task": "infocore.tasks.check_volatility_notifications",
+        "schedule": 30.0,  # Runs every 30 seconds
+    },
 }
 
 @celery.task(bind=True, ignore_result=True)

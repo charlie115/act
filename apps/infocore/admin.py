@@ -4,7 +4,7 @@ from django.utils.timezone import now
 from unfold.admin import ModelAdmin
 
 from infocore.mixins import AssetMixin
-from infocore.models import Asset, MarketCode
+from infocore.models import Asset, MarketCode, VolatilityNotificationConfig
 
 
 class AssetAdmin(AssetMixin, ModelAdmin):
@@ -88,5 +88,59 @@ class MarketCodeAdmin(ModelAdmin):
     )
 
 
+class VolatilityNotificationConfigAdmin(ModelAdmin):
+    list_display = [
+        "id",
+        "user",
+        "target_market_code",
+        "origin_market_code",
+        "volatility_threshold",
+        "notification_interval_minutes",
+        "enabled",
+        "last_notified_at",
+        "created_at",
+    ]
+    list_filter = ["enabled", "target_market_code", "origin_market_code"]
+    search_fields = ["user__email", "user__username", "target_market_code", "origin_market_code"]
+    readonly_fields = ["last_notified_at", "created_at", "updated_at"]
+    ordering = ["-created_at"]
+    autocomplete_fields = ["user"]
+    fieldsets = (
+        (
+            "User & Market",
+            {
+                "fields": (
+                    "user",
+                    "target_market_code",
+                    "origin_market_code",
+                    "base_assets",
+                )
+            },
+        ),
+        (
+            "Notification Settings",
+            {
+                "fields": (
+                    "volatility_threshold",
+                    "notification_interval_minutes",
+                    "enabled",
+                )
+            },
+        ),
+        (
+            "Status",
+            {
+                "fields": (
+                    "last_notified_at",
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ["collapse"],
+            },
+        ),
+    )
+
+
 admin.site.register(Asset, AssetAdmin)
 admin.site.register(MarketCode, MarketCodeAdmin)
+admin.site.register(VolatilityNotificationConfig, VolatilityNotificationConfigAdmin)

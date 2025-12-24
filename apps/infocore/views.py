@@ -14,6 +14,7 @@ from pymongo import MongoClient, DESCENDING
 from pytz import timezone
 
 from infocore.models import Asset
+from infocore.models import VolatilityNotificationConfig
 from infocore.serializers import (
     AssetSerializer,
     AverageFundingRateDataQueryParamsSerializer,
@@ -32,6 +33,7 @@ from infocore.serializers import (
     RankIndicatorSerializer,
     AiRankRecommendationSerializer,
     AiRankRecommendationQueryParamsSerializer,
+    VolatilityNotificationConfigSerializer,
 )
 from lib.filters import CharArrayFilter
 from lib.views import BaseViewSet
@@ -1070,3 +1072,53 @@ class AiRankRecommendationView(views.APIView):
                 {"detail": f"Error fetching AI recommendation data: {str(e)}"},
                 status=500
             )
+
+
+@extend_schema(tags=["Volatility Notification"])
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="List volatility notification configs",
+        description="Returns a list of the user's volatility notification configurations.",
+    ),
+    create=extend_schema(
+        operation_id="Create volatility notification config",
+        description="Creates a new volatility notification configuration for the current user.",
+    ),
+    retrieve=extend_schema(
+        operation_id="Retrieve volatility notification config",
+        description="Retrieves details of an existing volatility notification configuration.",
+    ),
+    update=extend_schema(
+        operation_id="Update volatility notification config",
+        description="Fully updates an existing volatility notification configuration.",
+    ),
+    partial_update=extend_schema(
+        operation_id="Partial update volatility notification config",
+        description="Partially updates an existing volatility notification configuration.",
+    ),
+    destroy=extend_schema(
+        operation_id="Delete volatility notification config",
+        description="Deletes an existing volatility notification configuration.",
+    ),
+)
+class VolatilityNotificationConfigViewSet(BaseViewSet):
+    """
+    ViewSet for managing user's volatility notification configurations.
+
+    Users can create, view, update, and delete their own notification configs.
+    When volatility exceeds the configured threshold, a notification message
+    will be created and sent via Telegram.
+    """
+
+    queryset = VolatilityNotificationConfig.objects.all()
+    serializer_class = VolatilityNotificationConfigSerializer
+    http_method_names = ["get", "post", "put", "patch", "delete"]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["target_market_code", "origin_market_code", "enabled"]
+
+    def get_queryset(self):
+        """Filter to only show the current user's configs."""
+        queryset = super().get_queryset()
+        if self.request.user and self.request.user.is_authenticated:
+            return queryset.filter(user=self.request.user)
+        return queryset.none()
