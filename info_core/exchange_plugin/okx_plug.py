@@ -484,6 +484,13 @@ class InitOkxAdaptor:
         # funding_df[["fundingTime", "nextFundingTime"]] = funding_df.loc[:, ["fundingTime", "nextFundingTime"]].applymap(lambda x: pd.to_datetime(x, unit='ms', utc=True))
         # funding_df.loc[:, "fundingTime"] = pd.to_datetime(funding_df["fundingTime"]).dt.tz_localize(None)
         # funding_df.loc[:, "nextFundingTime"] = pd.to_datetime(funding_df["nextFundingTime"]).dt.tz_localize(None)
+
+        # Calculate funding interval hours from the timestamps (nextFundingTime - fundingTime)
+        # Both are in milliseconds
+        funding_df['funding_interval_hours'] = ((funding_df['nextFundingTime'] - funding_df['fundingTime']) / (1000 * 60 * 60))
+        # Convert to nullable Int64 to preserve NaN as None
+        funding_df['funding_interval_hours'] = funding_df['funding_interval_hours'].astype('Int64')
+
         funding_df['fundingTime'] = pd.to_datetime(funding_df['fundingTime'], unit='ms', utc=True)
         funding_df['fundingTime'] = funding_df['fundingTime'].dt.tz_localize(None)
         funding_df['nextFundingTime'] = pd.to_datetime(funding_df['nextFundingTime'], unit='ms', utc=True)

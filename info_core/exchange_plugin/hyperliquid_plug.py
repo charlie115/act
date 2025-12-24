@@ -351,6 +351,9 @@ class InitHyperliquidAdaptor:
             next_funding = now.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(hours=1)
             result_df["funding_time"] = next_funding
 
+            # Hyperliquid has hourly funding (1 hour intervals)
+            result_df["funding_interval_hours"] = 1
+
             # All Hyperliquid contracts are perpetual
             result_df["perpetual"] = True
 

@@ -181,6 +181,26 @@ class InitBinanceAdaptor:
         df['atp24h'] = df['volume'] * 100
         return df
 
+    def _get_funding_info(self):
+        """
+        Fetch funding rate info including interval hours from Binance API.
+
+        Endpoint: GET /fapi/v1/fundingInfo
+        Returns DataFrame with symbol and fundingIntervalHours.
+        """
+        try:
+            import requests
+            response = requests.get("https://fapi.binance.com/fapi/v1/fundingInfo", timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            df = pd.DataFrame(data)
+            if 'symbol' in df.columns and 'fundingIntervalHours' in df.columns:
+                return df[['symbol', 'fundingIntervalHours']]
+            return pd.DataFrame(columns=['symbol', 'fundingIntervalHours'])
+        except Exception as e:
+            self.binance_plug_logger.error(f"Failed to fetch funding info: {e}")
+            return pd.DataFrame(columns=['symbol', 'fundingIntervalHours'])
+
     def get_fundingrate(self, futures_type="USD_M"):
         bi_client = self.pub_client
         if futures_type == "USD_M":
@@ -202,6 +222,18 @@ class InitBinanceAdaptor:
             binance_fund['funding_time'] = pd.to_datetime(binance_fund['funding_time'], unit='ms', utc=True)
             # Remove timezone information if needed
             binance_fund['funding_time'] = binance_fund['funding_time'].dt.tz_localize(None)
+
+            # Fetch and merge funding interval hours
+            funding_info_df = self._get_funding_info()
+            if not funding_info_df.empty:
+                binance_fund = binance_fund.merge(funding_info_df, on='symbol', how='left')
+                binance_fund['funding_interval_hours'] = pd.to_numeric(binance_fund['fundingIntervalHours'], errors='coerce')
+                # Convert to nullable Int64 to preserve NaN as None
+                binance_fund['funding_interval_hours'] = binance_fund['funding_interval_hours'].astype('Int64')
+                binance_fund.drop(columns=['fundingIntervalHours'], inplace=True)
+            else:
+                binance_fund['funding_interval_hours'] = None
+
             # replace '' to None
             binance_fund.replace("", None, inplace=True)
             binance_fund.loc[:, 'funding_rate'] = binance_fund['funding_rate'].astype(float)
@@ -219,6 +251,8 @@ class InitBinanceAdaptor:
             binance_fund['funding_time'] = pd.to_datetime(binance_fund['funding_time'], unit='ms', errors='coerce', utc=True)
             # Remove timezone information if needed
             binance_fund['funding_time'] = binance_fund['funding_time'].dt.tz_localize(None)
+            # COIN-M perpetuals use 8 hour funding interval
+            binance_fund['funding_interval_hours'] = 8
             # replace '' to None
             binance_fund.replace("", None, inplace=True)
             binance_fund.loc[:, 'funding_rate'] = binance_fund['funding_rate'].astype(float)

@@ -258,11 +258,13 @@ class InitGateAdaptor:
         else:
             info_df = pickle.loads(fetched_gate_usd_m_info_df)
 
-        # Merge ticker with contracts info to get perpetual and funding_next_apply
-        # Columns from info_df: symbol, perpetual, funding_next_apply
+        # Merge ticker with contracts info to get perpetual, funding_next_apply, and funding_interval
+        # Columns from info_df: symbol, perpetual, funding_next_apply, funding_interval
         merge_columns = ["symbol", "perpetual"]
         if "funding_next_apply" in info_df.columns:
             merge_columns.append("funding_next_apply")
+        if "funding_interval" in info_df.columns:
+            merge_columns.append("funding_interval")
 
         funding_df = ticker_df.merge(
             info_df[merge_columns],
@@ -301,6 +303,15 @@ class InitGateAdaptor:
                 hours_until_next = 0
             next_funding = now.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(hours=hours_until_next)
             result_df["funding_time"] = next_funding
+
+        # Add funding_interval_hours (from contracts data via merge)
+        # funding_interval is in seconds (e.g., 28800 for 8 hours)
+        if "funding_interval" in funding_df.columns:
+            result_df["funding_interval_hours"] = (pd.to_numeric(funding_df["funding_interval"], errors='coerce') / 3600)
+            # Convert to nullable Int64 to preserve NaN as None
+            result_df["funding_interval_hours"] = result_df["funding_interval_hours"].astype('Int64')
+        else:
+            result_df["funding_interval_hours"] = None
 
         # Add perpetual flag (from contracts data via merge)
         result_df["perpetual"] = funding_df["perpetual"]

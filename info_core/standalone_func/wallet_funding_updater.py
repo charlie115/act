@@ -111,7 +111,12 @@ def update_fundingrate(admin_id, node, acw_api, logger, db_client, exchange_name
 
                 # Fetch funding rate data from the exchange
                 api_start = time.time()
-                funding_df = exchange_adaptor.get_fundingrate(futures_type)[['symbol', 'funding_rate', 'funding_time', 'base_asset', 'quote_asset', 'perpetual']]
+                raw_funding_df = exchange_adaptor.get_fundingrate(futures_type)
+                # Select columns, including funding_interval_hours if available
+                base_columns = ['symbol', 'funding_rate', 'funding_time', 'base_asset', 'quote_asset', 'perpetual']
+                if 'funding_interval_hours' in raw_funding_df.columns:
+                    base_columns.append('funding_interval_hours')
+                funding_df = raw_funding_df[base_columns]
                 api_time += time.time() - api_start
                 funding_df['datetime_now'] = datetime.datetime.utcnow()
 
@@ -130,15 +135,27 @@ def update_fundingrate(admin_id, node, acw_api, logger, db_client, exchange_name
                     df['funding_time'] = pd.to_datetime(df['funding_time'], errors='coerce')
                     merged_funding_df = funding_df.merge(df, on=['symbol', 'funding_time'], how='left')
                     calculate_time += time.time() - calculate_time_start
+                    # Check if funding_interval_hours is available in the funding_df
+                    # Note: After merge, if the column only exists in funding_df (not in df from MongoDB),
+                    # it keeps the original name without _x suffix. Check both possibilities.
+                    funding_interval_col = None
+                    if 'funding_interval_hours_x' in merged_funding_df.columns:
+                        funding_interval_col = 'funding_interval_hours_x'
+                    elif 'funding_interval_hours' in merged_funding_df.columns:
+                        funding_interval_col = 'funding_interval_hours'
+
                     for _, row in merged_funding_df.iterrows():
                         write_time_start = time.time()
                         if not pd.isna(row['_id']):
-                            # UPDATE with new funding_rate
-                            collection.update_one({'_id': row['_id']}, {'$set': {'funding_rate': row['funding_rate_x'], 'datetime_now': row['datetime_now_x']}})
+                            # UPDATE with new funding_rate and funding_interval_hours
+                            update_fields = {'funding_rate': row['funding_rate_x'], 'datetime_now': row['datetime_now_x']}
+                            if funding_interval_col and not pd.isna(row[funding_interval_col]):
+                                update_fields['funding_interval_hours'] = int(row[funding_interval_col])
+                            collection.update_one({'_id': row['_id']}, {'$set': update_fields})
                         else:
                             # INSERT new funding_rate
                             row_dict = row.to_dict()
-                            collection.insert_one({
+                            insert_doc = {
                                 'symbol': row_dict['symbol'],
                                 'funding_rate': row_dict['funding_rate_x'],
                                 'funding_time': row_dict['funding_time'],
@@ -146,7 +163,10 @@ def update_fundingrate(admin_id, node, acw_api, logger, db_client, exchange_name
                                 'quote_asset': row_dict['quote_asset_x'],
                                 'perpetual': row_dict['perpetual_x'],
                                 'datetime_now': row_dict['datetime_now_x']
-                            })
+                            }
+                            if funding_interval_col and not pd.isna(row_dict.get(funding_interval_col)):
+                                insert_doc['funding_interval_hours'] = int(row_dict[funding_interval_col])
+                            collection.insert_one(insert_doc)
                         write_time += time.time() - write_time_start
 
             logger.info(f"update_fundingrate|{exchange_name} took {time.time() - start:.2f} secs (read: {read_time:.2f}, write: {write_time:.2f}, calc: {calculate_time:.2f}, API: {api_time:.2f})")
