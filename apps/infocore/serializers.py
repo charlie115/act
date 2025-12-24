@@ -123,6 +123,7 @@ class FundingRateDataSerializer(serializers.Serializer):
         format=DATE_TIME_TZ_FORMAT,
         default_timezone=TZ_UTC,
     )
+    funding_interval_hours = serializers.IntegerField(required=False, allow_null=True, default=None)
     datetime_now = DateTimeWithTzField(
         format=DATE_TIME_TZ_FORMAT,
         default_timezone=TZ_UTC,
@@ -255,11 +256,10 @@ class VolatilityNotificationConfigSerializer(serializers.ModelSerializer):
             "volatility_threshold",
             "notification_interval_minutes",
             "enabled",
-            "last_notified_at",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "last_notified_at", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
     def validate_base_assets(self, value):
         """Validate that base_assets is a list of strings if provided."""

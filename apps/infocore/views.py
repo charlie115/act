@@ -415,6 +415,7 @@ class FundingRateDataView(views.APIView):
                         "symbol": "$symbol",
                         "funding_rate": "$funding_rate",
                         "funding_time": "$funding_time",
+                        "funding_interval_hours": "$funding_interval_hours",
                         "datetime_now": "$datetime_now",
                     }}
                 }

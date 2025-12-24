@@ -98,7 +98,6 @@ class VolatilityNotificationConfig(models.Model):
 
     # State tracking
     enabled = models.BooleanField(default=True)
-    last_notified_at = models.DateTimeField(null=True, blank=True)
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -116,3 +115,33 @@ class VolatilityNotificationConfig(models.Model):
         ]
         verbose_name = "Volatility Notification Config"
         verbose_name_plural = "Volatility Notification Configs"
+
+
+class VolatilityNotificationHistory(models.Model):
+    """
+    Tracks per-symbol notification history to prevent duplicate notifications
+    within the configured interval.
+    """
+
+    config = models.ForeignKey(
+        VolatilityNotificationConfig,
+        on_delete=models.CASCADE,
+        related_name="notification_history",
+    )
+    base_asset = models.CharField(max_length=30)
+    notified_at = models.DateTimeField(auto_now_add=True)
+    mean_diff = models.DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        help_text="The volatility value when notification was sent.",
+    )
+
+    def __str__(self):
+        return f"{self.config.id} - {self.base_asset} @ {self.notified_at}"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["config", "base_asset", "notified_at"]),
+        ]
+        verbose_name = "Volatility Notification History"
+        verbose_name_plural = "Volatility Notification Histories"

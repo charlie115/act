@@ -12,7 +12,7 @@ from django.utils import timezone
 from pymongo import MongoClient
 
 from config.celery import celery
-from infocore.models import VolatilityNotificationConfig
+from infocore.models import VolatilityNotificationConfig, VolatilityNotificationHistory
 from messagecore.models import Message
 
 
@@ -150,12 +150,13 @@ def check_volatility_notifications():
     Periodic task that checks all enabled volatility notification configs
     and creates notifications when thresholds are exceeded.
 
-    This task:
+    This task uses per-symbol notification tracking:
     1. Fetches all enabled VolatilityNotificationConfig entries
-    2. For each config, checks if enough time has passed since last notification
-    3. Fetches current volatility data from MongoDB
-    4. If any asset exceeds the threshold, creates a Message for Telegram delivery
-    5. Updates last_notified_at timestamp
+    2. For each config, fetches current volatility data from MongoDB
+    3. Finds assets exceeding the threshold
+    4. Filters out assets that were already notified within the interval
+    5. Creates a Message for Telegram delivery for NEW alerts only
+    6. Records each notified symbol in VolatilityNotificationHistory
 
     Returns:
         dict with statistics about the task run
@@ -164,7 +165,7 @@ def check_volatility_notifications():
     stats = {
         "configs_checked": 0,
         "notifications_sent": 0,
-        "configs_skipped_interval": 0,
+        "symbols_notified": 0,
         "configs_skipped_no_alerts": 0,
         "errors": 0,
     }
@@ -178,13 +179,6 @@ def check_volatility_notifications():
         stats["configs_checked"] += 1
 
         try:
-            # Check rate limiting: skip if within notification interval
-            if config.last_notified_at:
-                elapsed_minutes = (now - config.last_notified_at).total_seconds() / 60
-                if elapsed_minutes < config.notification_interval_minutes:
-                    stats["configs_skipped_interval"] += 1
-                    continue
-
             # Fetch volatility data from MongoDB
             volatility_data = fetch_volatility_data(
                 config.target_market_code,
@@ -194,27 +188,79 @@ def check_volatility_notifications():
 
             # Find assets exceeding threshold
             threshold = float(config.volatility_threshold)
-            alerts = [
+            exceeding_assets = [
                 item
                 for item in volatility_data
                 if item.get("mean_diff", 0) >= threshold
             ]
 
-            if not alerts:
+            if not exceeding_assets:
                 stats["configs_skipped_no_alerts"] += 1
                 continue
 
-            # Create notification message
-            success = create_notification_message(config.user, config, alerts)
+            # Calculate the cutoff time for notification interval
+            interval_cutoff = now - timedelta(minutes=config.notification_interval_minutes)
+
+            # Get symbols already notified within the interval
+            recently_notified = set(
+                VolatilityNotificationHistory.objects.filter(
+                    config=config,
+                    notified_at__gte=interval_cutoff,
+                ).values_list("base_asset", flat=True)
+            )
+
+            # Filter to only NEW alerts (not notified within interval)
+            new_alerts = [
+                item
+                for item in exceeding_assets
+                if item["base_asset"] not in recently_notified
+            ]
+
+            if not new_alerts:
+                # All exceeding assets were already notified
+                stats["configs_skipped_no_alerts"] += 1
+                continue
+
+            # Create notification message for new alerts only
+            success = create_notification_message(config.user, config, new_alerts)
 
             if success:
-                # Update last_notified_at
-                config.last_notified_at = now
-                config.save(update_fields=["last_notified_at"])
+                # Record each notified symbol in history
+                history_records = [
+                    VolatilityNotificationHistory(
+                        config=config,
+                        base_asset=alert["base_asset"],
+                        mean_diff=alert["mean_diff"],
+                    )
+                    for alert in new_alerts
+                ]
+                VolatilityNotificationHistory.objects.bulk_create(history_records)
+
                 stats["notifications_sent"] += 1
+                stats["symbols_notified"] += len(new_alerts)
 
         except Exception as e:
             print(f"Error processing config {config.id}: {e}")
             stats["errors"] += 1
 
     return stats
+
+
+@celery.task
+def cleanup_old_notification_history(days_to_keep=7):
+    """
+    Periodic task to clean up old notification history records.
+    Keeps records from the last N days to prevent table from growing indefinitely.
+
+    Args:
+        days_to_keep: Number of days of history to retain (default: 7)
+
+    Returns:
+        dict with deletion statistics
+    """
+    cutoff_date = timezone.now() - timedelta(days=days_to_keep)
+    deleted_count, _ = VolatilityNotificationHistory.objects.filter(
+        notified_at__lt=cutoff_date
+    ).delete()
+
+    return {"deleted_records": deleted_count}

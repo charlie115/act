@@ -34,6 +34,10 @@ celery.conf.beat_schedule = {
         "task": "infocore.tasks.check_volatility_notifications",
         "schedule": 30.0,  # Runs every 30 seconds
     },
+    "cleanup_old_notification_history": {
+        "task": "infocore.tasks.cleanup_old_notification_history",
+        "schedule": crontab(hour=3, minute=0),  # Runs daily at 3 AM
+    },
 }
 
 @celery.task(bind=True, ignore_result=True)
