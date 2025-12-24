@@ -20,7 +20,7 @@ from standalone_func.store_exchange_status import fetch_market_servercheck
 # 4 workers is optimal: balances throughput with connection pool usage
 _INSERT_THREAD_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="kline_insert")
 
-def store_kline_volatility_info(mongo_db_client, market_code_combination, logger, last_n=180):
+def store_kline_volatility_info(mongo_db_client, market_code_combination, logger, last_n=180, stale_threshold_minutes=10):
     """
     Store volatility info for all 1T kline collections.
 
@@ -28,6 +28,7 @@ def store_kline_volatility_info(mongo_db_client, market_code_combination, logger
     - Uses connection pooling (do not close connection - it's shared)
     - Uses datetime_now index for faster sorted queries
     - Ensures indexes exist before querying
+    - Filters out stale/delisted symbols (latest data older than stale_threshold_minutes)
     """
     try:
         database = market_code_combination.replace('/', '__').replace(':', '-')
@@ -46,6 +47,10 @@ def store_kline_volatility_info(mongo_db_client, market_code_combination, logger
 
         # List to store the data to be inserted into the temporary collection
         data_list = []
+
+        # Calculate the stale threshold time
+        stale_threshold_time = datetime.datetime.utcnow() - datetime.timedelta(minutes=stale_threshold_minutes)
+        skipped_stale_count = 0
 
         for collection_name in collections_1T:
             # Ensure index exists for this collection (cached, fast check)
@@ -74,6 +79,16 @@ def store_kline_volatility_info(mongo_db_client, market_code_combination, logger
 
             # Check if DataFrame is not empty
             if not records_df.empty:
+                # Check if the latest record is stale (older than threshold)
+                latest_datetime = pd.to_datetime(records_df['datetime_now'].iloc[0])
+                if latest_datetime.tzinfo is not None:
+                    latest_datetime = latest_datetime.replace(tzinfo=None)
+
+                if latest_datetime < stale_threshold_time:
+                    # Skip this symbol - data is stale (likely delisted)
+                    skipped_stale_count += 1
+                    continue
+
                 # Calculate spread-adjusted volatility: SL_high - LS_low
                 # This accounts for the LS-SL spread, giving a more realistic arbitrage profitability measure
                 records_df['difference'] = records_df['SL_high'] - records_df['LS_low']
@@ -86,6 +101,9 @@ def store_kline_volatility_info(mongo_db_client, market_code_combination, logger
                     'datetime_now': datetime.datetime.utcnow()
                 }
                 data_list.append(data)
+
+        if skipped_stale_count > 0:
+            logger.info(f"store_kline_volatility_info|{database}: Skipped {skipped_stale_count} stale symbols (data older than {stale_threshold_minutes} minutes)")
 
         # Clear the temporary collection (optional, since we're overwriting)
         temp_collection.delete_many({})
