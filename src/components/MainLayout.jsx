@@ -4,7 +4,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 
-import { Helmet } from 'react-helmet';
+import SEO from 'components/SEO';
 
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
@@ -30,10 +30,12 @@ import { routes } from 'configs/navigation';
 
 import ChatWidget, { DrawerHeader } from 'components/chat_widget';
 import Header from 'components/Header';
+import Breadcrumbs from 'components/Breadcrumbs';
 
 import { GlobalSnackbarProvider } from 'hooks/useGlobalSnackbar';
 
 import { RIGHT_SIDEBAR_WIDTH } from 'constants';
+import { BreadcrumbProvider } from '../contexts/BreadcrumbContext';
 
 export default function MainLayout() {
   const location = useLocation();
@@ -87,25 +89,23 @@ export default function MainLayout() {
 
   if (loggedin && !telegramBot && !user) return null;
 
-  const title = currentRoute?.getTitle();
-
   return (
     <>
-      <Helmet>
-        <title>{title || ''} — ArbiCrypto</title>
-      </Helmet>
+      <SEO />
       <GlobalSnackbarProvider>
-        <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-          <NavAppBar position="fixed" open={open} elevation={0}>
-            <Header />
-          </NavAppBar>
-          <Main ref={mainRef} open={open}>
-            <DrawerHeader />
-            <ContentContainer>
-              <React.Suspense fallback={<LinearProgress sx={{ mb: 2 }} />}>
-                <TVTickerWidget isVisible={currentRoute?.displayTicker} />
-              </React.Suspense>
-              <PageContainer
+        <BreadcrumbProvider>
+          <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+            <NavAppBar position="fixed" open={open} elevation={0}>
+              <Header />
+            </NavAppBar>
+            <Main ref={mainRef} open={open}>
+              <DrawerHeader />
+              <ContentContainer>
+                <Breadcrumbs />
+                <React.Suspense fallback={<LinearProgress sx={{ mb: 2 }} />}>
+                  <TVTickerWidget isVisible={currentRoute?.displayTicker} />
+                </React.Suspense>
+                <PageContainer
                 elevation={0}
                 sx={{
                   bgcolor: 'background.paper',
@@ -137,11 +137,12 @@ export default function MainLayout() {
               <KeyboardArrowUpIcon fontSize="medium" />
             </ScrollToTopButton>
           </Zoom>
-          <ChatWidget
-            isVisible={currentRoute?.displayChat}
-            onStateChange={(state) => setOpen(state.open)}
-          />
-        </Box>
+            <ChatWidget
+              isVisible={currentRoute?.displayChat}
+              onStateChange={(state) => setOpen(state.open)}
+            />
+          </Box>
+        </BreadcrumbProvider>
       </GlobalSnackbarProvider>
     </>
   );

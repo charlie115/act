@@ -14,7 +14,6 @@ import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
 import Skeleton from '@mui/material/Skeleton';
 import TablePagination from '@mui/material/TablePagination';
-import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -26,6 +25,7 @@ import { styled, useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
 
 import alpha from '../configs/theme/safeAlpha';
+import EmptyState from './EmptyState';
 
 const ReactTableUI = forwardRef(
   (
@@ -209,15 +209,12 @@ const ReactTableUI = forwardRef(
           )}
         </Table>
         {!isLoading && rows.length === 0 && (
-          <EmptyState>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ fontStyle: 'italic' }}
-            >
-              {noDisplayMessage || t('No data to display')}
-            </Typography>
-          </EmptyState>
+          <EmptyState
+            variant="no-data"
+            title={noDisplayMessage || t('No data to display')}
+            description={t('There are no items to show at the moment.')}
+            compact
+          />
         )}
       </TableContainer>
     );
@@ -291,10 +288,10 @@ export const TableCell = styled('td')(({ theme }) => ({
   textAlign: 'left',
   fontSize: theme.typography.body2.fontSize,
   borderBottom: `1px solid ${alpha(theme.palette.divider || '#E0E0E0', 0.5)}`,
-  [theme.breakpoints.down('md')]: { 
-    padding: theme.spacing(0.75, 0.25),
-    fontSize: '0.45rem',
-    lineHeight: 1.1,
+  [theme.breakpoints.down('md')]: {
+    padding: theme.spacing(0.75, 0.5),
+    fontSize: '0.75rem',
+    lineHeight: 1.3,
   },
 }));
 
@@ -328,11 +325,11 @@ export const TableHeaderCell = styled('th', {
       backgroundColor: alpha(theme.palette.primary?.main || '#007cff', 0.04),
     } : {},
     [theme.breakpoints.down('md')]: {
-      padding: theme.spacing(0.75, 0.25),
-      fontSize: '0.45rem',
+      padding: theme.spacing(0.75, 0.5),
+      fontSize: '0.75rem',
       textAlign: 'center',
       whiteSpace: 'normal',
-      lineHeight: 1.1,
+      lineHeight: 1.3,
       wordBreak: 'break-word',
     },
   })
@@ -369,12 +366,6 @@ export const TableRow = styled('tr', {
   '&:last-child': {
     borderBottom: 'none',
   },
-}));
-
-// Empty state
-const EmptyState = styled(Box)(({ theme }) => ({
-  padding: theme.spacing(8, 2),
-  textAlign: 'center',
 }));
 
 export default React.memo(ReactTableUI);

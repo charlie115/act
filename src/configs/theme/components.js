@@ -17,6 +17,11 @@ export default {
         '&:active': {
           transform: 'translateY(0)',
         },
+        '&:focus-visible': {
+          outline: `2px solid ${theme.palette.primary?.main || '#007cff'}`,
+          outlineOffset: 2,
+          boxShadow: `0 0 0 4px ${alpha(theme.palette.primary?.main || '#007cff', 0.2)}`,
+        },
       }),
       contained: ({ theme, ownerState }) => ({
         boxShadow: theme.shadows[2],
@@ -269,6 +274,7 @@ export default {
           backgroundColor: theme.palette.primary.main,
           height: 3,
           borderRadius: '3px 3px 0 0',
+          transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
         },
         ...(ownerState.orientation === 'horizontal'
           ? {
@@ -279,6 +285,14 @@ export default {
               borderRightStyle: 'solid',
               borderRightWidth: 1,
             }),
+      }),
+      scrollButtons: ({ theme }) => ({
+        '&.Mui-disabled': {
+          opacity: 0.3,
+        },
+        transition: theme.transitions.create(['opacity'], {
+          duration: theme.transitions.duration.short,
+        }),
       }),
     },
   },
@@ -405,17 +419,4 @@ export default {
     },
   },
 
-  // Typography - Override default body1 usage in chat and other components
-  MuiTypography: {
-    styleOverrides: {
-      root: ({ theme, ownerState }) => ({
-        // Only override if variant is body1 or undefined (defaults to body1)
-        ...((!ownerState.variant || ownerState.variant === 'body1') && {
-          '@media (max-width:600px)': {
-            fontSize: '0.45rem', // compact for mobile
-          },
-        }),
-      }),
-    },
-  },
 };

@@ -17,6 +17,7 @@ import { DateTime, Settings } from 'luxon';
 import { AdapterLuxon } from '@mui/x-date-pickers/AdapterLuxon';
 
 import FullScreenLoading from 'components/FullScreenLoading';
+import ErrorBoundary from 'components/ErrorBoundary';
 
 import router from 'configs/router';
 import theme, { darkTheme } from 'configs/theme';
@@ -83,10 +84,12 @@ function App() {
             },
           }}
         />
-        <RouterProvider
-          router={router}
-          fallbackElement={<FullScreenLoading />}
-        />
+        <ErrorBoundary>
+          <RouterProvider
+            router={router}
+            fallbackElement={<FullScreenLoading />}
+          />
+        </ErrorBoundary>
       </ThemeProvider>
     </LocalizationProvider>
   );

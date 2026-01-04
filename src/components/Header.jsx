@@ -15,7 +15,6 @@ import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import Fade from '@mui/material/Fade';
 import Divider from '@mui/material/Divider';
 
 import MenuIcon from '@mui/icons-material/Menu';
@@ -29,10 +28,10 @@ import BrandLogo from 'components/BrandLogo';
 import HeaderUserMenu from 'components/HeaderUserMenu';
 import DepositBalance from 'components/DepositBalance';
 
-// Modern navigation button with hover effects
+// Modern navigation button with enhanced hover effects
 const NavButton = styled(Button, {
-  shouldForwardProp: (prop) => prop !== 'active',
-})(({ active, theme }) => ({
+  shouldForwardProp: (prop) => !['active', 'index'].includes(prop),
+})(({ active, index = 0, theme }) => ({
   color: active ? theme.palette.primary.main : theme.palette.text.primary,
   fontSize: '0.875rem',
   fontWeight: active ? 600 : 500,
@@ -41,38 +40,99 @@ const NavButton = styled(Button, {
   padding: theme.spacing(1, 2),
   position: 'relative',
   textTransform: 'none',
-  transition: theme.transitions.create(['color', 'background-color'], {
-    duration: theme.transitions.duration.short,
+  borderRadius: 8,
+  overflow: 'hidden',
+  // Staggered entrance animation
+  opacity: 0,
+  animation: `navFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards`,
+  animationDelay: `${index * 0.05}s`,
+  '@keyframes navFadeIn': {
+    from: {
+      opacity: 0,
+      transform: 'translateY(-8px)',
+    },
+    to: {
+      opacity: 1,
+      transform: 'translateY(0)',
+    },
+  },
+  transition: theme.transitions.create(['color', 'background-color', 'transform'], {
+    duration: 200,
+    easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
   }),
   '&:hover': {
     backgroundColor: alpha(theme.palette.primary?.main || '#007cff', 0.08),
     color: theme.palette.primary.main,
+    transform: 'translateY(-1px)',
   },
+  '&:active': {
+    transform: 'translateY(0) scale(0.98)',
+  },
+  '&:focus-visible': {
+    outline: `2px solid ${theme.palette.primary.main}`,
+    outlineOffset: 2,
+    boxShadow: `0 0 0 4px ${alpha(theme.palette.primary.main, 0.15)}`,
+  },
+  // Animated underline indicator
   '&::after': {
     content: '""',
     position: 'absolute',
     bottom: 0,
     left: '50%',
     transform: 'translateX(-50%)',
-    width: active ? '80%' : '0%',
+    width: active ? '70%' : '0%',
     height: 3,
     backgroundColor: theme.palette.primary.main,
     borderRadius: '3px 3px 0 0',
-    transition: theme.transitions.create(['width'], {
-      duration: theme.transitions.duration.short,
-    }),
+    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
   },
   '&:hover::after': {
-    width: '80%',
+    width: '70%',
+  },
+  // Ripple highlight on hover
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    inset: 0,
+    background: `radial-gradient(circle at center, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 70%)`,
+    opacity: 0,
+    transform: 'scale(0.8)',
+    transition: 'all 0.3s ease',
+  },
+  '&:hover::before': {
+    opacity: 1,
+    transform: 'scale(1)',
   },
 }));
 
-// Modern mobile drawer styling
+// Modern mobile drawer styling with slide animation
 const MobileDrawer = styled(Drawer)(({ theme }) => ({
   '& .MuiDrawer-paper': {
     width: 280,
     backgroundColor: theme.palette.background.paper,
     borderRight: `1px solid ${theme.palette.divider}`,
+    backgroundImage: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, transparent 100%)`,
+  },
+  '& .MuiBackdrop-root': {
+    backgroundColor: alpha(theme.palette.common.black, 0.5),
+    backdropFilter: 'blur(4px)',
+  },
+}));
+
+// Animated list item for mobile drawer
+const AnimatedListItem = styled(ListItem)(({ index = 0 }) => ({
+  opacity: 0,
+  animation: 'slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+  animationDelay: `${0.1 + index * 0.05}s`,
+  '@keyframes slideIn': {
+    from: {
+      opacity: 0,
+      transform: 'translateX(-16px)',
+    },
+    to: {
+      opacity: 1,
+      transform: 'translateX(0)',
+    },
   },
 }));
 
@@ -165,8 +225,8 @@ export default function Header() {
         </IconButton>
       </DrawerHeader>
       <List sx={{ px: 1, py: 2 }}>
-        {pages?.map((page) => (
-          <ListItem key={page.name} disablePadding sx={{ mb: 0.5 }}>
+        {pages?.map((page, index) => (
+          <AnimatedListItem key={page.name} disablePadding sx={{ mb: 0.5 }} index={index}>
             <ListItemButton
               onClick={() => handleNavigate(page.path)}
               selected={page.path === currentRoute?.path}
@@ -198,7 +258,7 @@ export default function Header() {
                 }}
               />
             </ListItemButton>
-          </ListItem>
+          </AnimatedListItem>
         ))}
       </List>
       {loggedin && (
@@ -282,15 +342,15 @@ export default function Header() {
               flex: 1,
             }}
           >
-            {pages?.map((page) => (
-              <Fade key={page.name} in timeout={300}>
-                <NavButton
-                  active={page.path === currentRoute?.path}
-                  onClick={() => navigate(page.path)}
-                >
-                  {page?.getTitle()}
-                </NavButton>
-              </Fade>
+            {pages?.map((page, index) => (
+              <NavButton
+                key={page.name}
+                active={page.path === currentRoute?.path}
+                index={index}
+                onClick={() => navigate(page.path)}
+              >
+                {page?.getTitle()}
+              </NavButton>
             ))}
           </Box>
         )}

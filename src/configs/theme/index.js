@@ -98,8 +98,8 @@ const typography = {
     lineHeight: 1.6,
     letterSpacing: '0.01em',
     '@media (max-width:600px)': {
-      fontSize: '0.4rem',
-      lineHeight: 1.1,
+      fontSize: '0.875rem',
+      lineHeight: 1.5,
     },
   },
   body2: {
@@ -145,6 +145,10 @@ const transitions = {
     easeOut: 'cubic-bezier(0.0, 0, 0.2, 1)',
     easeIn: 'cubic-bezier(0.4, 0, 1, 1)',
     sharp: 'cubic-bezier(0.4, 0, 0.6, 1)',
+    // Modern easing for interactive elements
+    bounce: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+    decelerate: 'cubic-bezier(0, 0, 0.2, 1)',
+    smooth: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
   },
   duration: {
     shortest: 150,
@@ -154,6 +158,10 @@ const transitions = {
     complex: 375,
     enteringScreen: 225,
     leavingScreen: 195,
+    // Micro-interaction timings
+    hover: 200,
+    focus: 150,
+    slide: 400,
   },
 };
 
