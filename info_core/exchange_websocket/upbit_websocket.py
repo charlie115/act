@@ -15,6 +15,9 @@ from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
+# Maximum allowed message delay in milliseconds - drop messages older than this
+MAX_MESSAGE_DELAY_MS = 100
+
 # Move the upbit_websocket function outside the class
 def upbit_websocket(stream_data_type, url, data, error_event, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
     # Reinitialize the logger inside the function
@@ -34,6 +37,12 @@ def upbit_websocket(stream_data_type, url, data, error_event, logging_dir, acw_a
                 ws.close()
                 raise Exception("upbit_websocket|error_event is set. closing websocket..")
             message_dict = json.loads(message)
+            # Check message delay - drop if older than MAX_MESSAGE_DELAY_MS
+            msg_ts_ms = message_dict.get('tms')  # Upbit uses 'tms' for timestamp
+            if msg_ts_ms:
+                current_ts_ms = int(time.time() * 1000)
+                if current_ts_ms - msg_ts_ms > MAX_MESSAGE_DELAY_MS:
+                    return  # Drop stale message
             local_redis.update_exchange_stream_data(stream_data_type, "UPBIT_SPOT", message_dict['cd'],
                                                     {**message_dict, 'last_update_timestamp': int(time.time() * 1_000_000)})
         except Exception as e:

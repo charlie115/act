@@ -35,6 +35,8 @@ from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 from exchange_plugin.coinone_plug import Coinone
 
+# Maximum allowed message delay in milliseconds - drop messages older than this
+MAX_MESSAGE_DELAY_MS = 100
 
 # Constants
 MAX_SUBSCRIPTIONS = 20
@@ -272,6 +274,13 @@ def coinone_websocket_process(
             if response_type == 'DATA':
                 channel = msg.get('channel', '').upper()
                 data = msg.get('data', {})
+
+                # Check message delay - drop if older than MAX_MESSAGE_DELAY_MS
+                msg_ts_ms = data.get('timestamp')
+                if msg_ts_ms:
+                    current_ts_ms = int(time.time() * 1000)
+                    if current_ts_ms - int(msg_ts_ms) > MAX_MESSAGE_DELAY_MS:
+                        return  # Drop stale message
 
                 # Extract symbol - normalize to uppercase
                 target_currency = data.get('target_currency', '').upper()

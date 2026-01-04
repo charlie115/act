@@ -15,6 +15,9 @@ from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
+# Maximum allowed message delay in milliseconds - drop messages older than this
+MAX_MESSAGE_DELAY_MS = 100
+
 # Standalone function for the ticker websocket
 def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
     # Initialize logger inside the function
@@ -46,18 +49,24 @@ def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir, ac
     def handle_message(message):
         nonlocal last_message_time # Declare nonlocal to modify the outer variable
         last_message_time = time.time() # Update the time of the last received message
-        if error_event.is_set():
-            ws.exit()
-            return
-        if 'data' in message.keys():
-            # ticker_dict[message['data']['symbol']] = {
-            #     **message['data'],
-            #     'last_update_timestamp': int(datetime.datetime.utcnow().timestamp() * 1000000)
-            # }
-            local_redis.update_exchange_stream_data("ticker", 
-                                                    f"BYBIT_{market_type.upper()}", 
-                                                    message['data']['symbol'], 
-                                                    {**message['data'], 'last_update_timestamp': int(time.time() * 1_000_000)})
+        try:
+            if error_event.is_set():
+                ws.exit()
+                return
+            if 'data' in message.keys() and 'symbol' in message.get('data', {}):
+                # Check message delay - drop if older than MAX_MESSAGE_DELAY_MS
+                msg_ts_ms = message.get('ts')
+                if msg_ts_ms:
+                    current_ts_ms = int(time.time() * 1000)
+                    if current_ts_ms - msg_ts_ms > MAX_MESSAGE_DELAY_MS:
+                        return  # Drop stale message
+                local_redis.update_exchange_stream_data("ticker",
+                                                        f"BYBIT_{market_type.upper()}",
+                                                        message['data']['symbol'],
+                                                        {**message['data'], 'last_update_timestamp': int(time.time() * 1_000_000)})
+        except Exception as e:
+            logger.error(f"handle_message|ticker error: {e}, message: {message}, traceback: {traceback.format_exc()}")
+            error_event.set()
         
             
 
@@ -135,18 +144,24 @@ def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir,
     def handle_message(message):
         nonlocal last_message_time # Declare nonlocal to modify the outer variable
         last_message_time = time.time() # Update the time of the last received message
-        if error_event.is_set():
-            ws.exit()
-            return
-        if 'data' in message.keys():
-            # orderbook_dict[message['data']['s']] = {
-            #     **message['data'],
-            #     'last_update_timestamp': int(datetime.datetime.utcnow().timestamp() * 1000000)
-            # }
-            local_redis.update_exchange_stream_data("orderbook",
-                                                    f"BYBIT_{market_type.upper()}",
-                                                    message['data']['s'],
-                                                    {**message['data'], 'last_update_timestamp': int(time.time() * 1_000_000)})
+        try:
+            if error_event.is_set():
+                ws.exit()
+                return
+            if 'data' in message.keys() and 's' in message.get('data', {}):
+                # Check message delay - drop if older than MAX_MESSAGE_DELAY_MS
+                msg_ts_ms = message.get('ts')
+                if msg_ts_ms:
+                    current_ts_ms = int(time.time() * 1000)
+                    if current_ts_ms - msg_ts_ms > MAX_MESSAGE_DELAY_MS:
+                        return  # Drop stale message
+                local_redis.update_exchange_stream_data("orderbook",
+                                                        f"BYBIT_{market_type.upper()}",
+                                                        message['data']['s'],
+                                                        {**message['data'], 'last_update_timestamp': int(time.time() * 1_000_000)})
+        except Exception as e:
+            logger.error(f"handle_message|orderbook error: {e}, message: {message}, traceback: {traceback.format_exc()}")
+            error_event.set()
 
     try:
         if market_type == "SPOT":

@@ -16,6 +16,9 @@ from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
+# Maximum allowed message delay in milliseconds - drop messages older than this
+MAX_MESSAGE_DELAY_MS = 100
+
 # Move the bithumb_websocket function outside the class
 def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
     # Initialize logger inside the function
@@ -36,8 +39,16 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw
                 raise Exception("bithumb_websocket|error_event is set. closing websocket..")
             message_dict = json.loads(message)
             if 'content' in message_dict.keys():
-                local_redis.update_exchange_stream_data(stream_data_type, "BITHUMB_SPOT", message_dict['content']['symbol'], {
-                    **message_dict['content'],
+                content = message_dict['content']
+                # Check message delay - drop if older than MAX_MESSAGE_DELAY_MS
+                # Bithumb uses 'datetime' field (Unix timestamp in milliseconds)
+                msg_ts_ms = content.get('datetime')
+                if msg_ts_ms:
+                    current_ts_ms = int(time.time() * 1000)
+                    if current_ts_ms - int(msg_ts_ms) > MAX_MESSAGE_DELAY_MS:
+                        return  # Drop stale message
+                local_redis.update_exchange_stream_data(stream_data_type, "BITHUMB_SPOT", content['symbol'], {
+                    **content,
                     "last_update_timestamp": int(time.time() * 1_000_000)
                 })
         except Exception as e:

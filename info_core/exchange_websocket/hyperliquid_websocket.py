@@ -38,6 +38,11 @@ from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
+# Maximum allowed message delay in milliseconds - drop messages older than this
+# NOTE: Hyperliquid WebSocket messages don't include server timestamps (unlike CEXs),
+# so delay filtering cannot be applied. This constant is included for consistency.
+MAX_MESSAGE_DELAY_MS = 100
+
 
 def coin_to_symbol(coin: str) -> str:
     """Convert Hyperliquid coin name to system symbol format."""

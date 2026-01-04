@@ -18,6 +18,9 @@ from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
+# Maximum allowed message delay in milliseconds - drop messages older than this
+MAX_MESSAGE_DELAY_MS = 100
+
 # Move binance_websocket function outside the class
 def binance_websocket(stream_data_type, data, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=120):
     # Reinitialize the logger inside the function
@@ -38,6 +41,12 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
                 raise Exception(f"binance_websocket|{proc_name} error_event is set. closing websocket..")
             msg = json.loads(message)
             if 's' in msg.keys():
+                # Check message delay - drop if older than MAX_MESSAGE_DELAY_MS
+                msg_ts_ms = msg.get('E')  # Event time in milliseconds
+                if msg_ts_ms:
+                    current_ts_ms = int(time.time() * 1000)
+                    if current_ts_ms - msg_ts_ms > MAX_MESSAGE_DELAY_MS:
+                        return  # Drop stale message
                 local_redis.update_exchange_stream_data(stream_data_type, f"BINANCE_{market_type.upper()}", msg['s'], {**msg, "last_update_timestamp": int(time.time() * 1_000_000)})
         except Exception as e:
             logger.error(f"binance_websocket|{proc_name} on_message error: {e}, traceback: {traceback.format_exc()}")

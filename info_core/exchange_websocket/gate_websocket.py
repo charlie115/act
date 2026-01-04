@@ -27,6 +27,9 @@ from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
+# Maximum allowed message delay in milliseconds - drop messages older than this
+MAX_MESSAGE_DELAY_MS = 100
+
 
 def gate_ticker_websocket(symbol_list, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=120):
     """
@@ -74,6 +77,15 @@ def gate_ticker_websocket(symbol_list, error_event, market_type, logging_dir, ac
 
             # Handle ticker updates
             if msg.get("channel") == "futures.tickers" and msg.get("event") == "update":
+                # Check message delay - drop if older than MAX_MESSAGE_DELAY_MS
+                # Gate.io uses 'time' field in seconds since epoch
+                msg_ts_sec = msg.get("time")
+                if msg_ts_sec:
+                    current_ts_ms = int(time.time() * 1000)
+                    msg_ts_ms = int(msg_ts_sec * 1000)
+                    if current_ts_ms - msg_ts_ms > MAX_MESSAGE_DELAY_MS:
+                        return  # Drop stale message
+
                 result = msg.get("result", [])
                 # Gate.io can return result as a list or dict
                 if isinstance(result, dict):
@@ -224,6 +236,15 @@ def gate_orderbook_websocket(symbol_list, error_event, market_type, logging_dir,
 
             # Handle book ticker updates
             if msg.get("channel") == "futures.book_ticker" and msg.get("event") == "update":
+                # Check message delay - drop if older than MAX_MESSAGE_DELAY_MS
+                # Gate.io uses 'time' field in seconds since epoch
+                msg_ts_sec = msg.get("time")
+                if msg_ts_sec:
+                    current_ts_ms = int(time.time() * 1000)
+                    msg_ts_ms = int(msg_ts_sec * 1000)
+                    if current_ts_ms - msg_ts_ms > MAX_MESSAGE_DELAY_MS:
+                        return  # Drop stale message
+
                 result = msg.get("result", [])
                 # Gate.io can return result as a list or dict
                 if isinstance(result, dict):
