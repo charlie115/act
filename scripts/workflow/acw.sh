@@ -135,7 +135,7 @@ build_community_images() {
   docker build "${ROOT_DIR}/apps/community_drf" --target "${target}" -t "community-celery-worker${suffix}"
   docker build "${ROOT_DIR}/apps/community_drf" --target "${target}" -t "community-celery-beat${suffix}"
   docker build "${ROOT_DIR}/services/news_core" --target "${target}" -t "news-core${suffix}"
-  docker build "${ROOT_DIR}/services/info_core" --target "${target}" -t "info-core${suffix}"
+  docker build -f "${ROOT_DIR}/services/info_core/Dockerfile" "${ROOT_DIR}" --target "${target}" -t "info-core${suffix}"
 }
 
 build_trade_images() {
@@ -159,8 +159,8 @@ build_trade_images() {
 
   echo "Building trade images for ${env_name}"
 
-  docker build "${ROOT_DIR}/services/trade_core" --target "${target}" -t "trade-core${suffix}"
-  docker build "${ROOT_DIR}/services/trade_core" --target "${api_target}" -t "trade-core-api${suffix}"
+  docker build -f "${ROOT_DIR}/services/trade_core/Dockerfile" "${ROOT_DIR}" --target "${target}" -t "trade-core${suffix}"
+  docker build -f "${ROOT_DIR}/services/trade_core/Dockerfile" "${ROOT_DIR}" --target "${api_target}" -t "trade-core-api${suffix}"
 }
 
 build_web() {
