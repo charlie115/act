@@ -11,6 +11,7 @@ import time
 import numpy as np
 import re
 from pymongo.errors import BulkWriteError
+from pymongo import UpdateOne
 from standalone_func.get_dollar_dict import get_dollar_dict
 from standalone_func.premium_data_generator import get_or_build_premium_df
 from standalone_func.store_exchange_status import fetch_market_servercheck
@@ -19,6 +20,7 @@ from standalone_func.store_exchange_status import fetch_market_servercheck
 # Limits concurrent inserts per process (prevents overwhelming MongoDB)
 # 4 workers is optimal: balances throughput with connection pool usage
 _INSERT_THREAD_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="kline_insert")
+VOLATILITY_WINDOW_PREFIX = "VOLATILITY_WINDOW"
 
 def store_kline_volatility_info(mongo_db_client, market_code_combination, logger, last_n=180, stale_threshold_minutes=10):
     """
@@ -142,6 +144,96 @@ def store_kline_volatility_info_loop(enabled_market_klines, mongodb_dict, loggin
             logger.error(f"Error in store_kline_volatility_info_loop: {e}\n{traceback.format_exc()}")
         time.sleep(loop_time_secs)
 
+
+def _build_volatility_windows_from_closed_stream(local_redis, market_code_combination, window_size):
+    stream_key = f"INFO_CORE|{market_code_combination}_1T_closed"
+    volatility_windows = {}
+    closed_entries = local_redis.get_redis_client().xrevrange(
+        stream_key,
+        count=max(window_size, 1),
+    )
+    for _, entry_data in reversed(closed_entries):
+        closed_df = pickle.loads(entry_data[b"data"])
+        if closed_df.empty:
+            continue
+        for row in closed_df.itertuples(index=False):
+            base_asset = getattr(row, "base_asset", None)
+            sl_high = getattr(row, "SL_high", None)
+            ls_low = getattr(row, "LS_low", None)
+            if base_asset is None or pd.isna(sl_high) or pd.isna(ls_low):
+                continue
+            diff_window = volatility_windows.get(base_asset, [])
+            diff_window.append(float(sl_high) - float(ls_low))
+            volatility_windows[base_asset] = diff_window[-window_size:]
+    return volatility_windows
+
+
+def update_incremental_kline_volatility(
+    market_code_combination,
+    closed_ohlc_df,
+    local_redis,
+    mongodb_dict,
+    logger,
+    window_size=180,
+):
+    try:
+        if closed_ohlc_df is None or closed_ohlc_df.empty:
+            return
+
+        cache_key = f"{VOLATILITY_WINDOW_PREFIX}|{market_code_combination}"
+        cached_windows = local_redis.get_data(cache_key)
+        if cached_windows is None:
+            volatility_windows = _build_volatility_windows_from_closed_stream(
+                local_redis,
+                market_code_combination,
+                window_size,
+            )
+        else:
+            volatility_windows = pickle.loads(cached_windows)
+            for row in closed_ohlc_df.itertuples(index=False):
+                base_asset = getattr(row, "base_asset", None)
+                sl_high = getattr(row, "SL_high", None)
+                ls_low = getattr(row, "LS_low", None)
+                if base_asset is None or pd.isna(sl_high) or pd.isna(ls_low):
+                    continue
+                diff_window = volatility_windows.get(base_asset, [])
+                diff_window.append(float(sl_high) - float(ls_low))
+                volatility_windows[base_asset] = diff_window[-window_size:]
+
+        local_redis.set_data(cache_key, pickle.dumps(volatility_windows))
+
+        database = market_code_combination.replace("/", "__").replace(":", "-")
+        mongo_db_client = InitDBClient(**mongodb_dict)
+        mongo_db_conn = mongo_db_client.get_conn()
+        collection = mongo_db_conn[database]["volatility_info"]
+        current_datetime = datetime.datetime.utcnow()
+
+        operations = []
+        for base_asset, diff_window in volatility_windows.items():
+            if not diff_window:
+                continue
+            operations.append(
+                UpdateOne(
+                    {"base_asset": base_asset},
+                    {
+                        "$set": {
+                            "base_asset": base_asset,
+                            "mean_diff": float(np.mean(diff_window)),
+                            "window_size": min(len(diff_window), window_size),
+                            "datetime_now": current_datetime,
+                        }
+                    },
+                    upsert=True,
+                )
+            )
+
+        if operations:
+            collection.bulk_write(operations, ordered=False)
+    except Exception:
+        logger.error(
+            f"update_incremental_kline_volatility|{market_code_combination}|{traceback.format_exc()}"
+        )
+
 def _bulk_insert_with_retry(db, collection_name, docs, mongodb_client, database_name, max_retries=3):
     """
     Insert documents to a collection with retry logic for transient failures.
@@ -200,7 +292,6 @@ def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict
     - Batch Redis cache updates (single pipeline for all updates)
     - Automatic index creation on datetime_now
     """
-    remote_redis = RedisHelper(**redis_dict)
     local_redis = RedisHelper()  # For caching last timestamps
     try:
         service_name = channel_name.split('|')[0].lower()
@@ -209,20 +300,8 @@ def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict
         converted_market_code_combination = market_code_combination.replace(':', '-').replace('/', '__')
         kline_type = market_kline_name.split('_')[-2]
 
-        # Check whether the market is in maintenance or not
-        server_check = False
-        registered_server_check_list = [x.decode('utf-8') for x in remote_redis.get_all_keys() if 'INFO_CORE|SERVER_CHECK' in x.decode('utf-8')]
-        for each_market_server_check in registered_server_check_list:
-            market_name = each_market_server_check.replace('INFO_CORE|SERVER_CHECK|', '')
-            if market_name in market_code_combination:
-                server_check_dict = remote_redis.get_dict(each_market_server_check)
-                server_check_start_timestamp_utc = server_check_dict['start']
-                server_check_end_timestamp_utc = server_check_dict['end']
-                now_timestamp_utc = datetime.datetime.utcnow().timestamp()
-                if server_check_start_timestamp_utc <= now_timestamp_utc <= server_check_end_timestamp_utc:
-                    server_check = True
-                    break
-        if server_check is True:
+        target_market_code, origin_market_code = market_code_combination.split(":")
+        if fetch_market_servercheck(target_market_code) or fetch_market_servercheck(origin_market_code):
             logger.info(f"insert_kline_to_db|channel_name:{channel_name}, kline_type:{kline_type} has been skipped due to server check.")
             return
 
@@ -626,6 +705,13 @@ def ohlc_1T_generator(
                     admin_id,
                     node,
                     logger
+                )
+                update_incremental_kline_volatility(
+                    f"{target_market_code}:{origin_market_code}",
+                    ohlc_df,
+                    local_redis,
+                    mongodb_dict,
+                    logger,
                 )
                 # db_insert_time = time.time() - db_insert_start
                 # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, DB insert thread creation took {db_insert_time:.4f} seconds")

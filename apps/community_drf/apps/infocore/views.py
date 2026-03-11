@@ -303,7 +303,8 @@ class KlineVolatilityView(views.APIView):
             pipeline = []
             if base_assets:
                 pipeline.append({"$match": {"base_asset": {"$in": base_assets}}})
-            
+
+            pipeline.append({"$sort": {"datetime_now": -1}})
             pipeline.append({
                 "$group": {
                     "_id": "$base_asset",
@@ -846,7 +847,8 @@ class RankIndicatorView(views.APIView):
             pipeline = []
             if base_assets:
                 pipeline.append({"$match": {"base_asset": {"$in": base_assets}}})
-            
+
+            pipeline.append({"$sort": {"datetime_now": -1}})
             pipeline.append({
                 "$group": {
                     "_id": "$base_asset",

@@ -32,11 +32,18 @@ def get_volatility_data(market_code_combination, mongodb_client, collection_name
     # Get the collection
     collection = db[collection_name]
 
-    # Fetch all the data, exclude the _id field
-    volatility_data = collection.find({}, {"_id": 0})
-
-    # Convert the data to a pandas DataFrame
-    volatility_data_df = pd.DataFrame(list(volatility_data))
+    pipeline = [
+        {"$sort": {"datetime_now": -1}},
+        {
+            "$group": {
+                "_id": "$base_asset",
+                "latest_record": {"$first": "$$ROOT"},
+            }
+        },
+        {"$replaceRoot": {"newRoot": "$latest_record"}},
+        {"$project": {"_id": 0}},
+    ]
+    volatility_data_df = pd.DataFrame(list(collection.aggregate(pipeline)))
 
     # NOTE: Do NOT close the connection - we use connection pooling now
 
