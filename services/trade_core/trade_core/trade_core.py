@@ -1,5 +1,4 @@
-from execution_runtime import ExecutionRuntime
-from market_runtime import MarketRuntime
+from supervisor import TradeCoreSupervisor
 
 
 class InitCore:
@@ -15,7 +14,7 @@ class InitCore:
         mongo_db_dict,
         redis_dict,
     ):
-        self.market_runtime = MarketRuntime(
+        self.supervisor = TradeCoreSupervisor(
             logging_dir=logging_dir,
             proc_n=proc_n,
             node=node,
@@ -26,15 +25,8 @@ class InitCore:
             mongo_db_dict=mongo_db_dict,
             redis_dict=redis_dict,
         )
-        self.execution_runtime = ExecutionRuntime(
-            admin_id=admin_id,
-            enabled_market_code_combinations=self.market_runtime.enabled_market_code_combinations,
-            acw_api=acw_api,
-            redis_dict=self.market_runtime.redis_dict,
-            postgres_db_dict=self.market_runtime.postgres_db_dict,
-            mongo_db_dict=self.market_runtime.mogno_db_dict,
-            logging_dir=self.market_runtime.logging_dir,
-        )
+        self.market_runtime = self.supervisor.get_component("market_runtime")
+        self.execution_runtime = self.supervisor.get_component("execution_runtime")
 
     def __getattr__(self, name):
         market_runtime = object.__getattribute__(self, "market_runtime")
@@ -48,13 +40,13 @@ class InitCore:
         raise AttributeError(f"{self.__class__.__name__!s} has no attribute {name!r}")
 
     def check_status(self, print_result=False, include_text=False):
-        return self.market_runtime.check_status(
+        return self.supervisor.check_status(
             print_result=print_result,
             include_text=include_text,
         )
 
     def check_trade_status(self, print_result=False, include_text=False):
-        return self.execution_runtime.check_status(
+        return self.supervisor.check_trade_status(
             print_result=print_result,
             include_text=include_text,
         )
