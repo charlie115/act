@@ -25,7 +25,7 @@ from etc.db_handler.postgres_client import InitDBClient as InitPostgresDBClient
 from etc.utils import get_trade_df
 from standalone_func.uuid_converter import trade_uuid_to_display_id
 from api.utils import MyException
-from standalone_func.premium_data_generator import get_premium_df
+from standalone_func.premium_data_generator import get_or_build_premium_df
 
 class UserExchangeAdaptor:
     def __init__(self,
@@ -1607,7 +1607,14 @@ class UserExchangeAdaptor:
             order_type = margin_liquidation_call_trade_dict.get('order_type')
                         
             target_market_code, origin_market_code = self.market_code_combination.split(':')
-            premium_df = get_premium_df(self.redis_client, fetched_convert_rate_dict, target_market_code, origin_market_code, self.logger)
+            premium_df = get_or_build_premium_df(
+                self.redis_client,
+                self.market_code_combination,
+                self.logger,
+                convert_rate_dict=fetched_convert_rate_dict,
+                target_market_code=target_market_code,
+                origin_market_code=origin_market_code,
+            )
             merged_df = trade_df.merge(premium_df, on='base_asset')
             merged_df['SL_premium_value'] = merged_df.apply(lambda x: x['SL_premium'] if x['usdt_conversion'] == False else (1+x['SL_premium']/100)*x['dollar'], axis=1)
             merged_df['LS_premium_value'] = merged_df.apply(lambda x: x['LS_premium'] if x['usdt_conversion'] == False else (1+x['LS_premium']/100)*x['dollar'], axis=1)

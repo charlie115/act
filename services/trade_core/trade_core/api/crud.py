@@ -23,7 +23,7 @@ from standalone_func.data_process import get_pboundary
 from etc.db_handler.mongodb_client import InitDBClient
 from etc.acw_api import AcwApi
 from etc.redis_connector.redis_helper import RedisHelper
-from standalone_func.premium_data_generator import get_premium_df
+from standalone_func.premium_data_generator import get_or_build_premium_df
 from loggers.logger import TradeCoreLogger
 from dotenv import load_dotenv
 from config import logging_dir, PROD, NODE, ADMIN_TELEGRAM_ID, USER_UUID_FOR_WALLET, ACW_API_URL, mongo_db_dict, redis_dict, acw_api, postgres_db_dict
@@ -816,7 +816,14 @@ async def exit_trade(trade_uuid: UUID, db: AsyncSession):
         raise HTTPException(status_code=500, detail="trade_df not found in redis")
     trade_df = pickle.loads(fetched_trade_df)
     
-    premium_df = get_premium_df(remote_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
+    premium_df = get_or_build_premium_df(
+        remote_redis,
+        market_code_combination,
+        logger,
+        convert_rate_dict=fetched_convert_rate_dict,
+        target_market_code=target_market_code,
+        origin_market_code=origin_market_code,
+    )
     if premium_df.empty:
         raise HTTPException(status_code=500, detail="premium_df is empty")
     merged_df = trade_df.merge(premium_df, on='base_asset')

@@ -12,7 +12,7 @@ from etc.utils import get_trade_config_df, get_trade_df, get_users_with_negative
 from loggers.logger import TradeCoreLogger
 from psycopg2 import extras
 from threading import Thread
-from standalone_func.premium_data_generator import get_premium_df
+from standalone_func.premium_data_generator import get_or_build_premium_df
 from standalone_func.uuid_converter import trade_uuid_to_display_id
 from standalone_func.data_process import get_pboundary
 from standalone_func.store_exchange_status import fetch_market_servercheck
@@ -257,7 +257,14 @@ def start_trigger_loop(
                 time.sleep(loop_interval_secs)
                 continue
             
-            premium_df = get_premium_df(local_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
+            premium_df = get_or_build_premium_df(
+                local_redis,
+                market_code_combination,
+                logger,
+                convert_rate_dict=fetched_convert_rate_dict,
+                target_market_code=target_market_code,
+                origin_market_code=origin_market_code,
+            )
             merged_df = trade_df.merge(premium_df, on='base_asset')
             merged_df['SL_premium_value'] = merged_df.apply(
                 lambda x: x['SL_premium'] if not x['usdt_conversion'] else (1 + x['SL_premium'] / 100) * x['dollar'], axis=1)
@@ -499,7 +506,14 @@ def handle_repeat_trade_loop(postgres_db_dict, mongo_db_dict, market_code_combin
             if len(merged_repeat_df) == 0:
                 continue
             target_market_code, origin_market_code = market_code_combination.split(':')
-            premium_df = get_premium_df(local_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
+            premium_df = get_or_build_premium_df(
+                local_redis,
+                market_code_combination,
+                logger,
+                convert_rate_dict=fetched_convert_rate_dict,
+                target_market_code=target_market_code,
+                origin_market_code=origin_market_code,
+            )
             if len(premium_df) == 0:
                 time.sleep(loop_interval_secs)
                 continue
@@ -829,7 +843,14 @@ def start_trigger_scanner_loop(
                 first_execution_condition = trigger_scanner_df['curr_repeat_num'] == 0
                 trigger_scanner_df = trigger_scanner_df[time_condition | first_execution_condition]
             if not trigger_scanner_df.empty:
-                premium_df = get_premium_df(local_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger)
+                premium_df = get_or_build_premium_df(
+                    local_redis,
+                    market_code_combination,
+                    logger,
+                    convert_rate_dict=fetched_convert_rate_dict,
+                    target_market_code=target_market_code,
+                    origin_market_code=origin_market_code,
+                )
                 merged_premium_df = premium_df.merge(fundingrate_df[['base_asset','funding_rate','funding_time']], on='base_asset')
                 cross_merged_df = pd.merge(merged_premium_df, trigger_scanner_df, how='cross')
                 
@@ -949,7 +970,14 @@ def fetch_fundingrate_and_save_to_redis(mongo_db_dict, market_code_combination, 
     client = InitMongoDBClient(**mongo_db_dict)
     conn = client.get_conn()
     target_market_code, origin_market_code = market_code_combination.split(':')
-    premium_df = get_premium_df(local_redis, convert_rate_dict, target_market_code, origin_market_code, logger)
+    premium_df = get_or_build_premium_df(
+        local_redis,
+        market_code_combination,
+        logger,
+        convert_rate_dict=convert_rate_dict,
+        target_market_code=target_market_code,
+        origin_market_code=origin_market_code,
+    )
     
     base_asset_list_to_fetch = premium_df['base_asset'].unique().tolist()
         

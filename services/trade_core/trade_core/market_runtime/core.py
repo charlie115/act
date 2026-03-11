@@ -23,6 +23,7 @@ import os
 import traceback
 from functools import partial
 from standalone_func.get_dollar_dict import get_dollar_dict
+from standalone_func.premium_data_generator import get_premium_df, store_premium_df
 from standalone_func.store_exchange_status import store_markets_servercheck_loop, fetch_market_servercheck
 import requests
 from io import StringIO
@@ -180,6 +181,9 @@ class MarketRuntime:
         self.update_convert_rate_dict_thread.start()
         while self.convert_rate_initialized is False:
             time.sleep(0.2)
+
+        self.premium_cache_thread_dict = {}
+        self.start_premium_cache_workers()
 
         self.logger.info(
             f"MarketRuntime|exchange_websocket_dict, {self.exchange_websocket_dict.keys()} has been initiated."
@@ -486,6 +490,58 @@ class MarketRuntime:
             except Exception as e:
                 self.logger.error(f"update_convert_rate_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
                 self.acw_api.create_message_thread(self.admin_id, f"update_convert_rate_dict|Exception occured! Error: {e}", f"update_convert_rate_dict|Exception occured! Error: {e}")
+            time.sleep(loop_time_secs)
+
+    def start_premium_cache_workers(self, loop_time_secs=0.05):
+        for market in self.enabled_market_code_combinations:
+            market_code_combination = market["market_code_combination"]
+
+            worker = Thread(
+                target=self.update_premium_cache_loop,
+                args=(market_code_combination, loop_time_secs),
+                daemon=True,
+            )
+            worker.start()
+            self.premium_cache_thread_dict[market_code_combination] = worker
+
+    def update_premium_cache_loop(self, market_code_combination, loop_time_secs=0.05):
+        target_market_code, origin_market_code = market_code_combination.split(":")
+
+        while True:
+            try:
+                if fetch_market_servercheck(target_market_code) or fetch_market_servercheck(origin_market_code):
+                    time.sleep(1)
+                    continue
+
+                fetched_convert_rate_dict = self.local_redis.hgetall_dict("convert_rate_dict")
+                if not fetched_convert_rate_dict:
+                    time.sleep(1)
+                    continue
+
+                convert_rate_dict = {
+                    key.decode("utf-8"): float(value)
+                    for key, value in fetched_convert_rate_dict.items()
+                }
+
+                premium_df = get_premium_df(
+                    self.local_redis,
+                    convert_rate_dict,
+                    target_market_code,
+                    origin_market_code,
+                    self.logger,
+                )
+                if not premium_df.empty:
+                    store_premium_df(
+                        self.local_redis,
+                        market_code_combination,
+                        premium_df,
+                        ex=5,
+                    )
+            except Exception as e:
+                self.logger.error(
+                    f"update_premium_cache_loop|{market_code_combination}|{e}\n{traceback.format_exc()}"
+                )
+
             time.sleep(loop_time_secs)
     
     def fetch_dollar(self, update_dollar_logger, url='https://m.search.naver.com/p/csearch/content/qapirender.nhn?key=calculator&pkid=141&q=환율&where=m&u1=keb&u6=standardUnit&u7=0&u3=USD&u4=KRW&u8=down&u2=1', timeout=10):
