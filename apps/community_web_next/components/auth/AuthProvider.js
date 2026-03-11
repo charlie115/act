@@ -42,13 +42,16 @@ function writeStoredSession(session) {
 }
 
 async function requestJson(pathname, { method = "GET", body, accessToken } = {}) {
+  const isFormData =
+    typeof FormData !== "undefined" && body instanceof FormData;
+
   const response = await fetch(`/api${pathname}`, {
     method,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
   });
 
   let payload = null;

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { useAuth } from "../auth/AuthProvider";
+import TelegramConnectButton from "../auth/TelegramConnectButton";
 
 function formatDate(value) {
   if (!value) {
@@ -229,9 +230,7 @@ export default function MyPageClient() {
               </button>
             </div>
           ) : (
-            <div className="inline-note">
-              아직 텔레그램이 연결되지 않았습니다. 기존 봇 흐름 이전 전까지는 레거시 화면에서 연결을 유지해야 합니다.
-            </div>
+            <TelegramConnectButton />
           )}
         </section>
       </section>

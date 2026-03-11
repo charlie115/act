@@ -6,8 +6,9 @@ import components from './components';
 // https://github.com/app-generator/react-soft-ui-dashboard/tree/main/src/assets/theme
 
 // Responsive sidebar width calculation
+const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
 export const SIDEBAR_WIDTH =
-  window.innerWidth > 400 ? Math.min(window.innerWidth * 0.27, 320) : window.innerWidth - 60;
+  viewportWidth > 400 ? Math.min(viewportWidth * 0.27, 320) : viewportWidth - 60;
 
 // Typography configuration with modern scale
 const typography = {

@@ -13,6 +13,7 @@ export const metadata = {
   },
 };
 
-export default function LoginPage({ searchParams }) {
-  return <LoginClientPage nextPath={searchParams?.next} />;
+export default async function LoginPage({ searchParams }) {
+  const resolvedSearchParams = await searchParams;
+  return <LoginClientPage nextPath={resolvedSearchParams?.next} />;
 }

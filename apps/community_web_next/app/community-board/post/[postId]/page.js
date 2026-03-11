@@ -1,20 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import BoardPostDetail from "../../../../components/BoardPostDetail";
-import { getBoardComments, getBoardPost, stripHtml } from "../../../../lib/api";
+import BoardPostClient from "../../../../components/board/BoardPostClient";
+import { getBoardPost, stripHtml } from "../../../../lib/api";
 import { buildMetadata } from "../../../../lib/site";
 
-export const dynamic = "force-dynamic";
-
 export async function generateMetadata({ params }) {
-  const post = await getBoardPost(params.postId).catch(() => null);
+  const resolvedParams = await params;
+  const postId = resolvedParams?.postId;
+  const post = await getBoardPost(postId).catch(() => null);
 
   if (!post) {
     return buildMetadata({
       title: "Post Not Found",
       description: "요청한 게시글을 찾을 수 없습니다.",
-      pathname: `/community-board/post/${params.postId}`,
+      pathname: `/community-board/post/${postId}`,
       type: "article",
     });
   }
@@ -28,10 +28,9 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function CommunityBoardPostPage({ params }) {
-  const [post, comments] = await Promise.all([
-    getBoardPost(params.postId).catch(() => null),
-    getBoardComments(params.postId).catch(() => []),
-  ]);
+  const resolvedParams = await params;
+  const postId = resolvedParams?.postId;
+  const post = await getBoardPost(postId).catch(() => null);
 
   if (!post) {
     notFound();
@@ -48,7 +47,7 @@ export default async function CommunityBoardPostPage({ params }) {
           목록으로 돌아가기
         </Link>
       </div>
-      <BoardPostDetail comments={comments} post={post} />
+      <BoardPostClient postId={postId} />
     </div>
   );
 }

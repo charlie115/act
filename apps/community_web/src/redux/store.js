@@ -1,4 +1,5 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
+import { persistStore } from 'redux-persist';
 
 import storage from 'redux-persist/lib/storage';
 // import storageSession from 'redux-persist/lib/storage/session';
@@ -27,14 +28,18 @@ import home from './reducers/home';
 import websocket from './reducers/websocket';
 
 let secretKey;
-const uid = localStorage.getItem('uid');
-if (validate(uid)) secretKey = uid;
-else {
-  localStorage.clear();
+if (typeof window === 'undefined') {
+  secretKey = 'server-render';
+} else {
+  const uid = localStorage.getItem('uid');
+  if (validate(uid)) secretKey = uid;
+  else {
+    localStorage.clear();
 
-  const newUid = v4();
-  localStorage.setItem('uid', newUid);
-  secretKey = newUid;
+    const newUid = v4();
+    localStorage.setItem('uid', newUid);
+    secretKey = newUid;
+  }
 }
 
 const authPersistConfig = {
@@ -92,7 +97,7 @@ const persistedReducer = persistReducer(rootPersistConfig, reducers);
 //     action.type !== 'websocketApi/invalidation/updateProvidedBy',
 // });
 
-export default configureStore({
+export const store = configureStore({
   reducer: persistedReducer,
   devTools: process.env.NODE_ENV !== 'production',
   middleware: (getDefaultMiddleware) => {
@@ -109,3 +114,7 @@ export default configureStore({
     return middleware;
   },
 });
+
+export const persistor = persistStore(store);
+
+export default store;

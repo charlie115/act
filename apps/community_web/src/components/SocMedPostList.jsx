@@ -42,10 +42,10 @@ import LinkPreview from 'components/LinkPreview';
 
 import useGlobalSnackbar from 'hooks/useGlobalSnackbar';
 
-import { ReactComponent as CommentSvg } from 'assets/icons/font-awesome/comment-solid.svg';
-import { ReactComponent as HeartSvg } from 'assets/icons/font-awesome/heart-solid.svg';
-import { ReactComponent as QuoteRightSvg } from 'assets/icons/font-awesome/quote-right-solid.svg';
-import { ReactComponent as RetweetSvg } from 'assets/icons/font-awesome/retweet-solid.svg';
+import CommentSvg from 'assets/icons/font-awesome/comment-solid.svg';
+import HeartSvg from 'assets/icons/font-awesome/heart-solid.svg';
+import QuoteRightSvg from 'assets/icons/font-awesome/quote-right-solid.svg';
+import RetweetSvg from 'assets/icons/font-awesome/retweet-solid.svg';
 
 import { REGEX } from 'constants';
 
@@ -54,7 +54,7 @@ const STATS_LIST = [
     key: 'comment',
     icon: (
       <SvgIcon>
-        <CommentSvg />
+        <Box component="img" src={CommentSvg} alt="" sx={{ width: 16, height: 16 }} />
       </SvgIcon>
     ),
   },
@@ -62,7 +62,7 @@ const STATS_LIST = [
     key: 'retweet',
     icon: (
       <SvgIcon>
-        <RetweetSvg />
+        <Box component="img" src={RetweetSvg} alt="" sx={{ width: 16, height: 16 }} />
       </SvgIcon>
     ),
   },
@@ -70,7 +70,7 @@ const STATS_LIST = [
     key: 'quote',
     icon: (
       <SvgIcon>
-        <QuoteRightSvg />
+        <Box component="img" src={QuoteRightSvg} alt="" sx={{ width: 16, height: 16 }} />
       </SvgIcon>
     ),
   },
@@ -78,7 +78,7 @@ const STATS_LIST = [
     key: 'heart',
     icon: (
       <SvgIcon>
-        <HeartSvg />
+        <Box component="img" src={HeartSvg} alt="" sx={{ width: 16, height: 16 }} />
       </SvgIcon>
     ),
   },

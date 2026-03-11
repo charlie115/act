@@ -12,8 +12,9 @@ export const metadata = buildMetadata({
   pathname: "/affiliate",
 });
 
-export default function AffiliatePage({ params }) {
-  const slug = params?.slug || [];
+export default async function AffiliatePage({ params }) {
+  const resolvedParams = await params;
+  const slug = resolvedParams?.slug || [];
   const currentTab = slug[0] || null;
 
   if (!currentTab) {

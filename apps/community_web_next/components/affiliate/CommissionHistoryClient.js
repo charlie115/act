@@ -15,6 +15,7 @@ function formatAmount(value, maximumFractionDigits = 8) {
 
 export default function CommissionHistoryClient() {
   const { authorizedListRequest, user } = useAuth();
+  const affiliate = user?.affiliate || null;
   const [commissionHistory, setCommissionHistory] = useState([]);
   const [subAffiliates, setSubAffiliates] = useState([]);
   const [filterAffiliateId, setFilterAffiliateId] = useState("all");
@@ -59,8 +60,8 @@ export default function CommissionHistoryClient() {
   const affiliateNameMap = useMemo(() => {
     const map = {};
 
-    if (user?.affiliate?.id) {
-      map[user.affiliate.id] = "Self";
+    if (affiliate?.id) {
+      map[affiliate.id] = "Self";
     }
 
     subAffiliates.forEach((subAffiliate) => {
@@ -68,13 +69,13 @@ export default function CommissionHistoryClient() {
     });
 
     return map;
-  }, [subAffiliates, user?.affiliate?.id]);
+  }, [affiliate, subAffiliates]);
 
   const affiliateTierMap = useMemo(() => {
     const map = {};
 
-    if (user?.affiliate?.id) {
-      map[user.affiliate.id] = user.affiliate.tier;
+    if (affiliate?.id) {
+      map[affiliate.id] = affiliate.tier;
     }
 
     subAffiliates.forEach((subAffiliate) => {
@@ -82,13 +83,13 @@ export default function CommissionHistoryClient() {
     });
 
     return map;
-  }, [subAffiliates, user?.affiliate?.id, user?.affiliate?.tier]);
+  }, [affiliate, subAffiliates]);
 
   const filteredHistory = useMemo(() => {
     let records = [...commissionHistory];
 
     if (filterAffiliateId === "self") {
-      records = records.filter((item) => item.affiliate === user?.affiliate?.id);
+      records = records.filter((item) => item.affiliate === affiliate?.id);
     } else if (filterAffiliateId !== "all") {
       records = records.filter((item) => String(item.affiliate) === filterAffiliateId);
     }
@@ -106,7 +107,7 @@ export default function CommissionHistoryClient() {
     });
 
     return records;
-  }, [commissionHistory, filterAffiliateId, order, orderBy, user?.affiliate?.id]);
+  }, [affiliate, commissionHistory, filterAffiliateId, order, orderBy]);
 
   const totalCommission = useMemo(
     () =>

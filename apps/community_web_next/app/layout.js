@@ -1,18 +1,21 @@
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+
+import "quill/dist/quill.snow.css";
 
 import AppShell from "../components/AppShell";
 import Providers from "../components/Providers";
 import { buildMetadata } from "../lib/site";
 import "./globals.css";
 
-const inter = Inter({
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-sans",
 });
 
-const jetBrainsMono = JetBrains_Mono({
+const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+  weight: ["400", "500", "600"],
 });
 
 export const metadata = buildMetadata({
@@ -22,7 +25,7 @@ export const metadata = buildMetadata({
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">
-      <body className={`${inter.variable} ${jetBrainsMono.variable}`}>
+      <body className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
         <Providers>
           <AppShell>{children}</AppShell>
         </Providers>

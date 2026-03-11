@@ -4,12 +4,18 @@ export default function HeroSection() {
   return (
     <section className="hero">
       <div className="hero__copy">
-        <p className="eyebrow">ACW Public Frontend Refresh</p>
-        <h1>SEO와 초기 로딩을 먼저 살리는 Next.js 전환 베이스</h1>
+        <p className="eyebrow">ACW Intelligence Layer</p>
+        <h1>시장 감시, 커뮤니티, 실행 흐름을 한 화면 안에서 더 선명하게.</h1>
         <p className="hero__description">
-          기존 CRA 구조를 유지한 채 공개 페이지를 서버 렌더링으로 먼저 이동했습니다.
-          뉴스, 공지, 커뮤니티 게시판은 검색 엔진과 첫 방문자에게 더 빨리 노출됩니다.
+          Next 기반 새 프론트는 공개 정보 탐색 속도를 끌어올리고, 인증 이후 제어 화면까지
+          하나의 일관된 작업 공간으로 묶습니다. 데이터는 빠르게, 인터페이스는 더 또렷하게 보여줍니다.
         </p>
+        <div className="hero__ticker">
+          <span>Funding Explorer</span>
+          <span>Bot Controls</span>
+          <span>Community Signals</span>
+          <span>Affiliate Ops</span>
+        </div>
         <div className="hero__actions">
           <Link className="primary-button" href="/news">
             최신 뉴스 보기
@@ -23,14 +29,17 @@ export default function HeroSection() {
         <div className="metric-card">
           <span className="metric-card__label">Rendering</span>
           <strong>Server-first</strong>
+          <p>Public routes are tuned for fast first paint and stable navigation.</p>
         </div>
         <div className="metric-card">
           <span className="metric-card__label">SEO</span>
           <strong>Metadata API</strong>
+          <p>Canonical metadata and crawlable public information are emitted at render time.</p>
         </div>
         <div className="metric-card">
-          <span className="metric-card__label">Data Flow</span>
-          <strong>DRF API / SSR fetch</strong>
+          <span className="metric-card__label">Workflow</span>
+          <strong>Trading + Community</strong>
+          <p>Market discovery, posting, affiliate tools, and bot operations sit on one visual system.</p>
         </div>
       </div>
     </section>

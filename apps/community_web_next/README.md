@@ -22,4 +22,11 @@ pnpm start
 ## Current Scope
 
 - public traffic is routed here through the main community nginx entrypoint
-- authenticated and bot-heavy routes still render migration placeholders where parity work is pending
+- implemented routes:
+  - home, news hub, community board, board detail, board create
+  - login, register, my-page, request-affiliate, affiliate dashboard/history
+  - coupon dashboard
+  - arbitrage funding-rate diff/avg
+  - bot deposit, position, capital, pnl-history, scanner, api-key, triggers, settings
+- remaining parity work is focused on:
+  - final end-to-end validation against real backend/auth integrations

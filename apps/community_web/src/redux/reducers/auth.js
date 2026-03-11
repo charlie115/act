@@ -15,13 +15,30 @@ export const authSlice = createSlice({
   initialState,
   name: 'auth',
   reducers: {
+    hydrateAuth: (state, { payload }) => {
+      state.id = payload?.id || null;
+      state.loggedin = Boolean(payload?.loggedin);
+      state.user = payload?.user || null;
+      state.telegramBot = payload?.telegramBot || null;
+    },
     logout: (state) => {
       state.id = null;
       state.loggedin = false;
       state.user = null;
+      state.telegramBot = null;
     },
     newTokenReceived: (state, { payload }) => {
       state.id.accessToken = payload.access;
+    },
+    updateUser: (state, { payload }) => {
+      state.user = payload;
+      if (payload) {
+        state.loggedin = payload.role !== USER_ROLE.visitor;
+        const telegramBot = payload?.socialapps?.find(
+          (o) => o.provider === 'telegram'
+        );
+        state.telegramBot = telegramBot?.client_id || null;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -81,6 +98,6 @@ export const authSlice = createSlice({
   },
 });
 
-export const { logout, newTokenReceived } = authSlice.actions;
+export const { hydrateAuth, logout, newTokenReceived, updateUser } = authSlice.actions;
 
 export default authSlice.reducer;
