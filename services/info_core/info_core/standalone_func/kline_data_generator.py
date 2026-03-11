@@ -146,7 +146,7 @@ def store_kline_volatility_info_loop(enabled_market_klines, mongodb_dict, loggin
 
 
 def _build_volatility_windows_from_closed_stream(local_redis, market_code_combination, window_size):
-    stream_key = f"INFO_CORE|{market_code_combination}_1T_closed"
+    stream_key = _build_local_stream_key(f"INFO_CORE|{market_code_combination}_1T_closed")
     volatility_windows = {}
     closed_entries = local_redis.get_redis_client().xrevrange(
         stream_key,
@@ -422,16 +422,29 @@ def _extract_snapshot_minute(snapshot_df):
     return snapshot_minute.replace(second=0, microsecond=0)
 
 
-def _publish_kline_stream(local_redis, remote_redis, stream_key, snapshot_df, maxlen=10, store_local_key=False):
+def _build_local_stream_key(stream_key):
+    return f"{stream_key}|local_stream"
+
+
+def _publish_kline_stream(
+    local_redis,
+    remote_redis,
+    stream_key,
+    snapshot_df,
+    maxlen=10,
+    store_local_key=False,
+    publish_local_stream=True,
+):
     pickled_snapshot_df = pickle.dumps(snapshot_df)
     if store_local_key:
         local_redis.set_data(stream_key, pickled_snapshot_df)
-    local_redis.get_redis_client().xadd(
-        stream_key,
-        {"data": pickled_snapshot_df},
-        maxlen=maxlen,
-        approximate=True,
-    )
+    if publish_local_stream:
+        local_redis.get_redis_client().xadd(
+            _build_local_stream_key(stream_key),
+            {"data": pickled_snapshot_df},
+            maxlen=maxlen,
+            approximate=True,
+        )
     remote_redis.get_redis_client().xadd(
         stream_key,
         {"data": pickled_snapshot_df},
@@ -508,9 +521,9 @@ def ohlc_1T_generator(
     one_t_now_key = f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_now"
     one_t_closed_key = f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_closed"
     remote_redis.get_redis_client().xtrim(one_t_now_key, maxlen=max_length)
-    local_redis.get_redis_client().xtrim(one_t_now_key, maxlen=max_length)
+    local_redis.get_redis_client().xtrim(_build_local_stream_key(one_t_now_key), maxlen=max_length)
     remote_redis.get_redis_client().xtrim(one_t_closed_key, maxlen=max_length)
-    local_redis.get_redis_client().xtrim(one_t_closed_key, maxlen=max_length)
+    local_redis.get_redis_client().xtrim(_build_local_stream_key(one_t_closed_key), maxlen=max_length)
     
     # Initialize convert_rate_dict
     while True:
@@ -848,8 +861,8 @@ def ohlc_interval_generator(
     one_t_closed_stream_key = f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_closed"
     interval_now_stream_key = f"INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_now"
     last_stream_ids = {
-        one_t_closed_stream_key: "$",
-        one_t_now_stream_key: "$",
+        _build_local_stream_key(one_t_closed_stream_key): "$",
+        _build_local_stream_key(one_t_now_stream_key): "$",
     }
     last_finalized_interval_start = None
 
@@ -940,7 +953,7 @@ def ohlc_interval_generator(
     seed_interval_start = get_interval_start(datetime_now)
     try:
         closed_entries = local_redis.get_redis_client().xrevrange(
-            one_t_closed_stream_key,
+            _build_local_stream_key(one_t_closed_stream_key),
             count=max(interval_minutes, 1),
         )
         current_interval_start = seed_interval_start
@@ -1008,9 +1021,9 @@ def ohlc_interval_generator(
                     last_entry_id = last_entry_id.decode("utf-8")
                 last_stream_ids[normalized_stream_key] = last_entry_id
 
-                if normalized_stream_key == one_t_closed_stream_key:
+                if normalized_stream_key == _build_local_stream_key(one_t_closed_stream_key):
                     closed_entries.extend(entries)
-                elif normalized_stream_key == one_t_now_stream_key:
+                elif normalized_stream_key == _build_local_stream_key(one_t_now_stream_key):
                     now_entries.extend(entries)
 
             for _, entry_data in closed_entries:
