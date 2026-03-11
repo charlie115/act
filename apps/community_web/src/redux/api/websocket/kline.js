@@ -65,7 +65,7 @@ const api = websocketApi.injectEndpoints({
         // instead of trying to replay every full-table snapshot.
         const latestUpdates = new Map();
         let updateTimeout = null;
-        const FLUSH_INTERVAL_MS = 250;
+        const FLUSH_INTERVAL_MS = 100;
 
         const flushUpdates = () => {
           if (latestUpdates.size === 0) return;
