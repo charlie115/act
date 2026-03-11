@@ -1,0 +1,32 @@
+[
+{
+    "model": "users.userrole",
+    "pk": "ADMIN",
+    "fields": {}
+},
+{
+    "model": "users.userrole",
+    "pk": "AFFILIATE",
+    "fields": {}
+},
+{
+    "model": "users.userrole",
+    "pk": "INTERNAL",
+    "fields": {}
+},
+{
+    "model": "users.userrole",
+    "pk": "MANAGER",
+    "fields": {}
+},
+{
+    "model": "users.userrole",
+    "pk": "USER",
+    "fields": {}
+},
+{
+    "model": "users.userrole",
+    "pk": "VISITOR",
+    "fields": {}
+}
+]

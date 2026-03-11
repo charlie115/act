@@ -1,0 +1,56 @@
+[
+  {
+      "model": "fee.feerate",
+      "pk": 1,
+      "fields": {
+          "level": 1,
+          "rate": "0.250",
+          "total_paid_fee_required": "0.00"
+      }
+  },
+  {
+      "model": "fee.feerate",
+      "pk": 2,
+      "fields": {
+          "level": 2,
+          "rate": "0.220",
+          "total_paid_fee_required": "3000.00"
+      }
+  },
+  {
+      "model": "fee.feerate",
+      "pk": 3,
+      "fields": {
+          "level": 3,
+          "rate": "0.180",
+          "total_paid_fee_required": "6000.00"
+      }
+  },
+  {
+      "model": "fee.feerate",
+      "pk": 4,
+      "fields": {
+          "level": 4,
+          "rate": "0.150",
+          "total_paid_fee_required": "12000.00"
+      }
+  },
+  {
+      "model": "fee.feerate",
+      "pk": 5,
+      "fields": {
+          "level": 5,
+          "rate": "0.100",
+          "total_paid_fee_required": "30000.00"
+      }
+  },
+  {
+        "model": "fee.feerate",
+        "pk": 6,
+        "fields": {
+            "level": -1,
+            "rate": "0.000",
+            "total_paid_fee_required": "9999999.00"
+        }
+  }
+]

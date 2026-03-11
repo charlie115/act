@@ -1,0 +1,35 @@
+services:
+
+  drf:
+    build:
+      context: .
+      target: dev
+    image: community-drf:dev
+    container_name: dev-community-drf
+    ports:
+      - 8000:8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+
+  celery-worker:
+    build:
+      context: .
+      target: dev
+    image: community-celery-worker:dev
+    command: celery -A config worker -l DEBUG
+    container_name: dev-community-celery-worker
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+
+  celery-beat:
+    build:
+      context: .
+      target: dev
+    image: community-celery-beat:dev
+    command: celery -A config beat -l DEBUG
+    container_name: dev-community-celery-beat
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
