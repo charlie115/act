@@ -1,0 +1,41 @@
+{
+  "cSpell.words": [
+    "Bithumb",
+    "Bybit",
+    "datetime",
+    "Delisting",
+    "infocore",
+    "Kimp",
+    "linkify",
+    "loggedin",
+    "messagecore",
+    "Mobiledata",
+    "newscore",
+    "overscan",
+    "singleshot",
+    "socialapps",
+    "swipeable",
+    "tradecore",
+    "tradingview"
+  ],
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/node_modules": true
+  },
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "server": "14.52.68.128",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "[TEST] Postgres",
+      "database": "community",
+      "username": "test"
+    }
+  ]
+}
