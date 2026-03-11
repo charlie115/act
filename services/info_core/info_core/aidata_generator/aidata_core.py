@@ -69,3 +69,6 @@ class InitAiDataCore:
         if include_text:
             return runtime_status, status_text
         return runtime_status
+
+    def shutdown(self):
+        return

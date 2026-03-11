@@ -472,6 +472,14 @@ class MarketIngestRuntime:
         if include_text:
             return proc_status, print_text
         return proc_status
+
+    def shutdown(self):
+        for exchange_websocket in self.exchange_websocket_dict.values():
+            if hasattr(exchange_websocket, "terminate_websocket"):
+                try:
+                    exchange_websocket.terminate_websocket()
+                except Exception:
+                    self.logger.error(f"MarketIngestRuntime|shutdown|{traceback.format_exc()}")
     
     def convert_asset_rate(self, origin_market, origin_quote_asset, target_market, target_quote_asset):
         if origin_quote_asset == "USD":

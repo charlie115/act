@@ -162,4 +162,14 @@ class InitTrigger:
         if include_text:
             return proc_status, print_text
         return proc_status
+
+    def shutdown(self):
+        for proc in self.trade_proc_dict.values():
+            if proc.is_alive():
+                proc.terminate()
+                proc.join(timeout=5)
+        for proc in self.trigger_scanner_proc_dict.values():
+            if proc.is_alive():
+                proc.terminate()
+                proc.join(timeout=5)
         

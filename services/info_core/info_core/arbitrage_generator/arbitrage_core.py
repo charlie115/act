@@ -50,3 +50,13 @@ class InitAbitrageCore:
         if include_text:
             return runtime_status, status_text
         return runtime_status
+
+    def shutdown(self):
+        for proc in (
+            self.store_funding_diff_proc,
+            self.store_average_fundingrate_proc,
+            self.remove_delisted_funding_rate_proc,
+        ):
+            if proc.is_alive():
+                proc.terminate()
+                proc.join(timeout=5)

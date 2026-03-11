@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
+import sys
 
 from analytics_runtime import AnalyticsRuntime
 from kline_runtime import KlineRuntime
@@ -78,6 +80,7 @@ class InfoCoreSupervisor:
                 ),
             ),
         }
+        self.module_name = "info_core_main"
 
     def get_component(self, component_name):
         return self.components[component_name].instance
@@ -115,3 +118,17 @@ class InfoCoreSupervisor:
             print_result=print_result,
             include_text=include_text,
         )
+
+    def shutdown(self):
+        for component_name in ("ops_runtime", "kline_runtime", "analytics_runtime", "market_ingest"):
+            component = self.get_component(component_name)
+            if hasattr(component, "shutdown"):
+                component.shutdown()
+
+    def stop(self):
+        self.shutdown()
+        raise SystemExit(0)
+
+    def restart(self):
+        self.shutdown()
+        os.execv(sys.executable, [sys.executable, "-m", self.module_name, *sys.argv[1:]])

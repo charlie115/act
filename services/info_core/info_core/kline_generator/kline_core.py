@@ -48,6 +48,7 @@ class InitKlineCore:
         self.pubsub = self.remote_redis.get_pubsub()
         self.mongodb_dict = mongodb_dict
         self.redis_dict = redis_dict
+        self.stop_flag = False
         self.register_enabled_market_klines()
         self._start_generating_kline()
 
@@ -110,7 +111,7 @@ class InitKlineCore:
                     proc_key=proc_key,
                     create_proc=create_kline_process
                 ):
-                    while True:
+                    while not self.stop_flag:
                         if not self.kline_proc_dict[proc_key].is_alive():
                             self.kline_logger.error(f"Kline process {proc_key} is dead, restarting..")
                             self.kline_proc_dict[proc_key] = create_proc()
@@ -124,7 +125,7 @@ class InitKlineCore:
     def register_enabled_market_klines(self):
         self.kline_logger.info(f"register_enabled_market_klines|Registering enabled market klines:{self.enabled_market_klines} to redis Started..")
         def register_enabled_market_klines_to_redis():
-            while True:
+            while not self.stop_flag:
                 try:
                     now_timestamp = datetime.datetime.utcnow().timestamp()
                     for each_enabled_market_klines in self.enabled_market_klines:
@@ -146,6 +147,13 @@ class InitKlineCore:
                     self.kline_logger.error(f"register_enabled_market_klines|Error in register_enabled_market_klines_to_redis: {traceback.format_exc()}")
                 time.sleep(30)
         Thread(target=register_enabled_market_klines_to_redis, daemon=True).start()
+
+    def shutdown(self):
+        self.stop_flag = True
+        for proc in self.kline_proc_dict.values():
+            if proc.is_alive():
+                proc.terminate()
+                proc.join(timeout=5)
 
 
         

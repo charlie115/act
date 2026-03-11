@@ -93,3 +93,14 @@ class AnalyticsRuntime:
         if include_text:
             return runtime_status, status_text
         return runtime_status
+
+    def shutdown(self):
+        if not self.master_flag:
+            return
+        if self.wallet_funding_update_proc is not None and self.wallet_funding_update_proc.is_alive():
+            self.wallet_funding_update_proc.terminate()
+            self.wallet_funding_update_proc.join(timeout=5)
+        if self.arbitrage_generator is not None and hasattr(self.arbitrage_generator, "shutdown"):
+            self.arbitrage_generator.shutdown()
+        if self.ai_data_generator is not None and hasattr(self.ai_data_generator, "shutdown"):
+            self.ai_data_generator.shutdown()

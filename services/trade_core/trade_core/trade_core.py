@@ -50,3 +50,9 @@ class InitCore:
             print_result=print_result,
             include_text=include_text,
         )
+
+    def stop(self):
+        return self.supervisor.stop()
+
+    def restart(self):
+        return self.supervisor.restart()

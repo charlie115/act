@@ -35,3 +35,6 @@ class KlineRuntime:
         if include_text:
             return all([x.is_alive() for x in kline_generator_proc_dict.values()]), print_text
         return all([x.is_alive() for x in kline_generator_proc_dict.values()])
+
+    def shutdown(self):
+        self.kline_generator.shutdown()

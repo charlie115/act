@@ -28,3 +28,5 @@ class ExecutionRuntime:
             include_text=include_text,
         )
 
+    def shutdown(self):
+        self.trigger.shutdown()

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
+import sys
 
 from execution_runtime import ExecutionRuntime
 from market_runtime import MarketRuntime
@@ -55,6 +57,7 @@ class TradeCoreSupervisor:
                 instance=execution_runtime,
             ),
         }
+        self.module_name = "trade_core_main"
 
     def get_component(self, component_name):
         return self.components[component_name].instance
@@ -83,3 +86,17 @@ class TradeCoreSupervisor:
             print_result=print_result,
             include_text=include_text,
         )
+
+    def shutdown(self):
+        for component_name in ("execution_runtime", "market_runtime"):
+            component = self.get_component(component_name)
+            if hasattr(component, "shutdown"):
+                component.shutdown()
+
+    def stop(self):
+        self.shutdown()
+        raise SystemExit(0)
+
+    def restart(self):
+        self.shutdown()
+        os.execv(sys.executable, [sys.executable, "-m", self.module_name, *sys.argv[1:]])
