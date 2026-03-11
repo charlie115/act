@@ -94,3 +94,4 @@ and `git read-tree --prefix`.
 
 - Runtime services still remain separate even though source control is unified.
 - `info_core` and `trade_core` should share internal libraries where practical, but they should not be merged into one runtime.
+- The pre-monorepo workspace has been archived at `/Users/charlie/Projects/acw-legacy-20260311`.
