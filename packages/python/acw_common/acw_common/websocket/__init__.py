@@ -1,4 +1,4 @@
-from acw_common.websocket.heartbeat import (
+from .heartbeat import (
     has_recent_market_ready,
     is_process_heartbeat_stale,
     touch_market_ready,
