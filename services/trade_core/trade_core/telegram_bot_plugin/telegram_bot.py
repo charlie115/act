@@ -14,6 +14,8 @@ from threading import Thread
 from loggers.logger import TradeCoreLogger
 from trade_core.etc.redis_connector.redis_helper import RedisHelper
 
+SERVER_CHECK_INDEX_KEY = "INFO_CORE|SERVER_CHECK_INDEX"
+
 ####################################################################################################################################
 
 class MyTelegramBot(telegram.Bot):
@@ -222,7 +224,16 @@ class InitTelegramBot:
                         return
                     # Passed validation
                     # Register in Redis db
-                    self.redis_client_db0.set_dict(f"INFO_CORE|SERVER_CHECK|{market}", {"start": start_utc_timestamp, "end": end_utc_timestamp}, ex=int(end_utc_timestamp-utc_now_timestamp+5))
+                    server_check_key = f"INFO_CORE|SERVER_CHECK|{market}"
+                    self.redis_client_db0.set_dict(
+                        server_check_key,
+                        {"start": start_utc_timestamp, "end": end_utc_timestamp},
+                        ex=int(end_utc_timestamp - utc_now_timestamp + 5),
+                    )
+                    self.redis_client_db0.zadd_member(
+                        SERVER_CHECK_INDEX_KEY,
+                        {server_check_key: end_utc_timestamp},
+                    )
                     body = f"예약된 {market} 마켓의 서버점검 시작시간은"
                     body += f"\nKST:{datetime.datetime.fromtimestamp(start_utc_timestamp)+datetime.timedelta(hours=9)}~{datetime.datetime.fromtimestamp(end_utc_timestamp)+datetime.timedelta(hours=9)}이며,"
                     body += f"\nUTC:{datetime.datetime.fromtimestamp(start_utc_timestamp)}~{datetime.datetime.fromtimestamp(end_utc_timestamp)}입니다."
@@ -245,7 +256,20 @@ class InitTelegramBot:
             user_id = update.effective_chat.id
             if user_id in self.admin_id_list:
                 try:
-                    registered_server_check_list = [x.decode('utf-8') for x in self.redis_client_db0.redis_conn.keys() if 'INFO_CORE|SERVER_CHECK' in x.decode('utf-8')]
+                    utc_now_timestamp = datetime.datetime.utcnow().timestamp()
+                    self.redis_client_db0.zremrangebyscore(
+                        SERVER_CHECK_INDEX_KEY,
+                        "-inf",
+                        utc_now_timestamp,
+                    )
+                    registered_server_check_list = [
+                        x.decode('utf-8') if isinstance(x, bytes) else x
+                        for x in self.redis_client_db0.zrangebyscore(
+                            SERVER_CHECK_INDEX_KEY,
+                            utc_now_timestamp,
+                            "+inf",
+                        )
+                    ]
                     if context.args == []:
                         body = f"서버 점검 등록 취소 명령어 입니다."
                         body += f"\n/server_check 마켓이름 으로 입력해주세요."
@@ -270,7 +294,8 @@ class InitTelegramBot:
                         return
                     else:
                         for each_server_check in selected_server_check_list:
-                            self.redis_client_db0.redis_conn.delete(each_server_check)
+                            self.redis_client_db0.delete_key(each_server_check)
+                            self.redis_client_db0.zrem_member(SERVER_CHECK_INDEX_KEY, each_server_check)
                             body = f"{market}에 대한 서버점검 예약({each_server_check})이 취소되었습니다."
                             self.bot.send_thread(chat_id=user_id, text=body)
                         return

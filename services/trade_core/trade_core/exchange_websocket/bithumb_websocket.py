@@ -11,12 +11,19 @@ import _pickle as pickle
 import os
 import sys
 from loggers.logger import TradeCoreLogger
+from exchange_websocket.heartbeat import (
+    has_recent_market_ready,
+    is_process_heartbeat_stale,
+    touch_market_ready,
+    touch_process_heartbeat,
+)
+from acw_common.websocket import get_stale_symbol_summary
 from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
 # Move the bithumb_websocket function outside the class
-def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
+def bithumb_websocket(stream_data_type, url, data, error_event, proc_name, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
     # Initialize logger inside the function
     logger = TradeCoreLogger(f"bithumb_websocket", logging_dir).logger
     logger.info(f"[BITHUMB {stream_data_type}]bithumb_websocket started for {data['symbols']}...")
@@ -25,6 +32,7 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw
     # For monitoring the last message time
     last_message_time = time.time()
     ws = None  # Placeholder for the WebSocketApp instance
+    market_code = "BITHUMB_SPOT"
 
     def on_message(ws, message):
         nonlocal last_message_time # Declare nonlocal to modify the outer variable
@@ -35,10 +43,13 @@ def bithumb_websocket(stream_data_type, url, data, error_event, logging_dir, acw
                 raise Exception("bithumb_websocket|error_event is set. closing websocket..")
             message_dict = json.loads(message)
             if 'content' in message_dict.keys():
-                local_redis.update_exchange_stream_data(stream_data_type, "BITHUMB_SPOT", message_dict['content']['symbol'], {
+                timestamp_us = int(time.time() * 1_000_000)
+                local_redis.update_exchange_stream_data(stream_data_type, market_code, message_dict['content']['symbol'], {
                     **message_dict['content'],
-                    "last_update_timestamp": int(time.time() * 1_000_000)
+                    "last_update_timestamp": timestamp_us
                 })
+                touch_market_ready(local_redis, market_code, stream_data_type, timestamp_us)
+                touch_process_heartbeat(local_redis, market_code, stream_data_type, proc_name, timestamp_us)
         except Exception as e:
             logger.error(f"bithumb_websocket|on_message error: {e}, traceback: {traceback.format_exc()}")
             error_event.set()  # Signal error
@@ -115,10 +126,14 @@ class BithumbWebsocket:
         self.price_proc_event_list = []
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
+        self.partial_stale_strikes = {}
         self._start_websocket()
         while True:
-            if (not self.local_redis.get_all_exchange_stream_data("ticker", "BITHUMB_SPOT") or
-                not self.local_redis.get_all_exchange_stream_data("orderbook", "BITHUMB_SPOT")):
+            if not has_recent_market_ready(
+                self.local_redis,
+                "BITHUMB_SPOT",
+                ("ticker", "orderbook"),
+            ):
                 self.logger.info(f"[BITHUMB SPOT]waiting for websocket data to be loaded..")
                 time.sleep(2)
             else:
@@ -166,6 +181,7 @@ class BithumbWebsocket:
                                         self.url,
                                         ticker_data,
                                         error_event,
+                                        f"{i+1}th_ticker_proc",
                                         self.logging_dir,
                                         self.acw_api,
                                         self.admin_id
@@ -204,6 +220,7 @@ class BithumbWebsocket:
                                         self.url,
                                         orderbook_data,
                                         error_event,
+                                        f"{i+1}th_orderbook_proc",
                                         self.logging_dir,
                                         self.acw_api,
                                         self.admin_id
@@ -335,35 +352,19 @@ class BithumbWebsocket:
                     if not symbol_list:
                         # If no symbols found for that process, skip
                         continue
-                    
-                    data = None
-                    while data is None:
-                        data = self.local_redis.get_all_exchange_stream_data(
-                            redis_stream_type, f"BITHUMB_SPOT"
-                        )
-                        if data is None:
-                            time.sleep(0.5)  # Add small delay to prevent busy waiting
 
-                    # Check if all symbols are stale
-                    stale_count = 0
-                    for sym in symbol_list:
-                        symbol_data = data.get(sym, {})
-                        last_update_ts = symbol_data.get("last_update_timestamp")  # microseconds
-                        if last_update_ts is None:
-                            # If no timestamp, treat as stale
-                            stale_count += 1
-                            continue
-
-                        diff_us = now_us - last_update_ts
-                        if diff_us > stale_threshold_secs * 1_000_000:
-                            # self.logger.info(f"Stale sym: {sym}, data: {symbol_data}")
-                            stale_count += 1
-
-                    if stale_count == len(symbol_list):
-                        # All symbols are stale => kill process
+                    if is_process_heartbeat_stale(
+                        self.local_redis,
+                        "BITHUMB_SPOT",
+                        redis_stream_type,
+                        proc_name,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    ):
+                        self.partial_stale_strikes.pop(proc_name, None)
                         content = (
                             f"[BITHUMB SPOT]{proc_name} => "
-                            f"All {stale_count} symbols stale > {stale_threshold_secs}s. "
+                            f"Heartbeat stale > {stale_threshold_secs}s. "
                             f"Forcing process restart."
                         )
                         self.logger.error(content)
@@ -372,11 +373,49 @@ class BithumbWebsocket:
                         self.logger.warning(f"Killing process: {proc_name}")
                         proc.terminate()
                         proc.join()
+                        self.partial_stale_strikes.pop(proc_name, None)
 
                         # handle_price_procs() will detect it's dead and restart it.
                         time.sleep(60)
-                    else:
-                        self.logger.info(f"monitor_stale_data_per_proc|{proc_name} => {stale_count} symbols among {len(symbol_list)} symbols are stale for > {stale_threshold_secs}s.")
+                        continue
+
+                    summary = get_stale_symbol_summary(
+                        self.local_redis,
+                        "BITHUMB_SPOT",
+                        redis_stream_type,
+                        symbol_list,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    )
+                    stale_count = summary["stale_count"]
+                    total_symbols = summary["total_symbols"]
+                    if stale_count == 0:
+                        self.partial_stale_strikes.pop(proc_name, None)
+                        continue
+
+                    strike_count = self.partial_stale_strikes.get(proc_name, 0) + 1
+                    self.partial_stale_strikes[proc_name] = strike_count
+                    stale_symbols_preview = summary["stale_symbols"][:5]
+                    self.logger.warning(
+                        f"[BITHUMB SPOT] {proc_name} partial stale "
+                        f"{stale_count}/{total_symbols}, strike={strike_count}, "
+                        f"symbols={stale_symbols_preview}"
+                    )
+                    if stale_count == total_symbols or (
+                        strike_count >= 2 and (stale_count >= min(2, total_symbols) or summary["stale_ratio"] >= 0.25)
+                    ):
+                        content = (
+                            f"[BITHUMB SPOT]{proc_name} => "
+                            f"Partial stale persisted ({stale_count}/{total_symbols}, strike={strike_count}). "
+                            f"Forcing process restart."
+                        )
+                        self.logger.error(content)
+                        self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
+                        self.logger.warning(f"Killing process: {proc_name}")
+                        proc.terminate()
+                        proc.join()
+                        self.partial_stale_strikes.pop(proc_name, None)
+                        time.sleep(60)
 
             except Exception as e:
                 content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"

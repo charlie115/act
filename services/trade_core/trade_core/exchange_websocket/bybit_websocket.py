@@ -10,12 +10,22 @@ import _pickle as pickle
 import os
 import sys
 from loggers.logger import TradeCoreLogger
+from exchange_websocket.heartbeat import (
+    has_recent_market_ready,
+    is_process_heartbeat_stale,
+    touch_market_ready,
+    touch_process_heartbeat,
+)
+from acw_common.websocket import get_stale_symbol_summary
 from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
+# Maximum allowed message delay in milliseconds - drop messages older than this
+MAX_MESSAGE_DELAY_MS = 100
+
 # Standalone function for the ticker websocket
-def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
+def init_ticker_websocket(symbol_list, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
     # Initialize logger inside the function
     logger = TradeCoreLogger(f"bybit_{market_type.lower()}_ticker_websocket", logging_dir).logger
     logger.info(f"[BYBIT {market_type}] started for {symbol_list}...")
@@ -24,6 +34,7 @@ def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir, ac
     # For monitoring the last message time
     last_message_time = time.time()
     ws = None  # Placeholder for the WebSocketApp instance
+    market_code = f"BYBIT_{market_type.upper()}"
 
     def cut_list(lst):
         return [lst[i:i + 10] for i in range(0, len(lst), 10)]
@@ -45,18 +56,28 @@ def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir, ac
     def handle_message(message):
         nonlocal last_message_time # Declare nonlocal to modify the outer variable
         last_message_time = time.time() # Update the time of the last received message
-        if error_event.is_set():
-            ws.exit()
-            return
-        if 'data' in message.keys():
-            # ticker_dict[message['data']['symbol']] = {
-            #     **message['data'],
-            #     'last_update_timestamp': int(datetime.datetime.utcnow().timestamp() * 1000000)
-            # }
-            local_redis.update_exchange_stream_data("ticker", 
-                                                    f"BYBIT_{market_type.upper()}", 
-                                                    message['data']['symbol'], 
-                                                    {**message['data'], 'last_update_timestamp': int(time.time() * 1_000_000)})
+        try:
+            if error_event.is_set():
+                ws.exit()
+                return
+            if 'data' in message.keys() and 'symbol' in message.get('data', {}):
+                msg_ts_ms = message.get('ts')
+                if msg_ts_ms:
+                    current_ts_ms = int(time.time() * 1000)
+                    if current_ts_ms - msg_ts_ms > MAX_MESSAGE_DELAY_MS:
+                        return
+                timestamp_us = int(time.time() * 1_000_000)
+                local_redis.update_exchange_stream_data(
+                    "ticker",
+                    market_code,
+                    message['data']['symbol'],
+                    {**message['data'], 'last_update_timestamp': timestamp_us},
+                )
+                touch_market_ready(local_redis, market_code, "ticker", timestamp_us)
+                touch_process_heartbeat(local_redis, market_code, "ticker", proc_name, timestamp_us)
+        except Exception as e:
+            logger.error(f"handle_message|ticker error: {e}, message: {message}, traceback: {traceback.format_exc()}")
+            error_event.set()
         
             
 
@@ -104,7 +125,7 @@ def init_ticker_websocket(symbol_list, error_event, market_type, logging_dir, ac
         logger.error(content)
 
 # Standalone function for the orderbook websocket
-def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=10):
+def init_orderbook_websocket(symbol_list, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=10):
     # Initialize logger inside the function
     logger = TradeCoreLogger(f"bybit_{market_type.lower()}_orderbook_websocket", logging_dir).logger
     logger.info(f"[BYBIT {market_type}] started for {symbol_list}...")
@@ -113,6 +134,7 @@ def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir,
     # For monitoring the last message time
     last_message_time = time.time()
     ws = None  # Placeholder for the WebSocketApp instance
+    market_code = f"BYBIT_{market_type.upper()}"
 
     def cut_list(lst):
         return [lst[i:i + 10] for i in range(0, len(lst), 10)]
@@ -134,18 +156,28 @@ def init_orderbook_websocket(symbol_list, error_event, market_type, logging_dir,
     def handle_message(message):
         nonlocal last_message_time # Declare nonlocal to modify the outer variable
         last_message_time = time.time() # Update the time of the last received message
-        if error_event.is_set():
-            ws.exit()
-            return
-        if 'data' in message.keys():
-            # orderbook_dict[message['data']['s']] = {
-            #     **message['data'],
-            #     'last_update_timestamp': int(datetime.datetime.utcnow().timestamp() * 1000000)
-            # }
-            local_redis.update_exchange_stream_data("orderbook",
-                                                    f"BYBIT_{market_type.upper()}",
-                                                    message['data']['s'],
-                                                    {**message['data'], 'last_update_timestamp': int(time.time() * 1_000_000)})
+        try:
+            if error_event.is_set():
+                ws.exit()
+                return
+            if 'data' in message.keys() and 's' in message.get('data', {}):
+                msg_ts_ms = message.get('ts')
+                if msg_ts_ms:
+                    current_ts_ms = int(time.time() * 1000)
+                    if current_ts_ms - msg_ts_ms > MAX_MESSAGE_DELAY_MS:
+                        return
+                timestamp_us = int(time.time() * 1_000_000)
+                local_redis.update_exchange_stream_data(
+                    "orderbook",
+                    market_code,
+                    message['data']['s'],
+                    {**message['data'], 'last_update_timestamp': timestamp_us},
+                )
+                touch_market_ready(local_redis, market_code, "orderbook", timestamp_us)
+                touch_process_heartbeat(local_redis, market_code, "orderbook", proc_name, timestamp_us)
+        except Exception as e:
+            logger.error(f"handle_message|orderbook error: {e}, message: {message}, traceback: {traceback.format_exc()}")
+            error_event.set()
 
     try:
         if market_type == "SPOT":
@@ -215,10 +247,14 @@ class BybitWebsocket:
         self.price_proc_event_list = []
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
+        self.partial_stale_strikes = {}
         self._start_websocket()
         while True:
-            if (not self.local_redis.get_all_exchange_stream_data("ticker", f"BYBIT_{self.market_type.upper()}") or
-                not self.local_redis.get_all_exchange_stream_data("orderbook", f"BYBIT_{self.market_type.upper()}")):
+            if not has_recent_market_ready(
+                self.local_redis,
+                f"BYBIT_{self.market_type.upper()}",
+                ("ticker", "orderbook"),
+            ):
                 self.websocket_logger.info(f"[BYBIT {self.market_type}]waiting for websocket data to be loaded..")
                 time.sleep(2)
             else:
@@ -266,6 +302,7 @@ class BybitWebsocket:
                                     args=(
                                         self.sliced_symbols_list[i],
                                         error_event,
+                                        f"{i+1}th_ticker_proc",
                                         self.market_type,
                                         self.logging_dir,
                                         self.acw_api,
@@ -302,6 +339,7 @@ class BybitWebsocket:
                                     args=(
                                         self.sliced_symbols_list[i],
                                         error_event,
+                                        f"{i+1}th_orderbook_proc",
                                         self.market_type,
                                         self.logging_dir,
                                         self.acw_api,
@@ -443,36 +481,18 @@ class BybitWebsocket:
                         # If we somehow have no symbols for that process, skip
                         continue
 
-                    data = None
-                    while data is None:
-                        data = self.local_redis.get_all_exchange_stream_data(
-                            redis_stream_type, f"BYBIT_{self.market_type.upper()}"
-                        )
-                        if data is None:
-                            time.sleep(0.5)  # Add small delay to prevent busy waiting
-
-                    # We'll see if *all* are stale
-                    stale_count = 0
-                    for sym in symbol_list:
-                        symbol_data = data.get(sym, {})
-                        last_update_us = symbol_data.get("last_update_timestamp")  # microseconds
-                        if last_update_us is None:
-                            # If no timestamp, treat as stale
-                            stale_count += 1
-                            continue
-
-                        # Compare difference in microseconds
-                        diff_us = now_us - last_update_us
-                        if diff_us > stale_threshold_secs * 1_000_000:
-                            # self.websocket_logger.info(f"Stale sym: {sym}, data: {symbol_data}")
-                            # It's stale
-                            stale_count += 1
-
-                    # If every symbol in that slice is stale, kill the process
-                    if stale_count == len(symbol_list):
+                    if is_process_heartbeat_stale(
+                        self.local_redis,
+                        f"BYBIT_{self.market_type.upper()}",
+                        redis_stream_type,
+                        proc_name,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    ):
+                        self.partial_stale_strikes.pop(proc_name, None)
                         content = (
                             f"[BYBIT {self.market_type}] {proc_name} => "
-                            f"All {stale_count} symbols are stale for > {stale_threshold_secs}s. "
+                            f"Heartbeat stale for > {stale_threshold_secs}s. "
                             f"Forcing process restart."
                         )
                         self.websocket_logger.error(content)
@@ -486,8 +506,45 @@ class BybitWebsocket:
                         # The handle_price_procs() loop will detect it is dead
                         # and restart it automatically. Let's sleep a bit
                         time.sleep(60)
-                    else:
-                        self.websocket_logger.info(f"monitor_stale_data_per_proc|{proc_name} => {stale_count} symbols among {len(symbol_list)} symbols are stale for > {stale_threshold_secs}s.")
+                        continue
+
+                    summary = get_stale_symbol_summary(
+                        self.local_redis,
+                        f"BYBIT_{self.market_type.upper()}",
+                        redis_stream_type,
+                        symbol_list,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    )
+                    stale_count = summary["stale_count"]
+                    total_symbols = summary["total_symbols"]
+                    if stale_count == 0:
+                        self.partial_stale_strikes.pop(proc_name, None)
+                        continue
+
+                    strike_count = self.partial_stale_strikes.get(proc_name, 0) + 1
+                    self.partial_stale_strikes[proc_name] = strike_count
+                    stale_symbols_preview = summary["stale_symbols"][:5]
+                    self.websocket_logger.warning(
+                        f"[BYBIT {self.market_type}] {proc_name} partial stale "
+                        f"{stale_count}/{total_symbols}, strike={strike_count}, "
+                        f"symbols={stale_symbols_preview}"
+                    )
+                    if stale_count == total_symbols or (
+                        strike_count >= 2 and (stale_count >= min(2, total_symbols) or summary["stale_ratio"] >= 0.25)
+                    ):
+                        content = (
+                            f"[BYBIT {self.market_type}] {proc_name} => "
+                            f"Partial stale persisted ({stale_count}/{total_symbols}, strike={strike_count}). "
+                            f"Forcing process restart."
+                        )
+                        self.websocket_logger.error(content)
+                        self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
+                        self.websocket_logger.warning(f"Killing process: {proc_name}")
+                        proc.terminate()
+                        proc.join()
+                        self.partial_stale_strikes.pop(proc_name, None)
+                        time.sleep(60)
 
             except Exception as e:
                 content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"

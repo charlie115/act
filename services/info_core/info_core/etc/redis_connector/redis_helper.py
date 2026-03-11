@@ -114,6 +114,10 @@ class RedisHelper:
     def zremrangebyscore(self, key_name, minimum, maximum):
         redis_conn = self.get_redis_client()
         redis_conn.zremrangebyscore(key_name, minimum, maximum)
+
+    def zrem_member(self, key_name, member):
+        redis_conn = self.get_redis_client()
+        redis_conn.zrem(key_name, member)
     
     def delete_key(self, key_name):
         redis_conn = self.get_redis_client()

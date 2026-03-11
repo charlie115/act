@@ -62,6 +62,22 @@ class RedisHelper:
     def hget_dict(self, key_name, field):
         redis_conn = self.get_redis_client()
         return redis_conn.hget(key_name, field)
+
+    def zadd_member(self, key_name, mapping):
+        redis_conn = self.get_redis_client()
+        redis_conn.zadd(key_name, mapping)
+
+    def zrangebyscore(self, key_name, minimum, maximum):
+        redis_conn = self.get_redis_client()
+        return redis_conn.zrangebyscore(key_name, minimum, maximum)
+
+    def zremrangebyscore(self, key_name, minimum, maximum):
+        redis_conn = self.get_redis_client()
+        redis_conn.zremrangebyscore(key_name, minimum, maximum)
+
+    def zrem_member(self, key_name, member):
+        redis_conn = self.get_redis_client()
+        redis_conn.zrem(key_name, member)
     
     def delete_key(self, key_name):
         redis_conn = self.get_redis_client()
