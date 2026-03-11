@@ -1,6 +1,21 @@
 import path from "path";
 
 const apiProxyTarget = process.env.ACW_API_PROXY_TARGET;
+const backendPrefixes = [
+  "auth",
+  "board",
+  "chat",
+  "coupon",
+  "exchange-status",
+  "fee",
+  "infocore",
+  "messagecore",
+  "newscore",
+  "referral",
+  "tradecore",
+  "users",
+  "wallet",
+];
 const legacySrc = path.resolve("../community_web/src");
 const legacyNextCompat = path.resolve("./legacy");
 const publicDrfUrl = process.env.NEXT_PUBLIC_DRF_URL || process.env.NEXT_PUBLIC_SITE_URL || "";
@@ -79,6 +94,10 @@ const nextConfig = {
         source: "/api/:path*",
         destination: `${apiProxyTarget}/:path*/`,
       },
+      ...backendPrefixes.map((prefix) => ({
+        source: `/${prefix}/:path*`,
+        destination: `${apiProxyTarget}/${prefix}/:path*/`,
+      })),
     ];
   },
 };
