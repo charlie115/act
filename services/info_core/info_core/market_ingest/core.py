@@ -27,13 +27,19 @@ import os
 import traceback
 from functools import partial
 from standalone_func.get_dollar_dict import get_dollar_dict
-from standalone_func.premium_data_generator import get_premium_df, store_premium_df
+from standalone_func.premium_data_generator import (
+    build_premium_cache_metadata,
+    get_premium_df,
+    store_premium_df,
+)
 from standalone_func.store_exchange_status import fetch_market_servercheck
 import requests
 
 current_file_dir = os.path.realpath(__file__)
 current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
 logging_dir = f"{current_folder_dir}/loggers/logs/"
+INFO_DF_VERSION_PREFIX = "INFO_DF_VERSION"
+CONVERT_RATE_VERSION_PREFIX = "CONVERT_RATE_VERSION"
 
 class MarketIngestRuntime:
     def __init__(self,
@@ -277,6 +283,10 @@ class MarketIngestRuntime:
     def store_info_dict_to_redis(self, data_name, fetched_df):
         # Save the data to the local redis
         self.local_redis.set_data(data_name, pickle.dumps(fetched_df))
+        self.local_redis.set_data(
+            f"{INFO_DF_VERSION_PREFIX}|{data_name}",
+            str(int(time.time() * 1_000_000)),
+        )
 
     def update_exchange_info_as_df(self, data_name, error_count_limit=1, loop_time_secs=30):
         error_count = 0
@@ -522,11 +532,21 @@ class MarketIngestRuntime:
                     
                     # First load the convert rate from the redis
                     fetched_convert_rate_dict = self.local_redis.hgetall_dict('convert_rate_dict')
-                    fetched_convert_rate_dict[each_market_combi] = (
-                        self.convert_asset_rate(origin_market, origin_quote_asset, target_market, target_quote_asset)
+                    new_convert_rate = self.convert_asset_rate(
+                        origin_market,
+                        origin_quote_asset,
+                        target_market,
+                        target_quote_asset,
                     )
+                    previous_convert_rate = fetched_convert_rate_dict.get(each_market_combi)
+                    fetched_convert_rate_dict[each_market_combi] = new_convert_rate
                     # Store into the redis
-                    self.local_redis.hset_dict('convert_rate_dict', fetched_convert_rate_dict) 
+                    self.local_redis.hset_dict('convert_rate_dict', fetched_convert_rate_dict)
+                    if previous_convert_rate is None or float(previous_convert_rate) != float(new_convert_rate):
+                        self.local_redis.set_data(
+                            f"{CONVERT_RATE_VERSION_PREFIX}|{each_market_combi}",
+                            str(int(time.time() * 1_000_000)),
+                        )
                 if self.convert_rate_initialized is False:
                     self.convert_rate_initialized = True
             except Exception as e:
@@ -571,10 +591,17 @@ class MarketIngestRuntime:
                     self.logger,
                 )
                 if not premium_df.empty:
+                    metadata = build_premium_cache_metadata(
+                        self.local_redis,
+                        market_code_combination,
+                        target_market_code,
+                        origin_market_code,
+                    )
                     store_premium_df(
                         self.local_redis,
                         market_code_combination,
                         premium_df,
+                        metadata=metadata,
                         ex=5,
                     )
             except Exception as e:

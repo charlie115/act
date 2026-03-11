@@ -1,8 +1,92 @@
 import _pickle as pickle
 import traceback
+import threading
 
 import numpy as np
 import pandas as pd
+
+
+STREAM_VERSION_PREFIX = "STREAM_VERSION"
+INFO_DF_VERSION_PREFIX = "INFO_DF_VERSION"
+
+PRICE_DF_INFO_KEY_MAP = {
+    "BINANCE_SPOT": "binance_spot_info_df",
+    "BINANCE_USD_M": "binance_usd_m_info_df",
+    "BINANCE_COIN_M": "binance_coin_m_info_df",
+    "BYBIT_SPOT": "bybit_spot_info_df",
+    "BYBIT_USD_M": "bybit_usd_m_info_df",
+    "BYBIT_COIN_M": "bybit_coin_m_info_df",
+    "GATE_USD_M": "gate_usd_m_info_df",
+    "OKX_SPOT": "okx_spot_info_df",
+    "OKX_USD_M": "okx_usd_m_info_df",
+    "OKX_COIN_M": "okx_coin_m_info_df",
+    "COINONE_SPOT": "coinone_spot_info_df",
+    "HYPERLIQUID_USD_M": "hyperliquid_usd_m_info_df",
+}
+
+_PRICE_DF_CACHE = {}
+_PRICE_DF_CACHE_LOCK = threading.RLock()
+
+
+def _decode_version(raw_value):
+    if raw_value is None:
+        return None
+    if isinstance(raw_value, bytes):
+        return raw_value.decode("utf-8")
+    return str(raw_value)
+
+
+def _read_version(redis_client, key_name):
+    return _decode_version(redis_client.get_data(key_name))
+
+
+def get_market_data_signature(redis_client, market_code):
+    signature = {
+        "market_code": market_code,
+        "ticker_version": _read_version(
+            redis_client,
+            f"{STREAM_VERSION_PREFIX}|ticker|{market_code}",
+        ),
+        "orderbook_version": _read_version(
+            redis_client,
+            f"{STREAM_VERSION_PREFIX}|orderbook|{market_code}",
+        ),
+        "info_version": None,
+    }
+
+    info_key = PRICE_DF_INFO_KEY_MAP.get(market_code)
+    if info_key is not None:
+        signature["info_version"] = _read_version(
+            redis_client,
+            f"{INFO_DF_VERSION_PREFIX}|{info_key}",
+        )
+
+    return signature
+
+
+def _signature_has_versions(signature):
+    return any(
+        signature.get(key) is not None
+        for key in ("ticker_version", "orderbook_version", "info_version")
+    )
+
+
+def _get_cached_price_df(cache_key, signature):
+    with _PRICE_DF_CACHE_LOCK:
+        cached_entry = _PRICE_DF_CACHE.get(cache_key)
+        if not cached_entry:
+            return None
+        if cached_entry["signature"] != signature:
+            return None
+        return cached_entry["df"].copy()
+
+
+def _store_cached_price_df(cache_key, signature, df):
+    with _PRICE_DF_CACHE_LOCK:
+        _PRICE_DF_CACHE[cache_key] = {
+            "signature": signature,
+            "df": df.copy(),
+        }
 
 
 def get_binance_price_df(redis_client, market_type):
@@ -350,7 +434,29 @@ def get_price_df(redis_client, market_code):
     if handler is None:
         raise ValueError(f"get_price_df|exchange: {exchange} is not supported!")
 
-    if exchange in {"BINANCE", "BYBIT", "OKX", "GATE", "HYPERLIQUID"}:
-        return handler(redis_client, market_type)
-    return handler(redis_client)
+    signature_before = get_market_data_signature(redis_client, market_code)
+    if _signature_has_versions(signature_before):
+        cached_df = _get_cached_price_df(market_code, signature_before)
+        if cached_df is not None:
+            return cached_df
 
+    if exchange in {"BINANCE", "BYBIT", "OKX", "GATE", "HYPERLIQUID"}:
+        df = handler(redis_client, market_type)
+    else:
+        df = handler(redis_client)
+
+    signature_after = get_market_data_signature(redis_client, market_code)
+    if (
+        _signature_has_versions(signature_before)
+        and signature_before != signature_after
+    ):
+        if exchange in {"BINANCE", "BYBIT", "OKX", "GATE", "HYPERLIQUID"}:
+            df = handler(redis_client, market_type)
+        else:
+            df = handler(redis_client)
+        signature_after = get_market_data_signature(redis_client, market_code)
+
+    if _signature_has_versions(signature_after):
+        _store_cached_price_df(market_code, signature_after, df)
+
+    return df
