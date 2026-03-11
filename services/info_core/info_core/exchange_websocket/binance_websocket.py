@@ -20,6 +20,11 @@ from exchange_websocket.heartbeat import (
     touch_process_heartbeat,
 )
 from acw_common.websocket import evaluate_process_staleness, wait_for_market_ready
+from acw_common.websocket import (
+    get_process_group_status,
+    restart_process_group,
+    terminate_process_group,
+)
 from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
@@ -396,37 +401,27 @@ class BinanceWebsocket:
         self.handle_price_procs_thread.start()
 
     def terminate_websocket(self):
-        self.stop_restart_websocket = True
-        time.sleep(0.5)
-        for each_event in self.price_proc_event_list:
-            each_event.set()
-        self.logger.info(f"[BINANCE {self.market_type}] All websockets' events have been set.")
-        self.price_proc_event_list = []
+        terminate_process_group(
+            self,
+            self.logger,
+            f"[BINANCE {self.market_type}] All websockets' events have been set.",
+        )
         
     def restart_websocket(self):
-        self.terminate_websocket()
-        time.sleep(1)
-        self.stop_restart_websocket = False
+        restart_process_group(
+            self,
+            self.logger,
+            f"[BINANCE {self.market_type}] All websockets' events have been set.",
+        )
         
     def check_status(self, print_result=False, include_text=False):
-        if len(self.websocket_proc_dict) == 0:
-            proc_status = False
-            print_text = f"[BINANCE {self.market_type}]websocket proc is not running."
-            if print_result:
-                self.logger.info(print_text.rstrip())
-            if include_text:
-                return (proc_status, print_text)
-            return proc_status
-        else:
-            proc_status = all([x.is_alive() for x in self.websocket_proc_dict.values()])
-            print_text = ""
-            for key, value in self.websocket_proc_dict.items():
-                print_text += f"[BINANCE {self.market_type}]{key} status: {value.is_alive()}\n"
-            if print_result:
-                self.logger.info(print_text.rstrip())
-            if include_text:
-                return (proc_status, print_text)
-            return proc_status
+        return get_process_group_status(
+            self.websocket_proc_dict,
+            self.logger,
+            f"[BINANCE {self.market_type}]",
+            print_result=print_result,
+            include_text=include_text,
+        )
 
     def monitor_shared_symbol_change(self, loop_time_secs=60):
         self.logger.info(f"[BINANCE {self.market_type}]started monitor_shared_symbol_change..")
