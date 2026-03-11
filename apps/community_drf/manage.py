@@ -4,6 +4,7 @@ import os
 import sys
 
 from pathlib import Path
+from config.path_setup import append_local_apps_path
 
 
 def main():
@@ -20,8 +21,7 @@ def main():
         ) from exc
 
     # This allows easy placement of apps within the interior community_drf directory.
-    current_path = Path(__file__).parent.resolve()
-    sys.path.append(str(current_path / "apps"))
+    append_local_apps_path(Path(__file__).parent.resolve())
 
     execute_from_command_line(sys.argv)
 

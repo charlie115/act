@@ -13,9 +13,10 @@ import sys
 from channels.routing import ProtocolTypeRouter
 from django.core.asgi import get_asgi_application
 from pathlib import Path
+from config.path_setup import append_local_apps_path
 
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
-sys.path.append(str(BASE_DIR / "apps"))
+append_local_apps_path(BASE_DIR)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.prod")
 
