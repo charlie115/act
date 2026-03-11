@@ -39,7 +39,7 @@ from exchange_websocket.heartbeat import (
     touch_market_ready,
     touch_process_heartbeat,
 )
-from acw_common.websocket import get_stale_symbol_summary
+from acw_common.websocket import evaluate_process_staleness, wait_for_market_ready
 from acw_common.websocket import (
     get_process_group_status,
     restart_process_group,
@@ -422,22 +422,18 @@ class HyperliquidWebsocket:
         self._start_websocket()
 
         # Wait for initial data
-        wait_start = time.time()
-        while True:
-            if not has_recent_market_ready(
-                self.local_redis,
-                f"HYPERLIQUID_{self.market_type.upper()}",
-                ("ticker", "orderbook"),
-            ):
-                self.websocket_logger.info(f"[HYPERLIQUID {self.market_type}] Waiting for websocket data to be loaded...")
-                time.sleep(2)
-                # Timeout after 60 seconds
-                if time.time() - wait_start > 60:
-                    self.websocket_logger.warning(f"[HYPERLIQUID {self.market_type}] Timeout waiting for initial data")
-                    break
-            else:
-                self.websocket_logger.info(f"[HYPERLIQUID {self.market_type}] Initial data loaded")
-                break
+        ready_loaded = wait_for_market_ready(
+            self.local_redis,
+            f"HYPERLIQUID_{self.market_type.upper()}",
+            ("ticker", "orderbook"),
+            self.websocket_logger,
+            f"[HYPERLIQUID {self.market_type}] Waiting for websocket data to be loaded...",
+            timeout_secs=60,
+        )
+        if ready_loaded:
+            self.websocket_logger.info(f"[HYPERLIQUID {self.market_type}] Initial data loaded")
+        else:
+            self.websocket_logger.warning(f"[HYPERLIQUID {self.market_type}] Timeout waiting for initial data")
 
         # Start monitoring threads
         self.monitor_shared_symbol_change_thread = Thread(target=self.monitor_shared_symbol_change, daemon=True)
@@ -641,48 +637,27 @@ class HyperliquidWebsocket:
                 if ticker_symbols:
                     ticker_proc = self.websocket_proc_dict.get(HYPERLIQUID_TICKER_PROC_NAME)
                     if ticker_proc and ticker_proc.is_alive():
-                        if is_process_heartbeat_stale(
+                        result = evaluate_process_staleness(
                             self.local_redis,
                             f"HYPERLIQUID_{self.market_type.upper()}",
                             "ticker",
                             HYPERLIQUID_TICKER_PROC_NAME,
+                            ticker_symbols,
+                            self.partial_stale_strikes,
                             stale_threshold_secs=stale_threshold_secs,
                             now_us=now_us,
-                        ):
-                            self.partial_stale_strikes.pop(HYPERLIQUID_TICKER_PROC_NAME, None)
+                        )
+                        if result["action"] == "restart":
                             self.websocket_logger.warning(f"Killing process: {HYPERLIQUID_TICKER_PROC_NAME}")
                             ticker_proc.terminate()
                             ticker_proc.join()
                             time.sleep(60)
-                        else:
-                            summary = get_stale_symbol_summary(
-                                self.local_redis,
-                                f"HYPERLIQUID_{self.market_type.upper()}",
-                                "ticker",
-                                ticker_symbols,
-                                stale_threshold_secs=stale_threshold_secs,
-                                now_us=now_us,
+                        elif result["action"] == "warn":
+                            self.websocket_logger.warning(
+                                f"[HYPERLIQUID {self.market_type}] ticker partial stale "
+                                f"{result['stale_count']}/{result['total_symbols']}, strike={result['strike_count']}, "
+                                f"symbols={result['stale_symbols_preview']}"
                             )
-                            stale_count = summary["stale_count"]
-                            total_symbols = summary["total_symbols"]
-                            if stale_count == 0:
-                                self.partial_stale_strikes.pop(HYPERLIQUID_TICKER_PROC_NAME, None)
-                            else:
-                                strike_count = self.partial_stale_strikes.get(HYPERLIQUID_TICKER_PROC_NAME, 0) + 1
-                                self.partial_stale_strikes[HYPERLIQUID_TICKER_PROC_NAME] = strike_count
-                                self.websocket_logger.warning(
-                                    f"[HYPERLIQUID {self.market_type}] ticker partial stale "
-                                    f"{stale_count}/{total_symbols}, strike={strike_count}, "
-                                    f"symbols={summary['stale_symbols'][:5]}"
-                                )
-                                if stale_count == total_symbols or (
-                                    strike_count >= 2 and (stale_count >= min(2, total_symbols) or summary["stale_ratio"] >= 0.25)
-                                ):
-                                    self.websocket_logger.warning(f"Killing process: {HYPERLIQUID_TICKER_PROC_NAME}")
-                                    ticker_proc.terminate()
-                                    ticker_proc.join()
-                                    self.partial_stale_strikes.pop(HYPERLIQUID_TICKER_PROC_NAME, None)
-                                    time.sleep(60)
 
                 for i in range(self.proc_n):
                     index = i + 1
@@ -694,50 +669,29 @@ class HyperliquidWebsocket:
                     if not proc_symbols:
                         continue
 
-                    if is_process_heartbeat_stale(
+                    result = evaluate_process_staleness(
                         self.local_redis,
                         f"HYPERLIQUID_{self.market_type.upper()}",
                         "orderbook",
                         proc_name,
-                        stale_threshold_secs=stale_threshold_secs,
-                        now_us=now_us,
-                    ):
-                        self.partial_stale_strikes.pop(proc_name, None)
-                        self.websocket_logger.warning(f"Killing process: {proc_name}")
-                        proc.terminate()
-                        proc.join()
-                        time.sleep(60)
-                        continue
-
-                    summary = get_stale_symbol_summary(
-                        self.local_redis,
-                        f"HYPERLIQUID_{self.market_type.upper()}",
-                        "orderbook",
                         proc_symbols,
+                        self.partial_stale_strikes,
                         stale_threshold_secs=stale_threshold_secs,
                         now_us=now_us,
                     )
-                    stale_count = summary["stale_count"]
-                    total_symbols = summary["total_symbols"]
-                    if stale_count == 0:
-                        self.partial_stale_strikes.pop(proc_name, None)
-                        continue
-
-                    strike_count = self.partial_stale_strikes.get(proc_name, 0) + 1
-                    self.partial_stale_strikes[proc_name] = strike_count
-                    self.websocket_logger.warning(
-                        f"[HYPERLIQUID {self.market_type}] {proc_name} partial stale "
-                        f"{stale_count}/{total_symbols}, strike={strike_count}, "
-                        f"symbols={summary['stale_symbols'][:5]}"
-                    )
-                    if stale_count == total_symbols or (
-                        strike_count >= 2 and (stale_count >= min(2, total_symbols) or summary["stale_ratio"] >= 0.25)
-                    ):
+                    if result["action"] == "restart":
                         self.websocket_logger.warning(f"Killing process: {proc_name}")
                         proc.terminate()
                         proc.join()
-                        self.partial_stale_strikes.pop(proc_name, None)
                         time.sleep(60)
+                        continue
+                    if result["action"] == "warn":
+                        self.websocket_logger.warning(
+                            f"[HYPERLIQUID {self.market_type}] {proc_name} partial stale "
+                            f"{result['stale_count']}/{result['total_symbols']}, strike={result['strike_count']}, "
+                            f"symbols={result['stale_symbols_preview']}"
+                        )
+                        continue
 
             except Exception as e:
                 content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"

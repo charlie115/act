@@ -36,7 +36,7 @@ from exchange_websocket.heartbeat import (
     touch_market_ready,
     touch_process_heartbeat,
 )
-from acw_common.websocket import get_stale_symbol_summary
+from acw_common.websocket import evaluate_process_staleness, wait_for_market_ready
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 from exchange_plugin.coinone_plug import Coinone
@@ -605,19 +605,18 @@ class CoinoneWebsocket:
 
     def _wait_for_initial_data(self, timeout=60):
         """Wait for initial WebSocket data to be populated."""
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            if has_recent_market_ready(
-                self.local_redis,
-                "COINONE_SPOT",
-                ("ticker", "orderbook"),
-            ):
-                subscribed_count = self.subscription_state.get_subscription_count()
-                self.logger.info(f"[COINONE SPOT] Initial data loaded for {subscribed_count} subscribed symbols")
-                return
-
-            self.logger.info("[COINONE SPOT] Waiting for WebSocket data to be loaded...")
-            time.sleep(2)
+        ready_loaded = wait_for_market_ready(
+            self.local_redis,
+            "COINONE_SPOT",
+            ("ticker", "orderbook"),
+            self.logger,
+            "[COINONE SPOT] Waiting for WebSocket data to be loaded...",
+            timeout_secs=timeout,
+        )
+        if ready_loaded:
+            subscribed_count = self.subscription_state.get_subscription_count()
+            self.logger.info(f"[COINONE SPOT] Initial data loaded for {subscribed_count} subscribed symbols")
+            return
 
         self.logger.warning("[COINONE SPOT] Timeout waiting for initial data")
 
@@ -872,60 +871,40 @@ class CoinoneWebsocket:
                     continue
 
                 for stream_type in ("ticker", "orderbook"):
-                    if is_process_heartbeat_stale(
+                    result = evaluate_process_staleness(
                         self.local_redis,
                         "COINONE_SPOT",
                         stream_type,
                         COINONE_PROC_NAME,
-                        stale_threshold_secs=stale_threshold_secs,
-                        now_us=now_us,
-                    ):
-                        self.partial_stale_strikes[stream_type] = 0
-                        content = (
-                            f"[COINONE SPOT] {stream_type} heartbeat stale for > {stale_threshold_secs}s.\n"
-                            f"Forcing WebSocket reconnect."
-                        )
-                        self.logger.error(content)
-                        self.acw_api.create_message_thread(self.admin_id, "[COINONE] Heartbeat Stale", content)
-                        if self.error_event:
-                            self.error_event.set()
-                        break
-
-                    summary = get_stale_symbol_summary(
-                        self.local_redis,
-                        "COINONE_SPOT",
-                        stream_type,
                         subscribed_symbols,
+                        self.partial_stale_strikes,
                         stale_threshold_secs=stale_threshold_secs,
                         now_us=now_us,
                     )
-                    stale_count = summary["stale_count"]
-                    total_symbols = summary["total_symbols"]
-                    if stale_count == 0:
-                        self.partial_stale_strikes[stream_type] = 0
-                        continue
-
-                    self.partial_stale_strikes[stream_type] += 1
-                    strike_count = self.partial_stale_strikes[stream_type]
-                    self.logger.warning(
-                        f"[COINONE SPOT] {stream_type} partial stale "
-                        f"{stale_count}/{total_symbols}, strike={strike_count}, "
-                        f"symbols={summary['stale_symbols'][:5]}"
-                    )
-
-                    if stale_count == total_symbols or (
-                        strike_count >= 2 and (stale_count >= min(2, total_symbols) or summary["stale_ratio"] >= 0.25)
-                    ):
-                        content = (
-                            f"[COINONE SPOT] {stream_type} stale persisted "
-                            f"({stale_count}/{total_symbols}, strike={strike_count}).\n"
-                            f"Forcing WebSocket reconnect."
-                        )
+                    if result["action"] == "restart":
+                        if result["reason"] == "heartbeat":
+                            content = (
+                                f"[COINONE SPOT] {stream_type} heartbeat stale for > {stale_threshold_secs}s.\n"
+                                f"Forcing WebSocket reconnect."
+                            )
+                        else:
+                            content = (
+                                f"[COINONE SPOT] {stream_type} stale persisted "
+                                f"({result['stale_count']}/{result['total_symbols']}, strike={result['strike_count']}).\n"
+                                f"Forcing WebSocket reconnect."
+                            )
                         self.logger.error(content)
                         self.acw_api.create_message_thread(self.admin_id, "[COINONE] Stale Data", content)
                         if self.error_event:
                             self.error_event.set()
                         break
+                    if result["action"] == "warn":
+                        self.logger.warning(
+                            f"[COINONE SPOT] {stream_type} partial stale "
+                            f"{result['stale_count']}/{result['total_symbols']}, strike={result['strike_count']}, "
+                            f"symbols={result['stale_symbols_preview']}"
+                        )
+                        continue
 
             except Exception as e:
                 self.logger.error(f"[COINONE] monitor_stale_data_loop error: {e}, {traceback.format_exc()}")
