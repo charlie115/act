@@ -154,7 +154,7 @@ class MarketIngestRuntime:
 
         self.enabled_data_name_list = self.get_enabled_data_name_list()
 
-        for data_name in self.total_data_name_list:
+        for data_name in self.enabled_data_name_list:
             if 'okx' in data_name:
                 self.info_thread_dict[f"update_{data_name}"] = Thread(target=self.update_exchange_info_as_df, args=(data_name, 3), daemon=True)
             else:
