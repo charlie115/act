@@ -6,7 +6,7 @@ Use the monorepo root as the single entry point for:
 
 - environment file initialization
 - Docker image builds
-- frontend image build and optional local Next.js build
+- frontend image build and local Next.js dev server
 - testing stack startup and shutdown
 - production stack startup and shutdown
 
@@ -24,6 +24,12 @@ are left in place as fallback references.
 
 The official public frontend is now `apps/community_web_next`.
 The CRA app remains in the repo as legacy source, but the root workflow no longer depends on its build artifact.
+
+For day-to-day frontend development:
+
+- backend/data services run in Docker
+- `community_web_next` runs locally with `next dev`
+- hot reload happens outside Docker
 
 ## Commands
 
@@ -43,17 +49,26 @@ Initialize missing env files:
 make env-init
 ```
 
-Bring up everything needed for the testing/development stack:
+Bring up the backend/data services for local development:
 
 ```bash
 make dev-up STACK=all
 ```
 
-Bring up only the community-side stack:
+Bring up only the community-side backend stack:
 
 ```bash
 make dev-up STACK=community
 ```
+
+Start the local Next.js dev server:
+
+```bash
+make web-dev
+```
+
+The local frontend will be available on `http://localhost:3000`.
+The backend will be available on `http://localhost:8000`.
 
 Bring up only the trade-side stack:
 
@@ -112,6 +127,12 @@ make build-web ENV=testing
 make build-web ENV=production
 ```
 
+Run the local frontend dev server:
+
+```bash
+make web-dev
+```
+
 The old frontend artifact sync command is now a no-op because the official frontend runs as a container:
 
 ```bash
@@ -123,5 +144,6 @@ make sync-web ENV=production
 
 - `make env-init` only creates missing files unless `FORCE=1` is passed.
 - `make build-web` now runs a local Next.js production build in `apps/community_web_next`.
-- Community stack startup uses the `community-web-next` container as the public entrypoint.
+- `make web-dev` runs `community_web_next` locally with hot reload on port `3000`.
+- Community `dev-up` uses `infra/compose/community/compose.dev.yml` and does not start the frontend container.
 - Runtime services remain separated even though source control is unified.

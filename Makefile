@@ -7,7 +7,7 @@ ACTION ?= ps
 ARGS ?=
 FORCE ?= 0
 
-.PHONY: help doctor env-init build-images build-web sync-web stack dev-up dev-down prod-up prod-down
+.PHONY: help doctor env-init build-images build-web web-dev sync-web stack dev-up dev-down prod-up prod-down
 
 help:
 	@$(WORKFLOW) help
@@ -23,6 +23,9 @@ build-images:
 
 build-web:
 	@$(WORKFLOW) build-web $(ENV)
+
+web-dev:
+	@$(WORKFLOW) web-dev
 
 sync-web:
 	@$(WORKFLOW) sync-web $(ENV)

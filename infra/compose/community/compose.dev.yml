@@ -1,0 +1,71 @@
+services:
+  certbot:
+    profiles: ["disabled"]
+
+  nginx:
+    profiles: ["disabled"]
+
+  postgres:
+    container_name: dev-community-postgres
+    volumes:
+      - ${HOME}/dev-community-postgres/data/:/var/lib/postgresql/data/
+
+  redis:
+    container_name: dev-community-redis
+    volumes:
+      - ${HOME}/dev-community-redis/data/:/data/
+      - ${HOME}/dev-community-redis/conf/redis.conf:/etc/redis/redis.conf
+
+  mongodb:
+    container_name: dev-community-mongodb
+    volumes:
+      - ${HOME}/dev-community-mongodb/data/:/data/
+
+  community-web-next:
+    profiles: ["disabled"]
+
+  drf:
+    image: community-drf:dev
+    container_name: dev-community-drf
+    ports:
+      - "8000:8000"
+    volumes:
+      - ${HOME}/dev-community-drf/static:/opt/community_drf/static
+      - ${HOME}/dev-community-drf/media:/opt/community_drf/media
+      - ${HOME}/dev-community-apikey:/api_key:ro
+
+  celery-worker:
+    image: community-celery-worker:dev
+    container_name: dev-community-celery-worker
+    command: celery -A config worker -l DEBUG
+
+  celery-beat:
+    image: community-celery-beat:dev
+    container_name: dev-community-celery-beat
+    command: celery -A config beat -l DEBUG
+
+  news-core:
+    image: news-core:dev
+    container_name: dev-news-core
+
+  info-core:
+    image: info-core:dev
+    container_name: dev-info-core
+    volumes:
+      - ${HOME}/dev-info-core/logs:/home/info_core/info_core/loggers/logs
+
+  hdwallet-service:
+    profiles: ["disabled"]
+
+  hd-api-key-generator:
+    container_name: dev-hd-api-key-generator
+    volumes:
+      - ${HOME}/dev-community-apikey:/api_key
+
+secrets:
+  hd_mnemonic:
+    file: ${HOME}/dev-community-secrets/hd_mnemonic.txt
+
+networks:
+  community-network:
+    name: dev-community-network
