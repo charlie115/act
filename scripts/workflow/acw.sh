@@ -416,14 +416,16 @@ build_images() {
 
 web_dev() {
   local runner
+  local web_port
 
   runner="$(frontend_runner || true)"
   if [[ -z "${runner}" ]]; then
     echo "pnpm or corepack is required for community_web_next dev server." >&2
     exit 1
   fi
+  web_port="${WEB_PORT:-3000}"
 
-  echo "Starting community_web_next local dev server"
+  echo "Starting community_web_next local dev server on port ${web_port}"
 
   (
     cd "${ROOT_DIR}/apps/community_web_next"
@@ -431,7 +433,7 @@ web_dev() {
     set -a
     source ".env.development"
     set +a
-    eval "${runner} run dev -- --hostname 0.0.0.0 --port 3000"
+    eval "${runner} exec next dev --hostname 0.0.0.0 --port ${web_port}"
   )
 }
 

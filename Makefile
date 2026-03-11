@@ -6,6 +6,7 @@ ENV ?= testing
 ACTION ?= ps
 ARGS ?=
 FORCE ?= 0
+WEB_PORT ?= 3000
 
 .PHONY: help doctor env-init build-images build-web web-dev sync-web stack dev-up dev-down prod-up prod-down
 
@@ -25,7 +26,7 @@ build-web:
 	@$(WORKFLOW) build-web $(ENV)
 
 web-dev:
-	@$(WORKFLOW) web-dev
+	@WEB_PORT=$(WEB_PORT) $(WORKFLOW) web-dev
 
 sync-web:
 	@$(WORKFLOW) sync-web $(ENV)
