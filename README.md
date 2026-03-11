@@ -1,8 +1,8 @@
-# ACW Workspace
+# ACW Monorepo
 
-This directory is the staging area for the ACW monorepo migration.
+This repository is the root monorepo for ACW.
 
-At the moment, it is still a multi-repo workspace made of independent Git repositories:
+It was assembled from the previously separate repositories:
 
 - `community_web`
 - `community_drf`
@@ -12,7 +12,7 @@ At the moment, it is still a multi-repo workspace made of independent Git reposi
 - `arbitrage_community`
 - `arbitrage_trade`
 
-The target direction is:
+The monorepo direction is:
 
 - one root Git repository
 - service-based monorepo layout
@@ -61,10 +61,12 @@ These should remain separate deployable units even after monorepo migration:
 - Architecture map: [docs/architecture/service-dependency-map.md](docs/architecture/service-dependency-map.md)
 - Migration plan: [docs/architecture/monorepo-migration-plan.md](docs/architecture/monorepo-migration-plan.md)
 - Consolidation matrix: [docs/architecture/consolidation-matrix.md](docs/architecture/consolidation-matrix.md)
+- Core runtime boundaries: [docs/architecture/core-runtime-boundaries.md](docs/architecture/core-runtime-boundaries.md)
+- Execution data plane recommendation: [docs/architecture/execution-data-plane-recommendation.md](docs/architecture/execution-data-plane-recommendation.md)
 - Import manifest: [scripts/monorepo/repos.manifest](scripts/monorepo/repos.manifest)
 - Import script: [scripts/monorepo/create_monorepo.sh](scripts/monorepo/create_monorepo.sh)
 
-## Safe Import Workflow
+## Import Workflow
 
 1. Review and commit or stash changes in each nested repository.
 2. Run the preflight check:
@@ -87,3 +89,8 @@ If you want the current dirty working tree state copied too:
 
 The import script preserves history by using `git merge --allow-unrelated-histories`
 and `git read-tree --prefix`.
+
+## Notes
+
+- Runtime services still remain separate even though source control is unified.
+- `info_core` and `trade_core` should share internal libraries where practical, but they should not be merged into one runtime.

@@ -108,6 +108,9 @@ Keep one repo area, but treat it as two runtimes:
 
 They can share code, but should not be forced into one process.
 
+Also, `trade_core` should not be collapsed into `info_core`.
+The engine intentionally maintains its own execution-critical market state to avoid cross-service delay and to preserve multi-node/IP-distributed execution.
+
 ### `news_core`
 
 Keep separate as a worker-style service. It is operationally different from the web/backend stack.
@@ -115,6 +118,8 @@ Keep separate as a worker-style service. It is operationally different from the 
 ### `info_core`
 
 Keep separate as a long-running data engine. It is closer to streaming infrastructure than to a normal backend.
+
+Also, `info_core` should remain horizontally partitionable by enabled market sets and master/non-master responsibilities.
 
 ## Recommended Target Layout
 
@@ -176,6 +181,7 @@ Preferred approach:
 - extract duplicated Python integration/runtime code
 - introduce internal packages with stable import paths
 - update `info_core` and `trade_core` to consume shared packages
+- do not centralize execution-critical tick flow into a shared runtime while doing so
 
 ### Phase 5. Clean Service Boundaries
 
