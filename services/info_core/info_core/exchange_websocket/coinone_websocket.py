@@ -29,7 +29,6 @@ import _pickle as pickle
 import os
 import sys
 
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from loggers.logger import InfoCoreLogger
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck

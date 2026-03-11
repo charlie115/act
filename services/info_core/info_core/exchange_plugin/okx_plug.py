@@ -20,8 +20,6 @@ from okx.SubAccount import SubAccountAPI
 from okx.Trade import TradeAPI
 from okx.TradingData import TradingDataAPI
 
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
 from loggers.logger import InfoCoreLogger
 
 class OkxClient:

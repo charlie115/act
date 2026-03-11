@@ -9,8 +9,6 @@ import sys
 from multiprocessing import Process
 import traceback
 
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
 from loggers.logger import InfoCoreLogger
 from standalone_func.arbitrage_data_updater import store_funding_diff_loop, store_average_funding_loop, remove_delisted_funding_rate_loop
 

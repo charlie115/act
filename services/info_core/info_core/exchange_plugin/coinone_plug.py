@@ -6,8 +6,6 @@ import time
 import traceback
 import requests
 
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
 from loggers.logger import InfoCoreLogger
 
 

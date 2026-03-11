@@ -6,8 +6,6 @@ from upbit.client import Upbit
 import time
 import traceback
 
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
 from loggers.logger import InfoCoreLogger
 
 def calculate_upbit_price(price):

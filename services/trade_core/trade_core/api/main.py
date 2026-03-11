@@ -11,8 +11,6 @@ from typing import Optional
 from typing import List
 from uuid import UUID
 import sys, os
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
 from api import schemas
 from api import crud
 from config import acw_api, NODE, ADMIN_TELEGRAM_ID

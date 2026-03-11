@@ -13,8 +13,6 @@ from multiprocessing import Process
 from threading import Thread
 import re
 
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
 from loggers.logger import InfoCoreLogger
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.kline_data_generator import (

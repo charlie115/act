@@ -9,7 +9,6 @@ import _pickle as pickle
 # set directory to upper directory
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from loggers.logger import InfoCoreLogger
 from exchange_websocket.heartbeat import (
     has_recent_market_ready,

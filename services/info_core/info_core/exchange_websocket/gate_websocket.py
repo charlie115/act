@@ -21,7 +21,6 @@ import _pickle as pickle
 import os
 import sys
 
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from loggers.logger import InfoCoreLogger
 from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper

@@ -11,7 +11,6 @@ from sqlalchemy.exc import IntegrityError
 from uuid import UUID
 import uuid
 import sys, os
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import models, schemas
 from utils import encrypt_data, decrypt_data, find_api_keys
 from decorators import handle_db_exceptions

@@ -9,8 +9,6 @@ from psycopg2 import extras
 import traceback
 from threading import Thread
 
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
 from loggers.logger import TradeCoreLogger
 from etc.db_handler.postgres_client import InitDBClient as InitPostgresDBClient
 from api.utils import decrypt_data, MyException

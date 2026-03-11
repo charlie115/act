@@ -13,8 +13,6 @@ from decimal import Decimal
 import _pickle as pickle
 import queue
 
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
 from loggers.logger import TradeCoreLogger
 from exchange_plugin.upbit_plug import UserUpbitAdaptor
 from exchange_plugin.binance_plug import UserBinanceAdaptor

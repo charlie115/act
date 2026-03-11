@@ -3,8 +3,6 @@ import sys
 import logging
 import psycopg2
 from psycopg2.pool import ThreadedConnectionPool
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
 from loggers.logger import TradeCoreLogger
 
 logger = logging.getLogger(__name__)

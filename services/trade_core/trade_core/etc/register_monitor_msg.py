@@ -3,8 +3,6 @@ import datetime
 import os, json, sys
 import traceback
 
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
 from loggers.logger import TradeCoreLogger
 
 class RegisterMonitorMsg:

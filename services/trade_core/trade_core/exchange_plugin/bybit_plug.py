@@ -14,8 +14,6 @@ from threading import Thread
 from queue import Queue
 import _pickle as pickle
 
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
 from loggers.logger import TradeCoreLogger
 from etc.db_handler.postgres_client import InitDBClient as InitPostgresDBClient
 from etc.redis_connector.redis_helper import RedisHelper

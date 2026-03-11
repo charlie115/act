@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from uuid import UUID
 # append current dir
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import models
 from config import ENCRYPTION_KEY
 

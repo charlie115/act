@@ -13,7 +13,6 @@ import threading
 import time
 
 # Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from etc.redis_connector.redis_helper import RedisHelper
 from etc.redis_connector.optimized_redis_helper import OptimizedRedisHelper

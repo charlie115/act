@@ -9,8 +9,6 @@ import requests
 from pybit.unified_trading import HTTP
 import _pickle as pickle
 
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
 from loggers.logger import InfoCoreLogger
 from etc.redis_connector.redis_helper import RedisHelper
 
