@@ -16,6 +16,7 @@ COPY ./requirements/base.txt requirements/base.txt
 COPY ./manage.py manage.py
 COPY ./config config/
 COPY ./integrations integrations/
+COPY ./platform_common platform_common/
 COPY ./lib lib/
 COPY ./templates templates/
 COPY ./apps apps/
