@@ -1,0 +1,34 @@
+.DS_Store
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.pytest_cache/
+**/.mypy_cache/
+**/.venv/
+**/venv/
+
+# Node
+**/node_modules/
+**/build/
+**/dist/
+**/.parcel-cache/
+
+# Logs and runtime data
+**/logs/
+**/*.log
+**/dump.rdb
+
+# Local env and secrets
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+
+# Editors
+.idea/
+.vscode/
+
+# OS
+Thumbs.db

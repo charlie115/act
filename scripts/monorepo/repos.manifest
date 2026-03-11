@@ -1,0 +1,8 @@
+# source_repo|target_prefix|branch|kind
+community_web|apps/community_web|development|app
+community_drf|apps/community_drf|master|app
+news_core|services/news_core|master|service
+info_core|services/info_core|main|service
+trade_core|services/trade_core|main|service
+arbitrage_community|infra/compose/community|master|infra
+arbitrage_trade|infra/compose/trade|main|infra
