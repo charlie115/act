@@ -1,5 +1,6 @@
 import asyncio
 import json
+import math
 import pickle
 import threading
 
@@ -11,6 +12,22 @@ from users.models import User  # noqa: F401
 
 
 REDIS_CLI = get_infocore_redis_connection()
+
+
+def _normalize_signature_value(value):
+    if value is None:
+        return None
+
+    if isinstance(value, float) and math.isnan(value):
+        return None
+
+    try:
+        if value != value:
+            return None
+    except Exception:
+        pass
+
+    return value
 
 
 class KlineConsumer(AsyncWebsocketConsumer):
@@ -108,7 +125,10 @@ class KlineConsumer(AsyncWebsocketConsumer):
                         base_asset = record.get("base_asset")
                         if not base_asset:
                             continue
-                        signature = tuple(record.get(column) for column in self._record_columns)
+                        signature = tuple(
+                            _normalize_signature_value(record.get(column))
+                            for column in self._record_columns
+                        )
                         next_signatures[base_asset] = signature
                         if not self._initialized or self._row_signatures.get(base_asset) != signature:
                             changed_records.append(record)
