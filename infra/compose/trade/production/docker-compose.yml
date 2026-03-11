@@ -1,4 +1,3 @@
-version: '3'
 services:
   trade-postgres:
     image: postgres:16rc1-alpine

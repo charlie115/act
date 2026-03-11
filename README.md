@@ -63,6 +63,7 @@ These should remain separate deployable units even after monorepo migration:
 - Consolidation matrix: [docs/architecture/consolidation-matrix.md](docs/architecture/consolidation-matrix.md)
 - Core runtime boundaries: [docs/architecture/core-runtime-boundaries.md](docs/architecture/core-runtime-boundaries.md)
 - Execution data plane recommendation: [docs/architecture/execution-data-plane-recommendation.md](docs/architecture/execution-data-plane-recommendation.md)
+- Dev/prod workflow: [docs/workflows/dev-prod-workflow.md](docs/workflows/dev-prod-workflow.md)
 - Import manifest: [scripts/monorepo/repos.manifest](scripts/monorepo/repos.manifest)
 - Import script: [scripts/monorepo/create_monorepo.sh](scripts/monorepo/create_monorepo.sh)
 
