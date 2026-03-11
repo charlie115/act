@@ -12,7 +12,7 @@ import numpy as np
 import re
 from pymongo.errors import BulkWriteError
 from standalone_func.get_dollar_dict import get_dollar_dict
-from standalone_func.premium_data_generator import get_premium_df
+from standalone_func.premium_data_generator import get_or_build_premium_df
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
 # Module-level thread pool for insert operations
@@ -406,7 +406,15 @@ def ohlc_1T_generator(
             
             # # Performance tracking - premium data fetch
             # premium_fetch_start = time.time()
-            premium_df = get_premium_df(local_redis, fetched_convert_rate_dict, target_market_code, origin_market_code, logger=logger)
+            market_code_combination = f"{target_market_code}:{origin_market_code}"
+            premium_df = get_or_build_premium_df(
+                local_redis,
+                market_code_combination,
+                logger=logger,
+                convert_rate_dict=fetched_convert_rate_dict,
+                target_market_code=target_market_code,
+                origin_market_code=origin_market_code,
+            )
             premium_df['datetime_now'] = datetime_now
             # premium_fetch_time = time.time() - premium_fetch_start
             # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Fetching premium data took {premium_fetch_time:.4f} seconds")
