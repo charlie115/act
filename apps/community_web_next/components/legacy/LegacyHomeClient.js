@@ -4,12 +4,15 @@ import Box from "@mui/material/Box";
 
 import Home from "../../../community_web/src/pages/Home";
 import TVTickerWidget from "../../../community_web/src/components/trading_view/TVTickerWidget";
+import LegacyRouterShell from "./LegacyRouterShell";
 
 export default function LegacyHomeClient() {
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box className="legacy-surface legacy-surface--home" sx={{ width: "100%" }}>
       <TVTickerWidget isVisible />
-      <Home />
+      <LegacyRouterShell initialPath="/">
+        <Home />
+      </LegacyRouterShell>
     </Box>
   );
 }
