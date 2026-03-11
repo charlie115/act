@@ -26,11 +26,11 @@ class RedisHelper:
     
     def get_key(self, pattern):
         redis_conn = self.get_redis_client()
-        return redis_conn.keys(pattern)
+        return list(redis_conn.scan_iter(match=pattern))
     
     def get_all_keys(self):
         redis_conn = self.get_redis_client()
-        return redis_conn.keys()
+        return list(redis_conn.scan_iter())
 
     def set_data(self, key_name, value, ex=None):
         redis_conn = self.get_redis_client()
