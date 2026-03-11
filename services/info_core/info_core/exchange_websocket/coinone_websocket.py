@@ -929,7 +929,7 @@ class CoinoneWebsocket:
                          f"Subscriptions: {sub_count}/{MAX_SUBSCRIPTIONS}")
 
         if print_result:
-            print(print_text)
+            self.logger.info(print_text.rstrip())
 
         if include_text:
             return (proc_status, print_text)

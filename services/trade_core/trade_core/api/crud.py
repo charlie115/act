@@ -722,7 +722,7 @@ async def fetch_futures_position(user: UUID, market_code: str, db: AsyncSession)
         if position_df.empty:
             return Response(status_code=status.HTTP_404_NOT_FOUND, content="No positions found")
     except Exception as e:
-        print(traceback.format_exc())
+        logger.exception("fetch_futures_position failed")
         return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
     return position_df.to_dict(orient="records")
 
@@ -743,7 +743,7 @@ async def fetch_capital(user: UUID, market_code: str, db: AsyncSession):
     try:
         position_df = user_exchange_adaptor.get_capital(exchange, access_key, secret_key, market_type, passphrase=passphrase)
     except Exception as e:
-        print(traceback.format_exc())
+        logger.exception("fetch_capital failed")
         return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
     return position_df.to_dict()
 

@@ -679,7 +679,7 @@ class HyperliquidWebsocket:
         overall_status = all(proc_status_list) if proc_status_list else False
 
         if print_result:
-            print(f"[HYPERLIQUID {self.market_type}] WebSocket Status:\n{print_text}")
+            self.websocket_logger.info(f"[HYPERLIQUID {self.market_type}] WebSocket Status:\n{print_text}".rstrip())
 
         if include_text:
             return (overall_status, print_text)

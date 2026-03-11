@@ -32,7 +32,7 @@ class InitAiDataCore:
         if len(market_code_combination_series) > 0:
             for node_market_code_combinations in market_code_combination_series:
                 for each_market_code_combination in node_market_code_combinations:
-                    print(each_market_code_combination)
+                    self.logger.debug("market_code_combination=%s", each_market_code_combination)
                     if each_market_code_combination['trade_support']:
                         trading_market_code_combinations.append(each_market_code_combination['market_code_combination'])
         else:

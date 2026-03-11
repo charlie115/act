@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 
 from celery import Celery
 from celery.schedules import crontab
@@ -40,6 +41,8 @@ celery.conf.beat_schedule = {
     },
 }
 
+logger = logging.getLogger(__name__)
+
 @celery.task(bind=True, ignore_result=True)
 def debug_task(self):
-    print(f"Request: {self.request!r}")
+    logger.info("Celery debug task request: %r", self.request)

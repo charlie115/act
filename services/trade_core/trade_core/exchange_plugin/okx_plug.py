@@ -165,7 +165,7 @@ class InitOkxAdaptor:
     def get_deposit(self, asset='EOS'):
         deposit = pd.DataFrame(self.my_client.FundingAPI.get_deposit_history(ccy=asset)['data'])
         if len(deposit) == 0:
-            print(f'No deposit history for {asset}')
+            self.okx_plug_logger.info("No deposit history for %s", asset)
             return deposit
         else:
             deposit.loc[:, 'insertTime'] = deposit['ts'].astype(float).apply(lambda x: datetime.datetime.fromtimestamp(x/1000))
@@ -447,7 +447,8 @@ class InitOkxAdaptor:
             period = '1W'
 
         else:
-            print('Error occured while processing period.')
+            self.okx_plug_logger.error("Error occurred while processing period: %s", period)
+            return pd.DataFrame()
 
         kline = self.pub_client.MarketAPI.get_candlesticks(instId=symbol, bar=period, limit=str(count))
         kline = pd.DataFrame(kline['data'])
@@ -464,7 +465,8 @@ class InitOkxAdaptor:
         elif futures_type == "USD_M":
             symbol_list = [x['instId'] for x in self.pub_client.PublicAPI.get_instruments(instType='SWAP')['data'] if x['instId'].split("-")[1] != "USD"]
         else:
-            print(f"get_okx_fundingrate|futures_type:{futures_type} is not valid.")
+            self.okx_plug_logger.error("get_okx_fundingrate|futures_type:%s is not valid.", futures_type)
+            return pd.DataFrame()
 
         funding_data_list = []
         for each_symbol in symbol_list:

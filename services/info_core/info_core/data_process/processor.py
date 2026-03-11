@@ -441,7 +441,7 @@ class InitDataProcessor:
             user_trade_history_df = filtered_trade_history_df[filtered_trade_history_df['user_id']==user_id]
             user_redis_uuid_list = list(set(user_trade_history_df.dropna(subset=['addcoin_redis_uuid'])['addcoin_redis_uuid'].to_list()))
             if len(user_trade_history_df) == 0:
-                print(f"user_trade_history_df is empty!")
+                self.data_process_logger.warning("user_trade_history_df is empty for user_id=%s", user_id)
                 return pd.DataFrame(), 0
             for i, redis_uuid in enumerate(user_redis_uuid_list):
                 if i == 0:

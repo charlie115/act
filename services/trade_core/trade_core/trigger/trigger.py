@@ -158,7 +158,7 @@ class InitTrigger:
         for each_result in trade_proc_status_tup_list:
             print_text += f"{each_result[0]}: {each_result[1]}\n"
         if print_result:
-            print(print_text)
+            self.logger.info(print_text.rstrip())
         if include_text:
             return proc_status, print_text
         return proc_status

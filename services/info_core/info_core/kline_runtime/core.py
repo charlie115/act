@@ -31,8 +31,7 @@ class KlineRuntime:
             else:
                 print_text += f"{key} is alive\n"
         if print_result:
-            print(print_text)
+            self.kline_generator.kline_logger.info(print_text.rstrip())
         if include_text:
             return all([x.is_alive() for x in kline_generator_proc_dict.values()]), print_text
         return all([x.is_alive() for x in kline_generator_proc_dict.values()])
-

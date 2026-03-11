@@ -46,7 +46,7 @@ class RegisterMonitorMsg:
 
                 response = requests.post(self.api_url, data=json.dumps(data), headers=headers)
                 if response.status_code != 201:
-                    print(f"response.json: {response.json()}")
+                    self.logger.error("register_monitor_msg response.json: %s", response.json())
                     # raise Exception(f"data: {data}, response code: {response.status_code}, response: {response.json()}")
                     admin_data = {
                         "bot_token": self.bot_token,
@@ -61,6 +61,6 @@ class RegisterMonitorMsg:
                         "send_counts": 1,
                         "remark": None
                     }
-                    new_response = requests.post(self.api_url, data=json.dumps(data), headers=headers)
+                    requests.post(self.api_url, data=json.dumps(data), headers=headers)
             except Exception as e:
                 self.logger.error(f"Error in register_monitor_msg.register: {traceback.format_exc()}")

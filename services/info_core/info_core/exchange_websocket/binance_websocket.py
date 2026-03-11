@@ -397,7 +397,7 @@ class BinanceWebsocket:
             proc_status = False
             print_text = f"[BINANCE {self.market_type}]websocket proc is not running."
             if print_result:
-                print(print_text)
+                self.logger.info(print_text.rstrip())
             if include_text:
                 return (proc_status, print_text)
             return proc_status
@@ -407,7 +407,7 @@ class BinanceWebsocket:
             for key, value in self.websocket_proc_dict.items():
                 print_text += f"[BINANCE {self.market_type}]{key} status: {value.is_alive()}\n"
             if print_result:
-                print(print_text)
+                self.logger.info(print_text.rstrip())
             if include_text:
                 return (proc_status, print_text)
             return proc_status

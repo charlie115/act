@@ -318,7 +318,7 @@ class UpbitWebsocket:
             proc_status = False
             print_text = "[UPBIT SPOT]Upbit websocket proc is not running."
             if print_result:
-                print(print_text)
+                self.logger.info(print_text.rstrip())
             if include_text:
                 return (proc_status, print_text)
             return proc_status
@@ -328,7 +328,7 @@ class UpbitWebsocket:
             for key, value in self.websocket_proc_dict.items():
                 print_text += f"[UPBIT SPOT]{key} status: {value.is_alive()}\n"
             if print_result:
-                print(print_text)
+                self.logger.info(print_text.rstrip())
             if include_text:
                 return (proc_status, print_text)
             return proc_status

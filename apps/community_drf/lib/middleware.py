@@ -1,3 +1,5 @@
+import logging
+
 from channels.auth import AuthMiddlewareStack
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
@@ -6,6 +8,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken
 
 
 jwt_auth = JWTAuthentication()
+logger = logging.getLogger(__name__)
 
 
 @database_sync_to_async
@@ -28,7 +31,7 @@ class RouteNotFoundMiddleware:
         except ValueError as err:
             if "No route found for path" in str(err) and scope["type"] == "websocket":
                 await send({"type": "websocket.close"})
-                # TODO: Log error
+                logger.warning("No websocket route found for path=%s", scope.get("path"))
             else:
                 raise err
 

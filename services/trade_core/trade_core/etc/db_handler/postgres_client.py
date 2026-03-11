@@ -1,10 +1,13 @@
 import os
 import sys
+import logging
 import psycopg2
 from psycopg2.pool import ThreadedConnectionPool
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from loggers.logger import TradeCoreLogger
+
+logger = logging.getLogger(__name__)
 
 class InitDBClient:
     def __init__(self, host, port, user, passwd, database, create_database=True, pool_min_con=1, pool_max_con=20, logging_dir=None):
@@ -23,19 +26,19 @@ class InitDBClient:
             res = curr.execute(f"SELECT 1 FROM pg_database WHERE datname='{database}'")
             res = curr.fetchone()
             if res is None:
-                if self.logger is not None:
-                    self.logger.info(f"InitDBClient|SCHEMA: {database} does not exist. Creating...")
-                else:
-                    print(f"InitDBClient|SCHEMA: {database} does not exist. Creating...")
+                self._info(f"InitDBClient|SCHEMA: {database} does not exist. Creating...")
                 curr.execute(f"CREATE DATABASE {database}")
             else:
-                if self.logger is not None:
-                    self.logger.info(f"InitDBClient|SCHEMA: {database} already exists.")
-                else:
-                    print(f"InitDBClient|SCHEMA: {database} already exists.")
+                self._info(f"InitDBClient|SCHEMA: {database} already exists.")
             curr.close()
             conn.close()
         self.pool = ThreadedConnectionPool(pool_min_con, pool_max_con, host=host, port=port, user=user, password=passwd, database=database)
+
+    def _info(self, message):
+        if self.logger is not None:
+            self.logger.info(message)
+        else:
+            logger.info(message)
 
     def get_conn(self):
         conn = psycopg2.connect(host=self.host, port=self.port, user=self.user, password=self.passwd, database=self.database)
@@ -90,10 +93,7 @@ class InitDBClient:
     def create_trade_config(self, table_name='trade_config'):
         # First check whether the table exists
         if self.check_table_exist(table_name):
-            if self.logger is not None:
-                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
-            else:
-                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            self._info(f"InitDBClient|TABLE: {table_name} already exists.")
             return
         query = f"""
             CREATE TABLE IF NOT EXISTS {table_name}
@@ -133,18 +133,12 @@ class InitDBClient:
         conn.commit()
         curr.close()
         conn.close()
-        if self.logger is not None:
-            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
-        else:
-            print(f"InitDBClient|TABLE: {table_name} created.")
+        self._info(f"InitDBClient|TABLE: {table_name} created.")
             
     def create_trigger_scanner(self, table_name='trigger_scanner'):
         # First check whether the table exists
         if self.check_table_exist(table_name):
-            if self.logger is not None:
-                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
-            else:
-                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            self._info(f"InitDBClient|TABLE: {table_name} already exists.")
             return
         query = f"""
             CREATE TABLE IF NOT EXISTS {table_name}
@@ -177,18 +171,12 @@ class InitDBClient:
         conn.commit()
         curr.close()
         conn.close()
-        if self.logger is not None:
-            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
-        else:
-            print(f"InitDBClient|TABLE: {table_name} created.")
+        self._info(f"InitDBClient|TABLE: {table_name} created.")
 
     def create_trade(self, table_name='trade'):
         # First check whether the table exists
         if self.check_table_exist(table_name):
-            if self.logger is not None:
-                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
-            else:
-                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            self._info(f"InitDBClient|TABLE: {table_name} already exists.")
             return
         query = f"""
             CREATE TABLE IF NOT EXISTS {table_name}
@@ -223,18 +211,12 @@ class InitDBClient:
         conn.commit()
         curr.close()
         conn.close()
-        if self.logger is not None:
-            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
-        else:
-            print(f"InitDBClient|TABLE: {table_name} created.")
+        self._info(f"InitDBClient|TABLE: {table_name} created.")
 
     def create_trade_log(self, table_name='trade_log'):
         # First check whether the table exists
         if self.check_table_exist(table_name):
-            if self.logger is not None:
-                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
-            else:
-                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            self._info(f"InitDBClient|TABLE: {table_name} already exists.")
             return
         query = f"""
             CREATE TABLE IF NOT EXISTS {table_name}
@@ -264,18 +246,12 @@ class InitDBClient:
         conn.commit()
         curr.close()
         conn.close()
-        if self.logger is not None:
-            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
-        else:
-            print(f"InitDBClient|TABLE: {table_name} created.")
+        self._info(f"InitDBClient|TABLE: {table_name} created.")
 
     def create_repeat_trade(self, table_name='repeat_trade'):
         # First check whether the table exists
         if self.check_table_exist(table_name):
-            if self.logger is not None:
-                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
-            else:
-                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            self._info(f"InitDBClient|TABLE: {table_name} already exists.")
             return
         query = f"""
             CREATE TABLE IF NOT EXISTS {table_name}
@@ -302,18 +278,12 @@ class InitDBClient:
         conn.commit()
         curr.close()
         conn.close()
-        if self.logger is not None:
-            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
-        else:
-            print(f"InitDBClient|TABLE: {table_name} created.")
+        self._info(f"InitDBClient|TABLE: {table_name} created.")
 
     def create_exchange_api_key(self, table_name='exchange_api_key'):
         # First check whether the table exists
         if self.check_table_exist(table_name):
-            if self.logger is not None:
-                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
-            else:
-                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            self._info(f"InitDBClient|TABLE: {table_name} already exists.")
             return
         query = f"""
             CREATE TABLE IF NOT EXISTS {table_name}
@@ -341,18 +311,12 @@ class InitDBClient:
         conn.commit()
         curr.close()
         conn.close()
-        if self.logger is not None:
-            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
-        else:
-            print(f"InitDBClient|TABLE: {table_name} created.")
+        self._info(f"InitDBClient|TABLE: {table_name} created.")
 
     def create_order_history(self, table_name='order_history'):
         # First check whether the table exists
         if self.check_table_exist(table_name):
-            if self.logger is not None:
-                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
-            else:
-                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            self._info(f"InitDBClient|TABLE: {table_name} already exists.")
             return
         query = f"""
             CREATE TABLE IF NOT EXISTS {table_name}
@@ -384,18 +348,12 @@ class InitDBClient:
         conn.commit()
         curr.close()
         conn.close()
-        if self.logger is not None:
-            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
-        else:
-            print(f"InitDBClient|TABLE: {table_name} created.")
+        self._info(f"InitDBClient|TABLE: {table_name} created.")
 
     def create_trade_history(self, table_name='trade_history'):
         # First check whether the table exists
         if self.check_table_exist(table_name):
-            if self.logger is not None:
-                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
-            else:
-                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            self._info(f"InitDBClient|TABLE: {table_name} already exists.")
             return
         query = f"""
             CREATE TABLE IF NOT EXISTS {table_name}
@@ -433,18 +391,12 @@ class InitDBClient:
         conn.commit()
         curr.close()
         conn.close()
-        if self.logger is not None:
-            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
-        else:
-            print(f"InitDBClient|TABLE: {table_name} created.")
+        self._info(f"InitDBClient|TABLE: {table_name} created.")
 
     def create_pnl_history(self, table_name='pnl_history'):
         # First check whether the table exists
         if self.check_table_exist(table_name):
-            if self.logger is not None:
-                self.logger.info(f"InitDBClient|TABLE: {table_name} already exists.")
-            else:
-                print(f"InitDBClient|TABLE: {table_name} already exists.")
+            self._info(f"InitDBClient|TABLE: {table_name} already exists.")
             return
         query = f"""
             CREATE TABLE IF NOT EXISTS {table_name}
@@ -490,7 +442,4 @@ class InitDBClient:
         conn.commit()
         curr.close()
         conn.close()
-        if self.logger is not None:
-            self.logger.info(f"InitDBClient|TABLE: {table_name} created.")
-        else:
-            print(f"InitDBClient|TABLE: {table_name} created.")
+        self._info(f"InitDBClient|TABLE: {table_name} created.")
