@@ -90,20 +90,21 @@ class MarketCodesView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
     _prefix = "INFO_CORE|ACTIVATED|"
+    _index_key = "INFO_CORE|ACTIVATED_INDEX"
+    _ttl_seconds = 35
 
     def get(self, request):
         market_codes = {}
-        for redis_key in REDIS_CLI.keys():
-            redis_key = redis_key.decode()
+        minimum_score = time.time() - self._ttl_seconds
+        redis_keys = REDIS_CLI.zrangebyscore(self._index_key, minimum_score, "+inf")
+        for redis_key in redis_keys:
+            redis_key = redis_key.decode() if isinstance(redis_key, bytes) else redis_key
 
-            if redis_key.startswith(self._prefix):
-                redis_key = redis_key.replace(self._prefix, "")
-
-                target_market, origin_market = redis_key.split(":")
-                if target_market in market_codes:
-                    market_codes[target_market].append(origin_market)
-                else:
-                    market_codes[target_market] = [origin_market]
+            target_market, origin_market = redis_key.split(":")
+            if target_market in market_codes:
+                market_codes[target_market].append(origin_market)
+            else:
+                market_codes[target_market] = [origin_market]
 
         data = {key: sorted(market_codes[key]) for key in sorted(market_codes.keys())}
 

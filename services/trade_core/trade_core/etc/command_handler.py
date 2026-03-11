@@ -2,6 +2,7 @@ import time
 from acw_api import AcwApi
 import pandas as pd
 import os
+import subprocess
 import traceback
 from loggers.logger import TradeCoreLogger
 
@@ -90,7 +91,7 @@ class CommandHandler:
         self.acw_api.create_message(self.admin_telegram_id, title, title)
         upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         restart_dir = upper_dir + '/stop.sh'
-        os.system(restart_dir)
+        subprocess.run([restart_dir], check=False)
         return
     
     def restart(self):
@@ -99,5 +100,5 @@ class CommandHandler:
         self.acw_api.create_message(self.admin_telegram_id, title, title)
         upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         restart_dir = upper_dir + '/restart.sh'
-        os.system(restart_dir)
+        subprocess.run([restart_dir], check=False)
         return

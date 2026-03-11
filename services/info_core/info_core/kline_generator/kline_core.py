@@ -23,6 +23,9 @@ from standalone_func.kline_data_generator import (
                                                   ohlc_interval_generator,
                                                   )
 class InitKlineCore:
+    ACTIVATED_INDEX_KEY = "INFO_CORE|ACTIVATED_INDEX"
+    ACTIVATED_TTL_SECONDS = 35
+
     def __init__(
         self,
         admin_id,
@@ -125,8 +128,22 @@ class InitKlineCore:
         def register_enabled_market_klines_to_redis():
             while True:
                 try:
+                    now_timestamp = datetime.datetime.utcnow().timestamp()
                     for each_enabled_market_klines in self.enabled_market_klines:
-                        self.remote_redis.set_data(f"INFO_CORE|ACTIVATED|{each_enabled_market_klines}", datetime.datetime.utcnow().timestamp(), ex=35)
+                        self.remote_redis.set_data(
+                            f"INFO_CORE|ACTIVATED|{each_enabled_market_klines}",
+                            now_timestamp,
+                            ex=self.ACTIVATED_TTL_SECONDS,
+                        )
+                        self.remote_redis.zadd_member(
+                            self.ACTIVATED_INDEX_KEY,
+                            {each_enabled_market_klines: now_timestamp},
+                        )
+                    self.remote_redis.zremrangebyscore(
+                        self.ACTIVATED_INDEX_KEY,
+                        "-inf",
+                        now_timestamp - self.ACTIVATED_TTL_SECONDS,
+                    )
                 except Exception as e:
                     self.kline_logger.error(f"register_enabled_market_klines|Error in register_enabled_market_klines_to_redis: {traceback.format_exc()}")
                 time.sleep(30)
