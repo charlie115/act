@@ -36,6 +36,10 @@ def get_convert_rate_version(redis_client, market_code_combination):
     )
 
 
+def _to_market_state_code(market_code):
+    return market_code.split("/")[0]
+
+
 def build_premium_cache_metadata(
     redis_client,
     market_code_combination,
@@ -45,8 +49,14 @@ def build_premium_cache_metadata(
     return {
         "generated_at": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f"),
         "market_code_combination": market_code_combination,
-        "target_signature": get_market_data_signature(redis_client, target_market_code),
-        "origin_signature": get_market_data_signature(redis_client, origin_market_code),
+        "target_signature": get_market_data_signature(
+            redis_client,
+            _to_market_state_code(target_market_code),
+        ),
+        "origin_signature": get_market_data_signature(
+            redis_client,
+            _to_market_state_code(origin_market_code),
+        ),
         "convert_rate_version": get_convert_rate_version(
             redis_client,
             market_code_combination,
