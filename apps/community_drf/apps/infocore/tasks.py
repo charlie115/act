@@ -7,23 +7,16 @@ and creating notifications when thresholds are exceeded.
 
 from datetime import timedelta
 
-from django.conf import settings
 from django.utils import timezone
-from pymongo import MongoClient
 
 from config.celery import celery
 from infocore.models import VolatilityNotificationConfig, VolatilityNotificationHistory
+from integrations.infocore import get_infocore_mongo_client
 from messagecore.models import Message
 
 
 # MongoDB client for fetching volatility data
-MONGODB_CLI = MongoClient(
-    host=settings.MONGODB["HOST"],
-    port=settings.MONGODB["PORT"],
-    username=settings.MONGODB["USERNAME"],
-    password=settings.MONGODB["PASSWORD"],
-    appname="django-infocore-tasks",
-)
+MONGODB_CLI = get_infocore_mongo_client(appname="django-infocore-tasks")
 
 
 def fetch_volatility_data(target_market_code, origin_market_code, base_assets=None):

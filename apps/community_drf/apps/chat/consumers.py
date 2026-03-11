@@ -5,23 +5,14 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from datetime import datetime
 from django.conf import settings
 from django.core.cache import cache
-from django_redis import get_redis_connection
-from pymongo import MongoClient
+from integrations.chat import get_chat_mongo_client, get_chat_redis_connection
 
 from lib.datetime import DATE_FORMAT_NUM, TZ_ASIA_SEOUL, TZ_UTC
 from users.models import UserBlocklist
 
 
-REDIS_CLI = get_redis_connection("default")
-REDIS_CLI.client_setname("django")
-
-MONGODB_CLI = MongoClient(
-    host=settings.MONGODB["HOST"],
-    port=settings.MONGODB["PORT"],
-    username=settings.MONGODB["USERNAME"],
-    password=settings.MONGODB["PASSWORD"],
-    appname="django-chat-ws",
-)
+REDIS_CLI = get_chat_redis_connection(client_name="django")
+MONGODB_CLI = get_chat_mongo_client(appname="django-chat-ws")
 
 
 class ChatConsumer(AsyncWebsocketConsumer):

@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.shortcuts import render
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from pymongo import MongoClient
+from integrations.chat import get_chat_mongo_client
 from pytz import timezone
 from rest_framework import response, views
 from rest_framework.pagination import PageNumberPagination
@@ -18,14 +18,7 @@ from lib.datetime import (
 from lib.utils import get_client_ip, generate_username
 from users.models import UserBlocklist
 
-
-MONGODB_CLI = MongoClient(
-    host=settings.MONGODB["HOST"],
-    port=settings.MONGODB["PORT"],
-    username=settings.MONGODB["USERNAME"],
-    password=settings.MONGODB["PASSWORD"],
-    appname="django-chat-api",
-)
+MONGODB_CLI = get_chat_mongo_client(appname="django-chat-api")
 
 
 def chatbox(request):

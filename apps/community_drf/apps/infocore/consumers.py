@@ -4,13 +4,13 @@ import pickle
 import threading
 
 from channels.generic.websocket import AsyncWebsocketConsumer
-from django_redis import get_redis_connection
+from integrations.infocore import get_infocore_redis_connection
 from urllib.parse import parse_qsl
 
 from users.models import User  # noqa: F401
 
 
-REDIS_CLI = get_redis_connection("default")
+REDIS_CLI = get_infocore_redis_connection()
 
 
 class KlineConsumer(AsyncWebsocketConsumer):

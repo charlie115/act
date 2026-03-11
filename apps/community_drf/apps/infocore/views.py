@@ -7,14 +7,17 @@ from django.conf import settings
 from django.core.cache import cache
 from django_filters import FilterSet
 from django_filters.rest_framework import DjangoFilterBackend
-from django_redis import get_redis_connection
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import exceptions, response, views
-from pymongo import MongoClient, DESCENDING
+from pymongo import DESCENDING
 from pytz import timezone
 
 from infocore.models import Asset
 from infocore.models import VolatilityNotificationConfig
+from integrations.infocore import (
+    get_infocore_mongo_client,
+    get_infocore_redis_connection,
+)
 from infocore.serializers import (
     AssetSerializer,
     AverageFundingRateDataQueryParamsSerializer,
@@ -38,16 +41,8 @@ from infocore.serializers import (
 from lib.filters import CharArrayFilter
 from lib.views import BaseViewSet
 
-
-REDIS_CLI = get_redis_connection("default")
-
-MONGODB_CLI = MongoClient(
-    host=settings.MONGODB["HOST"],
-    port=settings.MONGODB["PORT"],
-    username=settings.MONGODB["USERNAME"],
-    password=settings.MONGODB["PASSWORD"],
-    appname="django-infocore-api",
-)
+REDIS_CLI = get_infocore_redis_connection()
+MONGODB_CLI = get_infocore_mongo_client(appname="django-infocore-api")
 
 
 class AssetFilter(FilterSet):
