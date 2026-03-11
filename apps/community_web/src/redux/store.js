@@ -63,7 +63,7 @@ const chatPersistConfig = {
 };
 
 const homePersistConfig = {
-  key: 'home',
+  key: 'home_v2',
   storage,
   whitelist: [
     'bookmarkedMarketCodes',
