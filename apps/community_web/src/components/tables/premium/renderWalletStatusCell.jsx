@@ -17,10 +17,10 @@ export default function renderWalletStatusCell({ cell, table }) {
   );
   const walletStatus = cell.getValue();
 
-  const iconSx = isMobile ? { fontSize: '0.8rem' } : {};
-  const reverseIconSx = isMobile 
-    ? { fontSize: '0.8rem', transform: 'scaleX(-1)' } 
-    : { transform: 'scaleX(-1)' };
+  const iconSx = isMobile ? { fontSize: '0.625rem' } : { fontSize: '1rem' };
+  const reverseIconSx = isMobile
+    ? { fontSize: '0.625rem', transform: 'scaleX(-1)' }
+    : { fontSize: '1rem', transform: 'scaleX(-1)' };
 
   if (!walletStatus) return '...';
 

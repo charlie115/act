@@ -29,30 +29,32 @@ function FundingRate({ diff, fundingTime, value, decimal = 3, isMobile, fundingI
 
   return (
     <>
-      <Stack direction="row" spacing={0.5} alignItems="center">
+      <Stack direction="row" spacing={0.25} alignItems="center">
         <Box
           component="span"
           sx={{
             color: value < 0 ? 'error.main' : undefined,
-            fontSize: { xs: 9, sm: 12 },
+            fontSize: { xs: 7, sm: 10 },
+            fontFamily: '"JetBrains Mono", "SF Mono", monospace',
+            fontWeight: 500,
             ...sx,
           }}
         >
-          {formatIntlNumber(value, decimal, 1)}
+          {formatIntlNumber(value, decimal, 1)}%
         </Box>
         {fundingIntervalHours != null && (
           <Box
             component="span"
             sx={{
-              fontSize: { xs: 7, sm: 9 },
+              fontSize: { xs: 5, sm: 7 },
               fontWeight: 700,
               color: 'white',
               bgcolor: getBadgeColor(fundingIntervalHours),
-              borderRadius: '4px',
-              px: 0.5,
-              py: 0.25,
+              borderRadius: '3px',
+              px: 0.375,
+              py: 0.125,
               lineHeight: 1,
-              opacity: 0.85,
+              opacity: 0.9,
             }}
           >
             {fundingIntervalHours}h
@@ -64,7 +66,7 @@ function FundingRate({ diff, fundingTime, value, decimal = 3, isMobile, fundingI
           <Countdown
             date={DateTime.fromISO(fundingTime).toJSDate()}
             renderer={({ hours, minutes, seconds }) => (
-              <Box sx={{ fontSize: isMobile ? '0.65em' : '0.75em' }}>
+              <Box sx={{ fontSize: isMobile ? '0.55em' : '0.65em' }}>
                 {isMobile
                   ? `${hours.toString().padStart(2, '0')}:${minutes
                       .toString()

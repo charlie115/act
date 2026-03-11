@@ -13,7 +13,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
 import Zoom from '@mui/material/Zoom';
 
-import { styled } from '@mui/material/styles';
+import { styled, alpha, keyframes } from '@mui/material/styles';
 
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
@@ -148,7 +148,17 @@ export default function MainLayout() {
   );
 }
 
-// Modern main content area with smooth transitions
+// Floating animation for scroll-to-top button
+const floatAnimation = keyframes`
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+`;
+
+// Modern main content area with smooth transitions and mesh gradient
 const Main = styled(Box, { shouldForwardProp: (prop) => prop !== 'open' })(
   ({ theme, open }) => ({
     flexGrow: 1,
@@ -181,6 +191,20 @@ const Main = styled(Box, { shouldForwardProp: (prop) => prop !== 'open' })(
     overflowX: 'hidden',
     position: 'relative',
     scrollBehavior: 'smooth',
+    // Subtle mesh gradient background for depth
+    '&::before': {
+      content: '""',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '40vh',
+      background: theme.palette.mode === 'dark'
+        ? 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 124, 255, 0.08), transparent)'
+        : 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 124, 255, 0.04), transparent)',
+      pointerEvents: 'none',
+      zIndex: -1,
+    },
     // Custom scrollbar styling
     '&::-webkit-scrollbar': {
       width: 8,
@@ -225,36 +249,68 @@ const ContentContainer = styled(Box)(({ theme }) => ({
   width: '100%',
 }));
 
-// Page container with modern styling
+// Page container with modern styling and subtle inner glow
 const PageContainer = styled(Paper)(({ theme }) => ({
   display: 'flex',
   flex: 1,
   position: 'relative',
   boxShadow: theme.shadows[1],
-  transition: theme.transitions.create(['box-shadow'], {
+  transition: theme.transitions.create(['box-shadow', 'border-color'], {
     duration: theme.transitions.duration.short,
   }),
+  // Subtle border for depth
+  border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+  // Inner highlight for glassmorphism effect
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '1px',
+    background: theme.palette.mode === 'dark'
+      ? 'linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.06) 50%, transparent 95%)'
+      : 'linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.6) 50%, transparent 95%)',
+    borderRadius: `${theme.shape.borderRadius}px ${theme.shape.borderRadius}px 0 0`,
+    pointerEvents: 'none',
+  },
   '&:hover': {
     boxShadow: theme.shadows[2],
+    borderColor: alpha(theme.palette.primary.main, 0.08),
   },
 }));
 
-// Modern scroll to top button
+// Modern scroll to top button with floating animation and gradient
 const ScrollToTopButton = styled(IconButton)(({ theme }) => ({
   position: 'fixed',
   bottom: theme.spacing(3),
   right: theme.spacing(3),
-  backgroundColor: theme.palette.primary.main,
+  background: theme.palette.gradients?.primary || theme.palette.primary.main,
   color: theme.palette.primary.contrastText,
-  boxShadow: theme.shadows[4],
+  boxShadow: theme.palette.glows?.primary || theme.shadows[4],
+  animation: `${floatAnimation} 3s ease-in-out infinite`,
+  // Subtle inner glow
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: '50%',
+    background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%)',
+    pointerEvents: 'none',
+  },
   '&:hover': {
-    backgroundColor: theme.palette.primary.dark,
+    background: theme.palette.gradients?.primary || theme.palette.primary.dark,
     transform: 'scale(1.1)',
+    boxShadow: theme.palette.glows?.primaryStrong || theme.shadows[6],
+    animationPlayState: 'paused',
   },
   '&:active': {
     transform: 'scale(0.95)',
   },
-  transition: theme.transitions.create(['background-color', 'transform'], {
+  transition: theme.transitions.create(['background', 'transform', 'box-shadow'], {
     duration: theme.transitions.duration.short,
   }),
   [theme.breakpoints.down('sm')]: {

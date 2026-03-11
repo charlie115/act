@@ -37,36 +37,13 @@ export default function renderFundingRateCell({ cell, column, row, table }) {
           .toObject()
       : null;
 
-  const label =
-    column.id === 'targetFundingRate'
-      ? row.original.marketCodes?.targetMarketCode
-      : row.original.marketCodes?.originMarketCode;
-  const icon =
-    column.id === 'targetFundingRate'
-      ? row.original.targetFundingRateIcon
-      : row.original.originFundingRateIcon;
-
   return (
-    <>
-      {icon && (
-        <Box
-          component="img"
-          src={icon}
-          alt={label}
-          sx={{
-            mr: 1,
-            height: { xs: 8, sm: 10, md: 12 },
-            width: { xs: 8, sm: 10, md: 12 },
-          }}
-        />
-      )}
-      <FundingRate
-        diff={diff}
-        value={value}
-        fundingTime={fundingRate?.funding_time}
-        fundingIntervalHours={fundingRate?.funding_interval_hours}
-        isMobile={isMobile}
-      />
-    </>
+    <FundingRate
+      diff={diff}
+      value={value}
+      fundingTime={fundingRate?.funding_time}
+      fundingIntervalHours={fundingRate?.funding_interval_hours}
+      isMobile={isMobile}
+    />
   );
 }

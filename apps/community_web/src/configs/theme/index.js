@@ -24,6 +24,15 @@ const typography = {
     '"Segoe UI Emoji"',
     '"Segoe UI Symbol"',
   ].join(','),
+  // Monospace font for trading numbers - crisp, aligned digits
+  fontFamilyMono: [
+    '"JetBrains Mono"',
+    '"SF Mono"',
+    '"Fira Code"',
+    '"Cascadia Code"',
+    'Consolas',
+    'monospace',
+  ].join(','),
   fontSize: 14, // Base font size increased from 12px
   fontWeightLight: 300,
   fontWeightRegular: 400,
@@ -127,6 +136,63 @@ const typography = {
     lineHeight: 2.5,
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
+  },
+  // Trading-specific typography variants (TradingView Pro style)
+  // Large data display - hero numbers, main prices
+  dataLarge: {
+    fontFamily: '"JetBrains Mono", "SF Mono", monospace',
+    fontSize: '1.5rem',
+    fontWeight: 700,
+    lineHeight: 1.2,
+    letterSpacing: '-0.02em',
+    fontFeatureSettings: '"tnum" 1, "ss01" 1', // Tabular nums, stylistic set
+    '@media (max-width:600px)': {
+      fontSize: '1.25rem',
+    },
+  },
+  // Medium data - table cells, secondary values
+  dataMedium: {
+    fontFamily: '"JetBrains Mono", "SF Mono", monospace',
+    fontSize: '0.875rem',
+    fontWeight: 600,
+    lineHeight: 1.4,
+    letterSpacing: '-0.01em',
+    fontFeatureSettings: '"tnum" 1',
+    '@media (max-width:600px)': {
+      fontSize: '0.8125rem',
+    },
+  },
+  // Small data - percentages, labels
+  dataSmall: {
+    fontFamily: '"JetBrains Mono", "SF Mono", monospace',
+    fontSize: '0.75rem',
+    fontWeight: 500,
+    lineHeight: 1.4,
+    letterSpacing: '0',
+    fontFeatureSettings: '"tnum" 1',
+    '@media (max-width:600px)': {
+      fontSize: '0.6875rem',
+    },
+  },
+  // Display heading - hero sections, page titles
+  displayH1: {
+    fontSize: '3.5rem',
+    fontWeight: 800,
+    lineHeight: 1.1,
+    letterSpacing: '-0.03em',
+    '@media (max-width:600px)': {
+      fontSize: '2.5rem',
+    },
+  },
+  // Display heading 2 - section titles
+  displayH2: {
+    fontSize: '2.5rem',
+    fontWeight: 700,
+    lineHeight: 1.15,
+    letterSpacing: '-0.02em',
+    '@media (max-width:600px)': {
+      fontSize: '1.875rem',
+    },
   },
 };
 

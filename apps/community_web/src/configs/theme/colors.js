@@ -244,41 +244,151 @@ const colors = {
     large: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
     xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
     inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
+    // Floating effect for elevated cards
+    floating: '0 20px 40px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.1)',
+    // Card hover depth
+    cardHover: '0 12px 24px -8px rgba(0, 0, 0, 0.12)',
+  },
+
+  // Glow effects for interactive states (TradingView Pro - subtle, not neon)
+  glows: {
+    primary: '0 0 16px rgba(0, 124, 255, 0.2), 0 0 32px rgba(0, 124, 255, 0.08)',
+    primaryStrong: '0 0 20px rgba(0, 124, 255, 0.35), 0 0 40px rgba(0, 124, 255, 0.15)',
+    success: '0 0 16px rgba(37, 193, 150, 0.2), 0 0 32px rgba(37, 193, 150, 0.08)',
+    error: '0 0 16px rgba(255, 13, 69, 0.2), 0 0 32px rgba(255, 13, 69, 0.08)',
+    warning: '0 0 16px rgba(250, 161, 45, 0.25), 0 0 32px rgba(250, 161, 45, 0.1)',
+    accent: '0 0 16px rgba(250, 213, 50, 0.25), 0 0 32px rgba(250, 213, 50, 0.1)',
+    info: '0 0 16px rgba(0, 187, 255, 0.2), 0 0 32px rgba(0, 187, 255, 0.08)',
+  },
+
+  // Heat map color scales for table data visualization
+  heatMap: {
+    // Positive values (green scale) - 5 intensity levels
+    positive: ['#e8f9f4', '#c3f0e3', '#77dcbf', '#25C196', '#1b8f71'],
+    // Negative values (red scale) - 5 intensity levels
+    negative: ['#ffebee', '#ffcdd2', '#ef5350', '#ff0d45', '#b71c1c'],
+    // Neutral background
+    neutral: '#f8fafc',
+    // Get heat color based on value and threshold
+    getPositiveIntensity: (value, threshold = 5) => {
+      const intensity = Math.min(Math.abs(value) / threshold, 1);
+      const index = Math.floor(intensity * 4);
+      return ['#e8f9f4', '#c3f0e3', '#77dcbf', '#25C196', '#1b8f71'][index];
+    },
+    getNegativeIntensity: (value, threshold = 5) => {
+      const intensity = Math.min(Math.abs(value) / threshold, 1);
+      const index = Math.floor(intensity * 4);
+      return ['#ffebee', '#ffcdd2', '#ef5350', '#ff0d45', '#b71c1c'][index];
+    },
+  },
+
+  // Glassmorphism presets (TradingView Pro - subtle glass, not heavy blur)
+  glass: {
+    light: {
+      background: 'rgba(255, 255, 255, 0.7)',
+      backgroundHover: 'rgba(255, 255, 255, 0.85)',
+      border: '1px solid rgba(255, 255, 255, 0.3)',
+      backdropFilter: 'blur(12px) saturate(180%)',
+    },
+    dark: {
+      background: 'rgba(20, 24, 33, 0.75)',
+      backgroundHover: 'rgba(20, 24, 33, 0.85)',
+      border: '1px solid rgba(255, 255, 255, 0.06)',
+      backdropFilter: 'blur(12px) saturate(180%)',
+    },
+    // Subtle variant for cards
+    subtle: {
+      background: 'rgba(255, 255, 255, 0.4)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      backdropFilter: 'blur(8px)',
+    },
   },
 };
 
-// Dark theme colors with better contrast
+// Dark theme colors with TradingView Pro aesthetic
+// Professional, blue-tinted backgrounds with high readability
 export const darkColors = {
   ...colors,
-  background: { 
-    default: '#0a0b0f',
-    paper: '#141821',
+  background: {
+    // Deeper, slightly blue-tinted backgrounds
+    default: '#080a0e',
+    paper: '#111520',
     elevated: '#1a1f2e',
-    backdrop: 'rgba(0, 0, 0, 0.8)',
-    overlay: 'rgba(20, 24, 33, 0.95)',
+    // Hover state for paper
+    paperHover: '#1e2433',
+    backdrop: 'rgba(0, 0, 0, 0.85)',
+    overlay: 'rgba(17, 21, 32, 0.95)',
+    // Subtle mesh gradient for hero sections
+    mesh: 'radial-gradient(ellipse 80% 80% at 50% -20%, rgba(0, 124, 255, 0.08), transparent)',
+    // Subtle gradient for depth
+    gradient: 'linear-gradient(180deg, #111520 0%, #0d1018 100%)',
   },
-  text: { 
-    main: '#f8fafc',
-    primary: '#f8fafc',
-    secondary: '#cbd5e1',
+  text: {
+    // Warmer white for better readability
+    main: '#f0f4f8',
+    primary: '#f0f4f8',
+    secondary: '#94a3b8',
     disabled: '#64748b',
     hint: '#475569',
   },
-  divider: 'rgba(255, 255, 255, 0.08)',
+  // Slightly stronger dividers for clarity
+  divider: 'rgba(255, 255, 255, 0.06)',
+  dividerStrong: 'rgba(255, 255, 255, 0.12)',
   mode: 'dark',
-  
+
   // Adjusted input colors for dark mode
-  inputBorderColor: 'rgba(100, 116, 139, 0.3)',
-  inputBorderColorHover: 'rgba(148, 163, 184, 0.4)',
+  inputBorderColor: 'rgba(100, 116, 139, 0.25)',
+  inputBorderColorHover: 'rgba(148, 163, 184, 0.35)',
   inputBorderColorFocus: '#4da6ff',
-  
-  // Dark mode shadows
+
+  // Dark mode shadows with subtle blue tint
   shadows: {
-    small: '0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2)',
-    medium: '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)',
-    large: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)',
-    xl: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
-    inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.2)',
+    small: '0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.25)',
+    medium: '0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.25)',
+    large: '0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.25)',
+    xl: '0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.25)',
+    inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.3)',
+    floating: '0 20px 40px rgba(0, 0, 0, 0.4), 0 0 1px rgba(0, 0, 0, 0.2)',
+    cardHover: '0 12px 24px -8px rgba(0, 0, 0, 0.4)',
+  },
+
+  // Dark mode glow effects (slightly brighter for visibility)
+  glows: {
+    primary: '0 0 20px rgba(0, 124, 255, 0.25), 0 0 40px rgba(0, 124, 255, 0.1)',
+    primaryStrong: '0 0 24px rgba(0, 124, 255, 0.4), 0 0 48px rgba(0, 124, 255, 0.2)',
+    success: '0 0 20px rgba(37, 193, 150, 0.25), 0 0 40px rgba(37, 193, 150, 0.1)',
+    error: '0 0 20px rgba(255, 13, 69, 0.25), 0 0 40px rgba(255, 13, 69, 0.1)',
+    warning: '0 0 20px rgba(250, 161, 45, 0.3), 0 0 40px rgba(250, 161, 45, 0.12)',
+    accent: '0 0 20px rgba(250, 213, 50, 0.3), 0 0 40px rgba(250, 213, 50, 0.12)',
+    info: '0 0 20px rgba(0, 187, 255, 0.25), 0 0 40px rgba(0, 187, 255, 0.1)',
+  },
+
+  // Dark mode heat map (adjusted for dark backgrounds)
+  heatMap: {
+    positive: ['rgba(37, 193, 150, 0.1)', 'rgba(37, 193, 150, 0.2)', 'rgba(37, 193, 150, 0.3)', 'rgba(37, 193, 150, 0.4)', 'rgba(37, 193, 150, 0.5)'],
+    negative: ['rgba(255, 13, 69, 0.1)', 'rgba(255, 13, 69, 0.2)', 'rgba(255, 13, 69, 0.3)', 'rgba(255, 13, 69, 0.4)', 'rgba(255, 13, 69, 0.5)'],
+    neutral: 'transparent',
+  },
+
+  // Dark mode glassmorphism
+  glass: {
+    light: {
+      background: 'rgba(26, 31, 46, 0.8)',
+      backgroundHover: 'rgba(26, 31, 46, 0.9)',
+      border: '1px solid rgba(255, 255, 255, 0.08)',
+      backdropFilter: 'blur(12px) saturate(180%)',
+    },
+    dark: {
+      background: 'rgba(8, 10, 14, 0.9)',
+      backgroundHover: 'rgba(8, 10, 14, 0.95)',
+      border: '1px solid rgba(255, 255, 255, 0.04)',
+      backdropFilter: 'blur(12px) saturate(180%)',
+    },
+    subtle: {
+      background: 'rgba(17, 21, 32, 0.6)',
+      border: '1px solid rgba(255, 255, 255, 0.06)',
+      backdropFilter: 'blur(8px)',
+    },
   },
 };
 

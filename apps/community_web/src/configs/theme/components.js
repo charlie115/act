@@ -1,38 +1,65 @@
-import { alpha } from '@mui/material/styles';
+import { alpha, keyframes } from '@mui/material/styles';
+
+// Shine effect for buttons
+const shineEffect = keyframes`
+  0% { left: -100%; }
+  50%, 100% { left: 100%; }
+`;
 
 export default {
-  // Button - Modern styling with hover effects
+  // Button - TradingView Pro style with subtle shine and glow effects
   MuiButton: {
     styleOverrides: {
       root: ({ theme }) => ({
+        position: 'relative',
+        overflow: 'hidden',
         borderRadius: theme.shape.borderRadius,
         textTransform: 'none',
         fontWeight: theme.typography.fontWeightMedium,
-        transition: theme.transitions.create(['background-color', 'box-shadow', 'transform'], {
-          duration: theme.transitions.duration.short,
-        }),
+        transition: theme.transitions.create(
+          ['background-color', 'box-shadow', 'transform', 'border-color'],
+          { duration: theme.transitions.duration.short }
+        ),
+        // Subtle shine effect pseudo-element
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: '-100%',
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)',
+          transition: 'left 0.5s ease',
+          pointerEvents: 'none',
+        },
+        '&:hover::before': {
+          left: '100%',
+        },
         '&:hover': {
           transform: 'translateY(-1px)',
         },
         '&:active': {
-          transform: 'translateY(0)',
+          transform: 'translateY(0) scale(0.98)',
         },
         '&:focus-visible': {
           outline: `2px solid ${theme.palette.primary?.main || '#007cff'}`,
           outlineOffset: 2,
-          boxShadow: `0 0 0 4px ${alpha(theme.palette.primary?.main || '#007cff', 0.2)}`,
+          boxShadow: theme.palette.glows?.primary || `0 0 0 4px ${alpha(theme.palette.primary?.main || '#007cff', 0.2)}`,
         },
       }),
       contained: ({ theme, ownerState }) => ({
         boxShadow: theme.shadows[2],
-        background: ownerState.color === 'primary' ? theme.palette.gradients.primary : undefined,
+        background: ownerState.color === 'primary' ? theme.palette.gradients?.primary : undefined,
         '&:hover': {
-          boxShadow: theme.shadows[4],
+          boxShadow: ownerState.color === 'primary'
+            ? theme.palette.glows?.primary || theme.shadows[4]
+            : theme.shadows[4],
         },
         '&:disabled': {
           backgroundColor: theme.palette.grey[300],
           opacity: 0.6,
           boxShadow: 'none',
+          '&::before': { display: 'none' },
         },
       }),
       outlined: ({ ownerState, theme }) => ({
@@ -96,18 +123,50 @@ export default {
     },
   },
 
-  // Card - Modern card styling
+  // Card - Modern card styling with glassmorphism
   MuiCard: {
     styleOverrides: {
       root: ({ theme }) => ({
+        position: 'relative',
         borderRadius: theme.shape.borderRadius,
         boxShadow: theme.shadows[1],
-        transition: theme.transitions.create(['box-shadow', 'transform'], {
+        transition: theme.transitions.create(['box-shadow', 'transform', 'border-color'], {
           duration: theme.transitions.duration.short,
         }),
+        // Subtle border for depth
+        border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+        // Inner highlight for glassmorphism effect
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '1px',
+          background: theme.palette.mode === 'dark'
+            ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)'
+            : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)',
+          borderRadius: `${theme.shape.borderRadius}px ${theme.shape.borderRadius}px 0 0`,
+          pointerEvents: 'none',
+        },
+        // Subtle gradient overlay
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: theme.palette.mode === 'dark'
+            ? 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 50%)'
+            : 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%)',
+          borderRadius: theme.shape.borderRadius,
+          pointerEvents: 'none',
+        },
         '&:hover': {
           boxShadow: theme.shadows[4],
           transform: 'translateY(-2px)',
+          borderColor: alpha(theme.palette.primary?.main || '#007cff', 0.12),
         },
       }),
     },
@@ -225,8 +284,45 @@ export default {
   MuiTableRow: {
     styleOverrides: {
       root: ({ theme }) => ({
+        position: 'relative',
+        transition: theme.transitions.create(['background-color'], {
+          duration: theme.transitions.duration.shortest,
+        }),
+        // Zebra striping
+        '&:nth-of-type(even)': {
+          backgroundColor: alpha(theme.palette.grey?.[500] || '#64748b', 0.02),
+        },
+        // Animated left border indicator
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          left: 0,
+          top: '50%',
+          width: '3px',
+          height: '0%',
+          backgroundColor: theme.palette.primary?.main || '#007cff',
+          borderRadius: '0 2px 2px 0',
+          transform: 'translateY(-50%)',
+          transition: 'height 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+          opacity: 0,
+        },
         '&:hover': {
           backgroundColor: alpha(theme.palette.primary?.main || '#007cff', 0.04),
+          '&::before': {
+            height: '60%',
+            opacity: 1,
+          },
+        },
+        // Selected row state
+        '&.Mui-selected': {
+          backgroundColor: alpha(theme.palette.primary?.main || '#007cff', 0.08),
+          '&::before': {
+            height: '80%',
+            opacity: 1,
+          },
+          '&:hover': {
+            backgroundColor: alpha(theme.palette.primary?.main || '#007cff', 0.12),
+          },
         },
       }),
     },

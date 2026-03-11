@@ -325,11 +325,11 @@ export const TableHeaderCell = styled('th', {
       backgroundColor: alpha(theme.palette.primary?.main || '#007cff', 0.04),
     } : {},
     [theme.breakpoints.down('md')]: {
-      padding: theme.spacing(0.75, 0.5),
-      fontSize: '0.75rem',
+      padding: theme.spacing(0.5, 0.375),
+      fontSize: '0.625rem',
       textAlign: 'center',
       whiteSpace: 'normal',
-      lineHeight: 1.3,
+      lineHeight: 1.2,
       wordBreak: 'break-word',
     },
   })
