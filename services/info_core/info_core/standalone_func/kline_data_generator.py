@@ -328,6 +328,74 @@ def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict
         logger.error(f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}")
         acw_api.create_message_thread(admin_id, 'Error in insert_kline_to_db', content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()[:1995]}")
 
+
+def _empty_interval_state(all_columns):
+    interval_state_df = pd.DataFrame(columns=all_columns)
+    for col in all_columns:
+        interval_state_df[col] = pd.Series(dtype="float64")
+    return interval_state_df
+
+
+def _extract_snapshot_minute(snapshot_df):
+    snapshot_minute = pd.to_datetime(snapshot_df["datetime_now"]).iloc[0]
+    if snapshot_minute.tzinfo is not None:
+        snapshot_minute = snapshot_minute.replace(tzinfo=None)
+    return snapshot_minute.replace(second=0, microsecond=0)
+
+
+def _publish_kline_stream(local_redis, remote_redis, stream_key, snapshot_df, maxlen=10, store_local_key=False):
+    pickled_snapshot_df = pickle.dumps(snapshot_df)
+    if store_local_key:
+        local_redis.set_data(stream_key, pickled_snapshot_df)
+    local_redis.get_redis_client().xadd(
+        stream_key,
+        {"data": pickled_snapshot_df},
+        maxlen=maxlen,
+        approximate=True,
+    )
+    remote_redis.get_redis_client().xadd(
+        stream_key,
+        {"data": pickled_snapshot_df},
+        maxlen=maxlen,
+        approximate=True,
+    )
+    return pickled_snapshot_df
+
+
+def _apply_1t_snapshot_to_interval_state(interval_state_df, snapshot_df, prefixes, other_columns):
+    if snapshot_df is None or snapshot_df.empty:
+        return interval_state_df
+
+    ohlc_columns = [f"{prefix}_{col}" for prefix in prefixes for col in ["open", "high", "low", "close"]]
+    all_columns = ohlc_columns + other_columns
+    if interval_state_df is None or len(interval_state_df.columns) == 0:
+        interval_state_df = _empty_interval_state(all_columns)
+
+    temp_df = snapshot_df.set_index("base_asset")[all_columns]
+    interval_state_df = interval_state_df.reindex(temp_df.index)
+
+    mask_new = interval_state_df["LS_open"].isna()
+    if mask_new.any():
+        interval_state_df.loc[mask_new, ohlc_columns] = temp_df.loc[mask_new, ohlc_columns].astype("float64")
+        interval_state_df.loc[mask_new, other_columns] = temp_df.loc[mask_new, other_columns].astype("float64")
+
+    mask_existing = ~mask_new
+    for prefix in prefixes:
+        interval_state_df.loc[mask_existing, f"{prefix}_high"] = np.maximum(
+            interval_state_df.loc[mask_existing, f"{prefix}_high"],
+            temp_df.loc[mask_existing, f"{prefix}_high"],
+        )
+        interval_state_df.loc[mask_existing, f"{prefix}_low"] = np.minimum(
+            interval_state_df.loc[mask_existing, f"{prefix}_low"],
+            temp_df.loc[mask_existing, f"{prefix}_low"],
+        )
+        interval_state_df.loc[mask_existing, f"{prefix}_close"] = temp_df.loc[mask_existing, f"{prefix}_close"]
+
+    if mask_existing.any():
+        interval_state_df.loc[mask_existing, other_columns] = temp_df.loc[mask_existing, other_columns].values
+
+    return interval_state_df
+
 def ohlc_1T_generator(
     insert_kline_to_db,
     target_market_code,
@@ -358,7 +426,12 @@ def ohlc_1T_generator(
     for col in ohlc_columns + other_columns:
         per_minute_ohlc_df[col] = np.nan  # Initialize columns with NaN
 
-    remote_redis.get_redis_client().xtrim(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', maxlen=max_length)
+    one_t_now_key = f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_now"
+    one_t_closed_key = f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_closed"
+    remote_redis.get_redis_client().xtrim(one_t_now_key, maxlen=max_length)
+    local_redis.get_redis_client().xtrim(one_t_now_key, maxlen=max_length)
+    remote_redis.get_redis_client().xtrim(one_t_closed_key, maxlen=max_length)
+    local_redis.get_redis_client().xtrim(one_t_closed_key, maxlen=max_length)
     
     # Initialize convert_rate_dict
     while True:
@@ -503,15 +576,13 @@ def ohlc_1T_generator(
             ohlc_now_df = per_minute_ohlc_df.reset_index()
             ohlc_now_df['datetime_now'] = datetime_now
             ohlc_now_df['dollar'] = get_dollar_dict(local_redis)['price']
-            pickled_ohlc_now_df = pickle.dumps(ohlc_now_df)
-            local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_now_df)
-            
-            # Publish Stream
-            remote_redis.get_redis_client().xadd(
-                f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now',
-                {'data': pickled_ohlc_now_df},
+            _publish_kline_stream(
+                local_redis,
+                remote_redis,
+                one_t_now_key,
+                ohlc_now_df,
                 maxlen=10,
-                approximate=True
+                store_local_key=True,
             )
             # redis_update_time = time.time() - redis_update_start
             # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Redis updates took {redis_update_time:.4f} seconds")
@@ -532,28 +603,13 @@ def ohlc_1T_generator(
                 ohlc_df['dollar'] = get_dollar_dict(local_redis)['price']
                 ohlc_df['closed'] = True
 
-                # Serialize and store the ohlc_df
-                pickled_ohlc_df = pickle.dumps(ohlc_df)
-                # Save into Redis for current data
-                local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now', pickled_ohlc_df)
-                # Publish Stream
-                remote_redis.get_redis_client().xadd(
-                    f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now',
-                    {'data': pickled_ohlc_df},
-                    maxlen=10,
-                    approximate=True
+                _publish_kline_stream(
+                    local_redis,
+                    remote_redis,
+                    one_t_closed_key,
+                    ohlc_df,
+                    maxlen=max_length,
                 )
-                # Append into Redis for historical data
-                old_ohlc_1T_kline = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline')
-                if old_ohlc_1T_kline is None:
-                    old_ohlc_1T_kline = pd.DataFrame()
-                else:
-                    old_ohlc_1T_kline = pickle.loads(old_ohlc_1T_kline)
-                    # Keep only base_assets that are in ohlc_df
-                    old_ohlc_1T_kline = old_ohlc_1T_kline[old_ohlc_1T_kline['base_asset'].isin(ohlc_df['base_asset'].unique())]
-                new_ohlc_1T_kline = pd.concat([old_ohlc_1T_kline, ohlc_df], axis=0).tail(max_length * ohlc_df['base_asset'].nunique())
-                pickled_ohlc_df = pickle.dumps(new_ohlc_1T_kline)
-                local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline', pickled_ohlc_df)
                 # # TEST
                 # minute_transition_time = time.time() - minute_transition_start
                 # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Minute transition processing took {minute_transition_time:.4f} seconds")
@@ -562,7 +618,7 @@ def ohlc_1T_generator(
                 # Insert into the database using thread pool (reuses threads, limits concurrency)
                 _INSERT_THREAD_POOL.submit(
                     insert_kline_to_db,
-                    new_ohlc_1T_kline,
+                    ohlc_df,
                     f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline",
                     acw_api,
                     redis_dict,
@@ -615,105 +671,43 @@ def generate_interval_kline(
     max_length
     ):
     try:
-        # TEST
-        logger.info(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Thread has started.")
+        logger.info(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Finalizing interval snapshot.")
         remote_redis = RedisHelper(**redis_dict)
         local_redis = RedisHelper()
         local_redis.fallback_redis_client = remote_redis
-        error_count = 0
-        # wait until the last 1T kline is available
-        while True:
-            # Load the ohlc_1T_kline
-            pickled_ohlc_1T_kline = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_kline')
-            if pickled_ohlc_1T_kline is None:
-                logger.warning(f"No 1T Kline data available for {target_market_code}:{origin_market_code}, {interval_label}")
-                return
-            ohlc_1T_kline_df = pickle.loads(pickled_ohlc_1T_kline)
-            last_ohlc_1T_kline_df = ohlc_1T_kline_df[ohlc_1T_kline_df['datetime_now'] == ohlc_1T_kline_df['datetime_now'].max()]
-            last_kline_datetime_upto_minute = pd.to_datetime(last_ohlc_1T_kline_df['datetime_now']).iloc[0].replace(second=0, microsecond=0, tzinfo=None)  
-            
-            if last_kline_datetime_upto_minute == previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1):
-                error_count = 0
-                break
-            else:            
-                # logger.info(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Waiting for the last 1T kline to be available")
-                # logger.info(f"last_kline_datetime_upto_minute: {last_kline_datetime_upto_minute}")
-                # logger.info(f"previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1): {previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1)}")
-                error_count += 1
-                if error_count > 100:
-                    logger.error(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Error: Timeout waiting for the last 1T kline to be available")
-                    logger.info(f"last_kline_datetime_upto_minute: {last_kline_datetime_upto_minute}")
-                    logger.info(f"previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1): {previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1)}")
-                    logger.info(f"datetime.datetime.now(): {datetime.datetime.now()}")
-                    return 
-                time.sleep(0.05)
-              
 
-        
-        # Finalize the per-interval OHLC DataFrame
+        if per_interval_ohlc_df is None or per_interval_ohlc_df.empty:
+            logger.warning(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Empty interval state.")
+            return
+
         ohlc_df = per_interval_ohlc_df.reset_index()
-        ohlc_df['datetime_now'] = previous_interval_start
-        ohlc_df['dollar'] = get_dollar_dict(local_redis)['price']
-        ohlc_df['closed'] = True
-        
-        # Find symbols in each DataFrame to handle new symbols safely
-        ohlc_symbols = set(ohlc_df['base_asset'].unique())
-        last_1T_symbols = set(last_ohlc_1T_kline_df['base_asset'].unique())
-        common_symbols = ohlc_symbols & last_1T_symbols
-        new_symbols = ohlc_symbols - last_1T_symbols  # Symbols only in ohlc_df (newly listed)
+        ohlc_df["datetime_now"] = previous_interval_start
+        ohlc_df["dollar"] = get_dollar_dict(local_redis)["price"]
+        ohlc_df["closed"] = True
 
-        if new_symbols:
-            logger.info(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, New symbols detected (keeping existing values): {new_symbols}")
+        closed_stream_key = f"INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_closed"
+        _publish_kline_stream(
+            local_redis,
+            remote_redis,
+            closed_stream_key,
+            ohlc_df,
+            maxlen=max_length,
+        )
 
-        # Split ohlc_df into common symbols and new symbols
-        ohlc_df_common = ohlc_df[ohlc_df['base_asset'].isin(common_symbols)].copy()
-        ohlc_df_new = ohlc_df[ohlc_df['base_asset'].isin(new_symbols)].copy()
-
-        # Process common symbols: update close/high/low from 1T data
-        if len(ohlc_df_common) > 0:
-            # Filter and sort both DataFrames by base_asset to ensure row alignment
-            last_ohlc_1T_common = last_ohlc_1T_kline_df[last_ohlc_1T_kline_df['base_asset'].isin(common_symbols)].copy()
-            ohlc_df_common = ohlc_df_common.sort_values('base_asset').reset_index(drop=True)
-            last_ohlc_1T_common = last_ohlc_1T_common.sort_values('base_asset').reset_index(drop=True)
-
-            # Overwrite close data with the last 1T close data
-            for prefix in prefixes:
-                ohlc_df_common[f'{prefix}_close'] = last_ohlc_1T_common[f'{prefix}_close'].values
-
-            # Compare the high and low with the last 1T high and low
-            for prefix in prefixes:
-                ohlc_df_common[f'{prefix}_high'] = np.maximum(ohlc_df_common[f'{prefix}_high'], last_ohlc_1T_common[f'{prefix}_high'].values)
-                ohlc_df_common[f'{prefix}_low'] = np.minimum(ohlc_df_common[f'{prefix}_low'], last_ohlc_1T_common[f'{prefix}_low'].values)
-
-        # Recombine: common symbols (updated) + new symbols (keep existing values)
-        ohlc_df = pd.concat([ohlc_df_common, ohlc_df_new], ignore_index=True)
-
-        # Append into Redis for historical data
-        old_ohlc_kline = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_kline')
-        if old_ohlc_kline is None:
-            old_ohlc_kline = pd.DataFrame()
-        else:
-            old_ohlc_kline = pickle.loads(old_ohlc_kline)
-            # Keep only base_assets that are in ohlc_df
-            old_ohlc_kline = old_ohlc_kline[old_ohlc_kline['base_asset'].isin(ohlc_df['base_asset'].unique())]
-        new_ohlc_kline = pd.concat([old_ohlc_kline, ohlc_df], axis=0).tail(max_length * ohlc_df['base_asset'].nunique())
-        pickled_new_ohlc_kline = pickle.dumps(new_ohlc_kline)
-        local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_kline', pickled_new_ohlc_kline)
-        # Insert into the database
         insert_kline_to_db(
-            new_ohlc_kline,
+            ohlc_df,
             f"INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_kline",
             acw_api,
             redis_dict,
             mongodb_dict,
             admin_id,
             node,
-            logger
+            logger,
         )
-    except Exception as e:
+    except Exception:
         content = f"ohlc_{interval_label}_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_{interval_label}_generator: {traceback.format_exc()}"
         logger.error(content)
-        acw_api.create_message_thread(admin_id, f'Error in ohlc_{interval_label}_generator', content=content[:1995])
+        acw_api.create_message_thread(admin_id, f"Error in ohlc_{interval_label}_generator", content=content[:1995])
         time.sleep(3)
                 
 def ohlc_interval_generator(
@@ -755,10 +749,7 @@ def ohlc_interval_generator(
         return datetime.datetime.fromtimestamp(interval_start_timestamp).replace(tzinfo=None)
 
     # Initialize current interval start
-    current_interval_start = get_interval_start(datetime_now)
-    previous_interval_start = current_interval_start
-
-    per_interval_ohlc_df = pd.DataFrame()
+    current_interval_start = None
 
     # Initialize columns outside the loop
     prefixes = ['tp', 'LS', 'SL']
@@ -766,12 +757,124 @@ def ohlc_interval_generator(
     other_columns = ['tp', 'scr', 'atp24h', 'converted_tp']
     all_columns = ohlc_columns + other_columns
 
-    # Initialize per_interval_ohlc_df with NaNs
-    for col in all_columns:
-        per_interval_ohlc_df[col] = np.nan
+    per_interval_ohlc_df = _empty_interval_state(all_columns)
+    one_t_now_stream_key = f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_now"
+    one_t_closed_stream_key = f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_closed"
+    interval_now_stream_key = f"INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_now"
+    last_stream_ids = {
+        one_t_closed_stream_key: "$",
+        one_t_now_stream_key: "$",
+    }
+    last_finalized_interval_start = None
 
-    initialize_open_prices = True  # Flag to indicate if we need to initialize open prices
-    finalize_interval = False      # Flag to indicate when to finalize the interval
+    def publish_interval_now():
+        if current_interval_start is None or per_interval_ohlc_df.empty:
+            return
+        ohlc_now_df = per_interval_ohlc_df.reset_index()
+        ohlc_now_df["datetime_now"] = current_interval_start
+        _publish_kline_stream(
+            local_redis,
+            remote_redis,
+            interval_now_stream_key,
+            ohlc_now_df,
+            maxlen=10,
+            store_local_key=True,
+        )
+
+    def apply_snapshot(snapshot_df):
+        nonlocal per_interval_ohlc_df
+        per_interval_ohlc_df = _apply_1t_snapshot_to_interval_state(
+            per_interval_ohlc_df,
+            snapshot_df,
+            prefixes,
+            other_columns,
+        )
+
+    def process_now_snapshot(snapshot_df):
+        nonlocal current_interval_start, per_interval_ohlc_df
+        snapshot_minute = _extract_snapshot_minute(snapshot_df)
+        snapshot_interval_start = get_interval_start(snapshot_minute)
+
+        if (
+            last_finalized_interval_start is not None
+            and snapshot_interval_start <= last_finalized_interval_start
+        ):
+            return
+
+        if current_interval_start is None or current_interval_start != snapshot_interval_start:
+            current_interval_start = snapshot_interval_start
+            per_interval_ohlc_df = _empty_interval_state(all_columns)
+
+        apply_snapshot(snapshot_df)
+        publish_interval_now()
+
+    def process_closed_snapshot(snapshot_df):
+        nonlocal current_interval_start, per_interval_ohlc_df, last_finalized_interval_start
+        snapshot_minute = _extract_snapshot_minute(snapshot_df)
+        snapshot_interval_start = get_interval_start(snapshot_minute)
+
+        if (
+            last_finalized_interval_start is not None
+            and snapshot_interval_start <= last_finalized_interval_start
+        ):
+            return
+
+        if current_interval_start is None or current_interval_start != snapshot_interval_start:
+            current_interval_start = snapshot_interval_start
+            per_interval_ohlc_df = _empty_interval_state(all_columns)
+
+        apply_snapshot(snapshot_df)
+        publish_interval_now()
+
+        if snapshot_minute == snapshot_interval_start + datetime.timedelta(minutes=interval_minutes - 1):
+            logger.info(f"ohlc_interval_generator|{target_market_code}:{origin_market_code}, {interval_label}, Finalizing interval from 1T_closed.")
+            _INSERT_THREAD_POOL.submit(
+                generate_interval_kline,
+                per_interval_ohlc_df.copy(),
+                snapshot_interval_start,
+                interval_minutes,
+                prefixes,
+                insert_kline_to_db,
+                interval_label,
+                target_market_code,
+                origin_market_code,
+                acw_api,
+                admin_id,
+                node,
+                redis_dict,
+                mongodb_dict,
+                logger,
+                max_length,
+            )
+            last_finalized_interval_start = snapshot_interval_start
+            current_interval_start = None
+            per_interval_ohlc_df = _empty_interval_state(all_columns)
+
+    # Warm the current interval state from recent 1T closed entries and the latest 1T now snapshot.
+    seed_interval_start = get_interval_start(datetime_now)
+    try:
+        closed_entries = local_redis.get_redis_client().xrevrange(
+            one_t_closed_stream_key,
+            count=max(interval_minutes, 1),
+        )
+        current_interval_start = seed_interval_start
+        for _, entry_data in reversed(closed_entries):
+            snapshot_df = pickle.loads(entry_data[b"data"])
+            if get_interval_start(_extract_snapshot_minute(snapshot_df)) == seed_interval_start:
+                apply_snapshot(snapshot_df)
+
+        pickled_1t_now = local_redis.get_data(one_t_now_stream_key)
+        if pickled_1t_now is not None:
+            snapshot_df = pickle.loads(pickled_1t_now)
+            if get_interval_start(_extract_snapshot_minute(snapshot_df)) == seed_interval_start:
+                apply_snapshot(snapshot_df)
+                publish_interval_now()
+    except Exception:
+        logger.error(
+            f"ohlc_interval_generator|{target_market_code}:{origin_market_code}, {interval_label}, Error warming state: {traceback.format_exc()}"
+        )
+        current_interval_start = None
+        per_interval_ohlc_df = _empty_interval_state(all_columns)
     
     # Loop Thread for saving servercheck status
     target_market_servercheck = False
@@ -791,131 +894,48 @@ def ohlc_interval_generator(
     save_servercheck_status_thread.start()
 
     while True:
-        time.sleep(loop_downtime_sec)
         try:
             # Check if one of the markets is in maintenance
             if target_market_servercheck or origin_market_servercheck:
-                logger.info(f"ohlc_interval_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, interval_label: {interval_label}, has been skipped due to server check.")
                 time.sleep(1)
                 continue
-            datetime_now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-
-            # Fetch the latest 1T Now data from Redis
-            pickled_1T_now = local_redis.get_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_1T_now')
-            if pickled_1T_now is None:
-                logger.warning(f"No 1T Now data available for {target_market_code}:{origin_market_code}_{interval_label}")
-                time.sleep(5)
-                continue
-            
-            ohlc_1T_df = pickle.loads(pickled_1T_now)
-            ohlc_1T_df_datetime_now = pd.to_datetime(ohlc_1T_df['datetime_now']).iloc[0]
-            ohlc_1T_df_datetime_upto_minute = ohlc_1T_df_datetime_now.replace(second=0, microsecond=0, tzinfo=None)
-
-            # Check if the interval has changed
-            new_interval_start = get_interval_start(datetime_now)
-
-            if new_interval_start != current_interval_start:
-                # The interval has changed
-                finalize_interval = True
-                current_interval_start = new_interval_start
-                initialize_open_prices = True  # Prepare to initialize open prices for the new interval
-
-            # Proceed to process data as usual
-            temp_df = ohlc_1T_df.set_index('base_asset')[all_columns]
-            per_interval_ohlc_df = per_interval_ohlc_df.reindex(temp_df.index)
-
-            # Identify new base_assets
-            mask_new = per_interval_ohlc_df['LS_open'].isna()
-
-            # For new base_assets, initialize OHLC values
-            if mask_new.any():
-                per_interval_ohlc_df.loc[mask_new, ohlc_columns] = temp_df.loc[mask_new, ohlc_columns].astype('float64')
-                per_interval_ohlc_df.loc[mask_new, other_columns] = temp_df.loc[mask_new, other_columns].astype('float64')
-
-            # For existing base_assets, update high, low, close
-            mask_existing = ~mask_new
-            for prefix in prefixes:
-                per_interval_ohlc_df.loc[mask_existing, f'{prefix}_high'] = np.maximum(
-                    per_interval_ohlc_df.loc[mask_existing, f'{prefix}_high'],
-                    temp_df.loc[mask_existing, f'{prefix}_high']
-                )
-                per_interval_ohlc_df.loc[mask_existing, f'{prefix}_low'] = np.minimum(
-                    per_interval_ohlc_df.loc[mask_existing, f'{prefix}_low'],
-                    temp_df.loc[mask_existing, f'{prefix}_low']
-                )
-                per_interval_ohlc_df.loc[mask_existing, f'{prefix}_close'] = temp_df.loc[mask_existing, f'{prefix}_close']
-
-            # Update other columns for existing assets
-            # Use .values to avoid pandas dtype inference issues with mixed types
-            if mask_existing.any():
-                per_interval_ohlc_df.loc[mask_existing, other_columns] = temp_df.loc[mask_existing, other_columns].values
-
-            # Update per_interval_ohlc_df in the Redis 'now' data
-            ohlc_now_df = per_interval_ohlc_df.reset_index()
-            # ohlc_now_df['datetime_now'] = datetime_now
-            ohlc_now_df['datetime_now'] = current_interval_start
-            pickled_ohlc_now_df = pickle.dumps(ohlc_now_df)
-            local_redis.set_data(f'INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_now', pickled_ohlc_now_df)
-
-            # Publish Stream
-            remote_redis.get_redis_client().xadd(
-                f'INFO_CORE|{target_market_code}:{origin_market_code}_{interval_label}_now',
-                {'data': pickled_ohlc_now_df},
-                maxlen=10,
-                approximate=True
+            stream_response = local_redis.get_redis_client().xread(
+                streams=last_stream_ids,
+                count=20,
+                block=max(int(loop_downtime_sec * 1000), 100),
             )
+            if not stream_response:
+                continue
 
-            # If initialize_open_prices is True and new data is available for the new interval
-            if (initialize_open_prices and 
-                ohlc_1T_df_datetime_upto_minute == current_interval_start.replace(tzinfo=None)):
-                # Initialize per_interval_ohlc_df open prices with temp_df data
-                per_interval_ohlc_df = per_interval_ohlc_df.reindex(temp_df.index)
-
-                # Set open prices
-                per_interval_ohlc_df[ohlc_columns] = temp_df[ohlc_columns]
-                per_interval_ohlc_df[other_columns] = temp_df[other_columns]
-
-                # Reset high and low prices to open prices
-                for prefix in prefixes:
-                    per_interval_ohlc_df[f'{prefix}_high'] = per_interval_ohlc_df[f'{prefix}_open']
-                    per_interval_ohlc_df[f'{prefix}_low'] = per_interval_ohlc_df[f'{prefix}_open']
-
-                initialize_open_prices = False
-
-            # Finalize the interval after processing the last 1T data of the previous interval
-            if (finalize_interval and
-                ohlc_1T_df_datetime_upto_minute == previous_interval_start.replace(tzinfo=None) + datetime.timedelta(minutes=interval_minutes - 1)):
-                
-                # Finalize interval using thread pool (reuses threads, limits concurrency)
-                logger.info(f"ohlc_interval_generator|{target_market_code}:{origin_market_code}, {interval_label}, Finalizing the interval.")
-                _INSERT_THREAD_POOL.submit(
-                    generate_interval_kline,
-                    per_interval_ohlc_df,
-                    previous_interval_start,
-                    interval_minutes,
-                    prefixes,
-                    insert_kline_to_db,
-                    interval_label,
-                    target_market_code,
-                    origin_market_code,
-                    acw_api,
-                    admin_id,
-                    node,
-                    redis_dict,
-                    mongodb_dict,
-                    logger,
-                    max_length
+            closed_entries = []
+            now_entries = []
+            for stream_key, entries in stream_response:
+                normalized_stream_key = (
+                    stream_key.decode("utf-8")
+                    if isinstance(stream_key, bytes)
+                    else stream_key
                 )
+                if not entries:
+                    continue
+                last_entry_id = entries[-1][0]
+                if isinstance(last_entry_id, bytes):
+                    last_entry_id = last_entry_id.decode("utf-8")
+                last_stream_ids[normalized_stream_key] = last_entry_id
 
-                # Reset per_interval_ohlc_df for the new interval
-                per_interval_ohlc_df = pd.DataFrame()
-                for col in all_columns:
-                    per_interval_ohlc_df[col] = np.nan
+                if normalized_stream_key == one_t_closed_stream_key:
+                    closed_entries.extend(entries)
+                elif normalized_stream_key == one_t_now_stream_key:
+                    now_entries.extend(entries)
 
-                finalize_interval = False
-                previous_interval_start = current_interval_start  # Update previous interval start
+            for _, entry_data in closed_entries:
+                snapshot_df = pickle.loads(entry_data[b"data"])
+                process_closed_snapshot(snapshot_df)
 
-        except Exception as e:
+            for _, entry_data in now_entries:
+                snapshot_df = pickle.loads(entry_data[b"data"])
+                process_now_snapshot(snapshot_df)
+
+        except Exception:
             content = f"ohlc_{interval_label}_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code}, Error in ohlc_{interval_label}_generator: {traceback.format_exc()}"
             logger.error(content)
             acw_api.create_message_thread(admin_id, f'Error in ohlc_{interval_label}_generator', content=content[:1995])
