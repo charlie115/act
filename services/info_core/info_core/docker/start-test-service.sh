@@ -29,7 +29,7 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 echo "Running info core..."
-python info_core_main.py 2>&1 | rotatelogs -L "$LOG_DIR/info_core_stdout.log" "$LOG_DIR/info_core_stdout.log.%Y-%m-%d" 604800
+python -m info_core_main 2>&1 | rotatelogs -L "$LOG_DIR/info_core_stdout.log" "$LOG_DIR/info_core_stdout.log.%Y-%m-%d" 604800
 
 # Save PID for later use
 echo $! > "$PID_FILE"

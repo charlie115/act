@@ -25,7 +25,7 @@ COPY services/info_core/requirements.txt requirements.txt
 # Copy shared python package
 COPY packages/python/acw_common /opt/acw_common
 
-ENV PYTHONPATH=/opt/acw_common
+ENV PYTHONPATH=/home/info_core/info_core:/opt/acw_common
 
 # Update pip
 RUN pip install --upgrade pip

@@ -41,7 +41,7 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 echo "Running trade core..."
-python trade_core_main.py 2>&1 | rotatelogs -L "$LOG_DIR/trade_core_stdout.log" "$LOG_DIR/trade_core_stdout.log.%Y-%m-%d" 604800
+python -m trade_core_main 2>&1 | rotatelogs -L "$LOG_DIR/trade_core_stdout.log" "$LOG_DIR/trade_core_stdout.log.%Y-%m-%d" 604800
 
 # Save PID for later use
 echo $! > "$PID_FILE"

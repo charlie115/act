@@ -4,11 +4,6 @@ import argparse
 import time
 import traceback
 
-upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(upper_dir)
-from info_core import InitCore
-from etc.command_handler import CommandHandler
-from etc.acw_api import AcwApi
 from runtime_config import ConfigValidationError, load_runtime_config
 
 def get_arguments():
@@ -47,6 +42,10 @@ if __name__ == '__main__':
         print("Failed to load info_core runtime configuration.", file=sys.stderr)
         print(traceback.format_exc(), file=sys.stderr)
         raise SystemExit(1)
+
+    from etc.acw_api import AcwApi
+    from etc.command_handler import CommandHandler
+    from info_core import InitCore
     
     # Starting message
     acw_api = AcwApi(

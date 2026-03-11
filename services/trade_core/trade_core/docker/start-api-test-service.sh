@@ -17,9 +17,7 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 echo "Running trade core api with FastAPI server..."
-cd api
-# uvicorn main:app --host 0.0.0.0 --port 8000 2>&1 | rotatelogs -L "$LOG_DIR/trade_core_api_stdout.log" "$LOG_DIR/trade_core_api_stdout.log.%Y-%m-%d" 604800
-uvicorn main:app --host 0.0.0.0 --port 8000
+uvicorn api.main:app --host 0.0.0.0 --port 8000
 
 # Save PID for later use
 echo $! > "$PID_FILE"
