@@ -10,6 +10,7 @@ const wsOrigin = process.env.NEXT_PUBLIC_DRF_WS_URL ||
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  skipTrailingSlashRedirect: true,
   experimental: {
     externalDir: true,
   },
@@ -76,7 +77,7 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: `${apiProxyTarget}/:path*`,
+        destination: `${apiProxyTarget}/:path*/`,
       },
     ];
   },
