@@ -14,8 +14,7 @@ const api = websocketApi.injectEndpoints({
         args,
         { cacheDataLoaded, cacheEntryRemoved, updateCachedData }
       ) => {
-        const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/api/kline/`);
-        // const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/kline/`);
+        const url = new URL(`${process.env.REACT_APP_DRF_WS_URL}/kline/`);
         url.searchParams.set('target_market_code', args.targetMarketCode);
         url.searchParams.set('origin_market_code', args.originMarketCode);
         url.searchParams.set('interval', args.interval);
@@ -62,12 +61,17 @@ const api = websocketApi.injectEndpoints({
           }
         };
         
-        // Batch updates for better performance
-        const pendingUpdates = [];
+        // Coalesce websocket snapshots so the UI always applies the latest state,
+        // instead of trying to replay every full-table snapshot.
+        const latestUpdates = new Map();
         let updateTimeout = null;
-        
+        const FLUSH_INTERVAL_MS = 250;
+
         const flushUpdates = () => {
-          if (pendingUpdates.length === 0) return;
+          if (latestUpdates.size === 0) return;
+          const updatesToApply = Array.from(latestUpdates.values());
+          latestUpdates.clear();
+          updateTimeout = null;
           
           updateCachedData((draft) => {
             // Clear the disconnected flag if it exists
@@ -75,15 +79,12 @@ const api = websocketApi.injectEndpoints({
               delete draft.disconnected;
             }
             
-            // Process all pending updates at once
-            pendingUpdates.forEach((item) => {
+            // Apply only the newest snapshot per asset.
+            updatesToApply.forEach((item) => {
               if (!(item.base_asset in draft)) draft[item.base_asset] = {};
               if (!isEqual(item, draft[item.base_asset]))
                 draft[item.base_asset] = item;
             });
-            
-            // Clear pending updates
-            pendingUpdates.length = 0;
           });
         };
         
@@ -97,16 +98,22 @@ const api = websocketApi.injectEndpoints({
             if (message.type === 'connect') return;
 
             const result = JSON.parse(message.result);
+            if (!Array.isArray(result)) return;
 
             result.forEach((item) => {
               // Convert datetime_now from seconds to milliseconds
-              item.datetime_now *= 1000;
-              pendingUpdates.push(item);
+              if (typeof item.datetime_now === 'number' && item.datetime_now < 1e12) {
+                item.datetime_now *= 1000;
+              }
+              if (item?.base_asset) {
+                latestUpdates.set(item.base_asset, item);
+              }
             });
             
-            // Debounce updates - wait 50ms to batch multiple messages
-            if (updateTimeout) clearTimeout(updateTimeout);
-            updateTimeout = setTimeout(flushUpdates, 50);
+            // Apply on a fixed cadence so rendering doesn't fall behind.
+            if (!updateTimeout) {
+              updateTimeout = setTimeout(flushUpdates, FLUSH_INTERVAL_MS);
+            }
           } catch {
             /* empty */
           }
