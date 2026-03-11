@@ -22,6 +22,13 @@ import os
 import sys
 
 from loggers.logger import InfoCoreLogger
+from exchange_websocket.heartbeat import (
+    has_recent_market_ready,
+    is_process_heartbeat_stale,
+    touch_market_ready,
+    touch_process_heartbeat,
+)
+from acw_common.websocket import get_stale_symbol_summary
 from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
@@ -30,7 +37,7 @@ from standalone_func.store_exchange_status import fetch_market_servercheck
 MAX_MESSAGE_DELAY_MS = 100
 
 
-def gate_ticker_websocket(symbol_list, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=120):
+def gate_ticker_websocket(symbol_list, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=120):
     """
     Standalone function for Gate.io ticker WebSocket.
 
@@ -51,6 +58,7 @@ def gate_ticker_websocket(symbol_list, error_event, market_type, logging_dir, ac
 
     last_message_time = time.time()
     ws = None
+    market_code = f"GATE_{market_type.upper()}"
 
     # Gate.io WebSocket URL for USDT futures
     if market_type == "USD_M":
@@ -109,10 +117,12 @@ def gate_ticker_websocket(symbol_list, error_event, market_type, logging_dir, ac
                             }
                             local_redis.update_exchange_stream_data(
                                 "ticker",
-                                f"GATE_{market_type.upper()}",
+                                market_code,
                                 symbol,
                                 ticker_data
                             )
+                            touch_market_ready(local_redis, market_code, "ticker", ticker_data["last_update_timestamp"])
+                            touch_process_heartbeat(local_redis, market_code, "ticker", proc_name, ticker_data["last_update_timestamp"])
 
         except Exception as e:
             logger.error(f"gate_ticker_websocket|on_message error: {e}, traceback: {traceback.format_exc()}")
@@ -189,7 +199,7 @@ def gate_ticker_websocket(symbol_list, error_event, market_type, logging_dir, ac
         raise Exception(f"gate_ticker_websocket|error_event is set. Closing websocket...")
 
 
-def gate_orderbook_websocket(symbol_list, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
+def gate_orderbook_websocket(symbol_list, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
     """
     Standalone function for Gate.io orderbook (book_ticker) WebSocket.
 
@@ -210,6 +220,7 @@ def gate_orderbook_websocket(symbol_list, error_event, market_type, logging_dir,
 
     last_message_time = time.time()
     ws = None
+    market_code = f"GATE_{market_type.upper()}"
 
     # Gate.io WebSocket URL for USDT futures
     if market_type == "USD_M":
@@ -264,10 +275,12 @@ def gate_orderbook_websocket(symbol_list, error_event, market_type, logging_dir,
                             }
                             local_redis.update_exchange_stream_data(
                                 "orderbook",
-                                f"GATE_{market_type.upper()}",
+                                market_code,
                                 symbol,
                                 orderbook_data
                             )
+                            touch_market_ready(local_redis, market_code, "orderbook", orderbook_data["last_update_timestamp"])
+                            touch_process_heartbeat(local_redis, market_code, "orderbook", proc_name, orderbook_data["last_update_timestamp"])
 
         except Exception as e:
             logger.error(f"gate_orderbook_websocket|on_message error: {e}, traceback: {traceback.format_exc()}")
@@ -373,14 +386,17 @@ class GateWebsocket:
         self.price_proc_event_list = []
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
+        self.partial_stale_strikes = {}
 
         self._start_websocket()
 
         # Wait for initial data
         while True:
-            ticker_data = self.local_redis.get_all_exchange_stream_data("ticker", f"GATE_{self.market_type.upper()}")
-            orderbook_data = self.local_redis.get_all_exchange_stream_data("orderbook", f"GATE_{self.market_type.upper()}")
-            if not ticker_data or not orderbook_data:
+            if not has_recent_market_ready(
+                self.local_redis,
+                f"GATE_{self.market_type.upper()}",
+                ("ticker", "orderbook"),
+            ):
                 self.websocket_logger.info(f"[GATE {self.market_type}] Waiting for websocket data to be loaded...")
                 time.sleep(2)
             else:
@@ -438,6 +454,7 @@ class GateWebsocket:
                                     args=(
                                         self.sliced_symbols_list[i],
                                         error_event,
+                                        ticker_proc_name,
                                         self.market_type,
                                         self.logging_dir,
                                         self.acw_api,
@@ -479,6 +496,7 @@ class GateWebsocket:
                                     args=(
                                         self.sliced_symbols_list[i],
                                         error_event,
+                                        orderbook_proc_name,
                                         self.market_type,
                                         self.logging_dir,
                                         self.acw_api,
@@ -611,30 +629,18 @@ class GateWebsocket:
                     if not symbol_list:
                         continue
 
-                    data = None
-                    while data is None:
-                        data = self.local_redis.get_all_exchange_stream_data(
-                            redis_stream_type, f"GATE_{self.market_type.upper()}"
-                        )
-                        if data is None:
-                            time.sleep(0.5)
-
-                    stale_count = 0
-                    for sym in symbol_list:
-                        symbol_data = data.get(sym, {})
-                        last_update_us = symbol_data.get("last_update_timestamp")
-                        if last_update_us is None:
-                            stale_count += 1
-                            continue
-
-                        diff_us = now_us - last_update_us
-                        if diff_us > stale_threshold_secs * 1_000_000:
-                            stale_count += 1
-
-                    if stale_count == len(symbol_list):
+                    if is_process_heartbeat_stale(
+                        self.local_redis,
+                        f"GATE_{self.market_type.upper()}",
+                        redis_stream_type,
+                        proc_name,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    ):
+                        self.partial_stale_strikes.pop(proc_name, None)
                         content = (
                             f"[GATE {self.market_type}] {proc_name} => "
-                            f"All {stale_count} symbols are stale for > {stale_threshold_secs}s. "
+                            f"Heartbeat stale for > {stale_threshold_secs}s. "
                             f"Forcing process restart."
                         )
                         self.websocket_logger.error(content)
@@ -643,11 +649,61 @@ class GateWebsocket:
                         self.websocket_logger.warning(f"Killing process: {proc_name}")
                         proc.terminate()
                         proc.join()
+                        self.partial_stale_strikes.pop(proc_name, None)
                         time.sleep(60)
-                    else:
-                        self.websocket_logger.info(
-                            f"monitor_stale_data_per_proc|{proc_name} => {stale_count}/{len(symbol_list)} symbols stale for > {stale_threshold_secs}s."
+                        continue
+
+                    summary = get_stale_symbol_summary(
+                        self.local_redis,
+                        f"GATE_{self.market_type.upper()}",
+                        redis_stream_type,
+                        symbol_list,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    )
+                    stale_count = summary["stale_count"]
+                    total_symbols = summary["total_symbols"]
+                    if stale_count == 0:
+                        self.partial_stale_strikes.pop(proc_name, None)
+                        continue
+
+                    strike_count = self.partial_stale_strikes.get(proc_name, 0) + 1
+                    self.partial_stale_strikes[proc_name] = strike_count
+                    stale_symbols_preview = summary["stale_symbols"][:5]
+
+                    if stale_count == total_symbols:
+                        content = (
+                            f"[GATE {self.market_type}] {proc_name} => "
+                            f"All {stale_count}/{total_symbols} symbols are stale for > {stale_threshold_secs}s. "
+                            f"Forcing process restart."
                         )
+                        self.websocket_logger.error(content)
+                        self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
+                        self.websocket_logger.warning(f"Killing process: {proc_name}")
+                        proc.terminate()
+                        proc.join()
+                        self.partial_stale_strikes.pop(proc_name, None)
+                        time.sleep(60)
+                        continue
+
+                    self.websocket_logger.warning(
+                        f"[GATE {self.market_type}] {proc_name} partial stale "
+                        f"{stale_count}/{total_symbols}, strike={strike_count}, "
+                        f"symbols={stale_symbols_preview}"
+                    )
+                    if strike_count >= 2 and (stale_count >= min(2, total_symbols) or summary["stale_ratio"] >= 0.25):
+                        content = (
+                            f"[GATE {self.market_type}] {proc_name} => "
+                            f"Partial stale persisted ({stale_count}/{total_symbols}, strike={strike_count}). "
+                            f"Forcing process restart."
+                        )
+                        self.websocket_logger.error(content)
+                        self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
+                        self.websocket_logger.warning(f"Killing process: {proc_name}")
+                        proc.terminate()
+                        proc.join()
+                        self.partial_stale_strikes.pop(proc_name, None)
+                        time.sleep(60)
 
             except Exception as e:
                 content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"

@@ -33,6 +33,13 @@ import os
 import sys
 
 from loggers.logger import InfoCoreLogger
+from exchange_websocket.heartbeat import (
+    has_recent_market_ready,
+    is_process_heartbeat_stale,
+    touch_market_ready,
+    touch_process_heartbeat,
+)
+from acw_common.websocket import get_stale_symbol_summary
 from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
@@ -41,6 +48,7 @@ from standalone_func.store_exchange_status import fetch_market_servercheck
 # NOTE: Hyperliquid WebSocket messages don't include server timestamps (unlike CEXs),
 # so delay filtering cannot be applied. This constant is included for consistency.
 MAX_MESSAGE_DELAY_MS = 100
+HYPERLIQUID_TICKER_PROC_NAME = "1th_ticker_proc"
 
 
 def coin_to_symbol(coin: str) -> str:
@@ -53,7 +61,7 @@ def symbol_to_coin(symbol: str) -> str:
     return symbol.replace("_USDC", "").replace("_USDT", "")
 
 
-def hyperliquid_ticker_websocket(symbol_list, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=120):
+def hyperliquid_ticker_websocket(symbol_list, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=120):
     """
     Standalone function for Hyperliquid ticker WebSocket.
 
@@ -75,6 +83,7 @@ def hyperliquid_ticker_websocket(symbol_list, error_event, market_type, logging_
 
     last_message_time = time.time()
     ws = None
+    market_code = f"HYPERLIQUID_{market_type.upper()}"
 
     # Hyperliquid WebSocket URL
     ws_url = "wss://api.hyperliquid.xyz/ws"
@@ -125,10 +134,12 @@ def hyperliquid_ticker_websocket(symbol_list, error_event, market_type, logging_
                     }
                     local_redis.update_exchange_stream_data(
                         "ticker",
-                        f"HYPERLIQUID_{market_type.upper()}",
+                        market_code,
                         symbol,
                         ticker_data
                     )
+                    touch_market_ready(local_redis, market_code, "ticker", ticker_data["last_update_timestamp"])
+                    touch_process_heartbeat(local_redis, market_code, "ticker", proc_name, ticker_data["last_update_timestamp"])
 
         except Exception as e:
             logger.error(f"hyperliquid_ticker_websocket|on_message error: {e}, traceback: {traceback.format_exc()}")
@@ -203,7 +214,7 @@ def hyperliquid_ticker_websocket(symbol_list, error_event, market_type, logging_
         raise Exception(f"hyperliquid_ticker_websocket|error_event is set. Closing websocket...")
 
 
-def hyperliquid_orderbook_websocket(symbol_list, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
+def hyperliquid_orderbook_websocket(symbol_list, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
     """
     Standalone function for Hyperliquid orderbook WebSocket.
 
@@ -224,6 +235,7 @@ def hyperliquid_orderbook_websocket(symbol_list, error_event, market_type, loggi
 
     last_message_time = time.time()
     ws = None
+    market_code = f"HYPERLIQUID_{market_type.upper()}"
 
     # Hyperliquid WebSocket URL
     ws_url = "wss://api.hyperliquid.xyz/ws"
@@ -279,10 +291,12 @@ def hyperliquid_orderbook_websocket(symbol_list, error_event, market_type, loggi
                 }
                 local_redis.update_exchange_stream_data(
                     "orderbook",
-                    f"HYPERLIQUID_{market_type.upper()}",
+                    market_code,
                     symbol,
                     orderbook_data
                 )
+                touch_market_ready(local_redis, market_code, "orderbook", orderbook_data["last_update_timestamp"])
+                touch_process_heartbeat(local_redis, market_code, "orderbook", proc_name, orderbook_data["last_update_timestamp"])
 
         except Exception as e:
             logger.error(f"hyperliquid_orderbook_websocket|on_message error: {e}, traceback: {traceback.format_exc()}")
@@ -398,15 +412,18 @@ class HyperliquidWebsocket:
         self.price_proc_event_list = []
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
+        self.partial_stale_strikes = {}
 
         self._start_websocket()
 
         # Wait for initial data
         wait_start = time.time()
         while True:
-            ticker_data = self.local_redis.get_all_exchange_stream_data("ticker", f"HYPERLIQUID_{self.market_type.upper()}")
-            orderbook_data = self.local_redis.get_all_exchange_stream_data("orderbook", f"HYPERLIQUID_{self.market_type.upper()}")
-            if not ticker_data or not orderbook_data:
+            if not has_recent_market_ready(
+                self.local_redis,
+                f"HYPERLIQUID_{self.market_type.upper()}",
+                ("ticker", "orderbook"),
+            ):
                 self.websocket_logger.info(f"[HYPERLIQUID {self.market_type}] Waiting for websocket data to be loaded...")
                 time.sleep(2)
                 # Timeout after 60 seconds
@@ -414,7 +431,7 @@ class HyperliquidWebsocket:
                     self.websocket_logger.warning(f"[HYPERLIQUID {self.market_type}] Timeout waiting for initial data")
                     break
             else:
-                self.websocket_logger.info(f"[HYPERLIQUID {self.market_type}] Initial data loaded: {len(ticker_data)} tickers, {len(orderbook_data)} orderbooks")
+                self.websocket_logger.info(f"[HYPERLIQUID {self.market_type}] Initial data loaded")
                 break
 
         # Start monitoring threads
@@ -468,6 +485,7 @@ class HyperliquidWebsocket:
                                 args=(
                                     all_symbols,
                                     error_event,
+                                    HYPERLIQUID_TICKER_PROC_NAME,
                                     self.market_type,
                                     self.logging_dir,
                                     self.acw_api,
@@ -512,6 +530,7 @@ class HyperliquidWebsocket:
                                     args=(
                                         self.sliced_symbols_list[i],
                                         error_event,
+                                        orderbook_proc_name,
                                         self.market_type,
                                         self.logging_dir,
                                         self.acw_api,
@@ -613,52 +632,107 @@ class HyperliquidWebsocket:
 
                 now_us = int(time.time() * 1_000_000)
 
-                # Check ticker data staleness
-                ticker_data = self.local_redis.get_all_exchange_stream_data("ticker", f"HYPERLIQUID_{self.market_type.upper()}")
-                if ticker_data:
-                    stale_ticker_count = 0
-                    for symbol, data in ticker_data.items():
-                        last_update = data.get("last_update_timestamp")
-                        if last_update:
-                            diff_secs = (now_us - last_update) / 1_000_000
-                            if diff_secs > stale_threshold_secs:
-                                stale_ticker_count += 1
-
-                    if stale_ticker_count > len(ticker_data) * 0.8:  # 80% stale
-                        content = f"[HYPERLIQUID {self.market_type}] {stale_ticker_count}/{len(ticker_data)} tickers are stale. Restarting ticker websocket."
-                        self.websocket_logger.warning(content)
-                        self.acw_api.create_message_thread(self.admin_id, f"HYPERLIQUID {self.market_type} Stale Ticker", content)
-
-                        # Set error event for ticker process
-                        ticker_proc = self.websocket_proc_dict.get("1th_ticker_proc")
-                        if ticker_proc and ticker_proc.is_alive():
-                            # Find and set the corresponding error event
-                            pass  # Process will be restarted by handle_price_procs
-
-                # Check orderbook data staleness per process
-                orderbook_data = self.local_redis.get_all_exchange_stream_data("orderbook", f"HYPERLIQUID_{self.market_type.upper()}")
-                if orderbook_data:
-                    for i in range(self.proc_n):
-                        index = i + 1
-                        proc_symbols = self.websocket_symbol_dict.get(f"{index}th_orderbook_symbol", [])
-
-                        if not proc_symbols:
-                            continue
-
-                        stale_count = 0
-                        for symbol in proc_symbols:
-                            symbol_data = orderbook_data.get(symbol, {})
-                            last_update = symbol_data.get("last_update_timestamp")
-                            if last_update:
-                                diff_secs = (now_us - last_update) / 1_000_000
-                                if diff_secs > stale_threshold_secs:
-                                    stale_count += 1
+                ticker_symbols = self.websocket_symbol_dict.get("1th_ticker_symbol", [])
+                if ticker_symbols:
+                    ticker_proc = self.websocket_proc_dict.get(HYPERLIQUID_TICKER_PROC_NAME)
+                    if ticker_proc and ticker_proc.is_alive():
+                        if is_process_heartbeat_stale(
+                            self.local_redis,
+                            f"HYPERLIQUID_{self.market_type.upper()}",
+                            "ticker",
+                            HYPERLIQUID_TICKER_PROC_NAME,
+                            stale_threshold_secs=stale_threshold_secs,
+                            now_us=now_us,
+                        ):
+                            self.partial_stale_strikes.pop(HYPERLIQUID_TICKER_PROC_NAME, None)
+                            self.websocket_logger.warning(f"Killing process: {HYPERLIQUID_TICKER_PROC_NAME}")
+                            ticker_proc.terminate()
+                            ticker_proc.join()
+                            time.sleep(60)
+                        else:
+                            summary = get_stale_symbol_summary(
+                                self.local_redis,
+                                f"HYPERLIQUID_{self.market_type.upper()}",
+                                "ticker",
+                                ticker_symbols,
+                                stale_threshold_secs=stale_threshold_secs,
+                                now_us=now_us,
+                            )
+                            stale_count = summary["stale_count"]
+                            total_symbols = summary["total_symbols"]
+                            if stale_count == 0:
+                                self.partial_stale_strikes.pop(HYPERLIQUID_TICKER_PROC_NAME, None)
                             else:
-                                stale_count += 1  # No data = stale
+                                strike_count = self.partial_stale_strikes.get(HYPERLIQUID_TICKER_PROC_NAME, 0) + 1
+                                self.partial_stale_strikes[HYPERLIQUID_TICKER_PROC_NAME] = strike_count
+                                self.websocket_logger.warning(
+                                    f"[HYPERLIQUID {self.market_type}] ticker partial stale "
+                                    f"{stale_count}/{total_symbols}, strike={strike_count}, "
+                                    f"symbols={summary['stale_symbols'][:5]}"
+                                )
+                                if stale_count == total_symbols or (
+                                    strike_count >= 2 and (stale_count >= min(2, total_symbols) or summary["stale_ratio"] >= 0.25)
+                                ):
+                                    self.websocket_logger.warning(f"Killing process: {HYPERLIQUID_TICKER_PROC_NAME}")
+                                    ticker_proc.terminate()
+                                    ticker_proc.join()
+                                    self.partial_stale_strikes.pop(HYPERLIQUID_TICKER_PROC_NAME, None)
+                                    time.sleep(60)
 
-                        if stale_count > len(proc_symbols) * 0.8:  # 80% stale
-                            content = f"[HYPERLIQUID {self.market_type}] Process {index}: {stale_count}/{len(proc_symbols)} orderbooks stale."
-                            self.websocket_logger.warning(content)
+                for i in range(self.proc_n):
+                    index = i + 1
+                    proc_name = f"{index}th_orderbook_proc"
+                    proc = self.websocket_proc_dict.get(proc_name)
+                    if not proc or not proc.is_alive():
+                        continue
+                    proc_symbols = self.websocket_symbol_dict.get(f"{index}th_orderbook_symbol", [])
+                    if not proc_symbols:
+                        continue
+
+                    if is_process_heartbeat_stale(
+                        self.local_redis,
+                        f"HYPERLIQUID_{self.market_type.upper()}",
+                        "orderbook",
+                        proc_name,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    ):
+                        self.partial_stale_strikes.pop(proc_name, None)
+                        self.websocket_logger.warning(f"Killing process: {proc_name}")
+                        proc.terminate()
+                        proc.join()
+                        time.sleep(60)
+                        continue
+
+                    summary = get_stale_symbol_summary(
+                        self.local_redis,
+                        f"HYPERLIQUID_{self.market_type.upper()}",
+                        "orderbook",
+                        proc_symbols,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    )
+                    stale_count = summary["stale_count"]
+                    total_symbols = summary["total_symbols"]
+                    if stale_count == 0:
+                        self.partial_stale_strikes.pop(proc_name, None)
+                        continue
+
+                    strike_count = self.partial_stale_strikes.get(proc_name, 0) + 1
+                    self.partial_stale_strikes[proc_name] = strike_count
+                    self.websocket_logger.warning(
+                        f"[HYPERLIQUID {self.market_type}] {proc_name} partial stale "
+                        f"{stale_count}/{total_symbols}, strike={strike_count}, "
+                        f"symbols={summary['stale_symbols'][:5]}"
+                    )
+                    if stale_count == total_symbols or (
+                        strike_count >= 2 and (stale_count >= min(2, total_symbols) or summary["stale_ratio"] >= 0.25)
+                    ):
+                        self.websocket_logger.warning(f"Killing process: {proc_name}")
+                        proc.terminate()
+                        proc.join()
+                        self.partial_stale_strikes.pop(proc_name, None)
+                        time.sleep(60)
 
             except Exception as e:
                 content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"

@@ -30,6 +30,13 @@ import os
 import sys
 
 from loggers.logger import InfoCoreLogger
+from exchange_websocket.heartbeat import (
+    has_recent_market_ready,
+    is_process_heartbeat_stale,
+    touch_market_ready,
+    touch_process_heartbeat,
+)
+from acw_common.websocket import get_stale_symbol_summary
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 from exchange_plugin.coinone_plug import Coinone
@@ -46,6 +53,7 @@ STALE_DATA_CHECK_INTERVAL_SECS = 60
 PING_INTERVAL_SECS = 300  # 5 minutes
 INACTIVITY_TIMEOUT_SECS = 120
 HYSTERESIS_BUFFER_SIZE = 25  # Top 25 candidates for subscription
+COINONE_PROC_NAME = "coinone_ws_proc"
 
 
 @dataclass
@@ -302,6 +310,8 @@ def coinone_websocket_process(
                         'last_update_timestamp': int(time.time() * 1_000_000)
                     }
                     local_redis.update_exchange_stream_data("ticker", "COINONE_SPOT", symbol, ticker_data)
+                    touch_market_ready(local_redis, "COINONE_SPOT", "ticker", ticker_data["last_update_timestamp"])
+                    touch_process_heartbeat(local_redis, "COINONE_SPOT", "ticker", COINONE_PROC_NAME, ticker_data["last_update_timestamp"])
 
                 elif channel == 'ORDERBOOK':
                     # Normalize orderbook data
@@ -315,6 +325,8 @@ def coinone_websocket_process(
                         'last_update_timestamp': int(time.time() * 1_000_000)
                     }
                     local_redis.update_exchange_stream_data("orderbook", "COINONE_SPOT", symbol, orderbook_data)
+                    touch_market_ready(local_redis, "COINONE_SPOT", "orderbook", orderbook_data["last_update_timestamp"])
+                    touch_process_heartbeat(local_redis, "COINONE_SPOT", "orderbook", COINONE_PROC_NAME, orderbook_data["last_update_timestamp"])
 
             elif response_type == 'PONG':
                 logger.debug("[COINONE] Received PONG")
@@ -474,6 +486,7 @@ class CoinoneWebsocket:
         # Inter-process communication queues (created in _start_websocket)
         self.subscribe_queue = None
         self.unsubscribe_queue = None
+        self.partial_stale_strikes = {"ticker": 0, "orderbook": 0}
 
         # Initialize
         self._initialize_known_markets()
@@ -594,11 +607,13 @@ class CoinoneWebsocket:
         """Wait for initial WebSocket data to be populated."""
         start_time = time.time()
         while time.time() - start_time < timeout:
-            ticker_data = self.local_redis.get_all_exchange_stream_data("ticker", "COINONE_SPOT")
-            orderbook_data = self.local_redis.get_all_exchange_stream_data("orderbook", "COINONE_SPOT")
-
-            if ticker_data and orderbook_data:
-                self.logger.info(f"[COINONE SPOT] Initial data loaded: {len(ticker_data)} tickers, {len(orderbook_data)} orderbooks")
+            if has_recent_market_ready(
+                self.local_redis,
+                "COINONE_SPOT",
+                ("ticker", "orderbook"),
+            ):
+                subscribed_count = self.subscription_state.get_subscription_count()
+                self.logger.info(f"[COINONE SPOT] Initial data loaded for {subscribed_count} subscribed symbols")
                 return
 
             self.logger.info("[COINONE SPOT] Waiting for WebSocket data to be loaded...")
@@ -852,43 +867,65 @@ class CoinoneWebsocket:
 
             try:
                 now_us = int(time.time() * 1_000_000)
-                ticker_data = self.local_redis.get_all_exchange_stream_data("ticker", "COINONE_SPOT")
-
-                if not ticker_data:
+                subscribed_symbols = self.subscription_state.get_subscribed_symbols()
+                if not subscribed_symbols:
                     continue
 
-                stale_symbols = []
-                for symbol in self.subscription_state.get_subscribed_symbols():
-                    symbol_data = ticker_data.get(symbol, {})
-                    last_update = symbol_data.get('last_update_timestamp')
+                for stream_type in ("ticker", "orderbook"):
+                    if is_process_heartbeat_stale(
+                        self.local_redis,
+                        "COINONE_SPOT",
+                        stream_type,
+                        COINONE_PROC_NAME,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    ):
+                        self.partial_stale_strikes[stream_type] = 0
+                        content = (
+                            f"[COINONE SPOT] {stream_type} heartbeat stale for > {stale_threshold_secs}s.\n"
+                            f"Forcing WebSocket reconnect."
+                        )
+                        self.logger.error(content)
+                        self.acw_api.create_message_thread(self.admin_id, "[COINONE] Heartbeat Stale", content)
+                        if self.error_event:
+                            self.error_event.set()
+                        break
 
-                    if last_update is None:
-                        stale_symbols.append(symbol)
+                    summary = get_stale_symbol_summary(
+                        self.local_redis,
+                        "COINONE_SPOT",
+                        stream_type,
+                        subscribed_symbols,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    )
+                    stale_count = summary["stale_count"]
+                    total_symbols = summary["total_symbols"]
+                    if stale_count == 0:
+                        self.partial_stale_strikes[stream_type] = 0
                         continue
 
-                    diff_secs = (now_us - last_update) / 1_000_000
-                    if diff_secs > stale_threshold_secs:
-                        stale_symbols.append(symbol)
-
-                if len(stale_symbols) > 0:
+                    self.partial_stale_strikes[stream_type] += 1
+                    strike_count = self.partial_stale_strikes[stream_type]
                     self.logger.warning(
-                        f"[COINONE SPOT] {len(stale_symbols)} symbols stale: {stale_symbols[:5]}..."
+                        f"[COINONE SPOT] {stream_type} partial stale "
+                        f"{stale_count}/{total_symbols}, strike={strike_count}, "
+                        f"symbols={summary['stale_symbols'][:5]}"
                     )
 
-                # If ALL symbols are stale, force reconnect
-                subscribed_count = self.subscription_state.get_subscription_count()
-                if subscribed_count > 0 and len(stale_symbols) == subscribed_count:
-                    content = (f"[COINONE SPOT] All {subscribed_count} symbols are stale!\n"
-                              f"Forcing WebSocket reconnect.")
-                    self.logger.error(content)
-                    self.acw_api.create_message_thread(
-                        self.admin_id,
-                        "[COINONE] All Data Stale",
-                        content
-                    )
-
-                    if self.error_event:
-                        self.error_event.set()
+                    if stale_count == total_symbols or (
+                        strike_count >= 2 and (stale_count >= min(2, total_symbols) or summary["stale_ratio"] >= 0.25)
+                    ):
+                        content = (
+                            f"[COINONE SPOT] {stream_type} stale persisted "
+                            f"({stale_count}/{total_symbols}, strike={strike_count}).\n"
+                            f"Forcing WebSocket reconnect."
+                        )
+                        self.logger.error(content)
+                        self.acw_api.create_message_thread(self.admin_id, "[COINONE] Stale Data", content)
+                        if self.error_event:
+                            self.error_event.set()
+                        break
 
             except Exception as e:
                 self.logger.error(f"[COINONE] monitor_stale_data_loop error: {e}, {traceback.format_exc()}")
