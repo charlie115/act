@@ -29,6 +29,8 @@ const nextConfig = {
       assets: path.join(legacySrc, "assets"),
       "@emotion/react": path.resolve("./node_modules/@emotion/react"),
       "@emotion/styled": path.resolve("./node_modules/@emotion/styled"),
+      "@emoji-mart/data": path.resolve("./node_modules/@emoji-mart/data"),
+      "@emoji-mart/react": path.resolve("./node_modules/@emoji-mart/react"),
       "@mui/icons-material": path.resolve("./node_modules/@mui/icons-material"),
       "@mui/lab": path.resolve("./node_modules/@mui/lab"),
       "@mui/material": path.resolve("./node_modules/@mui/material"),
@@ -44,7 +46,11 @@ const nextConfig = {
       "lightweight-charts": path.resolve("./node_modules/lightweight-charts"),
       lodash: path.resolve("./node_modules/lodash"),
       luxon: path.resolve("./node_modules/luxon"),
+      pages: path.join(legacySrc, "pages"),
       "react-hook-form": path.resolve("./node_modules/react-hook-form"),
+      "react-intersection-observer": path.resolve(
+        "./node_modules/react-intersection-observer/dist/index.js"
+      ),
       "react-i18next": path.resolve("./node_modules/react-i18next"),
       "react-redux": path.resolve("./node_modules/react-redux"),
       "react-router-dom": path.resolve("./node_modules/react-router-dom"),
@@ -70,7 +76,7 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: `${apiProxyTarget}/api/:path*`,
+        destination: `${apiProxyTarget}/:path*`,
       },
     ];
   },
