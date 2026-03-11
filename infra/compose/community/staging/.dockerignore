@@ -1,0 +1,13 @@
+# Logging
+logs/
+*.log
+
+# Temp
+temp/
+
+# Data
+data/
+
+# Env files
+.env
+venv

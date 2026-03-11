@@ -1,0 +1,181 @@
+version: '3'
+services:
+  
+  certbot:
+    build:
+      context: ./certbot
+    container_name: certbot
+    volumes:
+      - $HOME/certbot/conf:/etc/letsencrypt
+      - $HOME/certbot/www:/var/www/certbot
+    networks:
+      - prod-community-network
+
+  nginx:
+    image: community-nginx
+    build:
+      context: "nginx/"
+    container_name: prod-community-nginx
+    volumes:
+      - $HOME/prod-community-web/build/:/opt/community_frontend/build/
+      - $HOME/prod-community-drf/static/:/opt/community_drf/static/
+      - $HOME/prod-community-drf/media/:/opt/community_drf/media/
+      - $HOME/certbot/conf:/etc/letsencrypt
+      - $HOME/certbot/www:/var/www/certbot
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+     - drf
+    networks:
+      - prod-community-network
+    restart: always
+  
+  postgres:
+    image: postgres:16rc1-alpine
+    container_name: prod-community-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DATABASE_COMMUNITY}
+      - PGDATA=/var/lib/postgresql/data/
+    volumes:
+      - $HOME/prod-community-postgres/data/:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    expose:
+      - "5432"
+    networks:
+      - prod-community-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "${POSTGRES_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+  
+  redis:
+    image: redis:7-alpine
+    container_name: prod-community-redis
+    command: ["redis-server", "/etc/redis/redis.conf"]
+    volumes:
+      - $HOME/prod-community-redis/data/:/data/
+      - $HOME/prod-community-redis/conf/redis.conf:/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    expose:
+      - "6379"
+    networks:
+      - prod-community-network
+    restart: always
+  
+  mongodb:
+    image: mongo:6.0
+    container_name: prod-community-mongodb
+    command: ["--auth"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - $HOME/prod-community-mongodb/data/:/data/
+    ports:
+      - "27017:27017"
+    expose:
+      - "27017"
+    networks:
+      - prod-community-network
+    restart: always
+  
+  drf:
+    image: community-drf
+    depends_on:
+      postgres:
+        condition: service_healthy
+      hd-api-key-generator: 
+        condition: service_started
+    environment:
+      - WALLET_SERVICE_URL=http://hdwallet-service:8000
+      - WALLET_API_KEY_FILE=/api_key/wallet_api_key.txt
+    container_name: prod-community-drf
+    volumes:
+      - $HOME/prod-community-drf/static:/opt/community_drf/static
+      - $HOME/prod-community-drf/media:/opt/community_drf/media
+      - $HOME/prod-community-apikey:/api_key:ro
+    expose:
+      - "8000"
+    networks:
+      - prod-community-network
+    restart: always
+  
+  celery-worker:
+    image: community-celery-worker
+    command: celery -A config worker -l INFO
+    container_name: prod-community-celery-worker
+    volumes:
+      - $HOME/prod-community-drf/media:/opt/community_drf/media
+    networks:
+      - prod-community-network
+    restart: always
+  
+  celery-beat:
+    image: community-celery-beat
+    command: celery -A config beat -l INFO
+    container_name: prod-community-celery-beat
+    volumes:
+      - $HOME/prod-community-drf/media:/opt/community_drf/media
+    networks:
+      - prod-community-network
+    restart: always
+  
+  news-core:
+    image: news-core
+    container_name: prod-news-core
+    networks:
+      - prod-community-network
+    restart: always
+  
+  info-core:
+    image: info-core
+    container_name: prod-info-core
+    volumes:
+      - $HOME/prod-info-core/logs:/home/info_core/info_core/loggers/logs
+    networks:
+      - prod-community-network
+    restart: always
+
+  hdwallet-service:
+    image: hdwallet-service
+    container_name: hdwallet-service
+    environment:
+      - MNEMONIC_FILE=/run/secrets/hd_mnemonic
+      - WALLET_API_KEY_FILE=/api_key/wallet_api_key.txt
+      - TRON_GRID_API_KEY=${TRON_GRID_API_KEY}
+    secrets:
+      - hd_mnemonic
+    volumes:
+      - $HOME/prod-community-apikey:/api_key:ro  # Mount the same volume
+    networks:
+      - prod-community-network
+    depends_on:
+      - hd-api-key-generator  # Ensure API key is generated before starting
+      - drf
+
+  hd-api-key-generator:
+    container_name: hd-api-key-generator
+    image: alpine:latest
+    command: sh -c "mkdir -p /api_key && head -c 32 /dev/urandom | base64 > /api_key/wallet_api_key.txt"
+    volumes:
+      - $HOME/prod-community-apikey:/api_key
+    networks:
+      - prod-community-network
+    deploy:
+      replicas: 1
+
+secrets:
+  hd_mnemonic:
+    file: $HOME/prod-community-secrets/hd_mnemonic.txt
+
+networks:
+  prod-community-network:
+    driver: bridge
+
