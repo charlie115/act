@@ -2,13 +2,14 @@ import os
 import sys
 import argparse
 import time
+import traceback
 
 upper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(upper_dir)
 from info_core import InitCore
 from etc.command_handler import CommandHandler
 from etc.acw_api import AcwApi
-from dotenv import load_dotenv
+from runtime_config import ConfigValidationError, load_runtime_config
 
 def get_arguments():
     """
@@ -31,112 +32,59 @@ def get_arguments():
 
 if __name__ == '__main__':
     proc_n, logging_dir, config_dir = get_arguments()
-    # Load config
-    load_dotenv(config_dir)
-    if not os.path.exists(logging_dir):
-        os.mkdir(logging_dir)
-    
-    # Access environment variables
-    PROD = os.getenv('PROD', 'False').lower() == 'true'
-    NODE = os.getenv('NODE')
-    MASTER = os.getenv('MASTER').lower() == 'true'
-    PROC_N = int(os.getenv('PROC_N')) if proc_n is None else proc_n
-    MONGODB_HOST = os.getenv('MONGODB_HOST')
-    MONGODB_PORT = int(os.getenv('MONGODB_PORT', '27017'))  # Set default port if not provided
-    MONGODB_USER = os.getenv('MONGODB_USER')
-    MONGODB_PASS = os.getenv('MONGODB_PASS')
-    REDIS_HOST = os.getenv('REDIS_HOST')
-    REDIS_PORT = int(os.getenv('REDIS_PORT', '6379'))
-    REDIS_PASS = os.getenv('REDIS_PASS')
-    ADMIN_TELEGRAM_ID = int(os.getenv('ADMIN_TELEGRAM_ID'))
-    STAFF_TELEGRAM_ID_LIST = [int(x.strip()) for x in os.getenv('STAFF_TELEGRAM_ID_LIST').split(',') if x != ""]
-    TOTAL_ADMIN_TELEGRAM_ID_LIST = [ADMIN_TELEGRAM_ID] + STAFF_TELEGRAM_ID_LIST
-    ACW_API_URL = os.getenv('ACW_API_URL')
-    BINANCE_ACCESS_KEY = os.getenv('BINANCE_ACCESS_KEY')
-    BINANCE_SECRET_KEY = os.getenv('BINANCE_SECRET_KEY')
-    OKX_ACCESS_KEY = os.getenv('OKX_ACCESS_KEY')
-    OKX_SECRET_KEY = os.getenv('OKX_SECRET_KEY')
-    OKX_PASSPHRASE = os.getenv('OKX_PASSPHRASE')
-    UPBIT_ACCESS_KEY = os.getenv('UPBIT_ACCESS_KEY')
-    UPBIT_SECRET_KEY = os.getenv('UPBIT_SECRET_KEY')
-    BITHUMB_ACCESS_KEY = os.getenv('BITHUMB_ACCESS_KEY')
-    BITHUMB_SECRET_KEY = os.getenv('BITHUMB_SECRET_KEY')
-    BYBIT_ACCESS_KEY = os.getenv('BYBIT_ACCESS_KEY')
-    BYBIT_SECRET_KEY = os.getenv('BYBIT_SECRET_KEY')
-    GATE_ACCESS_KEY = os.getenv('GATE_ACCESS_KEY')
-    GATE_SECRET_KEY = os.getenv('GATE_SECRET_KEY')
-    AIENGINE_API_KEY = os.getenv('AIENGINE_API_KEY')
-    ENABLED_MARKET_KLINES = [x for x in [x.strip() for x in os.getenv('ENABLED_MARKET_KLINES').split(',')] if x != ""]
-    ENALBED_ARBITRAGE_MARKETS = [x for x in [x.strip() for x in os.getenv('ENALBED_ARBITRAGE_MARKETS').split(',')] if x != ""]
-
-    # make api key dict
-    exchange_api_key_dict = {
-        "binance_read_only": {
-            "api_key": BINANCE_ACCESS_KEY,
-            "secret_key": BINANCE_SECRET_KEY
-        },
-        "okx_read_only": {
-            "api_key": OKX_ACCESS_KEY,
-            "secret_key": OKX_SECRET_KEY,
-            "passphrase": OKX_PASSPHRASE
-        },
-        "upbit_read_only": {
-            "api_key": UPBIT_ACCESS_KEY,
-            "secret_key": UPBIT_SECRET_KEY
-        },
-        "bithumb_read_only": {
-            "api_key": BITHUMB_ACCESS_KEY,
-            "secret_key": BITHUMB_SECRET_KEY,
-        },
-        "bybit_read_only": {
-            "api_key": BYBIT_ACCESS_KEY,
-            "secret_key": BYBIT_SECRET_KEY,
-        },
-        "gate_read_only": {
-            "api_key": GATE_ACCESS_KEY,
-            "secret_key": GATE_SECRET_KEY,
-        },
-    }
-
-    # make db info dict
-    mongo_db_dict = {
-        "host": MONGODB_HOST,
-        "port": MONGODB_PORT,
-        "user": MONGODB_USER,
-        "passwd": MONGODB_PASS
-    }
-
-    redis_dict = {
-        "host": REDIS_HOST,
-        "port": REDIS_PORT,
-        "passwd": REDIS_PASS
-    }
+    try:
+        runtime_config = load_runtime_config(
+            config_path=config_dir,
+            logging_dir=logging_dir,
+            proc_n_override=proc_n,
+        )
+    except ConfigValidationError as exc:
+        print("Invalid info_core runtime configuration:", file=sys.stderr)
+        for error in exc.errors:
+            print(f"- {error}", file=sys.stderr)
+        raise SystemExit(1)
+    except Exception:
+        print("Failed to load info_core runtime configuration.", file=sys.stderr)
+        print(traceback.format_exc(), file=sys.stderr)
+        raise SystemExit(1)
     
     # Starting message
-    acw_api = AcwApi(ACW_API_URL, NODE, PROD)
+    acw_api = AcwApi(
+        runtime_config.acw_api_url,
+        runtime_config.node,
+        runtime_config.prod,
+    )
     acw_api.create_message_thread(
-        ADMIN_TELEGRAM_ID,
-        f"Node:{NODE} is starting with {PROC_N} processes..",
-        f"Node:{NODE} is starting with {PROC_N} processes..",
+        runtime_config.admin_telegram_id,
+        f"Node:{runtime_config.node} is starting with {runtime_config.proc_n} processes..",
+        f"Node:{runtime_config.node} is starting with {runtime_config.proc_n} processes..",
     )
     
     # Initiate Kimp core (Websocket engine)
-    core = InitCore(logging_dir,
-                    MASTER,
-                    PROC_N,
-                    NODE,
-                    ADMIN_TELEGRAM_ID,
-                    acw_api,
-                    AIENGINE_API_KEY,
-                    exchange_api_key_dict,
-                    ENABLED_MARKET_KLINES,
-                    ENALBED_ARBITRAGE_MARKETS,
-                    mongo_db_dict,
-                    redis_dict)
+    core = InitCore(
+        runtime_config.logging_dir,
+        runtime_config.master,
+        runtime_config.proc_n,
+        runtime_config.node,
+        runtime_config.admin_telegram_id,
+        acw_api,
+        runtime_config.ai_api_key,
+        runtime_config.exchange_api_key_dict,
+        runtime_config.enabled_market_klines,
+        runtime_config.enabled_arbitrage_markets,
+        runtime_config.mongodb_dict,
+        runtime_config.redis_dict,
+    )
 
     time.sleep(5)
 
     # Start command handler loop
-    command_handler = CommandHandler(ACW_API_URL, NODE, PROD, ADMIN_TELEGRAM_ID, core, logging_dir)
+    command_handler = CommandHandler(
+        runtime_config.acw_api_url,
+        runtime_config.node,
+        runtime_config.prod,
+        runtime_config.admin_telegram_id,
+        core,
+        runtime_config.logging_dir,
+    )
     command_handler.fetch_command_loop()
-
