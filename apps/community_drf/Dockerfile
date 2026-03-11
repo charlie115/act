@@ -15,6 +15,7 @@ WORKDIR /opt/community_drf/
 COPY ./requirements/base.txt requirements/base.txt
 COPY ./manage.py manage.py
 COPY ./config config/
+COPY ./integrations integrations/
 COPY ./lib lib/
 COPY ./templates templates/
 COPY ./apps apps/

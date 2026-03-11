@@ -1,10 +1,6 @@
-import json
-import requests
-
-from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework import exceptions
-from urllib.parse import urljoin
 
+from integrations.tradecore import TradeCoreClient
 from lib.permissions import ACWBasePermission
 from lib.status import (
     HTTP_400_BAD_REQUEST,
@@ -77,43 +73,33 @@ class TradeCoreMixin(object):
         )
         return trade_config_allocation.node
 
-    def build_api_url(self, url, endpoint, path_param=None):
-        api_url = urljoin(url, endpoint)
-        if path_param:
-            api_url = urljoin(api_url, str(path_param))
-        return api_url
+    def get_tradecore_client(self, url):
+        return TradeCoreClient(base_url=url)
 
     def tradecore_list_api(self, url, endpoint, query_params=None):
-        api_url = self.build_api_url(url, endpoint)
-        api_response = requests.get(url=api_url, params=query_params)
-        return api_response
+        return self.get_tradecore_client(url).list(endpoint, query_params=query_params)
 
     def tradecore_retrieve_api(self, url, endpoint, path_param, query_params=None):
-        api_url = self.build_api_url(url, endpoint, path_param)
-        api_response = requests.get(url=api_url, params=query_params)
-        return api_response
+        return self.get_tradecore_client(url).retrieve(
+            endpoint,
+            path_param,
+            query_params=query_params,
+        )
 
     def tradecore_create_api(self, url, endpoint, data):
-        api_url = self.build_api_url(url, endpoint)
-        api_data = json.dumps(data, cls=DjangoJSONEncoder)
-        api_response = requests.post(url=api_url, data=api_data)
-        return api_response
+        return self.get_tradecore_client(url).create(endpoint, data)
 
     def tradecore_update_api(self, url, endpoint, path_param, data):
-        api_url = self.build_api_url(url, endpoint, path_param)
-        api_data = json.dumps(data, cls=DjangoJSONEncoder)
-        api_response = requests.put(url=api_url, data=api_data)
-        return api_response
+        return self.get_tradecore_client(url).update(endpoint, path_param, data)
 
     def tradecore_destroy_api(self, url, endpoint, path_param):
-        api_url = self.build_api_url(url, endpoint, path_param)
-        api_response = requests.delete(url=api_url)
-        return api_response
+        return self.get_tradecore_client(url).destroy(endpoint, path_param)
 
     def tradecore_destroy_many_api(self, url, endpoint, query_params):
-        api_url = self.build_api_url(url, endpoint)
-        api_response = requests.delete(url=api_url, params=query_params)
-        return api_response
+        return self.get_tradecore_client(url).destroy_many(
+            endpoint,
+            query_params=query_params,
+        )
 
     def handle_exception_from_api(self, api_response):
         try:

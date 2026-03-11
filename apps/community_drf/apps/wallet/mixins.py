@@ -1,10 +1,7 @@
-import json
-import requests
 from django.conf import settings
-from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework import exceptions
-from urllib.parse import urljoin
 
+from integrations.wallet import WalletServiceClient
 from lib.permissions import ACWBasePermission
 from lib.status import (
     HTTP_400_BAD_REQUEST,
@@ -19,66 +16,33 @@ class WalletMixin(object):
         self.url = settings.WALLET_SERVICE_URL
         self.x_api_key = settings.WALLET_API_KEY
 
-    def build_api_url(self, endpoint, path_param=None):
-        api_url = urljoin(self.url, endpoint)        
-        if path_param:
-            api_url = urljoin(api_url, str(path_param))
-        return api_url
+    def get_wallet_client(self):
+        return WalletServiceClient(self.url, self.x_api_key)
 
     def hdwallet_service_list_api(self, endpoint, query_params=None):
-        api_url = self.build_api_url(endpoint)
-        api_response = requests.get(
-            url=api_url,
-            headers={"x-api-key": self.x_api_key},
-            params=query_params
-        )
-        return api_response
+        return self.get_wallet_client().list(endpoint, query_params=query_params)
 
     def hdwallet_service_retrieve_api(self, endpoint, path_param, query_params=None):
-        api_url = self.build_api_url(endpoint, path_param)
-        api_response = requests.get(
-            url=api_url,
-            headers={"x-api-key": self.x_api_key},
-            params=query_params
+        return self.get_wallet_client().retrieve(
+            endpoint,
+            path_param,
+            query_params=query_params,
         )
-        return api_response
 
     def hdwallet_service_create_api(self, endpoint, data):
-        api_url = self.build_api_url(endpoint)
-        api_data = json.dumps(data, cls=DjangoJSONEncoder)
-        api_response = requests.post(
-            url=api_url,
-            headers={"x-api-key": self.x_api_key},
-            data=api_data
-        )
-        return api_response
+        return self.get_wallet_client().create(endpoint, data)
 
     def hdwallet_service_update_api(self, endpoint, path_param, data):
-        api_url = self.build_api_url(endpoint, path_param)
-        api_data = json.dumps(data, cls=DjangoJSONEncoder)
-        api_response = requests.put(
-            url=api_url,
-            headers={"x-api-key": self.x_api_key},
-            data=api_data
-        )
-        return api_response
+        return self.get_wallet_client().update(endpoint, path_param, data)
 
     def hdwallet_service_destroy_api(self, endpoint, path_param):
-        api_url = self.build_api_url(endpoint, path_param)
-        api_response = requests.delete(
-            url=api_url,
-            headers={"x-api-key": self.x_api_key}
-        )
-        return api_response
+        return self.get_wallet_client().destroy(endpoint, path_param)
 
     def hdwallet_service_destroy_many_api(self, endpoint, query_params):
-        api_url = self.build_api_url(endpoint)
-        api_response = requests.delete(
-            url=api_url,
-            headers={"x-api-key": self.x_api_key},
-            params=query_params
+        return self.get_wallet_client().destroy_many(
+            endpoint,
+            query_params=query_params,
         )
-        return api_response
 
     def handle_exception_from_api(self, api_response):
         try:
