@@ -64,7 +64,6 @@ class MarketRuntime:
         self.redis_dict = redis_dict
         self.postgres_client = InitPostgresDBClient(**{**postgres_db_dict, 'database': 'trade_core'})
         self.postgres_client.create_all_tables()
-        # TESTTEST
         self.upbit_symbols_to_exclude = []
         self.binance_usd_m_symbols_to_exclude = []
         # For redis connesction for server check information
@@ -445,7 +444,6 @@ class MarketRuntime:
             return convert_rate
         convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, target_quote_asset)
         if convert_rate is None: # not between coins
-            # print("1st convert_rate is None, Not between coins")
             if target_quote_asset == "KRW" and origin_quote_asset == "USDT":
                 convert_rate = get_dollar_dict(self.local_redis)['price']
             elif target_quote_asset == "USDT" and origin_quote_asset == "KRW":
@@ -689,7 +687,6 @@ class MarketRuntime:
                 self.acw_api.create_message_thread(self.admin_id, f"fetch_dollar_loop|Exception occured! Error: {e}", f"fetch_dollar_loop|Exception occured! Error: {e}")
             time.sleep(loop_time)
 
-    # TESTTEST
     def add_symbol_to_exclude(self, market, base_asset):
         if market == "UPBIT_SPOT":
             self.upbit_symbols_to_exclude.append(base_asset)
@@ -697,7 +694,6 @@ class MarketRuntime:
             self.binance_usd_m_symbols_to_exclude.append(base_asset)
         else:
             raise Exception(f"market: {market} is not supported.")
-    # TESTTEST
     def remove_symbol_to_exclude(self, market, base_asset):
         if market == "UPBIT_SPOT":
             self.upbit_symbols_to_exclude.remove(base_asset)

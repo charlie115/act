@@ -61,7 +61,6 @@ class MarketIngestRuntime:
         self.enabled_websocket_list = self.generate_enabled_websocket_list()
         self.enabled_markets_dict = self.generate_enabled_market_code_dict()
         self.mongodb_dict = mongodb_dict
-        # TESTTEST
         self.upbit_symbols_to_exclude = []
         self.binance_usd_m_symbols_to_exclude = []
         # For redis connesction
@@ -483,7 +482,6 @@ class MarketIngestRuntime:
             return convert_rate
         convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, target_quote_asset)
         if convert_rate is None: # not between coins
-            # print("1st convert_rate is None, Not between coins")
             if target_quote_asset == "KRW" and origin_quote_asset == "USDT":
                 convert_rate = get_dollar_dict(self.local_redis)['price']
             elif target_quote_asset == "USDT" and origin_quote_asset == "KRW":
@@ -711,7 +709,6 @@ class MarketIngestRuntime:
                 self.acw_api.create_message_thread(self.admin_id, f"fetch_usdt_loop|Exception occured! Error: {e}", f"fetch_usdt_loop|Exception occured! Error: {e}")
             time.sleep(loop_time)
 
-    # TESTTEST
     def add_symbol_to_exclude(self, market, base_asset):
         if market == "UPBIT_SPOT":
             self.upbit_symbols_to_exclude.append(base_asset)
@@ -719,7 +716,6 @@ class MarketIngestRuntime:
             self.binance_usd_m_symbols_to_exclude.append(base_asset)
         else:
             raise Exception(f"market: {market} is not supported.")
-    # TESTTEST
     def remove_symbol_to_exclude(self, market, base_asset):
         if market == "UPBIT_SPOT":
             self.upbit_symbols_to_exclude.remove(base_asset)
