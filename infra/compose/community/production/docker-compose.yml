@@ -16,7 +16,6 @@ services:
       context: "nginx/"
     container_name: prod-community-nginx
     volumes:
-      - $HOME/prod-community-web/build/:/opt/community_frontend/build/
       - $HOME/prod-community-drf/static/:/opt/community_drf/static/
       - $HOME/prod-community-drf/media/:/opt/community_drf/media/
       - $HOME/certbot/conf:/etc/letsencrypt
@@ -25,7 +24,7 @@ services:
       - "80:80"
       - "443:443"
     depends_on:
-     - drf
+      - drf
     networks:
       - prod-community-network
     restart: always
@@ -84,7 +83,27 @@ services:
     networks:
       - prod-community-network
     restart: always
-  
+
+  community-web-next:
+    image: community-web-next
+    build:
+      context: ../../../../apps/community_web_next
+    container_name: prod-community-web-next
+    environment:
+      - PORT=3000
+      - NEXT_PUBLIC_SITE_URL=https://arbicrypto.net
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - ACW_API_SERVER_URL=http://drf:8000/api
+      - ACW_API_PROXY_TARGET=http://drf:8000
+      - NEXT_PUBLIC_DRF_URL=https://arbicrypto.net/api
+    expose:
+      - "3000"
+    depends_on:
+      - drf
+    networks:
+      - prod-community-network
+    restart: always
+
   drf:
     image: community-drf
     depends_on:
@@ -105,7 +124,7 @@ services:
     networks:
       - prod-community-network
     restart: always
-  
+
   celery-worker:
     image: community-celery-worker
     command: celery -A config worker -l INFO

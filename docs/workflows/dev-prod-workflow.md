@@ -6,11 +6,11 @@ Use the monorepo root as the single entry point for:
 
 - environment file initialization
 - Docker image builds
-- frontend build and artifact sync
+- frontend image build and optional local Next.js build
 - testing stack startup and shutdown
 - production stack startup and shutdown
 
-The root workflow now prefers the normalized compose layout:
+The root workflow now prefers the normalized compose layout and the official Next.js frontend:
 
 - `infra/compose/community/compose.base.yml`
 - `infra/compose/community/compose.testing.yml`
@@ -21,6 +21,9 @@ The root workflow now prefers the normalized compose layout:
 
 Legacy environment-specific `testing/docker-compose.yml` and `production/docker-compose.yml`
 are left in place as fallback references.
+
+The official public frontend is now `apps/community_web_next`.
+The CRA app remains in the repo as legacy source, but the root workflow no longer depends on its build artifact.
 
 ## Commands
 
@@ -109,7 +112,7 @@ make build-web ENV=testing
 make build-web ENV=production
 ```
 
-Sync built frontend artifact into the host path expected by compose:
+The old frontend artifact sync command is now a no-op because the official frontend runs as a container:
 
 ```bash
 make sync-web ENV=testing
@@ -119,8 +122,6 @@ make sync-web ENV=production
 ## Notes
 
 - `make env-init` only creates missing files unless `FORCE=1` is passed.
-- Community compose expects frontend build artifacts under:
-  - `~/test-community-web/build`
-  - `~/prod-community-web/build`
-- The root workflow script syncs the frontend build output to those paths automatically.
+- `make build-web` now runs a local Next.js production build in `apps/community_web_next`.
+- Community stack startup uses the `community-web-next` container as the public entrypoint.
 - Runtime services remain separated even though source control is unified.

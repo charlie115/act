@@ -9,7 +9,6 @@ services:
       context: production/nginx
     container_name: prod-community-nginx
     volumes:
-      - ${HOME}/prod-community-web/build/:/opt/community_frontend/build/
       - ${HOME}/prod-community-drf/static/:/opt/community_drf/static/
       - ${HOME}/prod-community-drf/media/:/opt/community_drf/media/
       - ${HOME}/certbot/conf:/etc/letsencrypt
@@ -42,6 +41,8 @@ services:
     container_name: prod-community-web-next
     environment:
       - NEXT_PUBLIC_SITE_URL=https://arbicrypto.net
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - NEXT_PUBLIC_DRF_URL=https://arbicrypto.net/api
 
   drf:
     image: community-drf
@@ -91,4 +92,3 @@ secrets:
 networks:
   community-network:
     name: prod-community-network
-

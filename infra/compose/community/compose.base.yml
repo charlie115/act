@@ -13,6 +13,7 @@ services:
       - "443:443"
     depends_on:
       - drf
+      - community-web-next
     networks:
       - community-network
     restart: always
@@ -63,6 +64,7 @@ services:
       - PORT=3000
       - ACW_API_SERVER_URL=http://drf:8000/api
       - ACW_API_PROXY_TARGET=http://drf:8000
+      - NEXT_PUBLIC_DRF_URL=
     expose:
       - "3000"
     depends_on:
@@ -135,4 +137,3 @@ secrets:
 networks:
   community-network:
     driver: bridge
-

@@ -22,6 +22,7 @@ List of containers:
 * test-community-postgres
 * test-community-redis
 * test-community-mongodb
+* test-community-web-next
 * test-community-drf
 * test-community-celery-worker
 * test-community-celery-beat
@@ -29,6 +30,9 @@ List of containers:
 * test-info-core
 
 Prod containers have the same list with ***prod*** as prefix.
+
+`community-web-next` is now the official public frontend entrypoint.
+The legacy CRA frontend remains in the repository as migration fallback, but Nginx now routes public traffic to the Next.js service.
 
 ### Deployment ###
 
@@ -52,7 +56,7 @@ However, we separated testing and production environments.
 
 #### Note
 
-If you check the docker compose file, one thing to note is that there is no step specified for building images except for Nginx. This means that either the images must exist locally already, or an image can just be pulled online. 
+If you check the docker compose file, one thing to note is that most service images are expected to exist already or be built from their own service directories. The Next frontend is now built directly from `apps/community_web_next`, while Nginx still acts as the public reverse proxy. 
 
 For our own projects, these images must already exist before we start `docker compose up`. The person-in-charge for these projects must be responsible for deploying (building images) of these projects. Then the docker compose should work as expected once all images are available.
 
@@ -74,4 +78,3 @@ docker compose down drf -v
     * `docker exec -it {container-name} bash`
 * nginx, redis _(These images don't have bash)_
     * `docker exec -it {container-name} sh`  
-

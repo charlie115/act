@@ -159,6 +159,7 @@ build_community_images() {
   docker build "${ROOT_DIR}/apps/community_drf" --target "${target}" -t "community-drf${suffix}"
   docker build "${ROOT_DIR}/apps/community_drf" --target "${target}" -t "community-celery-worker${suffix}"
   docker build "${ROOT_DIR}/apps/community_drf" --target "${target}" -t "community-celery-beat${suffix}"
+  docker build "${ROOT_DIR}/apps/community_web_next" -t "community-web-next${suffix}"
   docker build "${ROOT_DIR}/services/news_core" --target "${target}" -t "news-core${suffix}"
   docker build -f "${ROOT_DIR}/services/info_core/Dockerfile" "${ROOT_DIR}" --target "${target}" -t "info-core${suffix}"
 }
@@ -191,54 +192,42 @@ build_trade_images() {
 build_web() {
   local env_name="$1"
   local runner
+  local env_file
 
   runner="$(frontend_runner || true)"
   if [[ -z "${runner}" ]]; then
-    echo "pnpm or corepack is required for community_web builds." >&2
+    echo "pnpm or corepack is required for community_web_next builds." >&2
     exit 1
   fi
 
-  echo "Building community_web for ${env_name}"
+  case "${env_name}" in
+    testing)
+      env_file=".env.testing"
+      ;;
+    production)
+      env_file=".env.production"
+      ;;
+    *)
+      echo "community_web_next build supports only testing or production: ${env_name}" >&2
+      exit 1
+      ;;
+  esac
+
+  echo "Building community_web_next for ${env_name}"
 
   (
-    cd "${ROOT_DIR}/apps/community_web"
+    cd "${ROOT_DIR}/apps/community_web_next"
     eval "${runner} install"
-
-    case "${env_name}" in
-      testing)
-        eval "${runner} run build:test"
-        ;;
-      production)
-        eval "${runner} run build:production"
-        ;;
-      *)
-        echo "community_web build supports only testing or production: ${env_name}" >&2
-        exit 1
-        ;;
-    esac
+    set -a
+    source "${env_file}"
+    set +a
+    eval "${runner} run build"
   )
 }
 
 sync_web() {
   local env_name="$1"
-  local target_dir
-
-  case "${env_name}" in
-    testing)
-      target_dir="${HOME}/test-community-web/build"
-      ;;
-    production)
-      target_dir="${HOME}/prod-community-web/build"
-      ;;
-    *)
-      echo "community_web artifact sync supports only testing or production: ${env_name}" >&2
-      exit 1
-      ;;
-  esac
-
-  mkdir -p "${target_dir}"
-  rsync -a --delete "${ROOT_DIR}/apps/community_web/build/" "${target_dir}/"
-  echo "Synced community_web build to ${target_dir}"
+  echo "sync-web is not required for official Next.js frontend (${env_name})."
 }
 
 stack_command() {
@@ -335,8 +324,8 @@ doctor() {
     "${ROOT_DIR}/services/trade_core/.env.dev" \
     "${ROOT_DIR}/services/trade_core/.env.test" \
     "${ROOT_DIR}/services/trade_core/.env.prod" \
-    "${ROOT_DIR}/apps/community_web/.env.test" \
-    "${ROOT_DIR}/apps/community_web/.env.production" \
+    "${ROOT_DIR}/apps/community_web_next/.env.testing" \
+    "${ROOT_DIR}/apps/community_web_next/.env.production" \
     "${ROOT_DIR}/infra/compose/community/testing/.env" \
     "${ROOT_DIR}/infra/compose/community/production/.env" \
     "${ROOT_DIR}/infra/compose/trade/testing/.env" \
@@ -374,6 +363,8 @@ env_init() {
 
   copy_template "${ROOT_DIR}/apps/community_web/.env.test.example" "${ROOT_DIR}/apps/community_web/.env.test" "${force}"
   copy_template "${ROOT_DIR}/apps/community_web/.env.production.example" "${ROOT_DIR}/apps/community_web/.env.production" "${force}"
+  copy_template "${ROOT_DIR}/apps/community_web_next/.env.example" "${ROOT_DIR}/apps/community_web_next/.env.testing" "${force}"
+  copy_template "${ROOT_DIR}/apps/community_web_next/.env.example" "${ROOT_DIR}/apps/community_web_next/.env.production" "${force}"
 
   copy_template "${ROOT_DIR}/infra/compose/community/testing/.env.example" "${ROOT_DIR}/infra/compose/community/testing/.env" "${force}"
   copy_template "${ROOT_DIR}/infra/compose/community/production/.env.example" "${ROOT_DIR}/infra/compose/community/production/.env" "${force}"
@@ -412,8 +403,6 @@ dev_up() {
   case "${stack}" in
     community)
       build_images community testing
-      build_web testing
-      sync_web testing
       stack_command community testing up
       ;;
     trade)
@@ -422,8 +411,6 @@ dev_up() {
       ;;
     all)
       build_images all testing
-      build_web testing
-      sync_web testing
       stack_command community testing up
       stack_command trade testing up
       ;;
@@ -463,8 +450,6 @@ prod_up() {
   case "${stack}" in
     community)
       build_images community production
-      build_web production
-      sync_web production
       stack_command community production up
       ;;
     trade)
@@ -473,8 +458,6 @@ prod_up() {
       ;;
     all)
       build_images all production
-      build_web production
-      sync_web production
       stack_command community production up
       stack_command trade production up
       ;;

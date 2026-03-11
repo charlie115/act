@@ -9,7 +9,6 @@ services:
       context: testing/nginx
     container_name: test-community-nginx
     volumes:
-      - ${HOME}/test-community-web/build/:/opt/community_frontend/build/
       - ${HOME}/test-community-drf/static/:/opt/community_drf/static/
       - ${HOME}/test-community-drf/media/:/opt/community_drf/media/
       - ${HOME}/certbot/conf:/etc/letsencrypt
@@ -36,6 +35,8 @@ services:
     container_name: test-community-web-next
     environment:
       - NEXT_PUBLIC_SITE_URL=https://acw-test.orbitholdings.org
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - NEXT_PUBLIC_DRF_URL=https://acw-test.orbitholdings.org/api
 
   drf:
     image: community-drf:test
@@ -81,4 +82,3 @@ secrets:
 networks:
   community-network:
     name: test-community-network
-
