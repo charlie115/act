@@ -2,12 +2,14 @@ from urllib.parse import urljoin
 
 from .base import *  # noqa
 from .base import env
+from config.runtime_validation import validate_prod_hosts
 
 DEBUG = False
 
 SCRIPT_NAME = env("DJANGO_SCRIPT_NAME", default="api/")
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
+validate_prod_hosts(env, ALLOWED_HOSTS)
 
 CORS_ALLOW_ALL_ORIGINS = False
 

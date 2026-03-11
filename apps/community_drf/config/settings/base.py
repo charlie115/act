@@ -20,6 +20,7 @@ from os.path import join
 from pathlib import Path
 from urllib.parse import urljoin
 
+from config.runtime_validation import validate_runtime_env
 from .spectacular import *  # noqa
 from .unfold import *  # noqa
 
@@ -30,6 +31,7 @@ env = Env(DEBUG=(bool, False))
 
 # Take environment variables from .env file
 Env.read_env(os.path.join(Path(BASE_DIR).parent, ".env"))
+validate_runtime_env(env)
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 
