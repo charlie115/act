@@ -11,7 +11,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class AcwApi:
     def __init__(self, acw_url, node, prod, message_content_mode="inline"):
         self.verify = bool(prod)
-        self.url = acw_url
+        self.url = acw_url.rstrip("/") + "/"
         self.node = node
         self.message_content_mode = message_content_mode
 
@@ -218,4 +218,3 @@ class AcwApi:
         if response.status_code == 200:
             return response.json()
         self._raise_error(response)
-
