@@ -1,0 +1,11 @@
+services:
+
+  scrapy:
+    build:
+      context: .
+      target: dev
+    image: news-core:dev
+    container_name: dev-news-core
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
