@@ -13,7 +13,7 @@ class CommandHandler:
         self.node = node
         self.admin_telegram_id = admin_telegram_id
         self.core = core
-        self.pm2_name = 'info_core'
+        self.pm2_name = 'trade_core'
         
     def fetch_command_loop(self):
         self.logger.info('Starting fetch_command_loop...')
@@ -45,8 +45,8 @@ class CommandHandler:
             command = row['content']
             if command == 'status':
                 self.status()
-            elif command == 'kline_status':
-                self.kline_status()
+            elif command in {'kline_status', 'trade_status'}:
+                self.trade_status()
             elif command == 'start':
                 self.start()
             elif command == 'stop':
@@ -56,7 +56,7 @@ class CommandHandler:
             else:
                 title = f'Invalid command'
                 content = f'Invalid command: {command}'
-                content += '\nAvailable commands: status, start, stop, restart'
+                content += '\nAvailable commands: status, trade_status, start, stop, restart'
                 full_content = title + '\n' + content
                 self.acw_api.create_message(self.admin_telegram_id, title, full_content)
     
