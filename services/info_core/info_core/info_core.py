@@ -23,6 +23,7 @@ class InitCore:
         self.ops_runtime = OpsRuntime(acw_api=acw_api, logging_dir=logging_dir)
         self.market_ingest = MarketIngestRuntime(
             logging_dir=logging_dir,
+            authoritative_reference_publisher=master_flag,
             proc_n=proc_n,
             node=node,
             admin_id=admin_id,

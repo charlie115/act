@@ -345,6 +345,7 @@ def ohlc_1T_generator(
     logger.info(f"ohlc_1T_generator|target_market_code:{target_market_code}, origin_market_code:{origin_market_code} has started.")
     remote_redis = RedisHelper(**redis_dict)
     local_redis = RedisHelper()
+    local_redis.fallback_redis_client = remote_redis
     datetime_now = datetime.datetime.utcnow()
     per_minute_ohlc_df = pd.DataFrame()
 
@@ -608,7 +609,9 @@ def generate_interval_kline(
     try:
         # TEST
         logger.info(f"generate_interval_kline|{target_market_code}:{origin_market_code}, {interval_label}, Thread has started.")
+        remote_redis = RedisHelper(**redis_dict)
         local_redis = RedisHelper()
+        local_redis.fallback_redis_client = remote_redis
         error_count = 0
         # wait until the last 1T kline is available
         while True:
@@ -723,6 +726,7 @@ def ohlc_interval_generator(
     logger.info(f"Starting kline_core for {target_market_code}:{origin_market_code} with interval_label: {interval_label}")
     remote_redis = RedisHelper(**redis_dict)
     local_redis = RedisHelper()
+    local_redis.fallback_redis_client = remote_redis
     datetime_now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
     # Determine interval duration in minutes

@@ -69,6 +69,7 @@ class MarketRuntime:
         # For redis connesction for server check information
         self.remote_redis = RedisHelper(**self.redis_dict)
         self.local_redis = RedisHelper()
+        self.local_redis.fallback_redis_client = self.remote_redis
 
         # Initiate server check info
         update_server_check_status_thread = Thread(target=store_markets_servercheck_loop, args=(self.acw_api, self.logging_dir), daemon=True)

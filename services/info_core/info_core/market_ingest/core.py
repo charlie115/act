@@ -37,6 +37,7 @@ logging_dir = f"{current_folder_dir}/loggers/logs/"
 class MarketIngestRuntime:
     def __init__(self,
                  logging_dir,
+                 authoritative_reference_publisher,
                  proc_n,
                  node,
                  admin_id,
@@ -53,6 +54,7 @@ class MarketIngestRuntime:
         self.node = node
         self.admin_id = admin_id
         self.proc_n = proc_n
+        self.authoritative_reference_publisher = authoritative_reference_publisher
         self.monitor_websocket_switch = True
         self.exclude_outliers = True
         self.acw_api = acw_api
@@ -67,6 +69,7 @@ class MarketIngestRuntime:
         self.redis_dict = redis_dict
         self.remote_redis = RedisHelper(**self.redis_dict)
         self.local_redis = RedisHelper()
+        self.local_redis.fallback_redis_client = self.remote_redis
         self.logger.info(f"MarketIngestRuntime|initiated with proc_n={proc_n}")
 
         self.update_dollar_return_dict = {}
@@ -96,7 +99,7 @@ class MarketIngestRuntime:
         )
 
         # Initiate Fetching USDT from Bithumb
-        self.update_usdt_thread = Thread(target=self.fetch_usdt, daemon=True)
+        self.update_usdt_thread = Thread(target=self.fetch_usdt_loop, daemon=True)
         self.update_usdt_thread.start()
 
         # UPBIT SPOT (KRW, BTC Market)
@@ -631,6 +634,8 @@ class MarketIngestRuntime:
                     "last_updated_time": last_updated_time_to_store.strftime("%Y-%m-%d %H:%M:%S")
                 }
                 self.local_redis.set_dict(redis_key, dict_for_redis)
+                if self.authoritative_reference_publisher:
+                    self.remote_redis.set_dict(redis_key, dict_for_redis)
                 
                 # Generate log once every 10 times (only if an actual price update occurred or it's the first time)
                 self.update_dollar_return_dict['log_counter'] = self.update_dollar_return_dict.get('log_counter', 0) + 1
@@ -694,7 +699,9 @@ class MarketIngestRuntime:
                 'change': float(change),
                 'last_update_time': last_update_time
             }
-            self.remote_redis.set_dict('INFO_CORE|usdt', dict_for_redis)
+            self.local_redis.set_dict('INFO_CORE|usdt', dict_for_redis)
+            if self.authoritative_reference_publisher:
+                self.remote_redis.set_dict('INFO_CORE|usdt', dict_for_redis)
         except Exception as e:
             self.logger.error(f"fetch_usdt|Exception occured! Error: {e}, {traceback.format_exc()}")
             self.acw_api.create_message_thread(self.admin_id, f"fetch_usdt|Exception occured! Error: {e}", f"fetch_usdt|Exception occured! Error: {e}")
