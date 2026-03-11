@@ -3,17 +3,17 @@ import json
 import threading
 import _pickle as pickle
 import pandas as pd
+import os
 
 MARKET_STATE_VERSION_PREFIX = "MARKET_STATE_VERSION"
 
 class RedisHelper:
    
-    def __init__(self, host="localhost", port=6379, passwd='LocalRedis123!', db=0):
-    # def __init__(self, host="localhost", port=6379, passwd=None, db=0): # For local testing
+    def __init__(self, host="localhost", port=6379, passwd=None, db=0):
         self.host = host
         self.port = port
         self.db = db
-        self.passwd = passwd
+        self.passwd = os.getenv("REDIS_PASSWORD") if passwd is None else passwd
         self._thread_local = threading.local()
 
     def get_redis_client(self):
