@@ -35,3 +35,20 @@ class InitAbitrageCore:
                                                          args=(self.enabled_arbitrage_markets, self.mongodb_dict, logging_dir),
                                                          daemon=True)
         self.remove_delisted_funding_rate_proc.start()
+
+    def check_status(self, print_result=False, include_text=False):
+        process_statuses = {
+            "store_funding_diff_proc": self.store_funding_diff_proc.is_alive(),
+            "store_average_fundingrate_proc": self.store_average_fundingrate_proc.is_alive(),
+            "remove_delisted_funding_rate_proc": self.remove_delisted_funding_rate_proc.is_alive(),
+        }
+        runtime_status = all(process_statuses.values())
+        status_text = "\n".join(
+            f"{name} is {'alive' if is_alive else 'dead'}"
+            for name, is_alive in process_statuses.items()
+        )
+        if print_result:
+            self.logger.info(status_text)
+        if include_text:
+            return runtime_status, status_text
+        return runtime_status

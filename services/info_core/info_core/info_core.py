@@ -1,7 +1,4 @@
-from analytics_runtime import AnalyticsRuntime
-from kline_runtime import KlineRuntime
-from market_ingest import MarketIngestRuntime
-from ops_runtime import OpsRuntime
+from supervisor import InfoCoreSupervisor
 
 
 class InitCore:
@@ -20,40 +17,24 @@ class InitCore:
         mongodb_dict,
         redis_dict,
     ):
-        self.ops_runtime = OpsRuntime(acw_api=acw_api, logging_dir=logging_dir)
-        self.market_ingest = MarketIngestRuntime(
+        self.supervisor = InfoCoreSupervisor(
             logging_dir=logging_dir,
-            authoritative_reference_publisher=master_flag,
+            master_flag=master_flag,
             proc_n=proc_n,
             node=node,
             admin_id=admin_id,
             acw_api=acw_api,
-            exchange_api_key_dict=exchange_api_key_dict,
-            enabled_market_klines=enabled_market_klines,
-            mongodb_dict=mongodb_dict,
-            redis_dict=redis_dict,
-        )
-        self.analytics_runtime = AnalyticsRuntime(
-            master_flag=master_flag,
-            admin_id=admin_id,
-            node=node,
-            acw_api=acw_api,
-            logging_dir=logging_dir,
-            mongodb_dict=mongodb_dict,
-            redis_dict=redis_dict,
             ai_api_key=ai_api_key,
             exchange_api_key_dict=exchange_api_key_dict,
-            enabled_arbitrage_markets=enabled_arbitrage_markets,
-        )
-        self.kline_runtime = KlineRuntime(
-            admin_id=admin_id,
-            node=node,
             enabled_market_klines=enabled_market_klines,
-            acw_api=acw_api,
-            redis_dict=redis_dict,
+            enabled_arbitrage_markets=enabled_arbitrage_markets,
             mongodb_dict=mongodb_dict,
-            logging_dir=logging_dir,
+            redis_dict=redis_dict,
         )
+        self.market_ingest = self.supervisor.get_component("market_ingest")
+        self.analytics_runtime = self.supervisor.get_component("analytics_runtime")
+        self.kline_runtime = self.supervisor.get_component("kline_runtime")
+        self.ops_runtime = self.supervisor.get_component("ops_runtime")
 
     def __getattr__(self, name):
         for component_name in (
@@ -68,13 +49,13 @@ class InitCore:
         raise AttributeError(f"{self.__class__.__name__!s} has no attribute {name!r}")
 
     def check_status(self, print_result=False, include_text=False):
-        return self.market_ingest.check_status(
+        return self.supervisor.check_status(
             print_result=print_result,
             include_text=include_text,
         )
 
     def check_kline_status(self, print_result=False, include_text=False):
-        return self.kline_runtime.check_status(
+        return self.supervisor.check_kline_status(
             print_result=print_result,
             include_text=include_text,
         )
