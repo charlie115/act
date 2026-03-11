@@ -1,6 +1,6 @@
 from rest_framework import exceptions
 
-from integrations.tradecore import TradeCoreClient
+from platform_common.integrations.tradecore import TradeCoreClient
 from lib.permissions import ACWBasePermission
 from lib.status import (
     HTTP_400_BAD_REQUEST,

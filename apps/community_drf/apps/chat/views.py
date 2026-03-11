@@ -1,7 +1,9 @@
+import logging
+
 from django.conf import settings
 from django.shortcuts import render
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from integrations.chat import get_chat_mongo_client
+from platform_common.integrations.chat import get_chat_mongo_client
 from pytz import timezone
 from rest_framework import response, views
 from rest_framework.pagination import PageNumberPagination
@@ -19,6 +21,7 @@ from lib.utils import get_client_ip, generate_username
 from users.models import UserBlocklist
 
 MONGODB_CLI = get_chat_mongo_client(appname="django-chat-api")
+logger = logging.getLogger(__name__)
 
 
 def chatbox(request):

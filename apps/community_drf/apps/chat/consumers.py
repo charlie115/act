@@ -5,7 +5,10 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from datetime import datetime
 from django.conf import settings
 from django.core.cache import cache
-from integrations.chat import get_chat_mongo_client, get_chat_redis_connection
+from platform_common.integrations.chat import (
+    get_chat_mongo_client,
+    get_chat_redis_connection,
+)
 
 from lib.datetime import DATE_FORMAT_NUM, TZ_ASIA_SEOUL, TZ_UTC
 from users.models import UserBlocklist

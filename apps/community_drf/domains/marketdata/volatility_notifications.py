@@ -4,8 +4,8 @@ from datetime import timedelta
 from django.utils import timezone
 
 from infocore.models import VolatilityNotificationConfig, VolatilityNotificationHistory
-from integrations.infocore import get_infocore_mongo_client
 from messagecore.models import Message
+from platform_common.integrations.infocore import get_infocore_mongo_client
 
 
 logger = logging.getLogger(__name__)
@@ -170,4 +170,3 @@ def cleanup_old_notification_history_service(days_to_keep=7):
         notified_at__lt=cutoff_date
     ).delete()
     return {"deleted_records": deleted_count}
-

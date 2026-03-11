@@ -4,7 +4,7 @@ import pickle
 import threading
 
 from channels.generic.websocket import AsyncWebsocketConsumer
-from integrations.infocore import get_infocore_redis_connection
+from platform_common.integrations.infocore import get_infocore_redis_connection
 from urllib.parse import parse_qsl
 
 from users.models import User  # noqa: F401

@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from io import BytesIO
 from PIL import Image
 
-from integrations.assets import CoinMarketCapClient
+from platform_common.integrations.assets import CoinMarketCapClient
 from lib.status import HTTP_200_OK
 
 

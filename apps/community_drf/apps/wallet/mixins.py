@@ -1,7 +1,7 @@
 from django.conf import settings
 from rest_framework import exceptions
 
-from integrations.wallet import WalletServiceClient
+from platform_common.integrations.wallet import WalletServiceClient
 from lib.permissions import ACWBasePermission
 from lib.status import (
     HTTP_400_BAD_REQUEST,

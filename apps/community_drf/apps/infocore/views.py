@@ -1,3 +1,4 @@
+import logging
 import hashlib
 import json
 import pandas as pd
@@ -14,7 +15,7 @@ from pytz import timezone
 
 from infocore.models import Asset
 from infocore.models import VolatilityNotificationConfig
-from integrations.infocore import (
+from platform_common.integrations.infocore import (
     get_infocore_mongo_client,
     get_infocore_redis_connection,
 )
@@ -43,6 +44,7 @@ from lib.views import BaseViewSet
 
 REDIS_CLI = get_infocore_redis_connection()
 MONGODB_CLI = get_infocore_mongo_client(appname="django-infocore-api")
+logger = logging.getLogger(__name__)
 
 
 class AssetFilter(FilterSet):
@@ -317,8 +319,8 @@ class KlineVolatilityView(views.APIView):
                 for item in cursor
             ]
             return results
-        except Exception as e:
-            print(f"Error fetching volatility data: {e}")
+        except Exception:
+            logger.exception("Error fetching volatility data")
             return []
 
 
@@ -828,8 +830,8 @@ class RankIndicatorView(views.APIView):
             kline_json = json.loads(kline_df.to_json(orient="records"))            
             return kline_json
             
-        except Exception as e:
-            print(f"Error fetching Redis kline data: {e}")
+        except Exception:
+            logger.exception("Error fetching Redis kline data")
             return {}
     
     def get_volatility_data(self, target_market_code, origin_market_code, base_assets, tz):
@@ -859,8 +861,8 @@ class RankIndicatorView(views.APIView):
                 for item in cursor
             }
             return results
-        except Exception as e:
-            print(f"Error fetching volatility data: {e}")
+        except Exception:
+            logger.exception("Error fetching volatility data")
             return {}
     
     def get_funding_rate_data(self, market_code, base_assets, tz):
@@ -899,8 +901,8 @@ class RankIndicatorView(views.APIView):
                 ).data
                 for item in cursor
             }
-        except Exception as e:
-            print(f"Error fetching funding rate data: {e}")
+        except Exception:
+            logger.exception("Error fetching funding rate data")
             return {}
     
     def rank_indicator(self,
