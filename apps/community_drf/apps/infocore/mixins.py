@@ -1,6 +1,6 @@
 import json
-import requests
 import string
+import logging
 
 from django_rq import job
 from django.conf import settings
@@ -8,10 +8,19 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from io import BytesIO
 from PIL import Image
 
+from integrations.assets import CoinMarketCapClient
 from lib.status import HTTP_200_OK
 
 
 class AssetMixin(object):
+    logger = logging.getLogger(__name__)
+
+    def get_coinmarketcap_client(self):
+        return CoinMarketCapClient(
+            crypto_info_url=settings.COINMARKETCAP_CRYPTO_INFO_API,
+            api_key=settings.COINMARKETCAP_API_KEY,
+        )
+
     @job
     def pull_asset_info(self, symbol):
         """Get asset information from CoinMarketCap
@@ -26,11 +35,8 @@ class AssetMixin(object):
         data = {}
 
         try:
-            response = requests.get(
-                url=settings.COINMARKETCAP_CRYPTO_INFO_API,
-                headers={"X-CMC_PRO_API_KEY": settings.COINMARKETCAP_API_KEY},
-                params={"symbol": symbol},
-            )
+            client = self.get_coinmarketcap_client()
+            response = client.get_asset_info(symbol)
             content = json.loads(response.content)
 
             if response.status_code == HTTP_200_OK and "data" in content:
@@ -43,11 +49,7 @@ class AssetMixin(object):
                 ):
                     cleaned_symbol = symbol.rstrip(string.digits).lstrip(string.digits)
 
-                    response = requests.get(
-                        url=settings.COINMARKETCAP_CRYPTO_INFO_API,
-                        headers={"X-CMC_PRO_API_KEY": settings.COINMARKETCAP_API_KEY},
-                        params={"symbol": cleaned_symbol},
-                    )
+                    response = client.get_asset_info(cleaned_symbol)
                     content = json.loads(response.content)
 
                     if response.status_code == HTTP_200_OK and "data" in content:
@@ -56,7 +58,7 @@ class AssetMixin(object):
 
         except Exception as err:
             data["note"] = str(err)
-            print("EXCEPTION", str(err))  # FIXME: Change to logging
+            self.logger.exception("pull_asset_info failed for symbol=%s", symbol)
             raise err
 
         return data
@@ -74,7 +76,8 @@ class AssetMixin(object):
         icon = None
 
         try:
-            logo = Image.open(requests.get(info["logo"], stream=True).raw)
+            logo_response = self.get_coinmarketcap_client().fetch_logo(info["logo"])
+            logo = Image.open(logo_response.raw)
             thumb_io = BytesIO()
             logo.save(thumb_io, logo.format)
 
@@ -88,6 +91,6 @@ class AssetMixin(object):
             )
 
         except Exception as err:
-            print(str(err))  # FIXME: Change to logging
+            self.logger.exception("get_icon_image failed for symbol=%s", info.get("symbol"))
 
         return icon
