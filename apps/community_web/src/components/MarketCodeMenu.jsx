@@ -126,6 +126,8 @@ function MarketCodeMenu({ onChange }) {
       disabled: !data?.[target.value],
       origins: data?.[target.value] || [],
     }));
+    const orderedTargetList = orderBy(targetList, 'disabled');
+    const enabledTargetList = orderedTargetList.filter((target) => !target.disabled);
     const defaultTarget = targetList.find(
       (a) => a.value === defaultMarketCodes?.targetMarketCode && !a.disabled
     );
@@ -136,17 +138,35 @@ function MarketCodeMenu({ onChange }) {
           (b) => b === defaultMarketCodes?.originMarketCode
         ) >= 0
     );
-    setTargetMarketCodeList(orderBy(targetList, 'disabled'));
-    setTargetMarketCode(
-      (state) =>
-        defaultTarget ||
-        targetList?.[state?.index] ||
-        targetList?.[DEFAULT_MARKET_CODE.target]
-    );
-    setOriginMarketCode((state) => {
-      if (state) return defaultOrigin || marketCodeList[state?.index] || {};
-      return defaultOrigin || marketCodeList[DEFAULT_MARKET_CODE.origin];
-    });
+    const currentTarget = targetMarketCode;
+    const nextTarget =
+      defaultTarget ||
+      orderedTargetList.find(
+        (target) => target.value === currentTarget?.value && !target.disabled
+      ) ||
+      enabledTargetList[0] ||
+      orderedTargetList[DEFAULT_MARKET_CODE.target] ||
+      null;
+
+    const nextOriginList =
+      marketCodeList.filter((item) => nextTarget?.origins?.includes(item.value)) || [];
+    const nextDefaultOrigin =
+      defaultOrigin && nextOriginList.some((item) => item.value === defaultOrigin.value)
+        ? defaultOrigin
+        : null;
+    const currentOrigin =
+      originMarketCode && nextOriginList.some((item) => item.value === originMarketCode.value)
+        ? originMarketCode
+        : null;
+    const nextOrigin =
+      currentOrigin ||
+      nextDefaultOrigin ||
+      nextOriginList[0] ||
+      null;
+
+    setTargetMarketCodeList(orderedTargetList);
+    setTargetMarketCode(nextTarget);
+    setOriginMarketCode(nextOrigin);
   }, [data, isFetching, marketCodeList, defaultMarketCodes]);
 
   useEffect(() => {
