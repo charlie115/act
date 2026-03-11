@@ -1,3 +1,5 @@
+import logging
+
 from config.celery import celery
 from datetime import datetime, timedelta
 from django.utils.timezone import now
@@ -7,6 +9,7 @@ from lib.datetime import TZ_ASIA_SEOUL
 from lib.search import search_closest_number
 from users.models import DepositHistory, User
 
+logger = logging.getLogger(__name__)
 
 @celery.task
 def compute_user_monthly_fee_level():
@@ -70,7 +73,7 @@ def compute_user_monthly_fee_level():
                 total_paid_fee=total_paid_fee,
             )
         except Exception as err:
-            print(err)
+            logger.exception("Error updating monthly fee level for user=%s", user.id)
 
         results[fee_rate.level] += 1
 
@@ -137,7 +140,7 @@ def compute_user_fee_level():
                 total_paid_fee=total_paid_fee,
             )
         except Exception as err:
-            print(f"Error updating fee level for user {user.id}: {err}")
+            logger.exception("Error updating fee level for user=%s", user.id)
 
         # Increment results counter for this fee level
         results[fee_rate.level] += 1

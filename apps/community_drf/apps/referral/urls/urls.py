@@ -21,7 +21,6 @@ class ReferralAPIListView(BaseAPIListView):
         for url in urlpatterns:
             endpoint = str(url.pattern)
             name = endpoint.strip("/")
-            print(name, endpoint, request.build_absolute_uri(endpoint))
 
             if name != "":
                 api_list.append(

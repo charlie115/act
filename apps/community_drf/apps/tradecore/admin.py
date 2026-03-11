@@ -1,6 +1,7 @@
 import re
 import uuid
 import datetime
+import logging
 
 from django import forms
 from django.contrib import admin, messages
@@ -35,6 +36,8 @@ from tradecore.models import (
 from tradecore.views import TradeConfigViewSet, TradesViewSet
 from users.models import User
 from tradecore.mixins import TradeCoreMixin
+
+logger = logging.getLogger(__name__)
 
 class UsersInline(TabularInline):
     model = Node.users.through
@@ -615,7 +618,7 @@ class TradeAdmin(ModelAdmin):
                         trades.append(trade)
                     except (ValueError, TypeError) as e:
                         # Skip invalid trades
-                        print(f"Error processing trade: {e}")
+                        logger.warning("Error processing trade item: %s", e)
                 
                 # Create queryset from trades
                 queryset = TradeQuerySet(trades)
@@ -643,13 +646,17 @@ class TradeAdmin(ModelAdmin):
                 return queryset
             else:
                 # Log the error
-                print(f"Error fetching trades: {response.status_code} - {response.content}")
+                logger.error(
+                    "Error fetching trades: status=%s content=%s",
+                    response.status_code,
+                    response.content,
+                )
                 self.message_user(request, f"Error fetching trades: {response.status_code}", level=messages.ERROR)
                 return TradeQuerySet()
                 
         except Exception as e:
             # Handle errors gracefully
-            print(f"Exception fetching trades: {str(e)}")
+            logger.exception("Exception fetching trades")
             self.message_user(request, f"Error fetching trades: {str(e)}", level=messages.ERROR)
             return TradeQuerySet()
     
@@ -749,7 +756,7 @@ class TradeAdmin(ModelAdmin):
                     return trade
                     
             except Exception as e:
-                print(f"Exception fetching trade from node {node.name}: {str(e)}")
+                logger.exception("Exception fetching trade from node %s", node.name)
                 
         return None
     
@@ -961,7 +968,7 @@ class TradeLogAdmin(ModelAdmin):
                         tradelogs.append(tradelog)
                     except (ValueError, TypeError) as e:
                         # Skip invalid tradelogs
-                        print(f"Error processing trade log: {e}")
+                        logger.warning("Error processing trade log item: %s", e)
                 
                 # Apply search if provided
                 queryset = TradeLogQuerySet(tradelogs)
@@ -989,13 +996,17 @@ class TradeLogAdmin(ModelAdmin):
                 return queryset
             else:
                 # Log the error
-                print(f"Error fetching trade logs: {response.status_code} - {response.content}")
+                logger.error(
+                    "Error fetching trade logs: status=%s content=%s",
+                    response.status_code,
+                    response.content,
+                )
                 self.message_user(request, f"Error fetching trade logs: {response.status_code}", level=messages.ERROR)
                 return TradeLogQuerySet()
                 
         except Exception as e:
             # Handle errors gracefully
-            print(f"Exception fetching trade logs: {str(e)}")
+            logger.exception("Exception fetching trade logs")
             self.message_user(request, f"Error fetching trade logs: {str(e)}", level=messages.ERROR)
             return TradeLogQuerySet()
     
@@ -1189,7 +1200,7 @@ class RepeatTradeAdmin(ModelAdmin):
                         repeat_trades.append(repeat_trade)
                     except (ValueError, TypeError) as e:
                         # Skip invalid trades
-                        print(f"Error processing repeat trade: {e}")
+                        logger.warning("Error processing repeat trade item: %s", e)
                 
                 # Create queryset from repeat trades
                 queryset = RepeatTradeQuerySet(repeat_trades)
@@ -1217,13 +1228,17 @@ class RepeatTradeAdmin(ModelAdmin):
                 return queryset
             else:
                 # Log the error
-                print(f"Error fetching repeat trades: {response.status_code} - {response.content}")
+                logger.error(
+                    "Error fetching repeat trades: status=%s content=%s",
+                    response.status_code,
+                    response.content,
+                )
                 self.message_user(request, f"Error fetching repeat trades: {response.status_code}", level=messages.ERROR)
                 return RepeatTradeQuerySet()
                 
         except Exception as e:
             # Handle errors gracefully
-            print(f"Exception fetching repeat trades: {str(e)}")
+            logger.exception("Exception fetching repeat trades")
             self.message_user(request, f"Error fetching repeat trades: {str(e)}", level=messages.ERROR)
             return RepeatTradeQuerySet()
     
@@ -1297,7 +1312,7 @@ class RepeatTradeAdmin(ModelAdmin):
                     return repeat_trade
                     
             except Exception as e:
-                print(f"Exception fetching repeat trade from node {node.name}: {str(e)}")
+                logger.exception("Exception fetching repeat trade from node %s", node.name)
                 
         return None
     
@@ -1484,7 +1499,7 @@ class OrderHistoryAdmin(ModelAdmin):
                         orders.append(order)
                     except (ValueError, TypeError) as e:
                         # Skip invalid orders
-                        print(f"Error processing order history: {e}")
+                        logger.warning("Error processing order history item: %s", e)
                 
                 # Apply search if provided
                 queryset = OrderHistoryQuerySet(orders)
@@ -1512,13 +1527,17 @@ class OrderHistoryAdmin(ModelAdmin):
                 return queryset
             else:
                 # Log the error
-                print(f"Error fetching order history: {response.status_code} - {response.content}")
+                logger.error(
+                    "Error fetching order history: status=%s content=%s",
+                    response.status_code,
+                    response.content,
+                )
                 self.message_user(request, f"Error fetching order history: {response.status_code}", level=messages.ERROR)
                 return OrderHistoryQuerySet()
                 
         except Exception as e:
             # Handle errors gracefully
-            print(f"Exception fetching order history: {str(e)}")
+            logger.exception("Exception fetching order history")
             self.message_user(request, f"Error fetching order history: {str(e)}", level=messages.ERROR)
             return OrderHistoryQuerySet()
     
@@ -1671,7 +1690,7 @@ class TradeHistoryAdmin(ModelAdmin):
                         histories.append(history)
                     except (ValueError, TypeError) as e:
                         # Skip invalid history items
-                        print(f"Error processing trade history: {e}")
+                        logger.warning("Error processing trade history item: %s", e)
                 
                 # Apply search if provided
                 queryset = TradeHistoryQuerySet(histories)
@@ -1699,13 +1718,17 @@ class TradeHistoryAdmin(ModelAdmin):
                 return queryset
             else:
                 # Log the error
-                print(f"Error fetching trade history: {response.status_code} - {response.content}")
+                logger.error(
+                    "Error fetching trade history: status=%s content=%s",
+                    response.status_code,
+                    response.content,
+                )
                 self.message_user(request, f"Error fetching trade history: {response.status_code}", level=messages.ERROR)
                 return TradeHistoryQuerySet()
                 
         except Exception as e:
             # Handle errors gracefully
-            print(f"Exception fetching trade history: {str(e)}")
+            logger.exception("Exception fetching trade history")
             self.message_user(request, f"Error fetching trade history: {str(e)}", level=messages.ERROR)
             return TradeHistoryQuerySet()
     
