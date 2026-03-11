@@ -13,9 +13,18 @@ import os
 import sys
 import json
 from loggers.logger import TradeCoreLogger
+from exchange_websocket.heartbeat import (
+    has_recent_market_ready,
+    is_process_heartbeat_stale,
+    touch_market_ready,
+    touch_process_heartbeat,
+)
 from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
+
+# Maximum allowed message delay in milliseconds - drop messages older than this
+MAX_MESSAGE_DELAY_MS = 100
 
 # Move binance_websocket function outside the class
 def binance_websocket(stream_data_type, data, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=120):
@@ -27,6 +36,7 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
     # For monitoring the last message time
     last_message_time = time.time()
     ws = None  # Placeholder for the WebSocketApp instance
+    market_code = f"BINANCE_{market_type.upper()}"
 
     def on_message(ws, message):
         nonlocal last_message_time # Declare nonlocal to modify the outer variable
@@ -37,7 +47,20 @@ def binance_websocket(stream_data_type, data, error_event, proc_name, market_typ
                 raise Exception(f"binance_websocket|{proc_name} error_event is set. closing websocket..")
             msg = json.loads(message)
             if 's' in msg.keys():
-                local_redis.update_exchange_stream_data(stream_data_type, f"BINANCE_{market_type.upper()}", msg['s'], {**msg, "last_update_timestamp": int(time.time() * 1_000_000)})
+                msg_ts_ms = msg.get('E')
+                if msg_ts_ms:
+                    current_ts_ms = int(time.time() * 1000)
+                    if current_ts_ms - msg_ts_ms > MAX_MESSAGE_DELAY_MS:
+                        return
+                timestamp_us = int(time.time() * 1_000_000)
+                local_redis.update_exchange_stream_data(
+                    stream_data_type,
+                    market_code,
+                    msg['s'],
+                    {**msg, "last_update_timestamp": timestamp_us},
+                )
+                touch_market_ready(local_redis, market_code, stream_data_type, timestamp_us)
+                touch_process_heartbeat(local_redis, market_code, stream_data_type, proc_name, timestamp_us)
         except Exception as e:
             logger.error(f"binance_websocket|{proc_name} on_message error: {e}, traceback: {traceback.format_exc()}")
             error_event.set()  # Signal the main loop to close and restart
@@ -172,8 +195,11 @@ class BinanceWebsocket:
         self._start_websocket()
 
         while True:
-            if (not self.local_redis.get_all_exchange_stream_data("orderbook", f"BINANCE_{market_type.upper()}") or
-                not self.local_redis.get_all_exchange_stream_data("ticker", f"BINANCE_{market_type.upper()}")):
+            if not has_recent_market_ready(
+                self.local_redis,
+                f"BINANCE_{market_type.upper()}",
+                ("orderbook", "ticker"),
+            ):
                 self.logger.info(f"[BINANCE {self.market_type}] Waiting for websocket data to be loaded...")
                 time.sleep(2)
             else:
@@ -473,68 +499,24 @@ class BinanceWebsocket:
                         # optional: continue
                         continue
 
-                    # Determine which list of symbols belongs to this process
-                    # e.g. "1th_bookticker_proc" => "1th_bookticker_symbol"
-                    # If it's the ticker_proc => "ticker_symbol"
-                    if "bookticker_proc" in proc_name:
-                        # E.g. proc_name == "1th_bookticker_proc"
-                        #     => symbol_list_key = "1th_bookticker_symbol"
-                        symbol_list_key = proc_name.replace("proc", "symbol")
-                    elif "ticker_proc" in proc_name:
-                        symbol_list_key = "ticker_symbol"
-                    else:
-                        # If you have any other naming conventions, handle them here.
-                        continue
-
-                    symbol_list = self.websocket_symbol_dict.get(symbol_list_key, [])
-                    if not symbol_list:
-                        # If we somehow have no symbols for that process, skip
-                        continue
-
-                    # Now let's check these symbols in Redis
-                    # We only need to check "orderbook" or "ticker" data
-                    # depending on what this process is streaming. You can unify or separate:
-                    # - For 'bookticker_proc', check "orderbook" data in Redis
-                    # - For 'ticker_proc', check "ticker" data in Redis
-                    # This logic can be adapted to your naming scheme.
-
                     if "bookticker_proc" in proc_name:
                         redis_stream_type = "orderbook"
                     elif "ticker_proc" in proc_name:
                         redis_stream_type = "ticker"
                     else:
-                        redis_stream_type = "orderbook"
-                        
-                    data = None
-                    while data is None:
-                        data = self.local_redis.get_all_exchange_stream_data(
-                            redis_stream_type, f"BINANCE_{self.market_type.upper()}"
-                        )
-                        if data is None:
-                            time.sleep(0.5)  # Add small delay to prevent busy waiting
+                        continue
 
-                    # We'll see if *all* are stale
-                    stale_count = 0
-                    for sym in symbol_list:
-                        symbol_data = data.get(sym, {})
-                        last_update_us = symbol_data.get("last_update_timestamp")  # microseconds
-                        if last_update_us is None:
-                            # If no timestamp, treat as stale
-                            stale_count += 1
-                            continue
-
-                        # Compare difference in microseconds
-                        diff_us = now_us - last_update_us
-                        if diff_us > stale_threshold_secs * 1_000_000:
-                            # self.logger.info(f"Stale sym: {sym}, data: {symbol_data}")
-                            # It's stale
-                            stale_count += 1
-
-                    # If every symbol in that slice is stale, kill the process
-                    if stale_count == len(symbol_list):
+                    if is_process_heartbeat_stale(
+                        self.local_redis,
+                        f"BINANCE_{self.market_type.upper()}",
+                        redis_stream_type,
+                        proc_name,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    ):
                         content = (
                             f"[BINANCE {self.market_type}] {proc_name} => "
-                            f"All {stale_count} symbols are stale for > {stale_threshold_secs}s. "
+                            f"Heartbeat stale for > {stale_threshold_secs}s. "
                             f"Forcing process restart."
                         )
                         self.logger.error(content)
@@ -548,8 +530,6 @@ class BinanceWebsocket:
                         # The handle_price_procs() loop will detect it is dead
                         # and restart it automatically. Let's sleep a bit
                         time.sleep(60)
-                    else:
-                        self.logger.info(f"monitor_stale_data_per_proc|{proc_name} => {stale_count} symbols among {len(symbol_list)} symbols are stale for > {stale_threshold_secs}s.")
 
             except Exception as e:
                 content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"

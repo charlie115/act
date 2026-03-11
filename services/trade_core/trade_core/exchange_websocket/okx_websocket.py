@@ -10,12 +10,21 @@ import _pickle as pickle
 import os
 import sys
 from loggers.logger import TradeCoreLogger
+from exchange_websocket.heartbeat import (
+    has_recent_market_ready,
+    is_process_heartbeat_stale,
+    touch_market_ready,
+    touch_process_heartbeat,
+)
 from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
+# Maximum allowed message delay in milliseconds - drop messages older than this
+MAX_MESSAGE_DELAY_MS = 100
+
 # Standalone function for the websocket
-def init_websocket(stream_data_type, url, data, error_event, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
+def init_websocket(stream_data_type, url, data, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
     # Initialize logger inside the function
     logger = TradeCoreLogger(f"okx_{market_type.lower()}_websocket", logging_dir).logger
     logger.info(f"[OKX {market_type}]init_websocket started for {data['args']}...")
@@ -24,6 +33,7 @@ def init_websocket(stream_data_type, url, data, error_event, market_type, loggin
     # For monitoring the last message time
     last_message_time = time.time()
     ws = None  # Placeholder for the WebSocketApp instance
+    market_code = f"OKX_{market_type.upper()}"
 
     def on_message(ws, message):
         nonlocal last_message_time # Declare nonlocal to modify the outer variable
@@ -43,10 +53,23 @@ def init_websocket(stream_data_type, url, data, error_event, market_type, loggin
                     logger.error(f"okx_websocket|message_data_dict.values(): {message_data_dict.values()}")
                     logger.error(f"okx_websocket|{traceback.format_exc()}")
                     return
-                local_redis.update_exchange_stream_data(stream_data_type, f"OKX_{market_type.upper()}", message_data_dict['instId'], {
-                    **message_data_dict,
-                        "last_update_timestamp": int(time.time() * 1_000_000)
-                    })
+                msg_ts_ms = message_data_dict.get('ts')
+                if msg_ts_ms:
+                    current_ts_ms = int(time.time() * 1000)
+                    if current_ts_ms - int(msg_ts_ms) > MAX_MESSAGE_DELAY_MS:
+                        return
+                timestamp_us = int(time.time() * 1_000_000)
+                local_redis.update_exchange_stream_data(
+                    stream_data_type,
+                    market_code,
+                    message_data_dict['instId'],
+                    {
+                        **message_data_dict,
+                        "last_update_timestamp": timestamp_us
+                    },
+                )
+                touch_market_ready(local_redis, market_code, stream_data_type, timestamp_us)
+                touch_process_heartbeat(local_redis, market_code, stream_data_type, proc_name, timestamp_us)
         except Exception as e:
             logger.error(f"okx_websocket|on_message error: {e}, traceback: {traceback.format_exc()}")
             error_event.set() # Signal error
@@ -131,7 +154,11 @@ class OkxWebsocket:
         self.websocket_symbol_dict = {}
         self._start_websocket()
         while True:
-            if not self.local_redis.get_all_exchange_stream_data("ticker", f"OKX_{self.market_type.upper()}"):
+            if not has_recent_market_ready(
+                self.local_redis,
+                f"OKX_{self.market_type.upper()}",
+                ("ticker",),
+            ):
                 self.logger.info(f"[OKX {self.market_type}]waiting for websocket data to be loaded..")
                 time.sleep(2)
             else:
@@ -186,6 +213,7 @@ class OkxWebsocket:
                                           self.url,
                                           ticker_data,
                                           error_event,
+                                          f"{i+1}th_ticker_proc",
                                           self.market_type,
                                           self.logging_dir,
                                           self.acw_api,
@@ -298,49 +326,22 @@ class OkxWebsocket:
                     if not proc.is_alive():
                         continue
 
-                    # Determine which list of symbols belongs to this process
                     if "ticker_proc" in proc_name:
-                        symbol_list_key = proc_name.replace("proc", "symbol")
                         redis_stream_type = "ticker"
                     else:
-                        # OKX implementation appears to only have ticker processes
                         continue
 
-                    symbol_list = self.websocket_symbol_dict.get(symbol_list_key, [])
-                    if not symbol_list:
-                        # If we somehow have no symbols for that process, skip
-                        continue
-
-                    data = None
-                    while data is None:
-                        data = self.local_redis.get_all_exchange_stream_data(
-                            redis_stream_type, f"OKX_{self.market_type.upper()}"
-                        )
-                        if data is None:
-                            time.sleep(0.5)  # Add small delay to prevent busy waiting
-
-                    # We'll see if *all* are stale
-                    stale_count = 0
-                    for sym in symbol_list:
-                        symbol_data = data.get(sym, {})
-                        last_update_us = symbol_data.get("last_update_timestamp")  # microseconds
-                        if last_update_us is None:
-                            # If no timestamp, treat as stale
-                            stale_count += 1
-                            continue
-
-                        # Compare difference in microseconds
-                        diff_us = now_us - last_update_us
-                        if diff_us > stale_threshold_secs * 1_000_000:
-                            # self.logger.info(f"Stale sym: {sym}, data: {symbol_data}")
-                            # It's stale
-                            stale_count += 1
-
-                    # If every symbol in that slice is stale, kill the process
-                    if stale_count == len(symbol_list):
+                    if is_process_heartbeat_stale(
+                        self.local_redis,
+                        f"OKX_{self.market_type.upper()}",
+                        redis_stream_type,
+                        proc_name,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    ):
                         content = (
                             f"[OKX {self.market_type}] {proc_name} => "
-                            f"All {stale_count} symbols are stale for > {stale_threshold_secs}s. "
+                            f"Heartbeat stale for > {stale_threshold_secs}s. "
                             f"Forcing process restart."
                         )
                         self.logger.error(content)
@@ -354,8 +355,6 @@ class OkxWebsocket:
                         # The handle_price_procs() loop will detect it is dead
                         # and restart it automatically. Let's sleep a bit
                         time.sleep(60)
-                    else:
-                        self.logger.info(f"monitor_stale_data_per_proc|{proc_name} => {stale_count} symbols among {len(symbol_list)} symbols are stale for > {stale_threshold_secs}s.")
 
             except Exception as e:
                 content = f"monitor_stale_data_per_proc|{traceback.format_exc()}"
