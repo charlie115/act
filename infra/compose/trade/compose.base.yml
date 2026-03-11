@@ -1,0 +1,58 @@
+services:
+  trade-postgres:
+    image: postgres:16rc1-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DATABASE_TRADE}
+      - PGDATA=/var/lib/postgresql/data/
+    ports:
+      - "25432:5432"
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trade-network
+    restart: always
+
+  trade-core-api:
+    expose:
+      - "8000"
+    depends_on:
+      trade-postgres:
+        condition: service_healthy
+    networks:
+      - trade-network
+    restart: always
+
+  trade-core:
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    expose:
+      - "6379"
+    depends_on:
+      trade-postgres:
+        condition: service_healthy
+    networks:
+      - trade-network
+    restart: always
+
+  trade-nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "20081:20081"
+    depends_on:
+      - trade-core-api
+    networks:
+      - trade-network
+    restart: always
+
+networks:
+  trade-network:
+    driver: bridge
+

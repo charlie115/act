@@ -1,0 +1,84 @@
+services:
+  certbot:
+    build:
+      context: testing/certbot
+
+  nginx:
+    image: community-nginx:test
+    build:
+      context: testing/nginx
+    container_name: test-community-nginx
+    volumes:
+      - ${HOME}/test-community-web/build/:/opt/community_frontend/build/
+      - ${HOME}/test-community-drf/static/:/opt/community_drf/static/
+      - ${HOME}/test-community-drf/media/:/opt/community_drf/media/
+      - ${HOME}/certbot/conf:/etc/letsencrypt
+      - ${HOME}/certbot/www:/var/www/certbot
+
+  postgres:
+    container_name: test-community-postgres
+    volumes:
+      - ${HOME}/test-community-postgres/data/:/var/lib/postgresql/data/
+
+  redis:
+    container_name: test-community-redis
+    volumes:
+      - ${HOME}/test-community-redis/data/:/data/
+      - ${HOME}/test-community-redis/conf/redis.conf:/etc/redis/redis.conf
+
+  mongodb:
+    container_name: test-community-mongodb
+    volumes:
+      - ${HOME}/test-community-mongodb/data/:/data/
+
+  community-web-next:
+    image: community-web-next:test
+    container_name: test-community-web-next
+    environment:
+      - NEXT_PUBLIC_SITE_URL=https://acw-test.orbitholdings.org
+
+  drf:
+    image: community-drf:test
+    container_name: test-community-drf
+    volumes:
+      - ${HOME}/test-community-drf/static:/opt/community_drf/static
+      - ${HOME}/test-community-drf/media:/opt/community_drf/media
+      - ${HOME}/test-community-apikey:/api_key:ro
+
+  celery-worker:
+    image: community-celery-worker:test
+    command: celery -A config worker -l DEBUG
+    container_name: test-community-celery-worker
+
+  celery-beat:
+    image: community-celery-beat:test
+    command: celery -A config beat -l DEBUG
+    container_name: test-community-celery-beat
+
+  news-core:
+    image: news-core:test
+    container_name: test-news-core
+
+  info-core:
+    image: info-core:test
+    container_name: test-info-core
+    volumes:
+      - ${HOME}/test-info-core/logs:/home/info_core/info_core/loggers/logs
+
+  hdwallet-service:
+    image: hdwallet-service:test
+    volumes:
+      - ${HOME}/test-community-apikey:/api_key:ro
+
+  hd-api-key-generator:
+    volumes:
+      - ${HOME}/test-community-apikey:/api_key
+
+secrets:
+  hd_mnemonic:
+    file: ${HOME}/test-community-secrets/hd_mnemonic.txt
+
+networks:
+  community-network:
+    name: test-community-network
+

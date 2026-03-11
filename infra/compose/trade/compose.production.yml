@@ -1,0 +1,26 @@
+services:
+  trade-postgres:
+    container_name: trade-postgres
+    volumes:
+      - ${HOME}/prod-trade-postgres/data/:/var/lib/postgresql/data/
+
+  trade-core-api:
+    image: trade-core-api
+    container_name: prod-trade-core-api
+    volumes:
+      - ${HOME}/prod-trade-core-api/logs:/home/trade_core/trade_core/loggers/logs
+
+  trade-core:
+    image: trade-core
+    container_name: prod-trade-core
+    volumes:
+      - ${HOME}/prod-trade-core/logs:/home/trade_core/trade_core/loggers/logs
+
+  trade-nginx:
+    volumes:
+      - ./production/nginx.conf:/etc/nginx/conf.d/default.conf
+
+networks:
+  trade-network:
+    name: prod-trade-network
+

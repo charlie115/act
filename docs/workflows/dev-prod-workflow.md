@@ -10,6 +10,18 @@ Use the monorepo root as the single entry point for:
 - testing stack startup and shutdown
 - production stack startup and shutdown
 
+The root workflow now prefers the normalized compose layout:
+
+- `infra/compose/community/compose.base.yml`
+- `infra/compose/community/compose.testing.yml`
+- `infra/compose/community/compose.production.yml`
+- `infra/compose/trade/compose.base.yml`
+- `infra/compose/trade/compose.testing.yml`
+- `infra/compose/trade/compose.production.yml`
+
+Legacy environment-specific `testing/docker-compose.yml` and `production/docker-compose.yml`
+are left in place as fallback references.
+
 ## Commands
 
 From the repository root:

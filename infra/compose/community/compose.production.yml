@@ -1,0 +1,94 @@
+services:
+  certbot:
+    build:
+      context: production/certbot
+
+  nginx:
+    image: community-nginx
+    build:
+      context: production/nginx
+    container_name: prod-community-nginx
+    volumes:
+      - ${HOME}/prod-community-web/build/:/opt/community_frontend/build/
+      - ${HOME}/prod-community-drf/static/:/opt/community_drf/static/
+      - ${HOME}/prod-community-drf/media/:/opt/community_drf/media/
+      - ${HOME}/certbot/conf:/etc/letsencrypt
+      - ${HOME}/certbot/www:/var/www/certbot
+
+  postgres:
+    container_name: prod-community-postgres
+    expose:
+      - "5432"
+    volumes:
+      - ${HOME}/prod-community-postgres/data/:/var/lib/postgresql/data/
+
+  redis:
+    container_name: prod-community-redis
+    expose:
+      - "6379"
+    volumes:
+      - ${HOME}/prod-community-redis/data/:/data/
+      - ${HOME}/prod-community-redis/conf/redis.conf:/etc/redis/redis.conf
+
+  mongodb:
+    container_name: prod-community-mongodb
+    expose:
+      - "27017"
+    volumes:
+      - ${HOME}/prod-community-mongodb/data/:/data/
+
+  community-web-next:
+    image: community-web-next
+    container_name: prod-community-web-next
+    environment:
+      - NEXT_PUBLIC_SITE_URL=https://arbicrypto.net
+
+  drf:
+    image: community-drf
+    container_name: prod-community-drf
+    volumes:
+      - ${HOME}/prod-community-drf/static:/opt/community_drf/static
+      - ${HOME}/prod-community-drf/media:/opt/community_drf/media
+      - ${HOME}/prod-community-apikey:/api_key:ro
+
+  celery-worker:
+    image: community-celery-worker
+    command: celery -A config worker -l INFO
+    container_name: prod-community-celery-worker
+    volumes:
+      - ${HOME}/prod-community-drf/media:/opt/community_drf/media
+
+  celery-beat:
+    image: community-celery-beat
+    command: celery -A config beat -l INFO
+    container_name: prod-community-celery-beat
+    volumes:
+      - ${HOME}/prod-community-drf/media:/opt/community_drf/media
+
+  news-core:
+    image: news-core
+    container_name: prod-news-core
+
+  info-core:
+    image: info-core
+    container_name: prod-info-core
+    volumes:
+      - ${HOME}/prod-info-core/logs:/home/info_core/info_core/loggers/logs
+
+  hdwallet-service:
+    image: hdwallet-service
+    volumes:
+      - ${HOME}/prod-community-apikey:/api_key:ro
+
+  hd-api-key-generator:
+    volumes:
+      - ${HOME}/prod-community-apikey:/api_key
+
+secrets:
+  hd_mnemonic:
+    file: ${HOME}/prod-community-secrets/hd_mnemonic.txt
+
+networks:
+  community-network:
+    name: prod-community-network
+

@@ -1,0 +1,138 @@
+services:
+  certbot:
+    container_name: certbot
+    volumes:
+      - ${HOME}/certbot/conf:/etc/letsencrypt
+      - ${HOME}/certbot/www:/var/www/certbot
+    networks:
+      - community-network
+
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - drf
+    networks:
+      - community-network
+    restart: always
+
+  postgres:
+    image: postgres:16rc1-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DATABASE_COMMUNITY}
+      - PGDATA=/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - community-network
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "/etc/redis/redis.conf"]
+    ports:
+      - "6379:6379"
+    networks:
+      - community-network
+    restart: always
+
+  mongodb:
+    image: mongo:6.0
+    command: ["--auth"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    ports:
+      - "27017:27017"
+    networks:
+      - community-network
+    restart: always
+
+  community-web-next:
+    build:
+      context: ../../../apps/community_web_next
+    environment:
+      - PORT=3000
+      - ACW_API_SERVER_URL=http://drf:8000/api
+      - ACW_API_PROXY_TARGET=http://drf:8000
+    expose:
+      - "3000"
+    depends_on:
+      - drf
+    networks:
+      - community-network
+    restart: always
+
+  drf:
+    depends_on:
+      postgres:
+        condition: service_healthy
+      hd-api-key-generator:
+        condition: service_started
+    environment:
+      - WALLET_SERVICE_URL=http://hdwallet-service:8000
+      - WALLET_API_KEY_FILE=/api_key/wallet_api_key.txt
+    expose:
+      - "8000"
+    networks:
+      - community-network
+    restart: always
+
+  celery-worker:
+    networks:
+      - community-network
+    restart: always
+
+  celery-beat:
+    networks:
+      - community-network
+    restart: always
+
+  news-core:
+    networks:
+      - community-network
+    restart: always
+
+  info-core:
+    networks:
+      - community-network
+    restart: always
+
+  hdwallet-service:
+    container_name: hdwallet-service
+    environment:
+      - MNEMONIC_FILE=/run/secrets/hd_mnemonic
+      - WALLET_API_KEY_FILE=/api_key/wallet_api_key.txt
+      - TRON_GRID_API_KEY=${TRON_GRID_API_KEY}
+    secrets:
+      - hd_mnemonic
+    networks:
+      - community-network
+    depends_on:
+      - hd-api-key-generator
+      - drf
+
+  hd-api-key-generator:
+    container_name: hd-api-key-generator
+    image: alpine:latest
+    command: sh -c "mkdir -p /api_key && head -c 32 /dev/urandom | base64 > /api_key/wallet_api_key.txt"
+    networks:
+      - community-network
+    deploy:
+      replicas: 1
+
+secrets:
+  hd_mnemonic: {}
+
+networks:
+  community-network:
+    driver: bridge
+

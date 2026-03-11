@@ -122,6 +122,31 @@ compose_dir() {
   echo "${ROOT_DIR}/infra/compose/${stack}/$(compose_env_dir "${env_name}")"
 }
 
+compose_stack_root() {
+  local stack="$1"
+  echo "${ROOT_DIR}/infra/compose/${stack}"
+}
+
+compose_command_prefix() {
+  local stack="$1"
+  local env_name="$2"
+  local stack_root env_dir
+
+  stack_root="$(compose_stack_root "${stack}")"
+  env_dir="$(compose_env_dir "${env_name}")"
+
+  if [[ -f "${stack_root}/compose.base.yml" && -f "${stack_root}/compose.${env_name}.yml" ]]; then
+    printf '%s\0' \
+      docker compose \
+      --env-file "${stack_root}/${env_dir}/.env" \
+      -f "${stack_root}/compose.base.yml" \
+      -f "${stack_root}/compose.${env_name}.yml"
+    return 0
+  fi
+
+  printf '%s\0' docker compose
+}
+
 build_community_images() {
   local env_name="$1"
   local target suffix
@@ -222,18 +247,30 @@ stack_command() {
   local action="$3"
   shift 3
 
-  local dir
+  local dir stack_root env_dir
+  local compose_cmd=()
+
+  stack_root="$(compose_stack_root "${stack}")"
+  env_dir="$(compose_env_dir "${env_name}")"
   dir="$(compose_dir "${stack}" "${env_name}")"
+
+  while IFS= read -r -d '' item; do
+    compose_cmd+=("${item}")
+  done < <(compose_command_prefix "${stack}" "${env_name}")
+
+  if [[ "${#compose_cmd[@]}" -gt 2 ]]; then
+    dir="${stack_root}"
+  fi
 
   case "${action}" in
     up)
-      (cd "${dir}" && docker compose up --build -d "$@")
+      (cd "${dir}" && "${compose_cmd[@]}" up --build -d "$@")
       ;;
     down)
-      (cd "${dir}" && docker compose down -v "$@")
+      (cd "${dir}" && "${compose_cmd[@]}" down -v "$@")
       ;;
     *)
-      (cd "${dir}" && docker compose "${action}" "$@")
+      (cd "${dir}" && "${compose_cmd[@]}" "${action}" "$@")
       ;;
   esac
 }
