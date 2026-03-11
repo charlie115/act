@@ -1,0 +1,12 @@
+*.log
+*.log.*
+*.pyc
+*.ipynb
+
+# Env
+.env*
+!.env.example
+*venv*
+
+# DB
+*.rdb
