@@ -38,7 +38,7 @@ import requests
 current_file_dir = os.path.realpath(__file__)
 current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
 logging_dir = f"{current_folder_dir}/loggers/logs/"
-INFO_DF_VERSION_PREFIX = "INFO_DF_VERSION"
+MARKET_STATE_VERSION_PREFIX = "MARKET_STATE_VERSION"
 CONVERT_RATE_VERSION_PREFIX = "CONVERT_RATE_VERSION"
 
 class MarketIngestRuntime:
@@ -283,10 +283,12 @@ class MarketIngestRuntime:
     def store_info_dict_to_redis(self, data_name, fetched_df):
         # Save the data to the local redis
         self.local_redis.set_data(data_name, pickle.dumps(fetched_df))
-        self.local_redis.set_data(
-            f"{INFO_DF_VERSION_PREFIX}|{data_name}",
-            str(int(time.time() * 1_000_000)),
-        )
+        if data_name.endswith("_info_df") or data_name.endswith("_ticker_df"):
+            market_code = data_name.replace("_info_df", "").replace("_ticker_df", "").upper()
+            self.local_redis.set_data(
+                f"{MARKET_STATE_VERSION_PREFIX}|{market_code}",
+                str(int(time.time() * 1_000_000)),
+            )
 
     def update_exchange_info_as_df(self, data_name, error_count_limit=1, loop_time_secs=30):
         error_count = 0

@@ -2,7 +2,7 @@ import redis
 import json
 import threading
 
-STREAM_VERSION_PREFIX = "STREAM_VERSION"
+MARKET_STATE_VERSION_PREFIX = "MARKET_STATE_VERSION"
 
 
 class RedisHelper:
@@ -118,7 +118,7 @@ class RedisHelper:
         last_update_timestamp = stream_data.get("last_update_timestamp")
         if last_update_timestamp is not None:
             redis_conn.set(
-                f"{STREAM_VERSION_PREFIX}|{stream_data_type}|{market_code}",
+                f"{MARKET_STATE_VERSION_PREFIX}|{market_code}",
                 str(last_update_timestamp),
             )
 

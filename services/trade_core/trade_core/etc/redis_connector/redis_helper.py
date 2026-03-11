@@ -3,6 +3,9 @@ import json
 import threading
 import _pickle as pickle
 import pandas as pd
+
+MARKET_STATE_VERSION_PREFIX = "MARKET_STATE_VERSION"
+
 class RedisHelper:
    
     def __init__(self, host="localhost", port=6379, passwd='LocalRedis123!', db=0):
@@ -80,6 +83,12 @@ class RedisHelper:
         stream_data_json = json.dumps(stream_data)
         # Update the ticker data for the symbol
         redis_conn.hset(redis_key, symbol, stream_data_json)
+        last_update_timestamp = stream_data.get("last_update_timestamp")
+        if last_update_timestamp is not None:
+            redis_conn.set(
+                f"{MARKET_STATE_VERSION_PREFIX}|{market_code}",
+                str(last_update_timestamp),
+            )
 
     def get_exchange_stream_data(self, stream_data_type, market_code, symbol):
         redis_conn = self.get_redis_client()

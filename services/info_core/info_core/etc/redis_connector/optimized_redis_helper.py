@@ -8,6 +8,8 @@ from typing import Dict, Any, Optional, Union
 from collections import defaultdict
 import msgpack
 
+MARKET_STATE_VERSION_PREFIX = "MARKET_STATE_VERSION"
+
 class OptimizedRedisHelper:
     """
     Optimized Redis helper with binary serialization, connection pooling,
@@ -346,6 +348,10 @@ class OptimizedRedisHelper:
             
         stream_data_json = json.dumps(stream_data)
         redis_conn.hset(redis_key, symbol, stream_data_json)
+        redis_conn.set(
+            f"{MARKET_STATE_VERSION_PREFIX}|{market_code}",
+            str(stream_data["last_update_timestamp"]),
+        )
         self.stats['redis_operations'] += 1
 
     def get_exchange_stream_data(self, stream_data_type, market_code, symbol):

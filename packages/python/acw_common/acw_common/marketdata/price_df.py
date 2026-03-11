@@ -6,23 +6,7 @@ import numpy as np
 import pandas as pd
 
 
-STREAM_VERSION_PREFIX = "STREAM_VERSION"
-INFO_DF_VERSION_PREFIX = "INFO_DF_VERSION"
-
-PRICE_DF_INFO_KEY_MAP = {
-    "BINANCE_SPOT": "binance_spot_info_df",
-    "BINANCE_USD_M": "binance_usd_m_info_df",
-    "BINANCE_COIN_M": "binance_coin_m_info_df",
-    "BYBIT_SPOT": "bybit_spot_info_df",
-    "BYBIT_USD_M": "bybit_usd_m_info_df",
-    "BYBIT_COIN_M": "bybit_coin_m_info_df",
-    "GATE_USD_M": "gate_usd_m_info_df",
-    "OKX_SPOT": "okx_spot_info_df",
-    "OKX_USD_M": "okx_usd_m_info_df",
-    "OKX_COIN_M": "okx_coin_m_info_df",
-    "COINONE_SPOT": "coinone_spot_info_df",
-    "HYPERLIQUID_USD_M": "hyperliquid_usd_m_info_df",
-}
+MARKET_STATE_VERSION_PREFIX = "MARKET_STATE_VERSION"
 
 _PRICE_DF_CACHE = {}
 _PRICE_DF_CACHE_LOCK = threading.RLock()
@@ -43,32 +27,16 @@ def _read_version(redis_client, key_name):
 def get_market_data_signature(redis_client, market_code):
     signature = {
         "market_code": market_code,
-        "ticker_version": _read_version(
+        "market_state_version": _read_version(
             redis_client,
-            f"{STREAM_VERSION_PREFIX}|ticker|{market_code}",
-        ),
-        "orderbook_version": _read_version(
-            redis_client,
-            f"{STREAM_VERSION_PREFIX}|orderbook|{market_code}",
-        ),
-        "info_version": None,
-    }
-
-    info_key = PRICE_DF_INFO_KEY_MAP.get(market_code)
-    if info_key is not None:
-        signature["info_version"] = _read_version(
-            redis_client,
-            f"{INFO_DF_VERSION_PREFIX}|{info_key}",
+            f"{MARKET_STATE_VERSION_PREFIX}|{market_code}",
         )
-
+    }
     return signature
 
 
 def _signature_has_versions(signature):
-    return any(
-        signature.get(key) is not None
-        for key in ("ticker_version", "orderbook_version", "info_version")
-    )
+    return signature.get("market_state_version") is not None
 
 
 def _get_cached_price_df(cache_key, signature):
