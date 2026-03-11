@@ -19,6 +19,7 @@ from exchange_websocket.heartbeat import (
     touch_market_ready,
     touch_process_heartbeat,
 )
+from acw_common.websocket import get_stale_symbol_summary
 from exchange_websocket.utils import list_slice
 from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
@@ -190,6 +191,7 @@ class BinanceWebsocket:
         self.logger.info(f"[BINANCE {self.market_type}] Sliced symbol list: {self.sliced_symbol_list}")
         self.stop_restart_websocket = False
         self.price_proc_event_list = []
+        self.partial_stale_strikes = {}
         manager = Manager()
         self.liquidation_list = manager.list()
         self._start_websocket()
@@ -500,10 +502,16 @@ class BinanceWebsocket:
                         continue
 
                     if "bookticker_proc" in proc_name:
+                        symbol_list_key = proc_name.replace("proc", "symbol")
                         redis_stream_type = "orderbook"
                     elif "ticker_proc" in proc_name:
+                        symbol_list_key = "ticker_symbol"
                         redis_stream_type = "ticker"
                     else:
+                        continue
+
+                    symbol_list = self.websocket_symbol_dict.get(symbol_list_key, [])
+                    if not symbol_list:
                         continue
 
                     if is_process_heartbeat_stale(
@@ -514,6 +522,7 @@ class BinanceWebsocket:
                         stale_threshold_secs=stale_threshold_secs,
                         now_us=now_us,
                     ):
+                        self.partial_stale_strikes.pop(proc_name, None)
                         content = (
                             f"[BINANCE {self.market_type}] {proc_name} => "
                             f"Heartbeat stale for > {stale_threshold_secs}s. "
@@ -529,6 +538,45 @@ class BinanceWebsocket:
 
                         # The handle_price_procs() loop will detect it is dead
                         # and restart it automatically. Let's sleep a bit
+                        time.sleep(60)
+                        continue
+
+                    summary = get_stale_symbol_summary(
+                        self.local_redis,
+                        f"BINANCE_{self.market_type.upper()}",
+                        redis_stream_type,
+                        symbol_list,
+                        stale_threshold_secs=stale_threshold_secs,
+                        now_us=now_us,
+                    )
+                    stale_count = summary["stale_count"]
+                    total_symbols = summary["total_symbols"]
+                    if stale_count == 0:
+                        self.partial_stale_strikes.pop(proc_name, None)
+                        continue
+
+                    strike_count = self.partial_stale_strikes.get(proc_name, 0) + 1
+                    self.partial_stale_strikes[proc_name] = strike_count
+                    stale_symbols_preview = summary["stale_symbols"][:5]
+                    self.logger.warning(
+                        f"[BINANCE {self.market_type}] {proc_name} partial stale "
+                        f"{stale_count}/{total_symbols}, strike={strike_count}, "
+                        f"symbols={stale_symbols_preview}"
+                    )
+                    if stale_count == total_symbols or (
+                        strike_count >= 2 and (stale_count >= min(2, total_symbols) or summary["stale_ratio"] >= 0.25)
+                    ):
+                        content = (
+                            f"[BINANCE {self.market_type}] {proc_name} => "
+                            f"Partial stale persisted ({stale_count}/{total_symbols}, strike={strike_count}). "
+                            f"Forcing process restart."
+                        )
+                        self.logger.error(content)
+                        self.acw_api.create_message_thread(self.admin_id, "monitor_stale_data_per_proc", content)
+                        self.logger.warning(f"Killing process: {proc_name}")
+                        proc.terminate()
+                        proc.join()
+                        self.partial_stale_strikes.pop(proc_name, None)
                         time.sleep(60)
 
             except Exception as e:
