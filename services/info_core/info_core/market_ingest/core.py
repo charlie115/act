@@ -20,7 +20,7 @@ from loggers.logger import InfoCoreLogger
 from etc.redis_connector.redis_helper import RedisHelper
 from etc.db_handler.mongodb_client import InitDBClient
 import _pickle as pickle
-from threading import Thread
+from threading import Lock, Thread
 import time
 import datetime
 import os
@@ -30,6 +30,7 @@ from standalone_func.get_dollar_dict import get_dollar_dict
 from standalone_func.premium_data_generator import (
     build_premium_cache_metadata,
     get_premium_df,
+    get_premium_df_from_market_snapshots,
     store_premium_df,
 )
 from standalone_func.store_exchange_status import fetch_market_servercheck
@@ -85,6 +86,9 @@ class MarketIngestRuntime:
 
         self.info_thread_dict = {}
         self.premium_cache_thread_dict = {}
+        self.market_price_df_cache = {}
+        self.market_price_df_cache_lock = Lock()
+        self.premium_cache_signature_dict = {}
 
         self.okx_adaptor = InitOkxAdaptor(self.exchange_api_key_dict['okx_read_only']['api_key'], self.exchange_api_key_dict['okx_read_only']['secret_key'], self.exchange_api_key_dict['okx_read_only']['passphrase'], logging_dir=self.logging_dir)
         self.upbit_adaptor = InitUpbitAdaptor(self.exchange_api_key_dict['upbit_read_only']['api_key'], self.exchange_api_key_dict['upbit_read_only']['secret_key'], self.logging_dir)
@@ -531,19 +535,14 @@ class MarketIngestRuntime:
                     target_market_code, origin_market_code = each_market_combi.split(':')
                     target_market, target_quote_asset = target_market_code.split('/')
                     origin_market, origin_quote_asset = origin_market_code.split('/')
-                    
-                    # First load the convert rate from the redis
-                    fetched_convert_rate_dict = self.local_redis.hgetall_dict('convert_rate_dict')
                     new_convert_rate = self.convert_asset_rate(
                         origin_market,
                         origin_quote_asset,
                         target_market,
                         target_quote_asset,
                     )
-                    previous_convert_rate = fetched_convert_rate_dict.get(each_market_combi)
-                    fetched_convert_rate_dict[each_market_combi] = new_convert_rate
-                    # Store into the redis
-                    self.local_redis.hset_dict('convert_rate_dict', fetched_convert_rate_dict)
+                    previous_convert_rate = self.local_redis.hget_value('convert_rate_dict', each_market_combi)
+                    self.local_redis.hset_value('convert_rate_dict', each_market_combi, new_convert_rate)
                     if previous_convert_rate is None or float(previous_convert_rate) != float(new_convert_rate):
                         self.local_redis.set_data(
                             f"{CONVERT_RATE_VERSION_PREFIX}|{each_market_combi}",
@@ -555,6 +554,52 @@ class MarketIngestRuntime:
                 self.logger.error(f"update_convert_rate_dict|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
                 self.acw_api.create_message_thread(self.admin_id, f"update_convert_rate_dict|Exception occured! Error: {e}", f"update_convert_rate_dict|Exception occured! Error: {e}")
             time.sleep(loop_time_secs)
+
+    def _decode_redis_value(self, raw_value):
+        if raw_value is None:
+            return None
+        if isinstance(raw_value, bytes):
+            return raw_value.decode("utf-8")
+        return str(raw_value)
+
+    def _get_market_state_version(self, market_code):
+        return self._decode_redis_value(
+            self.local_redis.get_data(f"{MARKET_STATE_VERSION_PREFIX}|{market_code}")
+        )
+
+    def _get_convert_rate_version(self, market_code_combination):
+        return self._decode_redis_value(
+            self.local_redis.get_data(f"{CONVERT_RATE_VERSION_PREFIX}|{market_code_combination}")
+        )
+
+    def _get_convert_rate_value(self, market_code_combination):
+        raw_value = self.local_redis.hget_value("convert_rate_dict", market_code_combination)
+        if raw_value is None:
+            return None
+        if isinstance(raw_value, bytes):
+            raw_value = raw_value.decode("utf-8")
+        return float(raw_value)
+
+    def _get_market_price_df_snapshot(self, market_code):
+        market_state_version = self._get_market_state_version(market_code)
+        if market_state_version is None:
+            return None, None
+
+        with self.market_price_df_cache_lock:
+            cached_entry = self.market_price_df_cache.get(market_code)
+            if (
+                cached_entry is not None
+                and cached_entry["market_state_version"] == market_state_version
+            ):
+                return cached_entry["price_df"], market_state_version
+
+        price_df = get_price_df(self.local_redis, market_code)
+        with self.market_price_df_cache_lock:
+            self.market_price_df_cache[market_code] = {
+                "market_state_version": market_state_version,
+                "price_df": price_df,
+            }
+        return price_df, market_state_version
 
     def start_premium_cache_workers(self, loop_time_secs=0.05):
         for market_code_combination in self.enabled_market_klines:
@@ -568,6 +613,8 @@ class MarketIngestRuntime:
 
     def update_premium_cache_loop(self, market_code_combination, loop_time_secs=0.05):
         target_market_code, origin_market_code = market_code_combination.split(":")
+        target_quote_asset = target_market_code.split("/")[1]
+        origin_quote_asset = origin_market_code.split("/")[1]
 
         while True:
             try:
@@ -575,22 +622,45 @@ class MarketIngestRuntime:
                     time.sleep(1)
                     continue
 
-                fetched_convert_rate_dict = self.local_redis.hgetall_dict("convert_rate_dict")
-                if not fetched_convert_rate_dict:
+                target_market_df, target_market_version = self._get_market_price_df_snapshot(
+                    target_market_code.split("/")[0]
+                )
+                origin_market_df, origin_market_version = self._get_market_price_df_snapshot(
+                    origin_market_code.split("/")[0]
+                )
+                convert_rate_version = self._get_convert_rate_version(market_code_combination)
+                convert_rate = self._get_convert_rate_value(market_code_combination)
+
+                if (
+                    target_market_df is None
+                    or origin_market_df is None
+                    or convert_rate_version is None
+                    or convert_rate is None
+                ):
                     time.sleep(1)
                     continue
 
-                convert_rate_dict = {
-                    key.decode("utf-8"): float(value)
-                    for key, value in fetched_convert_rate_dict.items()
-                }
+                current_signature = (
+                    target_market_version,
+                    origin_market_version,
+                    convert_rate_version,
+                )
+                if self.premium_cache_signature_dict.get(market_code_combination) == current_signature:
+                    time.sleep(loop_time_secs)
+                    continue
 
-                premium_df = get_premium_df(
-                    self.local_redis,
-                    convert_rate_dict,
-                    target_market_code,
-                    origin_market_code,
-                    self.logger,
+                dollar_price = get_dollar_dict(self.local_redis)["price"]
+                premium_df = get_premium_df_from_market_snapshots(
+                    origin_market_df=origin_market_df,
+                    target_market_df=target_market_df,
+                    quote_asset_one=origin_quote_asset,
+                    quote_asset_two=target_quote_asset,
+                    convert_rate=convert_rate,
+                    dollar_price=dollar_price,
+                    logger=self.logger,
+                    target_market_code=target_market_code,
+                    origin_market_code=origin_market_code,
+                    sort_by_atp24h=False,
                 )
                 if not premium_df.empty:
                     metadata = build_premium_cache_metadata(
@@ -606,6 +676,7 @@ class MarketIngestRuntime:
                         metadata=metadata,
                         ex=5,
                     )
+                    self.premium_cache_signature_dict[market_code_combination] = current_signature
             except Exception as e:
                 self.logger.error(
                     f"update_premium_cache_loop|{market_code_combination}|{e}\n{traceback.format_exc()}"

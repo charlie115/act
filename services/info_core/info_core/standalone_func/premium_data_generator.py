@@ -7,7 +7,10 @@ import _pickle as pickle
 
 import pandas as pd
 
-from acw_common.marketdata.premium import build_premium_df
+from acw_common.marketdata.premium import (
+    build_premium_df,
+    build_premium_df_from_market_snapshots,
+)
 
 from standalone_func.get_dollar_dict import get_dollar_dict
 from standalone_func.price_df_generator import get_market_data_signature, get_price_df
@@ -73,6 +76,32 @@ def get_premium_df(redis_client, convert_rate_dict, target_market_code, origin_m
         logger=logger,
         get_dollar_dict_fn=get_dollar_dict,
         get_price_df_fn=get_price_df,
+    )
+
+
+def get_premium_df_from_market_snapshots(
+    origin_market_df,
+    target_market_df,
+    quote_asset_one,
+    quote_asset_two,
+    convert_rate,
+    dollar_price,
+    logger,
+    target_market_code=None,
+    origin_market_code=None,
+    sort_by_atp24h=True,
+):
+    return build_premium_df_from_market_snapshots(
+        origin_market_df=origin_market_df,
+        target_market_df=target_market_df,
+        quote_asset_one=quote_asset_one,
+        quote_asset_two=quote_asset_two,
+        convert_rate=convert_rate,
+        dollar_price=dollar_price,
+        logger=logger,
+        target_market_code=target_market_code,
+        origin_market_code=origin_market_code,
+        sort_by_atp24h=sort_by_atp24h,
     )
 
 
