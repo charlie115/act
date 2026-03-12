@@ -2,8 +2,8 @@
 
 import Box from "@mui/material/Box";
 
-import Home from "../../../community_web/src/pages/Home";
-import TVTickerWidget from "../../../community_web/src/components/trading_view/TVTickerWidget";
+import Home from "pages/Home";
+import TVTickerWidget from "components/trading_view/TVTickerWidget";
 import LegacyRouterShell from "./LegacyRouterShell";
 
 export default function LegacyHomeClient() {

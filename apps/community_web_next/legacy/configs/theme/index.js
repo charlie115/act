@@ -1,4 +1,4 @@
-import theme, { SIDEBAR_WIDTH } from "../../../../community_web/src/configs/theme";
+import { darkTheme, SIDEBAR_WIDTH } from "../../community_web_src/configs/theme";
 
 export { SIDEBAR_WIDTH };
-export default theme;
+export default darkTheme;

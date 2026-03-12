@@ -97,26 +97,33 @@ export default function BoardListClient({ count, currentCategory = "", currentPa
 
       {filteredPosts.length ? (
         <div className="board-grid">
-          {filteredPosts.map((post) => (
-            <Link
-              key={post.id}
-              className="board-grid__item"
-              href={`/community-board/post/${post.id}`}
-            >
-              <div className="board-grid__meta">
-                <span>{post.category}</span>
-                <span>{formatDate(post.date_created)}</span>
-              </div>
-              <h3>{post.title}</h3>
-              <p>{stripHtml(post.content).slice(0, 180)}</p>
-              <div className="board-grid__stats">
-                <span>{post.comments} comments</span>
-                <span>{post.views} views</span>
-                <span>{post.likes} likes</span>
-                <span>{post.dislikes} dislikes</span>
-              </div>
-            </Link>
-          ))}
+          {filteredPosts.map((post) => {
+            const categoryItem = POST_CATEGORY_LIST.find((item) => item.value === post.category);
+
+            return (
+              <Link
+                key={post.id}
+                className="board-grid__item"
+                href={`/community-board/post/${post.id}`}
+              >
+                <div className="board-grid__meta">
+                  <span style={{ color: categoryItem?.color || undefined }}>
+                    {categoryItem?.getLabel?.() || post.category}
+                  </span>
+                  <span>{post.author_profile?.username || "Unknown"}</span>
+                  <span>{formatDate(post.date_created)}</span>
+                </div>
+                <h3>{post.title}</h3>
+                <p>{stripHtml(post.content).slice(0, 180)}</p>
+                <div className="board-grid__stats">
+                  <span>{post.comments} comments</span>
+                  <span>{post.views} views</span>
+                  <span>{post.likes} likes</span>
+                  <span>{post.dislikes} dislikes</span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       ) : (
         <div className="empty-state">표시할 게시글이 없습니다.</div>

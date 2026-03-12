@@ -25,7 +25,10 @@ export const metadata = buildMetadata({
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">
-      <body className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
+      <body
+        className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}
+        suppressHydrationWarning
+      >
         <Providers>
           <AppShell>{children}</AppShell>
         </Providers>

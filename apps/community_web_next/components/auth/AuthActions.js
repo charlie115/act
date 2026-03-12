@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { useAuth } from "./AuthProvider";
+import NextDepositBalance from "../header/NextDepositBalance";
+import NextHeaderUserMenu from "../header/NextHeaderUserMenu";
 
 export default function AuthActions() {
-  const router = useRouter();
   const { isReady, loggedIn, user, signOut } = useAuth();
 
   if (!isReady) {
@@ -23,19 +23,11 @@ export default function AuthActions() {
 
   return (
     <div className="auth-actions">
+      <NextDepositBalance />
       <Link className="auth-chip" href="/my-page">
         {user?.username || user?.email || "Account"}
       </Link>
-      <button
-        className="ghost-button ghost-button--button"
-        onClick={async () => {
-          await signOut();
-          router.push("/");
-        }}
-        type="button"
-      >
-        Logout
-      </button>
+      <NextHeaderUserMenu />
     </div>
   );
 }

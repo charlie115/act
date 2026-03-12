@@ -433,7 +433,7 @@ web_dev() {
     set -a
     source ".env.development"
     set +a
-    eval "${runner} exec next dev --hostname 0.0.0.0 --port ${web_port}"
+    eval "${runner} exec next dev --turbopack --hostname 0.0.0.0 --port ${web_port}"
   )
 }
 

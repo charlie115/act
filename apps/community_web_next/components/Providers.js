@@ -2,13 +2,16 @@
 
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterLuxon } from "@mui/x-date-pickers/AdapterLuxon";
 import { PersistGate } from "redux-persist/integration/react";
 import { Provider as ReduxProvider } from "react-redux";
 import { I18nextProvider } from "react-i18next";
 
 import i18n from "configs/i18n";
-import theme from "configs/theme";
 import { persistor, store } from "redux/store";
+import { GlobalSnackbarProvider } from "hooks/useGlobalSnackbar";
+import theme from "../legacy/configs/theme";
 import AuthProvider from "./auth/AuthProvider";
 import LegacyAuthSync from "./LegacyAuthSync";
 
@@ -19,13 +22,17 @@ export default function Providers({ children }) {
     <ReduxProvider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <I18nextProvider i18n={i18n}>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <AuthProvider>
-              <LegacyAuthSync />
-              {children}
-            </AuthProvider>
-          </ThemeProvider>
+          <LocalizationProvider dateAdapter={AdapterLuxon}>
+            <ThemeProvider theme={theme}>
+              <CssBaseline />
+              <GlobalSnackbarProvider>
+                <AuthProvider>
+                  <LegacyAuthSync />
+                  {children}
+                </AuthProvider>
+              </GlobalSnackbarProvider>
+            </ThemeProvider>
+          </LocalizationProvider>
         </I18nextProvider>
       </PersistGate>
     </ReduxProvider>

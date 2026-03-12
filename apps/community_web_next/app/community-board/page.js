@@ -11,20 +11,19 @@ export const metadata = buildMetadata({
 export default async function CommunityBoardPage({ searchParams }) {
   const resolvedSearchParams = await searchParams;
   const category = resolvedSearchParams?.category || undefined;
-  const currentPage = Number(resolvedSearchParams?.page || 1);
-  const page = currentPage || undefined;
-
-  const board = await getBoardPosts({ category, page }).catch(() => ({
-    count: 0,
-    results: [],
-  }));
+  const page = Number(resolvedSearchParams?.page || 1);
+  const boardData = await getBoardPosts({
+    category,
+    page,
+    page_size: 20,
+  });
 
   return (
     <BoardListClient
-      count={board.count}
+      count={boardData.count}
       currentCategory={category || ""}
-      currentPage={currentPage}
-      posts={board.results}
+      currentPage={page}
+      posts={boardData.results}
     />
   );
 }

@@ -1,4 +1,8 @@
-import LegacyHomeClient from "../components/legacy/LegacyHomeClient";
+import BoardPreview from "../components/BoardPreview";
+import HeroSection from "../components/HeroSection";
+import HomeMarketOverviewClient from "../components/home/HomeMarketOverviewClient";
+import NewsDigest from "../components/NewsDigest";
+import { getAnnouncements, getBoardPosts, getNews, getSocialPosts } from "../lib/api";
 import { buildMetadata } from "../lib/site";
 
 export const metadata = buildMetadata({
@@ -8,10 +12,24 @@ export const metadata = buildMetadata({
   pathname: "/",
 });
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [news, announcements, socialPosts, boardData] = await Promise.all([
+    getNews({ page_size: 4 }),
+    getAnnouncements({ page_size: 4 }),
+    getSocialPosts({ page_size: 4 }),
+    getBoardPosts({ page_size: 4 }),
+  ]);
+
   return (
     <div className="section-stack">
-      <LegacyHomeClient />
+      <HeroSection />
+      <HomeMarketOverviewClient />
+      <NewsDigest
+        announcements={announcements.slice(0, 3)}
+        news={news.slice(0, 3)}
+        socialPosts={socialPosts.slice(0, 3)}
+      />
+      <BoardPreview posts={boardData.results.slice(0, 4)} />
     </div>
   );
 }

@@ -29,7 +29,7 @@ export default async function BotPage({ params, searchParams }) {
   const initialConfigUuid = resolvedSearchParams?.config || null;
 
   if (!currentTab) {
-    redirect("/bot/deposit");
+    redirect("/bot/triggers");
   }
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
-import News from "../../../community_web/src/pages/News";
+import News from "pages/News";
 
 export default function LegacyNewsClient() {
-  return <News />;
+  return <div className="legacy-surface legacy-surface--news"><News /></div>;
 }

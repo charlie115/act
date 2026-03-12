@@ -9,7 +9,7 @@ import { formatDate, safeHtml } from "../../lib/api";
 import { fetchCachedJson } from "../../lib/clientCache";
 import { USER_ROLE } from "../../lib/constants";
 
-function canModerate(user, authorProfile) {
+function canModerate(user, authorProfile, authorId) {
   if (!user) {
     return false;
   }
@@ -18,7 +18,8 @@ function canModerate(user, authorProfile) {
     return true;
   }
 
-  return user.username && user.username === authorProfile?.username;
+  return Boolean(user.uuid && authorId && user.uuid === authorId) ||
+    Boolean(user.username && user.username === authorProfile?.username);
 }
 
 function ReactionRow({ counts, currentReaction, disabled, onToggle }) {
@@ -79,7 +80,7 @@ function CommentThread({
             Reply
           </button>
         ) : null}
-        {canModerate(user, comment.author_profile) ? (
+        {canModerate(user, comment.author_profile, comment.author) ? (
           <button
             className="ghost-button ghost-button--button small-button"
             disabled={disabled}
@@ -190,6 +191,19 @@ export default function BoardPostClient({ postId }) {
     async function recordView() {
       if (!loggedIn || !user?.uuid || !post?.id) return;
       try {
+        if (post.user_view) {
+          const lastView = new Date(post.user_view);
+          const now = new Date();
+          const lastKst = new Date(lastView.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+          const nowKst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+          const startOfDayKst = new Date(nowKst);
+          startOfDayKst.setHours(0, 0, 0, 0);
+
+          if (lastKst >= startOfDayKst) {
+            return;
+          }
+        }
+
         await authorizedRequest("/board/post-views/", {
           method: "POST",
           body: { post: post.id, user: user.uuid },
@@ -200,11 +214,11 @@ export default function BoardPostClient({ postId }) {
     }
 
     recordView();
-  }, [authorizedRequest, loggedIn, post?.id, user?.uuid]);
+  }, [authorizedRequest, loggedIn, post?.id, post?.user_view, user?.uuid]);
 
   const canDeletePost = useMemo(
-    () => canModerate(user, post?.author_profile),
-    [post?.author_profile, user]
+    () => canModerate(user, post?.author_profile, post?.author),
+    [post?.author, post?.author_profile, user]
   );
 
   async function reloadPost() {

@@ -1,5 +1,5 @@
 import { buildMetadata } from "../../lib/site";
-import LegacyNewsClient from "../../components/legacy/LegacyNewsClient";
+import NewsHubClient from "../../components/news/NewsHubClient";
 
 export const metadata = buildMetadata({
   title: "News",
@@ -8,5 +8,5 @@ export const metadata = buildMetadata({
 });
 
 export default function NewsPage() {
-  return <LegacyNewsClient />;
+  return <NewsHubClient />;
 }

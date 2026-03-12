@@ -1,7 +1,18 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "assets/*": ["legacy/community_web_src/assets/*"],
+      "components/*": ["components/*", "legacy/community_web_src/components/*"],
+      "configs/theme": ["legacy/configs/theme/index.js"],
+      "configs/*": ["legacy/community_web_src/configs/*"],
+      "constants/*": ["legacy/community_web_src/constants/*"],
+      "contexts/*": ["legacy/community_web_src/contexts/*"],
+      "hooks/*": ["legacy/community_web_src/hooks/*"],
+      "pages/*": ["legacy/community_web_src/pages/*"],
+      "redux/*": ["legacy/community_web_src/redux/*"],
+      "utils/*": ["legacy/community_web_src/utils/*"]
     }
   }
 }

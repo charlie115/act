@@ -1,14 +1,15 @@
 import sanitizeHtml from "sanitize-html";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-const mediaBaseUrl =
-  process.env.NEXT_PUBLIC_DRF_URL?.replace(/\/$/, "") ||
+const directBackendBaseUrl =
   process.env.ACW_API_PROXY_TARGET?.replace(/\/$/, "") ||
+  process.env.NEXT_PUBLIC_DRF_URL?.replace(/\/$/, "") ||
   "";
+const mediaBaseUrl = directBackendBaseUrl;
 const API_BASE =
-  process.env.ACW_API_SERVER_URL ||
+  directBackendBaseUrl ||
   (siteUrl ? `${siteUrl}/api` : null) ||
-  "http://localhost:8000/api";
+  "http://localhost:8000";
 
 function buildUrl(pathname, searchParams) {
   const url = new URL(pathname.replace(/^\//, ""), API_BASE.endsWith("/") ? API_BASE : `${API_BASE}/`);

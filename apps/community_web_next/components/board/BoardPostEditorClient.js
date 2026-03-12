@@ -89,6 +89,7 @@ export default function BoardPostEditorClient() {
         <input
           className="auth-form__input"
           id="board-title"
+          maxLength={150}
           onChange={(event) => setTitle(event.target.value)}
           required
           value={title}
@@ -107,7 +108,7 @@ export default function BoardPostEditorClient() {
           <option value="">Select a category</option>
           {categories.map((item) => (
             <option key={item.value} value={item.value}>
-              {item.value}
+              {item.getLabel?.() || item.value}
             </option>
           ))}
         </select>
