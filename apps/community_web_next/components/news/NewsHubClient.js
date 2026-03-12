@@ -7,9 +7,9 @@ import { fetchCachedJson } from "../../lib/clientCache";
 import SurfaceNotice from "../ui/SurfaceNotice";
 
 const TABS = [
-  { key: "news", label: "All News" },
-  { key: "social", label: "Social Media" },
-  { key: "announcements", label: "Exchange Notice" },
+  { key: "news", label: "전체 뉴스" },
+  { key: "social", label: "소셜" },
+  { key: "announcements", label: "거래소 공지" },
 ];
 
 const ANNOUNCEMENT_CATEGORIES = [
@@ -114,7 +114,7 @@ export default function NewsHubClient() {
           return;
         }
 
-        setPageError(requestError.message || "Failed to load news hub.");
+        setPageError(requestError.message || "뉴스 허브를 불러오지 못했습니다.");
       }
     }
 

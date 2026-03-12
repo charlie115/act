@@ -120,7 +120,7 @@ export default function BotApiKeyClient({ marketCodeCombination, selectedConfig 
           return;
         }
 
-        setPageError(requestError.message || "Failed to load API keys.");
+        setPageError(requestError.message || "API 키 목록을 불러오지 못했습니다.");
       }
     }
 
@@ -176,7 +176,7 @@ export default function BotApiKeyClient({ marketCodeCombination, selectedConfig 
       setPageError(
         requestError.payload?.detail ||
           requestError.payload?.code?.[0] ||
-          "Failed to register API key."
+          "API 키 등록에 실패했습니다."
       );
     } finally {
       setIsBusy(false);
@@ -194,7 +194,7 @@ export default function BotApiKeyClient({ marketCodeCombination, selectedConfig 
       );
       await reloadKeys();
     } catch (requestError) {
-      setPageError(requestError.message || "Failed to delete API key.");
+      setPageError(requestError.message || "API 키 삭제에 실패했습니다.");
     } finally {
       setIsBusy(false);
     }
@@ -285,10 +285,10 @@ export default function BotApiKeyClient({ marketCodeCombination, selectedConfig 
                   onClick={() => setMarketCodeForm(null)}
                   type="button"
                 >
-                  Cancel
+                  취소
                 </button>
                 <button className="primary-button ghost-button--button" disabled={isBusy} type="submit">
-                  {isBusy ? "Saving..." : "Save"}
+                  {isBusy ? "저장 중..." : "저장"}
                 </button>
               </div>
             </form>

@@ -242,15 +242,6 @@ img {
   padding: 16px 0 32px;
 }
 
-.page-frame--legacy {
-  width: 100%;
-  max-width: none;
-}
-
-.legacy-surface--ticker {
-  margin-bottom: 12px;
-}
-
 .next-breadcrumbs {
   display: flex;
   flex-wrap: wrap;
@@ -283,64 +274,6 @@ img {
 .next-breadcrumbs__current {
   color: #eef2ff;
   font-weight: 700;
-}
-
-.legacy-surface {
-  color: #eef2ff;
-}
-
-.legacy-surface .MuiPaper-root,
-.legacy-surface .MuiDialog-paper,
-.legacy-surface .MuiMenu-paper {
-  background-image: none;
-}
-
-.legacy-surface .MuiTypography-root,
-.legacy-surface .MuiButtonBase-root,
-.legacy-surface .MuiInputBase-root,
-.legacy-surface .MuiTableCell-root,
-.legacy-surface .MuiBreadcrumbs-root,
-.legacy-surface .MuiChip-root,
-.legacy-surface .MuiTab-root {
-  color: inherit;
-}
-
-.legacy-surface .MuiPaper-root {
-  background-color: rgba(10, 16, 28, 0.96);
-  border: 1px solid rgba(94, 119, 181, 0.2);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
-}
-
-.legacy-surface .MuiTabs-root {
-  color: #c2d2f6;
-}
-
-.legacy-surface .MuiTab-root {
-  opacity: 0.88;
-}
-
-.legacy-surface .MuiTab-root.Mui-selected {
-  color: #eef2ff;
-}
-
-.legacy-surface .MuiOutlinedInput-root,
-.legacy-surface .MuiFilledInput-root,
-.legacy-surface .MuiInputBase-root {
-  background: rgba(12, 18, 31, 0.92);
-}
-
-.legacy-surface .MuiInputBase-input::placeholder {
-  color: #8193bc;
-  opacity: 1;
-}
-
-.legacy-surface .MuiTableCell-head {
-  color: #9fb0d7;
-  background: rgba(16, 24, 41, 0.98);
-}
-
-.legacy-surface .MuiTableCell-body {
-  color: #eef2ff;
 }
 
 .eyebrow {

@@ -177,7 +177,7 @@ export default function BoardPostClient({ postId }) {
         setComments(commentsPayload.results || commentsPayload || []);
       } catch (requestError) {
         if (!active) return;
-        setPageError(requestError.message || "Failed to load board post.");
+        setPageError(requestError.message || "게시글을 불러오지 못했습니다.");
       }
     }
 
@@ -266,7 +266,7 @@ export default function BoardPostClient({ postId }) {
       }
       await reloadPost();
     } catch (requestError) {
-      setPageError(requestError.message || "Failed to update reaction.");
+      setPageError(requestError.message || "반응 업데이트에 실패했습니다.");
     } finally {
       setIsBusy(false);
     }
@@ -284,7 +284,7 @@ export default function BoardPostClient({ postId }) {
       setComment("");
       await reloadComments();
     } catch (requestError) {
-      setPageError(requestError.message || "Failed to create comment.");
+      setPageError(requestError.message || "댓글 작성에 실패했습니다.");
     } finally {
       setIsBusy(false);
     }
@@ -314,7 +314,7 @@ export default function BoardPostClient({ postId }) {
       }
       await reloadComments();
     } catch (requestError) {
-      setPageError(requestError.message || "Failed to update comment reaction.");
+      setPageError(requestError.message || "댓글 반응 업데이트에 실패했습니다.");
     } finally {
       setIsBusy(false);
     }
@@ -327,7 +327,7 @@ export default function BoardPostClient({ postId }) {
       await authorizedRequest(`/board/comments/${commentId}/`, { method: "DELETE" });
       await reloadComments();
     } catch (requestError) {
-      setPageError(requestError.message || "Failed to delete comment.");
+      setPageError(requestError.message || "댓글 삭제에 실패했습니다.");
     } finally {
       setIsBusy(false);
     }
@@ -341,7 +341,7 @@ export default function BoardPostClient({ postId }) {
       await authorizedRequest(`/board/posts/${post.id}/`, { method: "DELETE" });
       router.replace("/community-board");
     } catch (requestError) {
-      setPageError(requestError.message || "Failed to delete post.");
+      setPageError(requestError.message || "게시글 삭제에 실패했습니다.");
     } finally {
       setIsBusy(false);
     }

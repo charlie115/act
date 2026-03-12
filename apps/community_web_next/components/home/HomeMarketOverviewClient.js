@@ -350,7 +350,7 @@ export default function HomeMarketOverviewClient() {
       );
       setFavoriteAssets(payload);
     } catch (requestError) {
-      setPageError(requestError.message || "Failed to update favorites.");
+      setPageError(requestError.message || "즐겨찾기 업데이트에 실패했습니다.");
     }
   }
 

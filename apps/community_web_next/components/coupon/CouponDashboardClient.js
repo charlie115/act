@@ -41,7 +41,7 @@ export default function CouponDashboardClient() {
           return;
         }
 
-        setPageError(requestError.message || "Failed to load coupon dashboard.");
+        setPageError(requestError.message || "쿠폰 대시보드를 불러오지 못했습니다.");
       }
     }
 
@@ -70,7 +70,7 @@ export default function CouponDashboardClient() {
       const nextRedemptions = await authorizedListRequest("/coupon/coupon-redemption/");
       setRedemptions(nextRedemptions);
     } catch (requestError) {
-      setPageError(requestError.payload?.message || "Failed to redeem coupon.");
+      setPageError(requestError.payload?.message || "쿠폰 사용 처리에 실패했습니다.");
     } finally {
       setIsBusy(false);
     }
