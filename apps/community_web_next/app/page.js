@@ -12,12 +12,20 @@ export const metadata = buildMetadata({
   pathname: "/",
 });
 
+async function safeFetch(fetcher, fallback) {
+  try {
+    return await fetcher();
+  } catch {
+    return fallback;
+  }
+}
+
 export default async function HomePage() {
   const [news, announcements, socialPosts, boardData] = await Promise.all([
-    getNews({ page_size: 4 }),
-    getAnnouncements({ page_size: 4 }),
-    getSocialPosts({ page_size: 4 }),
-    getBoardPosts({ page_size: 4 }),
+    safeFetch(() => getNews({ page_size: 4 }), []),
+    safeFetch(() => getAnnouncements({ page_size: 4 }), []),
+    safeFetch(() => getSocialPosts({ page_size: 4 }), []),
+    safeFetch(() => getBoardPosts({ page_size: 4 }), { count: 0, results: [] }),
   ]);
 
   return (

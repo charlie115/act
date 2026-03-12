@@ -16,15 +16,15 @@ import { useAuth } from "../auth/AuthProvider";
 import TelegramConnectButton from "../auth/TelegramConnectButton";
 import MarketCodeCombinationSelector from "components/MarketCodeCombinationSelector";
 import { MARKET_CODE_LIST } from "constants/lists";
+import BotApiKeyClient from "./BotApiKeyClient";
+import BotCapitalClient from "./BotCapitalClient";
+import BotDepositClient from "./BotDepositClient";
 import BotPlaceholderPanel from "./BotPlaceholderPanel";
-import LegacyBotTriggersClient from "./LegacyBotTriggersClient";
-import LegacyBotScannerClient from "./LegacyBotScannerClient";
-import LegacyBotSettingsClient from "./LegacyBotSettingsClient";
-import LegacyBotApiKeyClient from "./LegacyBotApiKeyClient";
-import LegacyBotDepositClient from "./LegacyBotDepositClient";
-import LegacyBotPositionClient from "./LegacyBotPositionClient";
-import LegacyBotCapitalClient from "./LegacyBotCapitalClient";
-import LegacyBotPnlHistoryClient from "./LegacyBotPnlHistoryClient";
+import BotPnlHistoryClient from "./BotPnlHistoryClient";
+import BotPositionClient from "./BotPositionClient";
+import BotScannerClient from "./BotScannerClient";
+import BotSettingsClient from "./BotSettingsClient";
+import BotTriggersClient from "./BotTriggersClient";
 
 const tabs = [
   { key: "triggers", label: "Triggers" },
@@ -240,13 +240,14 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
         : selectedConfig || {};
 
     if (currentTab === "deposit") {
-      return <LegacyBotDepositClient marketCodeCombination={marketCodeCombination} />;
+      return <BotDepositClient />;
     }
 
     if (currentTab === "settings" && selectedConfig?.trade_config_uuid === "ALL") {
       return (
-        <LegacyBotSettingsClient
+        <BotSettingsClient
           marketCodeCombination={selectedConfig}
+          selectedConfig={selectedConfig}
           marketCodeSelectorRef={marketCodeSelectorRef}
         />
       );
@@ -262,53 +263,44 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
     }
 
     if (currentTab === "position") {
-      return <LegacyBotPositionClient marketCodeCombination={marketCodeCombination} />;
+      return <BotPositionClient marketCodeCombination={marketCodeCombination} />;
     }
 
     if (currentTab === "capital") {
-      return <LegacyBotCapitalClient marketCodeCombination={marketCodeCombination} />;
+      return <BotCapitalClient marketCodeCombination={marketCodeCombination} />;
     }
 
     if (currentTab === "pnl-history") {
-      return <LegacyBotPnlHistoryClient marketCodeCombination={marketCodeCombination} />;
+      return <BotPnlHistoryClient marketCodeCombination={marketCodeCombination} />;
     }
 
     if (currentTab === "scanner") {
       return (
-        <LegacyBotScannerClient
-          marketCodeCombination={selectedConfig}
-          tradeConfigAllocations={tradeConfigAllocations}
-          tradeConfigUuids={tradeConfigUuids}
-        />
+        <BotScannerClient selectedConfig={selectedConfig} />
       );
     }
 
     if (currentTab === "api-key") {
       return (
-        <LegacyBotApiKeyClient
+        <BotApiKeyClient
           marketCodeCombination={marketCodeCombination}
-          tradeConfigAllocations={tradeConfigAllocations}
+          selectedConfig={selectedConfig}
         />
       );
     }
 
     if (currentTab === "settings") {
       return (
-        <LegacyBotSettingsClient
+        <BotSettingsClient
           marketCodeCombination={marketCodeCombination}
+          selectedConfig={selectedConfig}
           marketCodeSelectorRef={marketCodeSelectorRef}
         />
       );
     }
 
     if (currentTab === "triggers") {
-      return (
-        <LegacyBotTriggersClient
-          marketCodeCombination={selectedConfig}
-          tradeConfigAllocations={tradeConfigAllocations}
-          tradeConfigUuids={tradeConfigUuids}
-        />
-      );
+      return <BotTriggersClient selectedConfig={selectedConfig} />;
     }
 
     return (

@@ -9,9 +9,9 @@ import { Provider as ReduxProvider } from "react-redux";
 import { I18nextProvider } from "react-i18next";
 
 import i18n from "configs/i18n";
+import theme from "configs/theme";
 import { persistor, store } from "redux/store";
 import { GlobalSnackbarProvider } from "hooks/useGlobalSnackbar";
-import theme from "../legacy/configs/theme";
 import AuthProvider from "./auth/AuthProvider";
 import LegacyAuthSync from "./LegacyAuthSync";
 
