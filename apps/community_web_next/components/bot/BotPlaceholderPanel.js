@@ -1,3 +1,5 @@
+import SurfaceNotice from "../ui/SurfaceNotice";
+
 export default function BotPlaceholderPanel({ title, description }) {
   return (
     <section className="surface-card">
@@ -7,7 +9,7 @@ export default function BotPlaceholderPanel({ title, description }) {
           <h1>{title}</h1>
         </div>
       </div>
-      <div className="inline-note">{description}</div>
+      <SurfaceNotice description={description} />
     </section>
   );
 }

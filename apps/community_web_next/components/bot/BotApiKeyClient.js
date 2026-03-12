@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
+import SurfaceNotice from "../ui/SurfaceNotice";
 
 function formatDate(value) {
   if (!value) {
@@ -40,10 +41,10 @@ function MarketApiKeyTable({ items, onAdd, onDelete, title }) {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Registered</th>
+              <th>등록 시각</th>
               <th>Access Key</th>
               <th>Secret Key</th>
-              <th>Delete</th>
+              <th>삭제</th>
             </tr>
           </thead>
           <tbody>
@@ -59,14 +60,14 @@ function MarketApiKeyTable({ items, onAdd, onDelete, title }) {
                       onClick={() => onDelete(item)}
                       type="button"
                     >
-                      Delete
+                      삭제
                     </button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="4">No API keys registered.</td>
+                <td colSpan="4">등록된 API 키가 없습니다.</td>
               </tr>
             )}
           </tbody>
@@ -208,9 +209,13 @@ export default function BotApiKeyClient({ marketCodeCombination, selectedConfig 
             <h1>API Key 등록 안내</h1>
           </div>
         </div>
-        <div className="inline-note">
-          API 키 발급 시 허용 IP에 <strong>{nodeIp || "allocated node ip"}</strong> 를 포함해야 합니다.
-        </div>
+        <SurfaceNotice
+          description={
+            <>
+              API 키 허용 IP에 <strong>{nodeIp || "할당된 노드 IP"}</strong> 를 포함해야 합니다.
+            </>
+          }
+        />
       </section>
 
       <div className="two-column-grid">
@@ -291,7 +296,7 @@ export default function BotApiKeyClient({ marketCodeCombination, selectedConfig 
         </div>
       ) : null}
 
-      {pageError ? <p className="auth-card__error">{pageError}</p> : null}
+      {pageError ? <SurfaceNotice description={pageError} variant="error" /> : null}
     </div>
   );
 }

@@ -18,7 +18,7 @@ function ActiveGoogleSignInButton() {
   if (!googleClientId) {
     return (
       <button className="primary-button auth-button" disabled type="button">
-        Google OAuth client id not configured
+        Google OAuth 설정이 필요합니다
       </button>
     );
   }
@@ -30,7 +30,7 @@ function ActiveGoogleSignInButton() {
       onClick={() => googleLogin()}
       type="button"
     >
-      {isLoading ? "Signing in..." : "Sign in with Google"}
+      {isLoading ? "로그인 중..." : "Google로 로그인"}
     </button>
   );
 }
@@ -39,7 +39,7 @@ export default function GoogleSignInButton() {
   if (!googleClientId) {
     return (
       <button className="primary-button auth-button" disabled type="button">
-        Google OAuth client id not configured
+        Google OAuth 설정이 필요합니다
       </button>
     );
   }

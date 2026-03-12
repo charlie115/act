@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
 import { fetchCachedJson } from "../../lib/clientCache";
+import SurfaceNotice from "../ui/SurfaceNotice";
 
 function formatPercent(value) {
   if (value === null || value === undefined || value === "") {
@@ -104,7 +105,7 @@ export default function HomeMarketOverviewClient() {
           return;
         }
 
-        setPageError(requestError.message || "Failed to load market overview.");
+        setPageError(requestError.message || "시장 개요를 불러오지 못했습니다.");
       }
     }
 
@@ -152,7 +153,7 @@ export default function HomeMarketOverviewClient() {
           return;
         }
 
-        setPageError(requestError.message || "Failed to load market insights.");
+        setPageError(requestError.message || "시장 인사이트를 불러오지 못했습니다.");
       }
     }
 
@@ -247,7 +248,7 @@ export default function HomeMarketOverviewClient() {
           return;
         }
 
-        setPageError(requestError.message || "Failed to load asset details.");
+        setPageError(requestError.message || "자산 세부 정보를 불러오지 못했습니다.");
       }
     }
 
@@ -390,7 +391,7 @@ export default function HomeMarketOverviewClient() {
           <input
             className="auth-form__input"
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search assets"
+            placeholder="자산 검색"
             value={search}
           />
         </div>
@@ -398,7 +399,7 @@ export default function HomeMarketOverviewClient() {
           <div className="maintenance-banner">
             {maintenanceItems.map((item) => (
               <div key={item.id}>
-                <strong>{item.market_code}</strong>: {item.message || "Maintenance"}
+                <strong>{item.market_code}</strong>: {item.message || "점검 중"}
               </div>
             ))}
           </div>
@@ -517,7 +518,7 @@ export default function HomeMarketOverviewClient() {
                       <td>{formatPercent(targetFundingItem?.funding_rate)}</td>
                       <td>{formatPercent(originFundingItem?.funding_rate)}</td>
                       <td>{formatVolatility(volatilityItem?.mean_diff)}</td>
-                      <td>{transferAvailable ? "Available" : "-"}</td>
+                      <td>{transferAvailable ? "가능" : "-"}</td>
                     </tr>
                   );
                 })
@@ -531,7 +532,7 @@ export default function HomeMarketOverviewClient() {
         </div>
       </section>
 
-      {pageError ? <p className="auth-card__error">{pageError}</p> : null}
+      {pageError ? <SurfaceNotice description={pageError} variant="error" /> : null}
     </div>
   );
 }

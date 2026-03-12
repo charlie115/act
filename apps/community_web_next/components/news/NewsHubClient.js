@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { formatDate, stripHtml } from "../../lib/api";
 import { fetchCachedJson } from "../../lib/clientCache";
+import SurfaceNotice from "../ui/SurfaceNotice";
 
 const TABS = [
   { key: "news", label: "All News" },
@@ -263,7 +264,7 @@ export default function NewsHubClient() {
             <div className="empty-state">표시할 항목이 없습니다.</div>
           )}
         </div>
-        {pageError ? <p className="auth-card__error">{pageError}</p> : null}
+        {pageError ? <SurfaceNotice description={pageError} variant="error" /> : null}
       </section>
     </div>
   );

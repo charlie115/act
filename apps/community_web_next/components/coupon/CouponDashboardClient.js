@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
+import SurfaceNotice from "../ui/SurfaceNotice";
 
 function formatAmount(value) {
   return new Intl.NumberFormat("en-US", {
@@ -100,14 +101,14 @@ export default function CouponDashboardClient() {
                   </h2>
                   <p className="muted-copy">
                     {coupon.expires_at
-                      ? `Expires at ${new Date(coupon.expires_at).toLocaleString()}`
-                      : "No expiry"}
+                      ? `만료 시각 ${new Date(coupon.expires_at).toLocaleString()}`
+                      : "만료 기한 없음"}
                   </p>
                 </div>
                 <div>
                   {isRedeemed ? (
                     <button className="ghost-button ghost-button--button" disabled type="button">
-                      Used
+                      사용 완료
                     </button>
                   ) : (
                     <button
@@ -116,7 +117,7 @@ export default function CouponDashboardClient() {
                       onClick={() => handleRedeem(coupon.name)}
                       type="button"
                     >
-                      {isBusy ? "Redeeming..." : "Redeem"}
+                      {isBusy ? "사용 처리 중..." : "쿠폰 사용"}
                     </button>
                   )}
                 </div>
@@ -128,7 +129,7 @@ export default function CouponDashboardClient() {
         )}
       </div>
 
-      {pageError ? <p className="auth-card__error">{pageError}</p> : null}
+      {pageError ? <SurfaceNotice description={pageError} variant="error" /> : null}
     </section>
   );
 }

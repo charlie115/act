@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
+import SurfaceNotice from "../ui/SurfaceNotice";
+import BotVolatilityNotificationsClient from "./BotVolatilityNotificationsClient";
 
 function Section({ children, title }) {
   return (
@@ -73,8 +75,12 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
   if (!form || !tradeConfig) {
     return (
       <Section title="봇 설정">
-        <div className="inline-note">설정을 불러오는 중입니다.</div>
-        {pageError ? <p className="auth-card__error">{pageError}</p> : null}
+        <SurfaceNotice
+          description="현재 trade config 설정을 불러오는 중입니다."
+          title="설정 로딩 중"
+          variant={pageError ? "error" : "loading"}
+        />
+        {pageError ? <SurfaceNotice description={pageError} variant="error" /> : null}
       </Section>
     );
   }
@@ -126,12 +132,13 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
   }
 
   return (
-    <Section title="봇 설정">
-      <form className="auth-form" onSubmit={handleSubmit}>
+    <div className="section-stack">
+      <Section title="봇 설정">
+        <form className="auth-form" onSubmit={handleSubmit}>
         <div className="two-column-grid">
           <div className="auth-form">
             <label className="auth-form__field" htmlFor="send-times">
-              Telegram Message Alarm Count
+              텔레그램 알림 횟수
             </label>
             <input
               className="auth-form__input"
@@ -143,7 +150,7 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
             />
 
             <label className="auth-form__field" htmlFor="send-term">
-              Telegram Message Interval
+              텔레그램 알림 간격
             </label>
             <input
               className="auth-form__input"
@@ -160,7 +167,7 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
                 onChange={(event) => setForm((current) => ({ ...current, safe_reverse: event.target.checked }))}
                 type="checkbox"
               />
-              <span>Safe Reverse</span>
+              <span>안전 역진입</span>
             </label>
 
             <label className="checkbox-row">
@@ -169,11 +176,11 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
                 onChange={(event) => setForm((current) => ({ ...current, on_off: event.target.checked }))}
                 type="checkbox"
               />
-              <span>Bot Enabled</span>
+              <span>봇 활성화</span>
             </label>
 
             <label className="auth-form__field" htmlFor="repeat-limit">
-              Repeat Limit (%)
+              반복 진입 제한 (%)
             </label>
             <input
               className="auth-form__input"
@@ -201,7 +208,7 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
                       }
                       type="checkbox"
                     />
-                    <span>Cross Margin</span>
+                    <span>교차 마진</span>
                   </label>
                   <input
                     className="auth-form__input"
@@ -212,7 +219,7 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
                         target_market_leverage: event.target.value,
                       }))
                     }
-                    placeholder="Leverage"
+                    placeholder="레버리지"
                     type="number"
                     value={form.target_market_leverage}
                   />
@@ -224,7 +231,7 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
                         target_market_margin_call: event.target.value,
                       }))
                     }
-                    placeholder="Liquidation Detection Mode"
+                    placeholder="청산 감지 기준"
                     type="number"
                     value={form.target_market_margin_call}
                   />
@@ -232,7 +239,7 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
               </div>
             ) : (
               <div className="inline-note">
-                {marketCodeCombination.target.value} is a SPOT market. Separate futures settings are not required.
+                {marketCodeCombination.target.value} 는 SPOT 시장이라 별도 선물 설정이 필요하지 않습니다.
               </div>
             )}
 
@@ -251,7 +258,7 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
                       }
                       type="checkbox"
                     />
-                    <span>Cross Margin</span>
+                    <span>교차 마진</span>
                   </label>
                   <input
                     className="auth-form__input"
@@ -262,7 +269,7 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
                         origin_market_leverage: event.target.value,
                       }))
                     }
-                    placeholder="Leverage"
+                    placeholder="레버리지"
                     type="number"
                     value={form.origin_market_leverage}
                   />
@@ -274,7 +281,7 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
                         origin_market_margin_call: event.target.value,
                       }))
                     }
-                    placeholder="Liquidation Detection Mode"
+                    placeholder="청산 감지 기준"
                     type="number"
                     value={form.origin_market_margin_call}
                   />
@@ -282,17 +289,19 @@ export default function BotSettingsClient({ marketCodeCombination, selectedConfi
               </div>
             ) : (
               <div className="inline-note">
-                {marketCodeCombination.origin.value} is a SPOT market. Separate futures settings are not required.
+                {marketCodeCombination.origin.value} 는 SPOT 시장이라 별도 선물 설정이 필요하지 않습니다.
               </div>
             )}
           </div>
         </div>
 
-        <button className="primary-button ghost-button--button auth-button" disabled={isBusy} type="submit">
-          {isBusy ? "Saving..." : "Save Settings"}
-        </button>
-      </form>
-      {pageError ? <p className="auth-card__error">{pageError}</p> : null}
-    </Section>
+          <button className="primary-button ghost-button--button auth-button" disabled={isBusy} type="submit">
+            {isBusy ? "저장 중..." : "설정 저장"}
+          </button>
+        </form>
+        {pageError ? <SurfaceNotice description={pageError} variant="error" /> : null}
+      </Section>
+      <BotVolatilityNotificationsClient />
+    </div>
   );
 }

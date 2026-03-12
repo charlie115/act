@@ -8,6 +8,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { formatDate, safeHtml } from "../../lib/api";
 import { fetchCachedJson } from "../../lib/clientCache";
 import { USER_ROLE } from "../../lib/constants";
+import SurfaceNotice from "../ui/SurfaceNotice";
 
 function canModerate(user, authorProfile, authorId) {
   if (!user) {
@@ -31,7 +32,7 @@ function ReactionRow({ counts, currentReaction, disabled, onToggle }) {
         onClick={() => onToggle("LIKE")}
         type="button"
       >
-        Like {counts.likes ?? 0}
+        좋아요 {counts.likes ?? 0}
       </button>
       <button
         className={`reaction-pill${currentReaction === "DISLIKE" ? " reaction-pill--active" : ""}`}
@@ -39,7 +40,7 @@ function ReactionRow({ counts, currentReaction, disabled, onToggle }) {
         onClick={() => onToggle("DISLIKE")}
         type="button"
       >
-        Dislike {counts.dislikes ?? 0}
+        싫어요 {counts.dislikes ?? 0}
       </button>
     </div>
   );
@@ -77,7 +78,7 @@ function CommentThread({
             onClick={() => setReplyOpen((current) => !current)}
             type="button"
           >
-            Reply
+            답글
           </button>
         ) : null}
         {canModerate(user, comment.author_profile, comment.author) ? (
@@ -87,7 +88,7 @@ function CommentThread({
             onClick={() => onDelete(comment.id)}
             type="button"
           >
-            Delete
+            삭제
           </button>
         ) : null}
       </div>
@@ -104,7 +105,7 @@ function CommentThread({
           <textarea
             className="auth-form__textarea"
             onChange={(event) => setReply(event.target.value)}
-            placeholder="Write a reply"
+            placeholder="답글을 입력하세요"
             rows={3}
             value={reply}
           />
@@ -113,7 +114,7 @@ function CommentThread({
             disabled={!reply.trim() || disabled}
             type="submit"
           >
-            Submit Reply
+            답글 등록
           </button>
         </form>
       ) : null}
@@ -349,8 +350,12 @@ export default function BoardPostClient({ postId }) {
   if (!post) {
     return (
       <section className="surface-card">
-        <div className="inline-note">게시글을 불러오는 중입니다.</div>
-        {pageError ? <p className="auth-card__error">{pageError}</p> : null}
+        <SurfaceNotice
+          description="게시글 내용을 불러오는 중입니다."
+          title="게시글 로딩 중"
+          variant={pageError ? "error" : "loading"}
+        />
+        {pageError ? <SurfaceNotice description={pageError} variant="error" /> : null}
       </section>
     );
   }
@@ -383,7 +388,7 @@ export default function BoardPostClient({ postId }) {
             onClick={handleDeletePost}
             type="button"
           >
-            Delete
+            삭제
           </button>
         ) : null}
       </div>
@@ -419,7 +424,7 @@ export default function BoardPostClient({ postId }) {
             <textarea
               className="auth-form__textarea"
               onChange={(event) => setComment(event.target.value)}
-              placeholder="Write a comment"
+              placeholder="댓글을 입력하세요"
               rows={4}
               value={comment}
             />
@@ -428,7 +433,7 @@ export default function BoardPostClient({ postId }) {
               disabled={!comment.trim() || isBusy}
               type="submit"
             >
-              Submit Comment
+              댓글 등록
             </button>
           </form>
         ) : (
@@ -460,7 +465,7 @@ export default function BoardPostClient({ postId }) {
         )}
       </section>
 
-      {pageError ? <p className="auth-card__error">{pageError}</p> : null}
+      {pageError ? <SurfaceNotice description={pageError} variant="error" /> : null}
     </article>
   );
 }
