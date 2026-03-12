@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useLayoutEffect, useRef } from "react";
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
 import Box from "@mui/material/Box";
 import { useTheme } from "@mui/material/styles";
@@ -27,7 +27,7 @@ const BoardRichTextEditor = forwardRef(function BoardRichTextEditor(
   const onTextChangeRef = useRef(onTextChange);
   const onSelectionChangeRef = useRef(onSelectionChange);
 
-  function imageHandler() {
+  const imageHandler = useCallback(() => {
     const input = document.createElement("input");
     input.setAttribute("type", "file");
     input.setAttribute("accept", "image/*");
@@ -50,7 +50,7 @@ const BoardRichTextEditor = forwardRef(function BoardRichTextEditor(
     });
 
     input.click();
-  }
+  }, [ref]);
 
   useLayoutEffect(() => {
     onTextChangeRef.current = onTextChange;
@@ -59,7 +59,7 @@ const BoardRichTextEditor = forwardRef(function BoardRichTextEditor(
 
   useEffect(() => {
     ref.current?.enable(!readOnly);
-  }, [readOnly, ref]);
+  }, [imageHandler, readOnly, ref]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -99,7 +99,7 @@ const BoardRichTextEditor = forwardRef(function BoardRichTextEditor(
       ref.current = null;
       container.innerHTML = "";
     };
-  }, [readOnly, ref]);
+  }, [imageHandler, readOnly, ref]);
 
   return (
     <Box>
