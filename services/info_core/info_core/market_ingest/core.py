@@ -27,6 +27,7 @@ import os
 import traceback
 from functools import partial
 from standalone_func.get_dollar_dict import get_dollar_dict
+from standalone_func.price_df_generator import get_price_df
 from standalone_func.premium_data_generator import (
     build_premium_cache_metadata,
     get_premium_df,

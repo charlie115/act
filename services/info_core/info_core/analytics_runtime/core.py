@@ -1,7 +1,9 @@
 from multiprocessing import Process
+import traceback
 
 from aidata_generator.aidata_core import InitAiDataCore
 from arbitrage_generator.arbitrage_core import InitAbitrageCore
+from loggers.logger import InfoCoreLogger
 from standalone_func.funding_updater import start_funding_update
 from standalone_func.wallet_status_updater import start_wallet_status_update
 
@@ -25,6 +27,7 @@ class AnalyticsRuntime:
         self.master_flag = master_flag
         self.run_funding_updater = run_funding_updater
         self.run_wallet_status_updater = run_wallet_status_updater
+        self.logger = InfoCoreLogger("analytics_runtime", logging_dir).logger
         self.funding_update_proc = None
         self.wallet_status_update_proc = None
         self.arbitrage_generator = None
@@ -55,25 +58,40 @@ class AnalyticsRuntime:
             self.wallet_status_update_proc.start()
 
         if master_flag:
-            self.arbitrage_generator = InitAbitrageCore(
-                admin_id,
-                node,
-                acw_api,
-                enabled_arbitrage_markets,
-                mongodb_dict,
-                logging_dir,
-            )
+            try:
+                self.arbitrage_generator = InitAbitrageCore(
+                    admin_id,
+                    node,
+                    acw_api,
+                    enabled_arbitrage_markets,
+                    mongodb_dict,
+                    logging_dir,
+                )
+                self.logger = self.arbitrage_generator.logger
+            except Exception:
+                self.arbitrage_generator = None
+                self.logger.error(
+                    "AnalyticsRuntime|Failed to initialize arbitrage_generator:\n%s",
+                    traceback.format_exc(),
+                )
 
-            self.ai_data_generator = InitAiDataCore(
-                admin_id,
-                node,
-                acw_api,
-                ai_api_key,
-                redis_dict,
-                mongodb_dict,
-                logging_dir,
-            )
-            self.ai_data_generator.start_aidata_generator()
+            try:
+                self.ai_data_generator = InitAiDataCore(
+                    admin_id,
+                    node,
+                    acw_api,
+                    ai_api_key,
+                    redis_dict,
+                    mongodb_dict,
+                    logging_dir,
+                )
+                self.ai_data_generator.start_aidata_generator()
+            except Exception:
+                self.logger.error(
+                    "AnalyticsRuntime|Failed to initialize ai_data_generator:\n%s",
+                    traceback.format_exc(),
+                )
+                self.ai_data_generator = None
 
     def check_status(self, print_result=False, include_text=False):
         results = []
