@@ -732,8 +732,6 @@ class WalletStatusView(views.APIView):
 
         # Get collection
         collections = db.list_collection_names()
-        if not (target_exchange in collections and origin_exchange in collections):
-            raise exceptions.ValidationError({"detail": "Invalid exchange."})
 
         # Prepare parameters
         query_filter = dict()
@@ -744,22 +742,33 @@ class WalletStatusView(views.APIView):
         }
 
         # Query collection
-        target_coll = db.get_collection(target_exchange)
-        target_cursor = target_coll.find(
-            filter=query_filter,
-            projection=projection,
-        )
+        target_cursor = []
+        if target_exchange in collections:
+            target_coll = db.get_collection(target_exchange)
+            target_cursor = target_coll.find(
+                filter=query_filter,
+                projection=projection,
+            )
+        else:
+            logger.warning(
+                "WalletStatusView|get_data|Missing wallet_status collection for target exchange %s",
+                target_exchange,
+            )
 
         if target_exchange == origin_exchange:
-            origin_coll = target_coll
             origin_cursor = target_cursor
-
-        else:
+        elif origin_exchange in collections:
             origin_coll = db.get_collection(origin_exchange)
             origin_cursor = origin_coll.find(
                 filter=query_filter,
                 projection=projection,
             )
+        else:
+            logger.warning(
+                "WalletStatusView|get_data|Missing wallet_status collection for origin exchange %s",
+                origin_exchange,
+            )
+            origin_cursor = []
 
         # Serialize
         results = {asset: dict() for asset in base_assets}
