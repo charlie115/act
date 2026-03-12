@@ -7,11 +7,27 @@ from standalone_func.wallet_status_updater import (
 )
 
 
-def start_wallet_funding_update(admin_id, node, acw_api, logging_dir, db_dict, exchange_api_key_dict):
+def start_wallet_funding_update(
+    admin_id,
+    node,
+    acw_api,
+    logging_dir,
+    db_dict,
+    exchange_api_key_dict,
+    redis_dict=None,
+):
     threads = [
         Thread(
             target=start_funding_update,
-            args=(admin_id, node, acw_api, logging_dir, db_dict, exchange_api_key_dict),
+            args=(
+                admin_id,
+                node,
+                acw_api,
+                logging_dir,
+                db_dict,
+                redis_dict or {"host": "localhost", "port": 6379, "passwd": None},
+                exchange_api_key_dict,
+            ),
             daemon=True,
         ),
         Thread(

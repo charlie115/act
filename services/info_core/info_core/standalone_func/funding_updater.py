@@ -1,4 +1,5 @@
 import datetime
+import pickle
 import time
 import traceback
 from threading import Thread
@@ -6,6 +7,7 @@ from threading import Thread
 import pandas as pd
 
 from etc.db_handler.mongodb_client import InitDBClient
+from etc.redis_connector.redis_helper import RedisHelper
 from loggers.logger import InfoCoreLogger
 from standalone_func.funding_wallet_common import (
     build_exchange_adaptors,
@@ -13,17 +15,57 @@ from standalone_func.funding_wallet_common import (
 )
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
+FUNDING_LATEST_PREFIX = "INFO_CORE|FUNDING_LATEST|"
 
-def start_funding_update(admin_id, node, acw_api, logging_dir, db_dict, exchange_api_key_dict):
+
+def _funding_latest_key(exchange_name, futures_type, quote_asset):
+    return f"{FUNDING_LATEST_PREFIX}{exchange_name}_{futures_type}/{quote_asset}"
+
+
+def _store_latest_funding_snapshot(redis_client, exchange_name, futures_type, quote_asset, funding_df, ttl_seconds=120):
+    if funding_df.empty:
+        return
+
+    latest_docs = {}
+    for row in funding_df.itertuples(index=False):
+        doc = {
+            "symbol": row.symbol,
+            "funding_rate": row.funding_rate,
+            "funding_time": row.funding_time,
+            "datetime_now": row.datetime_now,
+        }
+        if hasattr(row, "funding_interval_hours"):
+            doc["funding_interval_hours"] = row.funding_interval_hours
+        latest_docs[row.base_asset] = [doc]
+
+    redis_client.set_data(
+        _funding_latest_key(exchange_name, futures_type, quote_asset),
+        pickle.dumps(latest_docs),
+        ex=ttl_seconds,
+    )
+
+
+def start_funding_update(admin_id, node, acw_api, logging_dir, db_dict, redis_dict, exchange_api_key_dict):
     logger = InfoCoreLogger("funding_updater", logging_dir).logger
     adaptors = build_exchange_adaptors(exchange_api_key_dict, logging_dir)
     db_client = InitDBClient(**db_dict)
+    remote_redis = RedisHelper(**redis_dict)
 
     threads = []
     for exchange_name, adaptor, loop_time_secs in funding_exchange_targets(adaptors):
         thread = Thread(
             target=update_fundingrate,
-            args=(admin_id, node, acw_api, logger, db_client, exchange_name, adaptor, loop_time_secs),
+            args=(
+                admin_id,
+                node,
+                acw_api,
+                logger,
+                db_client,
+                remote_redis,
+                exchange_name,
+                adaptor,
+                loop_time_secs,
+            ),
             daemon=True,
         )
         thread.start()
@@ -33,7 +75,17 @@ def start_funding_update(admin_id, node, acw_api, logging_dir, db_dict, exchange
         thread.join()
 
 
-def update_fundingrate(admin_id, node, acw_api, logger, db_client, exchange_name, exchange_adaptor, loop_time_secs=60):
+def update_fundingrate(
+    admin_id,
+    node,
+    acw_api,
+    logger,
+    db_client,
+    redis_client,
+    exchange_name,
+    exchange_adaptor,
+    loop_time_secs=60,
+):
     logger.info("update_fundingrate|%s thread has started.", exchange_name)
 
     while True:
@@ -72,6 +124,13 @@ def update_fundingrate(admin_id, node, acw_api, logger, db_client, exchange_name
                 funding_df = raw_funding_df[base_columns]
                 api_time += time.time() - api_start
                 funding_df["datetime_now"] = datetime.datetime.utcnow()
+                _store_latest_funding_snapshot(
+                    redis_client,
+                    exchange_name,
+                    futures_type,
+                    quote_asset,
+                    funding_df,
+                )
 
                 if len(df) == 0:
                     if len(funding_df) == 0:

@@ -33,7 +33,15 @@ class AnalyticsRuntime:
         if self.run_funding_updater:
             self.funding_update_proc = Process(
                 target=start_funding_update,
-                args=(admin_id, node, acw_api, logging_dir, mongodb_dict, exchange_api_key_dict),
+                args=(
+                    admin_id,
+                    node,
+                    acw_api,
+                    logging_dir,
+                    mongodb_dict,
+                    redis_dict,
+                    exchange_api_key_dict,
+                ),
                 daemon=True,
             )
             self.funding_update_proc.start()

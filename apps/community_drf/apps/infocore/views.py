@@ -391,6 +391,7 @@ class FundingRateDataView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
     CACHE_TTL = 10  # 10 seconds - short TTL to minimize staleness
+    FUNDING_LATEST_PREFIX = "INFO_CORE|FUNDING_LATEST|"
 
     def get(self, request):
         query_params = FundingRateDataQueryParamsSerializer(data=request.query_params)
@@ -415,6 +416,18 @@ class FundingRateDataView(views.APIView):
         key_data = f"funding_rate:{market_code}:{','.join(sorted_assets)}:{last_n}:{start_funding_time}:{end_funding_time}"
         return f"fr:{hashlib.md5(key_data.encode()).hexdigest()}"
 
+    def _get_latest_funding_from_redis(self, market_code, base_assets):
+        redis_key = f"{self.FUNDING_LATEST_PREFIX}{market_code}"
+        cached = REDIS_CLI.get(redis_key)
+        if not cached:
+            return None
+
+        latest_payload = pickle.loads(cached)
+        results = {}
+        for base_asset in base_assets:
+            results[base_asset] = latest_payload.get(base_asset, [])
+        return results
+
     def get_data(
         self, market_code, base_assets, last_n, start_funding_time, end_funding_time, tz
     ):
@@ -430,6 +443,12 @@ class FundingRateDataView(views.APIView):
         if cached_data is not None:
             # Apply timezone conversion to cached data
             return self._apply_timezone(cached_data, tz)
+
+        if last_n == 1 and not start_funding_time and not end_funding_time:
+            latest_results = self._get_latest_funding_from_redis(market_code, base_assets)
+            if latest_results is not None:
+                cache.set(cache_key, latest_results, self.CACHE_TTL)
+                return self._apply_timezone(latest_results, tz)
 
         database = f"{market_code_parsed.split('_')[0]}_fundingrate"
         collection = "_".join(market_code_parsed.split("_")[1:])
