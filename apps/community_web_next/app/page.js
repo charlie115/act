@@ -1,5 +1,4 @@
 import BoardPreview from "../components/BoardPreview";
-import HeroSection from "../components/HeroSection";
 import HomeMarketOverviewClient from "../components/home/HomeMarketOverviewClient";
 import NewsDigest from "../components/NewsDigest";
 import { getAnnouncements, getBoardPosts, getNews, getSocialPosts } from "../lib/api";
@@ -30,7 +29,6 @@ export default async function HomePage() {
 
   return (
     <div className="section-stack">
-      <HeroSection />
       <HomeMarketOverviewClient />
       <NewsDigest
         announcements={announcements.slice(0, 3)}

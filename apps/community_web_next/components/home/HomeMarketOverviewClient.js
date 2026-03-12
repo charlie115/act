@@ -6,6 +6,17 @@ import { useAuth } from "../auth/AuthProvider";
 import { fetchCachedJson } from "../../lib/clientCache";
 import SurfaceNotice from "../ui/SurfaceNotice";
 
+function formatNumber(value, maximumFractionDigits = 2, minimumFractionDigits = 0) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits,
+    minimumFractionDigits,
+  }).format(Number(value));
+}
+
 function formatPercent(value) {
   if (value === null || value === undefined || value === "") {
     return "-";
@@ -14,16 +25,38 @@ function formatPercent(value) {
   return `${Number(value).toFixed(4)}%`;
 }
 
-function prettifyMarketCode(code) {
-  return code?.replaceAll("_", " ") || "";
-}
-
 function formatVolatility(value) {
   if (value === null || value === undefined || value === "") {
     return "-";
   }
 
   return Number(value).toFixed(3);
+}
+
+function formatShortVolume(value) {
+  const numberValue = Number(value || 0);
+
+  if (!Number.isFinite(numberValue)) {
+    return "-";
+  }
+
+  if (Math.abs(numberValue) >= 1_000_000_000) {
+    return `${(numberValue / 1_000_000_000).toFixed(2)}B`;
+  }
+
+  if (Math.abs(numberValue) >= 1_000_000) {
+    return `${(numberValue / 1_000_000).toFixed(2)}M`;
+  }
+
+  if (Math.abs(numberValue) >= 1_000) {
+    return `${(numberValue / 1_000).toFixed(1)}K`;
+  }
+
+  return formatNumber(numberValue, 2, 0);
+}
+
+function prettifyMarketCode(code) {
+  return code?.replaceAll("_", " ") || "";
 }
 
 function hasTransferRoute(walletStatus, targetMarketCode, originMarketCode, asset) {
@@ -45,7 +78,6 @@ export default function HomeMarketOverviewClient() {
   const { authorizedListRequest, authorizedRequest, loggedIn } = useAuth();
   const [marketCodes, setMarketCodes] = useState({});
   const [statuses, setStatuses] = useState([]);
-  const [assets, setAssets] = useState([]);
   const [targetMarketCode, setTargetMarketCode] = useState("");
   const [originMarketCode, setOriginMarketCode] = useState("");
   const [fundingDiff, setFundingDiff] = useState([]);
@@ -56,12 +88,20 @@ export default function HomeMarketOverviewClient() {
   const [targetFunding, setTargetFunding] = useState({});
   const [originFunding, setOriginFunding] = useState({});
   const [walletStatus, setWalletStatus] = useState({});
+  const [liveRows, setLiveRows] = useState({});
+  const [realtimePairKey, setRealtimePairKey] = useState("");
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [realtimeError, setRealtimeError] = useState("");
+  const [lastRealtimeAt, setLastRealtimeAt] = useState(null);
   const [pageError, setPageError] = useState("");
+
   const deferredSearch = useDeferredValue(search);
+
   const originOptions = useMemo(
     () => marketCodes?.[targetMarketCode] || [],
     [marketCodes, targetMarketCode]
   );
+
   const effectiveOriginMarketCode = useMemo(() => {
     if (!originOptions.length) {
       return "";
@@ -74,6 +114,14 @@ export default function HomeMarketOverviewClient() {
     return originOptions[0];
   }, [originMarketCode, originOptions]);
 
+  const currentPairKey = useMemo(
+    () =>
+      targetMarketCode && effectiveOriginMarketCode
+        ? `${targetMarketCode}:${effectiveOriginMarketCode}`
+        : "",
+    [effectiveOriginMarketCode, targetMarketCode]
+  );
+
   useEffect(() => {
     let active = true;
 
@@ -81,10 +129,9 @@ export default function HomeMarketOverviewClient() {
       setPageError("");
 
       try {
-        const [marketCodesPayload, statusesPayload, assetsPayload] = await Promise.all([
+        const [marketCodesPayload, statusesPayload] = await Promise.all([
           fetchCachedJson("/api/infocore/market-codes/", { ttlMs: 300000 }),
           fetchCachedJson("/api/exchange-status/server-status/", { ttlMs: 30000 }),
-          fetchCachedJson("/api/infocore/assets/", { ttlMs: 300000 }),
         ]);
 
         if (!active) {
@@ -99,13 +146,12 @@ export default function HomeMarketOverviewClient() {
         setTargetMarketCode(defaultTarget);
         setOriginMarketCode(defaultOrigin);
         setStatuses(statusesPayload?.results || statusesPayload || []);
-        setAssets(assetsPayload?.results || []);
       } catch (requestError) {
         if (!active) {
           return;
         }
 
-        setPageError(requestError.message || "시장 개요를 불러오지 못했습니다.");
+        setPageError(requestError.message || "시장 구성을 불러오지 못했습니다.");
       }
     }
 
@@ -117,14 +163,138 @@ export default function HomeMarketOverviewClient() {
   }, []);
 
   useEffect(() => {
+    if (!currentPairKey) {
+      return;
+    }
+
+    let socket = null;
+    let reconnectTimer = null;
+    let flushTimer = null;
+    let active = true;
+    const pendingRows = new Map();
+
+    const wsBase = (
+      process.env.NEXT_PUBLIC_DRF_WS_URL ||
+      process.env.NEXT_PUBLIC_DRF_URL?.replace(/^http/i, "ws") ||
+      window.location.origin.replace(/^http/i, "ws")
+    ).replace(/\/$/, "");
+
+    const url = new URL(`${wsBase}/kline/`);
+    url.searchParams.set("target_market_code", targetMarketCode);
+    url.searchParams.set("origin_market_code", effectiveOriginMarketCode);
+    url.searchParams.set("interval", "1T");
+
+    const flushPendingRows = () => {
+      if (!pendingRows.size) {
+        flushTimer = null;
+        return;
+      }
+
+      setLiveRows((current) => {
+        const next = { ...current };
+        pendingRows.forEach((item, key) => {
+          next[key] = item;
+        });
+        return next;
+      });
+
+      pendingRows.clear();
+      flushTimer = null;
+    };
+
+    const connect = () => {
+      socket = new WebSocket(url.toString());
+
+      socket.addEventListener("open", () => {
+        setRealtimePairKey(currentPairKey);
+        setRealtimeConnected(true);
+        setRealtimeError("");
+      });
+
+      socket.addEventListener("message", (event) => {
+        const message = JSON.parse(event.data);
+
+        if (message.type !== "publish") {
+          return;
+        }
+
+        try {
+          const result = JSON.parse(message.result);
+          if (!Array.isArray(result)) {
+            return;
+          }
+
+          result.forEach((item) => {
+            if (item?.base_asset) {
+              pendingRows.set(item.base_asset, item);
+            }
+          });
+
+          setLastRealtimeAt(Date.now());
+
+          if (!flushTimer) {
+            flushTimer = window.setTimeout(flushPendingRows, 100);
+          }
+        } catch {
+          // Ignore malformed realtime payloads.
+        }
+      });
+
+      socket.addEventListener("error", () => {
+        setRealtimeConnected(false);
+        setRealtimeError("실시간 프리미엄 연결이 불안정합니다.");
+      });
+
+      socket.addEventListener("close", () => {
+        setRealtimeConnected(false);
+
+        if (!active) {
+          return;
+        }
+
+        reconnectTimer = window.setTimeout(connect, 1500);
+      });
+    };
+
+    connect();
+
+    return () => {
+      active = false;
+      if (flushTimer) {
+        window.clearTimeout(flushTimer);
+      }
+      if (reconnectTimer) {
+        window.clearTimeout(reconnectTimer);
+      }
+      if (socket) {
+        socket.close();
+      }
+    };
+  }, [currentPairKey, effectiveOriginMarketCode, targetMarketCode]);
+
+  const realTimeDataList = useMemo(
+    () =>
+      Object.values(currentPairKey === realtimePairKey ? liveRows : {}).sort(
+        (left, right) => Number(right.atp24h || 0) - Number(left.atp24h || 0)
+      ),
+    [currentPairKey, liveRows, realtimePairKey]
+  );
+
+  const filteredRows = useMemo(() => {
+    const normalizedQuery = deferredSearch.trim().toLowerCase();
+
+    return realTimeDataList.filter((item) =>
+      normalizedQuery ? item.base_asset?.toLowerCase().includes(normalizedQuery) : true
+    );
+  }, [deferredSearch, realTimeDataList]);
+
+  useEffect(() => {
     let active = true;
 
     async function loadDerivedData() {
       if (!targetMarketCode || !effectiveOriginMarketCode) {
         return;
       }
-
-      setPageError("");
 
       try {
         const [fundingDiffPayload, aiPayload] = await Promise.all([
@@ -148,12 +318,13 @@ export default function HomeMarketOverviewClient() {
 
         setFundingDiff(fundingDiffPayload || []);
         setAiRecommendations(aiPayload || []);
-      } catch (requestError) {
+      } catch {
         if (!active) {
           return;
         }
 
-        setPageError(requestError.message || "시장 인사이트를 불러오지 못했습니다.");
+        setFundingDiff([]);
+        setAiRecommendations([]);
       }
     }
 
@@ -164,35 +335,16 @@ export default function HomeMarketOverviewClient() {
     };
   }, [effectiveOriginMarketCode, targetMarketCode]);
 
-  const filteredAssets = useMemo(() => {
-    const normalizedQuery = deferredSearch.trim().toLowerCase();
-
-    return assets.filter((item) =>
-      normalizedQuery ? item.symbol.toLowerCase().includes(normalizedQuery) : true
-    );
-  }, [assets, deferredSearch]);
-
-  const displayAssets = useMemo(() => {
-    const favoriteSymbols = new Set(favoriteAssets.map((item) => item.base_asset));
-    const items = [...filteredAssets];
-
-    items.sort((left, right) => {
-      const leftFav = favoriteSymbols.has(left.symbol);
-      const rightFav = favoriteSymbols.has(right.symbol);
-
-      if (leftFav && !rightFav) return -1;
-      if (!leftFav && rightFav) return 1;
-      return left.symbol.localeCompare(right.symbol);
-    });
-
-    return items.slice(0, 30);
-  }, [favoriteAssets, filteredAssets]);
+  const detailSymbols = useMemo(
+    () => filteredRows.slice(0, 60).map((item) => item.base_asset).filter(Boolean),
+    [filteredRows]
+  );
 
   useEffect(() => {
     let active = true;
 
     async function loadAssetDetails() {
-      if (!targetMarketCode || !effectiveOriginMarketCode || filteredAssets.length === 0) {
+      if (!targetMarketCode || !effectiveOriginMarketCode || detailSymbols.length === 0) {
         setVolatility([]);
         setTargetFunding({});
         setOriginFunding({});
@@ -201,19 +353,19 @@ export default function HomeMarketOverviewClient() {
       }
 
       const assetParams = new URLSearchParams();
-      filteredAssets.slice(0, 20).forEach((item) => assetParams.append("base_asset", item.symbol));
+      detailSymbols.forEach((symbol) => assetParams.append("base_asset", symbol));
       assetParams.set("target_market_code", targetMarketCode);
       assetParams.set("origin_market_code", effectiveOriginMarketCode);
       assetParams.set("tz", "Asia/Seoul");
 
       const targetFundingParams = new URLSearchParams();
-      filteredAssets.slice(0, 20).forEach((item) => targetFundingParams.append("base_asset", item.symbol));
+      detailSymbols.forEach((symbol) => targetFundingParams.append("base_asset", symbol));
       targetFundingParams.set("market_code", targetMarketCode);
       targetFundingParams.set("last_n", "1");
       targetFundingParams.set("tz", "Asia/Seoul");
 
       const originFundingParams = new URLSearchParams();
-      filteredAssets.slice(0, 20).forEach((item) => originFundingParams.append("base_asset", item.symbol));
+      detailSymbols.forEach((symbol) => originFundingParams.append("base_asset", symbol));
       originFundingParams.set("market_code", effectiveOriginMarketCode);
       originFundingParams.set("last_n", "1");
       originFundingParams.set("tz", "Asia/Seoul");
@@ -243,12 +395,15 @@ export default function HomeMarketOverviewClient() {
         setTargetFunding(targetFundingPayload || {});
         setOriginFunding(originFundingPayload || {});
         setWalletStatus(walletStatusPayload || {});
-      } catch (requestError) {
+      } catch {
         if (!active) {
           return;
         }
 
-        setPageError(requestError.message || "자산 세부 정보를 불러오지 못했습니다.");
+        setVolatility([]);
+        setTargetFunding({});
+        setOriginFunding({});
+        setWalletStatus({});
       }
     }
 
@@ -257,7 +412,7 @@ export default function HomeMarketOverviewClient() {
     return () => {
       active = false;
     };
-  }, [effectiveOriginMarketCode, filteredAssets, targetMarketCode]);
+  }, [detailSymbols, effectiveOriginMarketCode, targetMarketCode]);
 
   useEffect(() => {
     let active = true;
@@ -281,7 +436,9 @@ export default function HomeMarketOverviewClient() {
 
         setFavoriteAssets(payload);
       } catch {
-        if (active) setFavoriteAssets([]);
+        if (active) {
+          setFavoriteAssets([]);
+        }
       }
     }
 
@@ -321,6 +478,22 @@ export default function HomeMarketOverviewClient() {
     [favoriteAssets]
   );
 
+  const displayRows = useMemo(() => {
+    const favoriteSymbols = new Set(favoriteAssets.map((item) => item.base_asset));
+    const items = [...filteredRows];
+
+    items.sort((left, right) => {
+      const leftFav = favoriteSymbols.has(left.base_asset);
+      const rightFav = favoriteSymbols.has(right.base_asset);
+
+      if (leftFav && !rightFav) return -1;
+      if (!leftFav && rightFav) return 1;
+      return Number(right.atp24h || 0) - Number(left.atp24h || 0);
+    });
+
+    return items.slice(0, 60);
+  }, [favoriteAssets, filteredRows]);
+
   async function toggleFavorite(symbol) {
     if (!loggedIn) {
       return;
@@ -359,10 +532,12 @@ export default function HomeMarketOverviewClient() {
       <section className="surface-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Market Workspace</p>
-            <h2>시장 조합 선택</h2>
+            <p className="eyebrow">Live Premium Table</p>
+            <h2>실시간 프리미엄 테이블</h2>
           </div>
+          <span className="auth-chip">{displayRows.length} assets</span>
         </div>
+
         <div className="home-selector-grid">
           <select
             className="select-input"
@@ -387,6 +562,7 @@ export default function HomeMarketOverviewClient() {
             ))}
           </select>
         </div>
+
         <div className="news-filter-bar">
           <input
             className="auth-form__input"
@@ -395,6 +571,17 @@ export default function HomeMarketOverviewClient() {
             value={search}
           />
         </div>
+
+        <SurfaceNotice
+          description={
+            currentPairKey === realtimePairKey && realtimeConnected
+              ? `실시간 연결 중${lastRealtimeAt ? ` · 마지막 수신 ${new Date(lastRealtimeAt).toLocaleTimeString()}` : ""}`
+              : realtimeError || "실시간 프리미엄 연결을 준비 중입니다."
+          }
+          title={currentPairKey === realtimePairKey && realtimeConnected ? "WebSocket 연결 정상" : "WebSocket 연결 확인"}
+          variant={currentPairKey === realtimePairKey && realtimeConnected ? "info" : "loading"}
+        />
+
         {maintenanceItems.length ? (
           <div className="maintenance-banner">
             {maintenanceItems.map((item) => (
@@ -404,6 +591,81 @@ export default function HomeMarketOverviewClient() {
             ))}
           </div>
         ) : null}
+
+        <div className="table-shell">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Fav</th>
+                <th>Asset</th>
+                <th>현재가</th>
+                <th>진입 김프</th>
+                <th>탈출 김프</th>
+                <th>스프레드</th>
+                <th>변동성</th>
+                <th>타겟 펀딩</th>
+                <th>오리진 펀딩</th>
+                <th>전송</th>
+                <th>거래액(24h)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayRows.length ? (
+                displayRows.map((row) => {
+                  const asset = row.base_asset;
+                  const targetFundingItem = targetFunding?.[asset]?.[0];
+                  const originFundingItem = originFunding?.[asset]?.[0];
+                  const volatilityItem = volatilityMap?.[asset];
+                  const transferAvailable = hasTransferRoute(
+                    walletStatus,
+                    targetMarketCode,
+                    effectiveOriginMarketCode,
+                    asset
+                  );
+                  const spread = Number(row.SL_close || 0) - Number(row.LS_close || 0);
+
+                  return (
+                    <tr key={asset}>
+                      <td>
+                        <button
+                          className={`favorite-button${favoriteMap[asset] ? " favorite-button--active" : ""}`}
+                          disabled={!loggedIn}
+                          onClick={() => toggleFavorite(asset)}
+                          type="button"
+                        >
+                          ★
+                        </button>
+                      </td>
+                      <td>{asset}</td>
+                      <td>
+                        <div>{formatNumber(row.tp, 1)}</div>
+                        <small className="muted-copy">
+                          {row.scr > 0 ? "+" : ""}
+                          {formatNumber(row.scr, 2, 2)}%
+                        </small>
+                      </td>
+                      <td>{formatNumber(row.LS_close, 3, 2)}</td>
+                      <td>{formatNumber(row.SL_close, 3, 2)}</td>
+                      <td>
+                        {spread > 0 ? "+" : ""}
+                        {formatNumber(spread, 2, 1)}%p
+                      </td>
+                      <td>{formatVolatility(volatilityItem?.mean_diff)}</td>
+                      <td>{formatPercent(targetFundingItem?.funding_rate)}</td>
+                      <td>{formatPercent(originFundingItem?.funding_rate)}</td>
+                      <td>{transferAvailable ? "가능" : "-"}</td>
+                      <td>{formatShortVolume(row.atp24h)}</td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="11">실시간 프리미엄 데이터가 아직 없습니다.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <div className="two-column-grid">
@@ -461,7 +723,7 @@ export default function HomeMarketOverviewClient() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="4">표시할 funding diff 데이터가 없습니다.</td>
+                    <td colSpan="4">표시할 펀딩 차이 데이터가 없습니다.</td>
                   </tr>
                 )}
               </tbody>
@@ -469,68 +731,6 @@ export default function HomeMarketOverviewClient() {
           </div>
         </section>
       </div>
-
-      <section className="surface-card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Asset Explorer</p>
-            <h2>자산 요약</h2>
-          </div>
-        </div>
-        <div className="table-shell">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Fav</th>
-                <th>Asset</th>
-                <th>Target Funding</th>
-                <th>Origin Funding</th>
-                <th>Volatility</th>
-                <th>Transfer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayAssets.length ? (
-                displayAssets.map((asset) => {
-                  const targetFundingItem = targetFunding?.[asset.symbol]?.[0];
-                  const originFundingItem = originFunding?.[asset.symbol]?.[0];
-                  const volatilityItem = volatilityMap?.[asset.symbol];
-                  const transferAvailable = hasTransferRoute(
-                    walletStatus,
-                    targetMarketCode,
-                    effectiveOriginMarketCode,
-                    asset.symbol
-                  );
-
-                  return (
-                    <tr key={asset.symbol}>
-                      <td>
-                        <button
-                          className={`favorite-button${favoriteMap[asset.symbol] ? " favorite-button--active" : ""}`}
-                          disabled={!loggedIn}
-                          onClick={() => toggleFavorite(asset.symbol)}
-                          type="button"
-                        >
-                          ★
-                        </button>
-                      </td>
-                      <td>{asset.symbol}</td>
-                      <td>{formatPercent(targetFundingItem?.funding_rate)}</td>
-                      <td>{formatPercent(originFundingItem?.funding_rate)}</td>
-                      <td>{formatVolatility(volatilityItem?.mean_diff)}</td>
-                      <td>{transferAvailable ? "가능" : "-"}</td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="6">표시할 자산이 없습니다.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
 
       {pageError ? <SurfaceNotice description={pageError} variant="error" /> : null}
     </div>
