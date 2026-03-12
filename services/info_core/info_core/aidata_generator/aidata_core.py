@@ -27,9 +27,16 @@ class InitAiDataCore:
         
     def get_trading_market_code_combinations(self):
         trading_market_code_combinations = []
-        market_code_combination_series = self.acw_api.get_node()['market_code_combinations']
+        node_df = self.acw_api.get_node()
+        if len(node_df) == 0 or "market_code_combinations" not in node_df.columns:
+            self.logger.info("No node market_code_combinations available.")
+            return trading_market_code_combinations
+
+        market_code_combination_series = node_df["market_code_combinations"]
         if len(market_code_combination_series) > 0:
             for node_market_code_combinations in market_code_combination_series:
+                if not node_market_code_combinations:
+                    continue
                 for each_market_code_combination in node_market_code_combinations:
                     self.logger.debug("market_code_combination=%s", each_market_code_combination)
                     if each_market_code_combination['trade_support']:

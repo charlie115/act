@@ -3,12 +3,27 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from pytz import all_timezones, timezone
 from rest_framework.filters import OrderingFilter
+from django.db import OperationalError, ProgrammingError
 
 from lib.datetime import TZ_UTC
 from lib.pagination import CustomPageNumberPagination
 from lib.views import BaseViewSet
 from newscore.models import Announcement, News, Post
 from newscore.serializers import AnnouncementSerializer, NewsSerializer, PostSerializer
+
+
+class SafeManagedFalseQuerysetMixin:
+    model = None
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        try:
+            queryset.exists()
+            return queryset
+        except (ProgrammingError, OperationalError):
+            if self.model is None:
+                return queryset.none()
+            return self.model.objects.none()
 
 
 class StartTimeEndTimeFilter(FilterSet):
@@ -62,7 +77,8 @@ class PostFilter(StartTimeEndTimeFilter):
         description="Retrieve details of an existing news article.",
     ),
 )
-class NewsViewSet(BaseViewSet):
+class NewsViewSet(SafeManagedFalseQuerysetMixin, BaseViewSet):
+    model = News
     queryset = News.objects.all()
     serializer_class = NewsSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
@@ -86,7 +102,8 @@ class NewsViewSet(BaseViewSet):
         description="Retrieve details of an existing announcement.",
     ),
 )
-class AnnouncementViewSet(BaseViewSet):
+class AnnouncementViewSet(SafeManagedFalseQuerysetMixin, BaseViewSet):
+    model = Announcement
     queryset = Announcement.objects.all()
     serializer_class = AnnouncementSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
@@ -110,7 +127,8 @@ class AnnouncementViewSet(BaseViewSet):
         description="Retrieve details of an existing sns post.",
     ),
 )
-class PostViewSet(BaseViewSet):
+class PostViewSet(SafeManagedFalseQuerysetMixin, BaseViewSet):
+    model = Post
     queryset = Post.objects.all()
     serializer_class = PostSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]

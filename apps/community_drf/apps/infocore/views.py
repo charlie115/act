@@ -1112,47 +1112,24 @@ class AiRankRecommendationView(views.APIView):
             target_market_code = query.get("target_market_code", "").replace("/", "__")
             origin_market_code = query.get("origin_market_code", "").replace("/", "__")
             
-            # Construct database name following the pattern in KlineDataView
             database = f"{target_market_code}-{origin_market_code}"
             collection_name = 'ai_recommendation_info'
-            
-            # Check if database exists
-            databases = MONGODB_CLI.list_database_names()
-            if database not in databases:
-                return response.Response(
-                    {"detail": f"Invalid market code combination: {target_market_code}-{origin_market_code}"},
-                    status=404
-                )
-            
             db = MONGODB_CLI.get_database(database)
-            
-            # Check if collection exists
-            collections = db.list_collection_names()
-            if collection_name not in collections:
-                return response.Response(
-                    {"detail": f"Collection '{collection_name}' not found in database '{database}'."},
-                    status=404
-                )
-            
-            # Get collection
             coll = db.get_collection(collection_name)
-            
-            # Fetch all documents from the collection
+
             cursor = coll.find(
                 filter={},
-                projection={"_id": False}
-            ).sort("rank", 1)  # Sort by rank in ascending order
-            
-            # Serialize the data
+                projection={"_id": False},
+                limit=20,
+                max_time_ms=1000,
+            ).sort("rank", 1)
+
             results = [AiRankRecommendationSerializer(item).data for item in cursor]
-            
             return response.Response(results)
             
         except Exception as e:
-            return response.Response(
-                {"detail": f"Error fetching AI recommendation data: {str(e)}"},
-                status=500
-            )
+            logger.warning("AiRankRecommendationView|get|Returning empty result: %s", e)
+            return response.Response([])
 
 
 @extend_schema(tags=["Volatility Notification"])

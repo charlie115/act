@@ -26,6 +26,12 @@ class AcwApi:
     def _raise_error(self, response):
         raise Exception(f"Error: {response.status_code}\n{response.text}")
 
+    def _is_best_effort_dev_auth_failure(self, response):
+        return not self.verify and response.status_code == 401
+
+    def _skip_message_api(self):
+        return not self.verify
+
     def _format_message_content(self, title, content, type_):
         if content is None:
             return None
@@ -38,6 +44,9 @@ class AcwApi:
         return f"[{self.node}]{content}"
 
     def get_message(self, id=None, type=None):
+        if self._skip_message_api():
+            return pd.DataFrame()
+
         url = self.url + self.message_url
         params = {"type": type} if type is not None else None
 
@@ -49,11 +58,15 @@ class AcwApi:
             )
             if response.status_code == 200:
                 return pd.DataFrame([response.json()])
+            if self._is_best_effort_dev_auth_failure(response):
+                return pd.DataFrame()
             self._raise_error(response)
 
         response = requests.get(url, verify=self.verify, params=params)
         if response.status_code == 200:
             return pd.DataFrame(response.json()["results"])
+        if self._is_best_effort_dev_auth_failure(response):
+            return pd.DataFrame()
         self._raise_error(response)
 
     def create_message(
@@ -68,6 +81,9 @@ class AcwApi:
         send_times=1,
         send_term=1,
     ):
+        if self._skip_message_api():
+            return None
+
         url = self.url + self.message_url
         payload = {
             "datetime": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
@@ -85,9 +101,14 @@ class AcwApi:
         response = requests.post(url, json=payload, verify=self.verify)
         if response.status_code == 201:
             return response.json()
+        if self._is_best_effort_dev_auth_failure(response):
+            return None
         self._raise_error(response)
 
     def update_read_message(self, id):
+        if self._skip_message_api():
+            return None
+
         url = self.url + self.message_url
         response = requests.patch(
             url + str(id) + "/",
@@ -96,17 +117,26 @@ class AcwApi:
         )
         if response.status_code == 200:
             return response.json()
+        if self._is_best_effort_dev_auth_failure(response):
+            return None
         self._raise_error(response)
 
     def create_message_thread(self, *args, **kwargs):
+        if self._skip_message_api():
+            return
         thread = Thread(target=self.create_message, args=args, kwargs=kwargs, daemon=True)
         thread.start()
 
     def delete_message(self, id):
+        if self._skip_message_api():
+            return False
+
         url = self.url + self.message_url
         response = requests.delete(url + str(id) + "/", verify=self.verify)
         if response.status_code == 204:
             return True
+        if self._is_best_effort_dev_auth_failure(response):
+            return False
         self._raise_error(response)
 
     def get_node(self, id=None):
@@ -115,11 +145,15 @@ class AcwApi:
             response = requests.get(url + str(id) + "/", verify=self.verify)
             if response.status_code == 200:
                 return pd.DataFrame([response.json()])
+            if self._is_best_effort_dev_auth_failure(response):
+                return pd.DataFrame([{"market_code_combinations": []}])
             self._raise_error(response)
 
         response = requests.get(url, verify=self.verify)
         if response.status_code == 200:
             return pd.DataFrame(response.json()["results"])
+        if self._is_best_effort_dev_auth_failure(response):
+            return pd.DataFrame([{"market_code_combinations": []}])
         self._raise_error(response)
 
     def get_referral_commission(
