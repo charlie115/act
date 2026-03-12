@@ -557,7 +557,7 @@ export default function HomeMarketOverviewClient() {
       return Number(right.atp24h || 0) - Number(left.atp24h || 0);
     });
 
-    return items.slice(0, 60);
+    return items;
   }, [favoriteAssets, filteredRows]);
 
   async function toggleFavorite(symbol) {
