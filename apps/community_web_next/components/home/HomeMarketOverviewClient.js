@@ -88,8 +88,7 @@ export default function HomeMarketOverviewClient() {
   const [targetFunding, setTargetFunding] = useState({});
   const [originFunding, setOriginFunding] = useState({});
   const [walletStatus, setWalletStatus] = useState({});
-  const [liveRows, setLiveRows] = useState({});
-  const [realtimePairKey, setRealtimePairKey] = useState("");
+  const [liveRows, setLiveRows] = useState([]);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [realtimeError, setRealtimeError] = useState("");
   const [lastRealtimeAt, setLastRealtimeAt] = useState(null);
@@ -113,14 +112,6 @@ export default function HomeMarketOverviewClient() {
 
     return originOptions[0];
   }, [originMarketCode, originOptions]);
-
-  const currentPairKey = useMemo(
-    () =>
-      targetMarketCode && effectiveOriginMarketCode
-        ? `${targetMarketCode}:${effectiveOriginMarketCode}`
-        : "",
-    [effectiveOriginMarketCode, targetMarketCode]
-  );
 
   useEffect(() => {
     let active = true;
@@ -163,121 +154,55 @@ export default function HomeMarketOverviewClient() {
   }, []);
 
   useEffect(() => {
-    if (!currentPairKey) {
+    if (!targetMarketCode || !effectiveOriginMarketCode) {
       return;
     }
 
-    let socket = null;
-    let reconnectTimer = null;
-    let flushTimer = null;
     let active = true;
-    const pendingRows = new Map();
+    let intervalId = null;
 
-    const wsBase = (
-      process.env.NEXT_PUBLIC_DRF_WS_URL ||
-      process.env.NEXT_PUBLIC_DRF_URL?.replace(/^http/i, "ws") ||
-      window.location.origin.replace(/^http/i, "ws")
-    ).replace(/\/$/, "");
-
-    const url = new URL(`${wsBase}/kline/`);
-    url.searchParams.set("target_market_code", targetMarketCode);
-    url.searchParams.set("origin_market_code", effectiveOriginMarketCode);
-    url.searchParams.set("interval", "1T");
-
-    const flushPendingRows = () => {
-      if (!pendingRows.size) {
-        flushTimer = null;
-        return;
-      }
-
-      setLiveRows((current) => {
-        const next = { ...current };
-        pendingRows.forEach((item, key) => {
-          next[key] = item;
-        });
-        return next;
-      });
-
-      pendingRows.clear();
-      flushTimer = null;
-    };
-
-    const connect = () => {
-      socket = new WebSocket(url.toString());
-
-      socket.addEventListener("open", () => {
-        setRealtimePairKey(currentPairKey);
-        setRealtimeConnected(true);
-        setRealtimeError("");
-      });
-
-      socket.addEventListener("message", (event) => {
-        const message = JSON.parse(event.data);
-
-        if (message.type !== "publish") {
-          return;
-        }
-
-        try {
-          const result = JSON.parse(message.result);
-          if (!Array.isArray(result)) {
-            return;
-          }
-
-          result.forEach((item) => {
-            if (item?.base_asset) {
-              pendingRows.set(item.base_asset, item);
-            }
-          });
-
-          setLastRealtimeAt(Date.now());
-
-          if (!flushTimer) {
-            flushTimer = window.setTimeout(flushPendingRows, 100);
-          }
-        } catch {
-          // Ignore malformed realtime payloads.
-        }
-      });
-
-      socket.addEventListener("error", () => {
-        setRealtimeConnected(false);
-        setRealtimeError("실시간 프리미엄 연결이 불안정합니다.");
-      });
-
-      socket.addEventListener("close", () => {
-        setRealtimeConnected(false);
+    async function loadCurrentSnapshot() {
+      try {
+        const payload = await fetchCachedJson(
+          `/api/infocore/kline-current/?target_market_code=${encodeURIComponent(
+            targetMarketCode
+          )}&origin_market_code=${encodeURIComponent(effectiveOriginMarketCode)}`,
+          { ttlMs: 500 }
+        );
 
         if (!active) {
           return;
         }
 
-        reconnectTimer = window.setTimeout(connect, 1500);
-      });
-    };
+        setLiveRows(Array.isArray(payload) ? payload : []);
+        setRealtimeConnected(true);
+        setRealtimeError("");
+        setLastRealtimeAt(Date.now());
+      } catch (requestError) {
+        if (!active) {
+          return;
+        }
 
-    connect();
+        setRealtimeConnected(false);
+        setRealtimeError(requestError.message || "실시간 프리미엄 연결이 불안정합니다.");
+      }
+    }
+
+    loadCurrentSnapshot();
+    intervalId = window.setInterval(loadCurrentSnapshot, 1000);
 
     return () => {
       active = false;
-      if (flushTimer) {
-        window.clearTimeout(flushTimer);
-      }
-      if (reconnectTimer) {
-        window.clearTimeout(reconnectTimer);
-      }
-      if (socket) {
-        socket.close();
-      }
+      if (intervalId) window.clearInterval(intervalId);
     };
-  }, [currentPairKey, effectiveOriginMarketCode, targetMarketCode]);
+  }, [effectiveOriginMarketCode, targetMarketCode]);
 
   const realTimeDataList = useMemo(
     () =>
-      Object.values(currentPairKey === realtimePairKey ? liveRows : {}).sort(
+      [...liveRows].sort(
         (left, right) => Number(right.atp24h || 0) - Number(left.atp24h || 0)
       ),
-    [currentPairKey, liveRows, realtimePairKey]
+    [liveRows]
   );
 
   const filteredRows = useMemo(() => {
@@ -494,6 +419,10 @@ export default function HomeMarketOverviewClient() {
     return items.slice(0, 60);
   }, [favoriteAssets, filteredRows]);
 
+  useEffect(() => {
+    console.log("home_live_rows", liveRows.length);
+  }, [liveRows]);
+
   async function toggleFavorite(symbol) {
     if (!loggedIn) {
       return;
@@ -574,12 +503,12 @@ export default function HomeMarketOverviewClient() {
 
         <SurfaceNotice
           description={
-            currentPairKey === realtimePairKey && realtimeConnected
+            realtimeConnected
               ? `실시간 연결 중${lastRealtimeAt ? ` · 마지막 수신 ${new Date(lastRealtimeAt).toLocaleTimeString()}` : ""}`
               : realtimeError || "실시간 프리미엄 연결을 준비 중입니다."
           }
-          title={currentPairKey === realtimePairKey && realtimeConnected ? "WebSocket 연결 정상" : "WebSocket 연결 확인"}
-          variant={currentPairKey === realtimePairKey && realtimeConnected ? "info" : "loading"}
+          title={realtimeConnected ? "WebSocket 연결 정상" : "WebSocket 연결 확인"}
+          variant={realtimeConnected ? "info" : "loading"}
         />
 
         {maintenanceItems.length ? (

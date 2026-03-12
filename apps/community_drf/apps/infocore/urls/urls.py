@@ -7,6 +7,7 @@ from infocore.views import (
     DollarView,
     USDTView,
     MarketCodesView,
+    CurrentKlineSnapshotView,
     KlineDataView,
     KlineVolatilityView,
     WalletStatusView,
@@ -71,6 +72,7 @@ urlpatterns = [
     path("assets/", include("infocore.urls.assets"), name="assets"),
     path("dollar/", DollarView.as_view(), name="dollar-view"),
     path("usdt/", USDTView.as_view(), name="usdt-view"),
+    path("kline-current/", CurrentKlineSnapshotView.as_view(), name="kline-current-view"),
     path(
         "funding-rate/",
         include("infocore.urls.funding_rate"),

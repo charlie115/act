@@ -114,6 +114,57 @@ class MarketCodesView(views.APIView):
 
 @extend_schema_view(
     get=extend_schema(
+        operation_id="Get current kline snapshot",
+        description="Returns latest 1T now snapshot for a market combination",
+        tags=["Kline"],
+    ),
+)
+class CurrentKlineSnapshotView(views.APIView):
+    http_method_names = ["get"]
+    permission_classes = []
+
+    def get(self, request):
+        target_market_code = request.query_params.get("target_market_code")
+        origin_market_code = request.query_params.get("origin_market_code")
+
+        if not target_market_code or not origin_market_code:
+            raise exceptions.ValidationError(
+                {"detail": "target_market_code and origin_market_code are required."}
+            )
+
+        channel_name = f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_now"
+
+        try:
+            latest_entries = REDIS_CLI.xrevrange(channel_name, count=1)
+            if not latest_entries:
+                return response.Response([])
+
+            _, entry_data = latest_entries[0]
+            kline_df = pickle.loads(entry_data[b"data"])
+            concise_kline_df = kline_df.drop(
+                columns=[
+                    "tp_open",
+                    "tp_high",
+                    "tp_low",
+                    "tp_close",
+                    "LS_open",
+                    "LS_high",
+                    "LS_low",
+                    "SL_open",
+                    "SL_high",
+                    "SL_low",
+                    "datetime_now",
+                ],
+                errors="ignore",
+            )
+            return response.Response(json.loads(concise_kline_df.to_json(orient="records")))
+        except Exception:
+            logger.exception("Error fetching current kline snapshot")
+            return response.Response([])
+
+
+@extend_schema_view(
+    get=extend_schema(
         operation_id="Get dollar info",
         description="Returns dollar information",
         tags=["Dollar"],

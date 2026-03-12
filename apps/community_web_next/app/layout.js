@@ -1,4 +1,5 @@
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 
 import "quill/dist/quill.snow.css";
 
@@ -29,9 +30,11 @@ export default function RootLayout({ children }) {
         className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}
         suppressHydrationWarning
       >
-        <Providers>
-          <AppShell>{children}</AppShell>
-        </Providers>
+        <AppRouterCacheProvider>
+          <Providers>
+            <AppShell>{children}</AppShell>
+          </Providers>
+        </AppRouterCacheProvider>
       </body>
     </html>
   );

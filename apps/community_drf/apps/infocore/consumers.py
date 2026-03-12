@@ -72,7 +72,78 @@ class KlineConsumer(AsyncWebsocketConsumer):
             self._thread = threading.Thread(target=asyncio.run, args=(self.publish(),))
             self._thread.start()
 
+    def _build_publish_payload(self, entry_data):
+        data = {
+            "result": None,
+            "type": "publish",
+            "status": "OK",
+        }
+
+        try:
+            kline_df = pickle.loads(entry_data[b"data"])
+            if self._base_asset:
+                concise_kline_df = kline_df[kline_df["base_asset"] == self._base_asset]
+            else:
+                concise_kline_df = kline_df.drop(
+                    columns=[
+                        "tp_open",
+                        "tp_high",
+                        "tp_high",
+                        "tp_low",
+                        "tp_close",
+                        "LS_open",
+                        "LS_high",
+                        "LS_low",
+                        "SL_open",
+                        "SL_high",
+                        "SL_low",
+                        "datetime_now",
+                    ]
+                )
+
+            if concise_kline_df.empty:
+                return None
+
+            records = concise_kline_df.to_dict(orient="records")
+            if self._record_columns is None:
+                self._record_columns = [
+                    column for column in concise_kline_df.columns if column != "base_asset"
+                ]
+
+            changed_records = []
+            next_signatures = {}
+            for record in records:
+                base_asset = record.get("base_asset")
+                if not base_asset:
+                    continue
+                signature = tuple(
+                    _normalize_signature_value(record.get(column))
+                    for column in self._record_columns
+                )
+                next_signatures[base_asset] = signature
+                if not self._initialized or self._row_signatures.get(base_asset) != signature:
+                    changed_records.append(record)
+
+            self._row_signatures = next_signatures
+            if not changed_records and self._initialized:
+                return None
+
+            self._initialized = True
+            data["result"] = json.dumps(changed_records, ensure_ascii=False)
+            return data
+        except Exception as err:
+            data["status"] = "ERROR"
+            data["error"] = {"message": str(err)}
+            return data
+
     async def publish(self):
+        latest_entries = REDIS_CLI.xrevrange(self._channel_name, count=1)
+        if latest_entries:
+            latest_entry_id, latest_entry_data = latest_entries[0]
+            latest_payload = self._build_publish_payload(latest_entry_data)
+            if latest_payload is not None:
+                await self.send(json.dumps(latest_payload))
+
         while not self._stop:
             stream = REDIS_CLI.xread(
                 streams={self._channel_name: "$"},
@@ -81,70 +152,11 @@ class KlineConsumer(AsyncWebsocketConsumer):
             )
             if stream:
                 stream = stream[0]
-
-                data = {
-                    "result": None,
-                    "type": "publish",
-                    "status": "OK",
-                }
-
-                try:
-                    stream_key, stream_data = stream
-                    entry_id, entry_data = stream_data[0]
-                    kline_df = pickle.loads(entry_data[b"data"])
-                    if self._base_asset:
-                        concise_kline_df = kline_df[kline_df["base_asset"] == self._base_asset]
-                    else:
-                        concise_kline_df = kline_df.drop(columns=[
-                            "tp_open",
-                            "tp_high",
-                            "tp_high",
-                            "tp_low",
-                            "tp_close",
-                            "LS_open",
-                            "LS_high",
-                            "LS_low",
-                            "SL_open",
-                            "SL_high",
-                            "SL_low",
-                            "datetime_now",
-                        ])
-
-                    if concise_kline_df.empty:
-                        continue
-
-                    records = concise_kline_df.to_dict(orient="records")
-                    if self._record_columns is None:
-                        self._record_columns = [
-                            column for column in concise_kline_df.columns if column != "base_asset"
-                        ]
-
-                    changed_records = []
-                    next_signatures = {}
-                    for record in records:
-                        base_asset = record.get("base_asset")
-                        if not base_asset:
-                            continue
-                        signature = tuple(
-                            _normalize_signature_value(record.get(column))
-                            for column in self._record_columns
-                        )
-                        next_signatures[base_asset] = signature
-                        if not self._initialized or self._row_signatures.get(base_asset) != signature:
-                            changed_records.append(record)
-
-                    self._row_signatures = next_signatures
-                    if not changed_records and self._initialized:
-                        continue
-
-                    self._initialized = True
-                    data["result"] = json.dumps(changed_records, ensure_ascii=False)
-
-                except Exception as err:
-                    data["status"] = "ERROR"
-                    data["error"] = {"message": str(err)}
-
-                await self.send(json.dumps(data))
+                stream_key, stream_data = stream
+                entry_id, entry_data = stream_data[0]
+                payload = self._build_publish_payload(entry_data)
+                if payload is not None:
+                    await self.send(json.dumps(payload))
 
     async def disconnect(self, code):
         self._stop = True
