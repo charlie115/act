@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { memo, useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
 import { fetchCachedJson } from "../../lib/clientCache";
@@ -73,6 +73,64 @@ function hasTransferRoute(walletStatus, targetMarketCode, originMarketCode, asse
 
   return withdrawNetworks.some((network) => depositNetworks.includes(network));
 }
+
+const PremiumTableRow = memo(
+  function PremiumTableRow({
+    asset,
+    row,
+    favoriteActive,
+    loggedIn,
+    targetFundingRate,
+    originFundingRate,
+    volatilityMeanDiff,
+    transferAvailable,
+    onToggleFavorite,
+  }) {
+    const spread = Number(row.SL_close || 0) - Number(row.LS_close || 0);
+
+    return (
+      <tr>
+        <td>
+          <button
+            className={`favorite-button${favoriteActive ? " favorite-button--active" : ""}`}
+            disabled={!loggedIn}
+            onClick={() => onToggleFavorite(asset)}
+            type="button"
+          >
+            ★
+          </button>
+        </td>
+        <td>{asset}</td>
+        <td>
+          <div>{formatNumber(row.tp, 1)}</div>
+          <small className="muted-copy">
+            {row.scr > 0 ? "+" : ""}
+            {formatNumber(row.scr, 2, 2)}%
+          </small>
+        </td>
+        <td>{formatNumber(row.LS_close, 3, 2)}</td>
+        <td>{formatNumber(row.SL_close, 3, 2)}</td>
+        <td>
+          {spread > 0 ? "+" : ""}
+          {formatNumber(spread, 2, 1)}%p
+        </td>
+        <td>{formatVolatility(volatilityMeanDiff)}</td>
+        <td>{formatPercent(targetFundingRate)}</td>
+        <td>{formatPercent(originFundingRate)}</td>
+        <td>{transferAvailable ? "가능" : "-"}</td>
+        <td>{formatShortVolume(row.atp24h)}</td>
+      </tr>
+    );
+  },
+  (previousProps, nextProps) =>
+    previousProps.row === nextProps.row &&
+    previousProps.favoriteActive === nextProps.favoriteActive &&
+    previousProps.loggedIn === nextProps.loggedIn &&
+    previousProps.targetFundingRate === nextProps.targetFundingRate &&
+    previousProps.originFundingRate === nextProps.originFundingRate &&
+    previousProps.volatilityMeanDiff === nextProps.volatilityMeanDiff &&
+    previousProps.transferAvailable === nextProps.transferAvailable
+);
 
 export default function HomeMarketOverviewClient() {
   const { authorizedListRequest, authorizedRequest, loggedIn } = useAuth();
@@ -159,15 +217,16 @@ export default function HomeMarketOverviewClient() {
     }
 
     let active = true;
-    let intervalId = null;
+    let reconnectTimer = null;
+    let socket = null;
 
-    async function loadCurrentSnapshot() {
+    async function seedCurrentSnapshot() {
       try {
         const payload = await fetchCachedJson(
           `/api/infocore/kline-current/?target_market_code=${encodeURIComponent(
             targetMarketCode
           )}&origin_market_code=${encodeURIComponent(effectiveOriginMarketCode)}`,
-          { ttlMs: 500 }
+          { ttlMs: 250 }
         );
 
         if (!active) {
@@ -175,25 +234,97 @@ export default function HomeMarketOverviewClient() {
         }
 
         setLiveRows(Array.isArray(payload) ? payload : []);
-        setRealtimeConnected(true);
-        setRealtimeError("");
-        setLastRealtimeAt(Date.now());
-      } catch (requestError) {
+      } catch {
         if (!active) {
           return;
         }
-
-        setRealtimeConnected(false);
-        setRealtimeError(requestError.message || "실시간 프리미엄 연결이 불안정합니다.");
+        setLiveRows([]);
       }
     }
 
-    loadCurrentSnapshot();
-    intervalId = window.setInterval(loadCurrentSnapshot, 1000);
+    const wsBase = (
+      process.env.NEXT_PUBLIC_DRF_WS_URL ||
+      process.env.NEXT_PUBLIC_DRF_URL?.replace(/^http/i, "ws") ||
+      window.location.origin.replace(/^http/i, "ws")
+    ).replace(/\/$/, "");
+
+    const url = new URL(`${wsBase}/kline/`);
+    url.searchParams.set("target_market_code", targetMarketCode);
+    url.searchParams.set("origin_market_code", effectiveOriginMarketCode);
+    url.searchParams.set("interval", "1T");
+
+    const connect = () => {
+      socket = new WebSocket(url.toString());
+
+      socket.addEventListener("open", () => {
+        setRealtimeConnected(true);
+        setRealtimeError("");
+      });
+
+      socket.addEventListener("message", (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type !== "publish") {
+          return;
+        }
+
+        try {
+          const payload = JSON.parse(message.result);
+          if (!Array.isArray(payload)) {
+            return;
+          }
+
+          setLiveRows((current) => {
+            const next = Array.isArray(current) ? [...current] : [];
+            const nextIndex = new Map(next.map((item, index) => [item.base_asset, index]));
+
+            payload.forEach((item) => {
+              if (!item?.base_asset) {
+                return;
+              }
+
+              const existingIndex = nextIndex.get(item.base_asset);
+              if (existingIndex === undefined) {
+                nextIndex.set(item.base_asset, next.length);
+                next.push(item);
+              } else {
+                next[existingIndex] = item;
+              }
+            });
+
+            return next;
+          });
+
+          setLastRealtimeAt(Date.now());
+        } catch {
+          // Ignore malformed websocket payloads.
+        }
+      });
+
+      socket.addEventListener("error", () => {
+        setRealtimeConnected(false);
+        setRealtimeError("실시간 프리미엄 연결이 불안정합니다.");
+      });
+
+      socket.addEventListener("close", () => {
+        setRealtimeConnected(false);
+        if (!active) {
+          return;
+        }
+        reconnectTimer = window.setTimeout(connect, 1500);
+      });
+    };
+
+    seedCurrentSnapshot();
+    connect();
 
     return () => {
       active = false;
-      if (intervalId) window.clearInterval(intervalId);
+      if (reconnectTimer) {
+        window.clearTimeout(reconnectTimer);
+      }
+      if (socket) {
+        socket.close();
+      }
     };
   }, [effectiveOriginMarketCode, targetMarketCode]);
 
@@ -265,11 +396,21 @@ export default function HomeMarketOverviewClient() {
     [filteredRows]
   );
 
+  const detailSymbolSet = useMemo(
+    () => [...new Set(detailSymbols)].sort(),
+    [detailSymbols]
+  );
+
+  const detailSymbolQuery = useMemo(
+    () => detailSymbolSet.join(","),
+    [detailSymbolSet]
+  );
+
   useEffect(() => {
     let active = true;
 
     async function loadAssetDetails() {
-      if (!targetMarketCode || !effectiveOriginMarketCode || detailSymbols.length === 0) {
+      if (!targetMarketCode || !effectiveOriginMarketCode || detailSymbolSet.length === 0) {
         setVolatility([]);
         setTargetFunding({});
         setOriginFunding({});
@@ -278,19 +419,19 @@ export default function HomeMarketOverviewClient() {
       }
 
       const assetParams = new URLSearchParams();
-      detailSymbols.forEach((symbol) => assetParams.append("base_asset", symbol));
+      assetParams.set("base_asset", detailSymbolQuery);
       assetParams.set("target_market_code", targetMarketCode);
       assetParams.set("origin_market_code", effectiveOriginMarketCode);
       assetParams.set("tz", "Asia/Seoul");
 
       const targetFundingParams = new URLSearchParams();
-      detailSymbols.forEach((symbol) => targetFundingParams.append("base_asset", symbol));
+      targetFundingParams.set("base_asset", detailSymbolQuery);
       targetFundingParams.set("market_code", targetMarketCode);
       targetFundingParams.set("last_n", "1");
       targetFundingParams.set("tz", "Asia/Seoul");
 
       const originFundingParams = new URLSearchParams();
-      detailSymbols.forEach((symbol) => originFundingParams.append("base_asset", symbol));
+      originFundingParams.set("base_asset", detailSymbolQuery);
       originFundingParams.set("market_code", effectiveOriginMarketCode);
       originFundingParams.set("last_n", "1");
       originFundingParams.set("tz", "Asia/Seoul");
@@ -337,7 +478,7 @@ export default function HomeMarketOverviewClient() {
     return () => {
       active = false;
     };
-  }, [detailSymbols, effectiveOriginMarketCode, targetMarketCode]);
+  }, [detailSymbolQuery, detailSymbolSet.length, effectiveOriginMarketCode, targetMarketCode]);
 
   useEffect(() => {
     let active = true;
@@ -418,10 +559,6 @@ export default function HomeMarketOverviewClient() {
 
     return items.slice(0, 60);
   }, [favoriteAssets, filteredRows]);
-
-  useEffect(() => {
-    console.log("home_live_rows", liveRows.length);
-  }, [liveRows]);
 
   async function toggleFavorite(symbol) {
     if (!loggedIn) {
@@ -551,40 +688,20 @@ export default function HomeMarketOverviewClient() {
                     effectiveOriginMarketCode,
                     asset
                   );
-                  const spread = Number(row.SL_close || 0) - Number(row.LS_close || 0);
 
                   return (
-                    <tr key={asset}>
-                      <td>
-                        <button
-                          className={`favorite-button${favoriteMap[asset] ? " favorite-button--active" : ""}`}
-                          disabled={!loggedIn}
-                          onClick={() => toggleFavorite(asset)}
-                          type="button"
-                        >
-                          ★
-                        </button>
-                      </td>
-                      <td>{asset}</td>
-                      <td>
-                        <div>{formatNumber(row.tp, 1)}</div>
-                        <small className="muted-copy">
-                          {row.scr > 0 ? "+" : ""}
-                          {formatNumber(row.scr, 2, 2)}%
-                        </small>
-                      </td>
-                      <td>{formatNumber(row.LS_close, 3, 2)}</td>
-                      <td>{formatNumber(row.SL_close, 3, 2)}</td>
-                      <td>
-                        {spread > 0 ? "+" : ""}
-                        {formatNumber(spread, 2, 1)}%p
-                      </td>
-                      <td>{formatVolatility(volatilityItem?.mean_diff)}</td>
-                      <td>{formatPercent(targetFundingItem?.funding_rate)}</td>
-                      <td>{formatPercent(originFundingItem?.funding_rate)}</td>
-                      <td>{transferAvailable ? "가능" : "-"}</td>
-                      <td>{formatShortVolume(row.atp24h)}</td>
-                    </tr>
+                    <PremiumTableRow
+                      key={asset}
+                      asset={asset}
+                      favoriteActive={Boolean(favoriteMap[asset])}
+                      loggedIn={loggedIn}
+                      onToggleFavorite={toggleFavorite}
+                      originFundingRate={originFundingItem?.funding_rate}
+                      row={row}
+                      targetFundingRate={targetFundingItem?.funding_rate}
+                      transferAvailable={transferAvailable}
+                      volatilityMeanDiff={volatilityItem?.mean_diff}
+                    />
                   );
                 })
               ) : (

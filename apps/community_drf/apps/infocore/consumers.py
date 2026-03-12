@@ -30,6 +30,12 @@ def _normalize_signature_value(value):
     return value
 
 
+def _normalize_stream_id(value):
+    if isinstance(value, bytes):
+        return value.decode()
+    return value
+
+
 class KlineConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -137,26 +143,28 @@ class KlineConsumer(AsyncWebsocketConsumer):
             return data
 
     async def publish(self):
+        last_entry_id = "0-0"
         latest_entries = REDIS_CLI.xrevrange(self._channel_name, count=1)
         if latest_entries:
             latest_entry_id, latest_entry_data = latest_entries[0]
+            last_entry_id = _normalize_stream_id(latest_entry_id)
             latest_payload = self._build_publish_payload(latest_entry_data)
             if latest_payload is not None:
                 await self.send(json.dumps(latest_payload))
 
         while not self._stop:
             stream = REDIS_CLI.xread(
-                streams={self._channel_name: "$"},
-                count=1,
-                block=0,
+                streams={self._channel_name: last_entry_id},
+                count=10,
+                block=1000,
             )
             if stream:
-                stream = stream[0]
-                stream_key, stream_data = stream
-                entry_id, entry_data = stream_data[0]
-                payload = self._build_publish_payload(entry_data)
-                if payload is not None:
-                    await self.send(json.dumps(payload))
+                stream_key, stream_data = stream[0]
+                for entry_id, entry_data in stream_data:
+                    last_entry_id = _normalize_stream_id(entry_id)
+                    payload = self._build_publish_payload(entry_data)
+                    if payload is not None:
+                        await self.send(json.dumps(payload))
 
     async def disconnect(self, code):
         self._stop = True
