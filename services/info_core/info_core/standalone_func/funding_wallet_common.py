@@ -1,3 +1,8 @@
+import datetime
+import pickle
+
+import pandas as pd
+
 from exchange_plugin.okx_plug import InitOkxAdaptor
 from exchange_plugin.upbit_plug import InitUpbitAdaptor
 from exchange_plugin.binance_plug import InitBinanceAdaptor
@@ -6,6 +11,9 @@ from exchange_plugin.bybit_plug import InitBybitAdaptor
 from exchange_plugin.gate_plug import InitGateAdaptor
 from exchange_plugin.coinone_plug import InitCoinoneAdaptor
 from exchange_plugin.hyperliquid_plug import InitHyperliquidAdaptor
+
+
+FUNDING_LATEST_PREFIX = "INFO_CORE|FUNDING_LATEST|"
 
 
 def build_exchange_adaptors(exchange_api_key_dict, logging_dir):
@@ -75,7 +83,6 @@ def wallet_status_exchange_targets(adaptors, exchange_api_key_dict):
     if _has_credentials(exchange_api_key_dict, "okx_read_only", require_passphrase=True):
         targets.append(("OKX", adaptors["OKX"], 60))
 
-    # Public wallet/network status sources
     targets.append(("BITHUMB", adaptors["BITHUMB"], 60))
 
     if _has_credentials(exchange_api_key_dict, "bybit_read_only"):
@@ -87,7 +94,6 @@ def wallet_status_exchange_targets(adaptors, exchange_api_key_dict):
 
 
 def has_wallet_status_targets(exchange_api_key_dict):
-    # Bithumb and Coinone use public wallet/network status sources in the current runtime.
     return True
 
 
@@ -96,16 +102,25 @@ def funding_latest_key(market_code):
 
 
 def build_latest_funding_payload(funding_df):
+    def normalize_optional_value(value):
+        if pd.isna(value):
+            return None
+        return value
+
     latest_docs = {}
     for row in funding_df.itertuples(index=False):
         doc = {
             "symbol": row.symbol,
-            "funding_rate": row.funding_rate,
-            "funding_time": row.funding_time,
-            "datetime_now": getattr(row, "datetime_now", datetime.datetime.utcnow()),
+            "funding_rate": normalize_optional_value(row.funding_rate),
+            "funding_time": normalize_optional_value(row.funding_time),
+            "datetime_now": normalize_optional_value(
+                getattr(row, "datetime_now", datetime.datetime.utcnow())
+            ),
         }
         if hasattr(row, "funding_interval_hours"):
-            doc["funding_interval_hours"] = row.funding_interval_hours
+            doc["funding_interval_hours"] = normalize_optional_value(
+                row.funding_interval_hours
+            )
         latest_docs[row.base_asset] = [doc]
     return latest_docs
 
@@ -119,8 +134,3 @@ def store_latest_funding_snapshot(redis_client, market_code, funding_df, ttl_sec
         pickle.dumps(build_latest_funding_payload(funding_df)),
         ex=ttl_seconds,
     )
-import datetime
-import pickle
-
-
-FUNDING_LATEST_PREFIX = "INFO_CORE|FUNDING_LATEST|"
