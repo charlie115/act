@@ -14,17 +14,17 @@ import uniqBy from "lodash/uniqBy";
 
 import { useAuth } from "../auth/AuthProvider";
 import TelegramConnectButton from "../auth/TelegramConnectButton";
-import MarketCodeCombinationSelector from "components/MarketCodeCombinationSelector";
-import { MARKET_CODE_LIST } from "constants/lists";
 import BotApiKeyClient from "./BotApiKeyClient";
 import BotCapitalClient from "./BotCapitalClient";
 import BotDepositClient from "./BotDepositClient";
+import BotMarketCodeCombinationSelector from "./BotMarketCodeCombinationSelector";
 import BotPlaceholderPanel from "./BotPlaceholderPanel";
 import BotPnlHistoryClient from "./BotPnlHistoryClient";
 import BotPositionClient from "./BotPositionClient";
 import BotScannerClient from "./BotScannerClient";
 import BotSettingsClient from "./BotSettingsClient";
 import BotTriggersClient from "./BotTriggersClient";
+import { getMarketOption } from "../../lib/markets";
 
 const tabs = [
   { key: "triggers", label: "Triggers" },
@@ -54,12 +54,8 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
   const tradeConfigAllocations = useMemo(
     () =>
       tradeConfigs.map((tradeConfig) => {
-        const target = MARKET_CODE_LIST.find(
-          (item) => item.value === tradeConfig.target_market_code
-        );
-        const origin = MARKET_CODE_LIST.find(
-          (item) => item.value === tradeConfig.origin_market_code
-        );
+        const target = getMarketOption(tradeConfig.target_market_code);
+        const origin = getMarketOption(tradeConfig.origin_market_code);
 
         return {
           node: tradeConfig.node,
@@ -129,8 +125,8 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
       ...sortBy(
         uniqNodeMarketCodes.map((item) => {
           const [targetMarket, originMarket] = item.marketCodeCombination.split(":");
-          const target = MARKET_CODE_LIST.find((option) => option.value === targetMarket);
-          const origin = MARKET_CODE_LIST.find((option) => option.value === originMarket);
+          const target = getMarketOption(targetMarket);
+          const origin = getMarketOption(originMarket);
           const tradeConfigAllocation = tradeConfigs.find(
             (tradeConfig) =>
               tradeConfig.target_market_code === targetMarket &&
@@ -145,14 +141,6 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
             origin: {
               ...origin,
               isSpot: originMarket.includes("SPOT"),
-              icon: (
-                <Box
-                  component="img"
-                  src={origin?.icon}
-                  alt={origin?.getLabel?.() || originMarket}
-                  sx={{ height: { xs: 16, md: 18 }, width: { xs: 16, md: 18 } }}
-                />
-              ),
             },
             secondaryIcon: !tradeConfigAllocation?.trade_config_uuid ? (
               <IconButton
@@ -169,14 +157,6 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
             target: {
               ...target,
               isSpot: targetMarket.includes("SPOT"),
-              icon: (
-                <Box
-                  component="img"
-                  src={target?.icon}
-                  alt={target?.getLabel?.() || targetMarket}
-                  sx={{ height: { xs: 16, md: 18 }, width: { xs: 16, md: 18 } }}
-                />
-              ),
             },
             trade_config_uuid: tradeConfigAllocation?.trade_config_uuid,
             value: item.marketCodeCombination,
@@ -352,10 +332,9 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
             <p className="eyebrow">Trade Config</p>
             <h2>조회 대상 선택</h2>
           </div>
-          <MarketCodeCombinationSelector
+          <BotMarketCodeCombinationSelector
             ref={marketCodeSelectorRef}
             buttonStyle={{ minWidth: 320 }}
-            loading={false}
             marketCodesRequired={MARKET_CODES_REQUIRED.includes(currentTab) && currentTab !== "settings"}
             onSelectItem={(nextValue) => {
               const nextConfig = nextValue?.trade_config_uuid;

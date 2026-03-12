@@ -22,9 +22,6 @@ const wsOrigin = process.env.NEXT_PUBLIC_DRF_WS_URL ||
 const nextConfig = {
   output: "standalone",
   skipTrailingSlashRedirect: true,
-  experimental: {
-    externalDir: true,
-  },
   env: {
     REACT_APP_DRF_WS_URL: wsOrigin,
     REACT_APP_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",

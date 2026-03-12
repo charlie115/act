@@ -1,16 +1,15 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import Chip from "@mui/material/Chip";
 import Skeleton from "@mui/material/Skeleton";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 
-import { useSelector } from "react-redux";
 import { alpha, styled } from "@mui/material/styles";
 
-import { useGetDepositBalanceQuery } from "redux/api/drf/user";
-import formatIntlNumber from "utils/formatIntlNumber";
+import { useAuth } from "../auth/AuthProvider";
 
 const BalanceChip = styled(Chip)(({ theme }) => ({
   height: 36,
@@ -33,21 +32,55 @@ const BalanceChip = styled(Chip)(({ theme }) => ({
 
 export default function NextDepositBalance() {
   const router = useRouter();
-  const { user } = useSelector((state) => state.auth);
+  const { authorizedListRequest, user } = useAuth();
+  const [depositBalances, setDepositBalances] = useState([]);
+  const [loaded, setLoaded] = useState(false);
 
-  const { data, isSuccess } = useGetDepositBalanceQuery({}, { pollingInterval: 5000 });
+  useEffect(() => {
+    let active = true;
 
-  const ownBalance =
-    data?.results?.find((item) => item.user === user?.uuid)?.balance ?? null;
+    async function loadBalance() {
+      try {
+        const nextDepositBalances = await authorizedListRequest("/users/deposit-balance/");
+        if (!active) {
+          return;
+        }
+        setDepositBalances(nextDepositBalances);
+        setLoaded(true);
+      } catch {
+        if (!active) {
+          return;
+        }
+        setDepositBalances([]);
+        setLoaded(true);
+      }
+    }
 
-  if (!isSuccess) {
+    loadBalance();
+    const intervalId = window.setInterval(loadBalance, 5000);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [authorizedListRequest]);
+
+  const ownBalance = useMemo(
+    () => depositBalances.find((item) => item.user === user?.uuid)?.balance ?? null,
+    [depositBalances, user?.uuid]
+  );
+
+  if (!loaded) {
     return <Skeleton sx={{ borderRadius: 2 }} variant="rounded" width={132} height={36} />;
   }
 
   return (
     <BalanceChip
       icon={<AccountBalanceWalletIcon />}
-      label={`${formatIntlNumber(parseFloat(ownBalance || 0), 2, 2)} USDT`}
+      label={`${new Intl.NumberFormat("en-US", {
+        maximumFractionDigits: 2,
+        minimumFractionDigits: 2,
+      }).format(parseFloat(ownBalance || 0))} USDT`}
       onClick={() => router.push("/bot/deposit")}
       size="medium"
     />

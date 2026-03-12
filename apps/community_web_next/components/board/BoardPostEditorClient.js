@@ -4,9 +4,9 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import mime from "mime";
 
-import RichTextEditor from "components/RichTextEditor";
 import { useAuth } from "../auth/AuthProvider";
 import { getAllowedBoardCategories } from "../../lib/board";
+import BoardRichTextEditor from "./BoardRichTextEditor";
 
 export default function BoardPostEditorClient() {
   const router = useRouter();
@@ -117,7 +117,7 @@ export default function BoardPostEditorClient() {
           Content
         </label>
         <div className="legacy-rich-editor" id="board-content">
-          <RichTextEditor
+          <BoardRichTextEditor
             showToolbar
             ref={quillRef}
             readOnly={isBusy}

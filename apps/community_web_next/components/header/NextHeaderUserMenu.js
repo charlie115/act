@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import Avatar from "@mui/material/Avatar";
@@ -16,17 +16,47 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 
-import { useGetCouponRedemptionsQuery, useGetCouponsQuery } from "redux/api/drf/coupon";
-
 import { useAuth } from "../auth/AuthProvider";
 
 export default function NextHeaderUserMenu() {
   const router = useRouter();
-  const { signOut, user } = useAuth();
+  const { authorizedListRequest, signOut, user } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
+  const [coupons, setCoupons] = useState([]);
+  const [redemptions, setRedemptions] = useState([]);
 
-  const { data: coupons = [] } = useGetCouponsQuery();
-  const { data: redemptions = [] } = useGetCouponRedemptionsQuery();
+  useEffect(() => {
+    let active = true;
+
+    async function loadCoupons() {
+      try {
+        const [nextCoupons, nextRedemptions] = await Promise.all([
+          authorizedListRequest("/coupon/coupons/"),
+          authorizedListRequest("/coupon/coupon-redemption/"),
+        ]);
+
+        if (!active) {
+          return;
+        }
+
+        setCoupons(nextCoupons);
+        setRedemptions(nextRedemptions);
+      } catch {
+        if (!active) {
+          return;
+        }
+
+        setCoupons([]);
+        setRedemptions([]);
+      }
+    }
+
+    loadCoupons();
+
+    return () => {
+      active = false;
+    };
+  }, [authorizedListRequest]);
 
   const unusedCount = useMemo(() => {
     const redeemedCouponNames = new Set(redemptions.map((item) => item.coupon));
