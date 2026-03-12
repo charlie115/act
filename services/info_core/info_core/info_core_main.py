@@ -63,6 +63,8 @@ if __name__ == '__main__':
     core = InitCore(
         runtime_config.logging_dir,
         runtime_config.master,
+        runtime_config.run_funding_updater,
+        runtime_config.run_wallet_status_updater,
         runtime_config.proc_n,
         runtime_config.node,
         runtime_config.admin_telegram_id,

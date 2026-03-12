@@ -30,6 +30,8 @@ class InfoCoreRuntimeConfig:
     prod: bool
     node: str
     master: bool
+    run_funding_updater: bool
+    run_wallet_status_updater: bool
     proc_n: int
     logging_dir: str
     config_path: str

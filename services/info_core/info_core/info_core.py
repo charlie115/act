@@ -6,6 +6,8 @@ class InitCore:
         self,
         logging_dir,
         master_flag,
+        run_funding_updater,
+        run_wallet_status_updater,
         proc_n,
         node,
         admin_id,
@@ -20,6 +22,8 @@ class InitCore:
         self.supervisor = InfoCoreSupervisor(
             logging_dir=logging_dir,
             master_flag=master_flag,
+            run_funding_updater=run_funding_updater,
+            run_wallet_status_updater=run_wallet_status_updater,
             proc_n=proc_n,
             node=node,
             admin_id=admin_id,

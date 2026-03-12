@@ -66,6 +66,18 @@ def load_runtime_config(
     prod = parse_bool("PROD", os.getenv("PROD", "false"), errors)
     node = require_string("NODE", os.getenv("NODE"), errors)
     master = parse_bool("MASTER", os.getenv("MASTER"), errors)
+    raw_run_funding_updater = os.getenv("RUN_FUNDING_UPDATER")
+    run_funding_updater = (
+        master
+        if raw_run_funding_updater is None
+        else parse_bool("RUN_FUNDING_UPDATER", raw_run_funding_updater, errors)
+    )
+    raw_run_wallet_status_updater = os.getenv("RUN_WALLET_STATUS_UPDATER")
+    run_wallet_status_updater = (
+        master
+        if raw_run_wallet_status_updater is None
+        else parse_bool("RUN_WALLET_STATUS_UPDATER", raw_run_wallet_status_updater, errors)
+    )
 
     raw_proc_n = str(proc_n_override) if proc_n_override is not None else os.getenv("PROC_N")
     proc_n = parse_int("PROC_N", raw_proc_n, errors, minimum=1)
@@ -120,6 +132,8 @@ def load_runtime_config(
         prod=prod,
         node=node,
         master=master,
+        run_funding_updater=run_funding_updater,
+        run_wallet_status_updater=run_wallet_status_updater,
         proc_n=proc_n or 1,
         logging_dir=logging_dir,
         config_path=config_path,

@@ -21,6 +21,8 @@ class InfoCoreSupervisor:
         self,
         logging_dir,
         master_flag,
+        run_funding_updater,
+        run_wallet_status_updater,
         proc_n,
         node,
         admin_id,
@@ -56,6 +58,8 @@ class InfoCoreSupervisor:
                 name="analytics_runtime",
                 instance=AnalyticsRuntime(
                     master_flag=master_flag,
+                    run_funding_updater=run_funding_updater,
+                    run_wallet_status_updater=run_wallet_status_updater,
                     admin_id=admin_id,
                     node=node,
                     acw_api=acw_api,
