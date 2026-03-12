@@ -33,6 +33,7 @@ from standalone_func.premium_data_generator import (
     get_premium_df_from_market_snapshots,
     store_premium_df,
 )
+from standalone_func.funding_wallet_common import store_latest_funding_snapshot
 from standalone_func.store_exchange_status import fetch_market_servercheck
 import requests
 
@@ -86,6 +87,7 @@ class MarketIngestRuntime:
 
         self.info_thread_dict = {}
         self.premium_cache_thread_dict = {}
+        self.latest_funding_thread_dict = {}
         self.market_price_df_cache = {}
         self.market_price_df_cache_lock = Lock()
         self.premium_cache_signature_dict = {}
@@ -226,6 +228,7 @@ class MarketIngestRuntime:
         while self.convert_rate_initialized is False:
             time.sleep(0.2)
         self.start_premium_cache_workers()
+        self.start_latest_funding_workers()
 
     def generate_enabled_websocket_list(self):
         market_list = []
@@ -283,6 +286,48 @@ class MarketIngestRuntime:
             if spot_ticker not in enabled_data_name_list and spot_ticker in self.total_data_name_list:
                 enabled_data_name_list.append(spot_ticker)
         return list(set(enabled_data_name_list))
+
+    def get_enabled_futures_market_codes(self):
+        enabled_futures_markets = set()
+        for market_code_combination in self.enabled_market_klines:
+            for market_code in market_code_combination.split(":"):
+                market_name = market_code.split("/")[0]
+                if "SPOT" not in market_name:
+                    enabled_futures_markets.add(market_code)
+        return sorted(enabled_futures_markets)
+
+    def _get_funding_adaptor(self, exchange_name):
+        adaptor_map = {
+            "BINANCE": self.binance_adaptor,
+            "OKX": self.okx_adaptor,
+            "BYBIT": self.bybit_adaptor,
+            "GATE": self.gate_adaptor,
+            "HYPERLIQUID": self.hyperliquid_adaptor,
+        }
+        return adaptor_map.get(exchange_name)
+
+    def _fetch_latest_funding_df(self, market_code):
+        market_name, quote_asset = market_code.split("/")
+        exchange_name = market_name.split("_")[0]
+        futures_type = "_".join(market_name.split("_")[1:])
+        adaptor = self._get_funding_adaptor(exchange_name)
+        if adaptor is None:
+            return pd.DataFrame()
+
+        funding_df = adaptor.get_fundingrate(futures_type)
+        if funding_df.empty:
+            return funding_df
+
+        if "quote_asset" in funding_df.columns:
+            funding_df = funding_df[funding_df["quote_asset"] == quote_asset]
+        if "perpetual" in funding_df.columns:
+            funding_df = funding_df[funding_df["perpetual"] == True]
+        if funding_df.empty:
+            return funding_df
+
+        funding_df = funding_df.copy()
+        funding_df["datetime_now"] = datetime.datetime.utcnow()
+        return funding_df
     
     def store_info_dict_to_redis(self, data_name, fetched_df):
         # Save the data to the local redis
@@ -619,6 +664,16 @@ class MarketIngestRuntime:
             worker.start()
             self.premium_cache_thread_dict[market_code_combination] = worker
 
+    def start_latest_funding_workers(self, loop_time_secs=5):
+        for market_code in self.get_enabled_futures_market_codes():
+            worker = Thread(
+                target=self.update_latest_funding_loop,
+                args=(market_code, loop_time_secs),
+                daemon=True,
+            )
+            worker.start()
+            self.latest_funding_thread_dict[market_code] = worker
+
     def update_premium_cache_loop(self, market_code_combination, loop_time_secs=0.05):
         target_market_code, origin_market_code = market_code_combination.split(":")
         target_quote_asset = target_market_code.split("/")[1]
@@ -688,6 +743,28 @@ class MarketIngestRuntime:
             except Exception as e:
                 self.logger.error(
                     f"update_premium_cache_loop|{market_code_combination}|{e}\n{traceback.format_exc()}"
+                )
+
+            time.sleep(loop_time_secs)
+
+    def update_latest_funding_loop(self, market_code, loop_time_secs=5):
+        while True:
+            try:
+                if fetch_market_servercheck(market_code):
+                    time.sleep(1)
+                    continue
+
+                funding_df = self._fetch_latest_funding_df(market_code)
+                if not funding_df.empty:
+                    store_latest_funding_snapshot(self.local_redis, market_code, funding_df)
+                    self.remote_redis.set_data(
+                        f"INFO_CORE|FUNDING_LATEST|{market_code}",
+                        self.local_redis.get_data(f"INFO_CORE|FUNDING_LATEST|{market_code}"),
+                        ex=120,
+                    )
+            except Exception as e:
+                self.logger.error(
+                    f"update_latest_funding_loop|{market_code}|{e}\n{traceback.format_exc()}"
                 )
 
             time.sleep(loop_time_secs)

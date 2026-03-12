@@ -1,5 +1,4 @@
 import datetime
-import pickle
 import time
 import traceback
 from threading import Thread
@@ -11,38 +10,10 @@ from etc.redis_connector.redis_helper import RedisHelper
 from loggers.logger import InfoCoreLogger
 from standalone_func.funding_wallet_common import (
     build_exchange_adaptors,
+    store_latest_funding_snapshot,
     funding_exchange_targets,
 )
 from standalone_func.store_exchange_status import fetch_market_servercheck
-
-FUNDING_LATEST_PREFIX = "INFO_CORE|FUNDING_LATEST|"
-
-
-def _funding_latest_key(exchange_name, futures_type, quote_asset):
-    return f"{FUNDING_LATEST_PREFIX}{exchange_name}_{futures_type}/{quote_asset}"
-
-
-def _store_latest_funding_snapshot(redis_client, exchange_name, futures_type, quote_asset, funding_df, ttl_seconds=120):
-    if funding_df.empty:
-        return
-
-    latest_docs = {}
-    for row in funding_df.itertuples(index=False):
-        doc = {
-            "symbol": row.symbol,
-            "funding_rate": row.funding_rate,
-            "funding_time": row.funding_time,
-            "datetime_now": row.datetime_now,
-        }
-        if hasattr(row, "funding_interval_hours"):
-            doc["funding_interval_hours"] = row.funding_interval_hours
-        latest_docs[row.base_asset] = [doc]
-
-    redis_client.set_data(
-        _funding_latest_key(exchange_name, futures_type, quote_asset),
-        pickle.dumps(latest_docs),
-        ex=ttl_seconds,
-    )
 
 
 def start_funding_update(admin_id, node, acw_api, logging_dir, db_dict, redis_dict, exchange_api_key_dict):
@@ -124,11 +95,9 @@ def update_fundingrate(
                 funding_df = raw_funding_df[base_columns]
                 api_time += time.time() - api_start
                 funding_df["datetime_now"] = datetime.datetime.utcnow()
-                _store_latest_funding_snapshot(
+                store_latest_funding_snapshot(
                     redis_client,
-                    exchange_name,
-                    futures_type,
-                    quote_asset,
+                    f"{exchange_name}_{futures_type}/{quote_asset}",
                     funding_df,
                 )
 

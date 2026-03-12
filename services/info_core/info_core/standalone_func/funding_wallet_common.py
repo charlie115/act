@@ -89,3 +89,38 @@ def wallet_status_exchange_targets(adaptors, exchange_api_key_dict):
 def has_wallet_status_targets(exchange_api_key_dict):
     # Bithumb and Coinone use public wallet/network status sources in the current runtime.
     return True
+
+
+def funding_latest_key(market_code):
+    return f"{FUNDING_LATEST_PREFIX}{market_code}"
+
+
+def build_latest_funding_payload(funding_df):
+    latest_docs = {}
+    for row in funding_df.itertuples(index=False):
+        doc = {
+            "symbol": row.symbol,
+            "funding_rate": row.funding_rate,
+            "funding_time": row.funding_time,
+            "datetime_now": getattr(row, "datetime_now", datetime.datetime.utcnow()),
+        }
+        if hasattr(row, "funding_interval_hours"):
+            doc["funding_interval_hours"] = row.funding_interval_hours
+        latest_docs[row.base_asset] = [doc]
+    return latest_docs
+
+
+def store_latest_funding_snapshot(redis_client, market_code, funding_df, ttl_seconds=120):
+    if funding_df.empty:
+        return
+
+    redis_client.set_data(
+        funding_latest_key(market_code),
+        pickle.dumps(build_latest_funding_payload(funding_df)),
+        ex=ttl_seconds,
+    )
+import datetime
+import pickle
+
+
+FUNDING_LATEST_PREFIX = "INFO_CORE|FUNDING_LATEST|"
