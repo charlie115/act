@@ -42,7 +42,7 @@ from standalone_func.store_exchange_status import fetch_market_servercheck
 from exchange_plugin.coinone_plug import Coinone
 
 # Maximum allowed message delay in milliseconds - drop messages older than this
-MAX_MESSAGE_DELAY_MS = 100
+MAX_MESSAGE_DELAY_MS = 200
 
 # Constants
 MAX_SUBSCRIPTIONS = 20
@@ -486,7 +486,7 @@ class CoinoneWebsocket:
         # Inter-process communication queues (created in _start_websocket)
         self.subscribe_queue = None
         self.unsubscribe_queue = None
-        self.partial_stale_strikes = {"ticker": 0, "orderbook": 0}
+        self.partial_stale_strikes = {}
 
         # Initialize
         self._initialize_known_markets()

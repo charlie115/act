@@ -670,7 +670,7 @@ class PboundaryQueryParamsSerializer(TradeCoreMixin, serializers.Serializer):
         ]
 
         if market_code_combination not in market_code_combinations:
-            raise exceptions.ValidationError
+            raise exceptions.ValidationError()
 
         return market_code_combination
 

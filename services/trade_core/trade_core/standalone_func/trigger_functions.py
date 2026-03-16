@@ -578,7 +578,9 @@ def handle_repeat_trade(postgres_client,
         
         deposit_violated_repeat_uuid_list = []
         for deposit_violated_user_uuid in deposit_violated_user_uuid_list:
-            for trade_config_uuid in trade_config_df[trade_config_df['user']==deposit_violated_user_uuid]:
+            matching_configs = trade_config_df[trade_config_df['user']==deposit_violated_user_uuid]
+            for _, trade_config_row in matching_configs.iterrows():
+                trade_config_uuid = trade_config_row['uuid']
                 deposit_violated_repeat_uuid_list += merged_df[merged_df['trade_config_uuid']==trade_config_uuid]['uuid_y'].to_list()
         
         violated_repeat_uuid_list = list(set(repeat_limit_violated_repeat_uuid_list + repeat_num_limit_violated_repeat_uuid_list + deposit_violated_repeat_uuid_list))

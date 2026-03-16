@@ -27,7 +27,7 @@ from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
 # Maximum allowed message delay in milliseconds - drop messages older than this
-MAX_MESSAGE_DELAY_MS = 100
+MAX_MESSAGE_DELAY_MS = 200
 
 # Standalone function for the ticker websocket
 def init_ticker_websocket(symbol_list, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
@@ -368,12 +368,13 @@ class BybitWebsocket:
         self.handle_price_procs_thread = Thread(target=handle_price_procs, daemon=True)
         self.handle_price_procs_thread.start()
         
-        # Start the per-process stale checker:
-        self.stale_data_per_proc_thread = Thread(
-            target=self.monitor_stale_data_per_proc,
-            daemon=True
-        )
-        self.stale_data_per_proc_thread.start()
+        # Start the per-process stale checker (only if not already running):
+        if not hasattr(self, 'stale_data_per_proc_thread') or not self.stale_data_per_proc_thread.is_alive():
+            self.stale_data_per_proc_thread = Thread(
+                target=self.monitor_stale_data_per_proc,
+                daemon=True
+            )
+            self.stale_data_per_proc_thread.start()
 
     def terminate_websocket(self):
         terminate_process_group(

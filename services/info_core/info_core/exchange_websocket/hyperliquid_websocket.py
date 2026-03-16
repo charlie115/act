@@ -52,7 +52,7 @@ from standalone_func.store_exchange_status import fetch_market_servercheck
 # Maximum allowed message delay in milliseconds - drop messages older than this
 # NOTE: Hyperliquid WebSocket messages don't include server timestamps (unlike CEXs),
 # so delay filtering cannot be applied. This constant is included for consistency.
-MAX_MESSAGE_DELAY_MS = 100
+MAX_MESSAGE_DELAY_MS = 200
 HYPERLIQUID_TICKER_PROC_NAME = "1th_ticker_proc"
 
 
@@ -574,6 +574,13 @@ class HyperliquidWebsocket:
             self.websocket_logger,
             f"[HYPERLIQUID {self.market_type}] All websockets' events have been set.",
         )
+
+        # Stop existing handle_price_procs_thread before starting a new one
+        # The thread checks stop_restart_websocket, so set it temporarily to break the loop
+        if hasattr(self, 'handle_price_procs_thread') and self.handle_price_procs_thread.is_alive():
+            self.stop_restart_websocket = True
+            self.handle_price_procs_thread.join(timeout=5)
+            self.stop_restart_websocket = False
 
         # Refresh symbol list and slices
         self.before_symbols_list = self.get_symbol_list()

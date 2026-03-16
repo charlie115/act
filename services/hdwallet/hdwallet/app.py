@@ -1,4 +1,5 @@
 import os
+import sys
 from fastapi import FastAPI, Depends, Header, HTTPException, Body
 from hdwallet import HDWallet
 from hdwallet.entropies import BIP39Entropy, BIP39_ENTROPY_STRENGTHS
@@ -18,8 +19,14 @@ from tronpy.providers import HTTPProvider
 from tronpy.keys import is_base58check_address, to_base58check_address
 import datetime
 import httpx
+from decimal import Decimal
+import asyncio
+from collections import defaultdict
 
 app = FastAPI()
+
+# Per-user locks to prevent TOCTOU race conditions on balance check-then-transfer
+_user_locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
 
 # Load secrets
 WALLET_API_KEY_FILE = os.environ.get('WALLET_API_KEY_FILE', None)
@@ -28,6 +35,16 @@ TRON_GRID_API_KEY = os.environ.get('TRON_GRID_API_KEY', '')
 USDT_CONTRACT_ADDRESS = os.environ.get('USDT_CONTRACT_ADDRESS', 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t')
 DUST_THRESHOLD = float(os.environ.get('DUST_THRESHOLD', '0.1'))
 TRONGRID_TX_LIMIT = int(os.environ.get('TRONGRID_TX_LIMIT', '200'))
+
+# Validate required environment variables at startup
+_missing_vars = []
+if not WALLET_API_KEY_FILE:
+    _missing_vars.append('WALLET_API_KEY_FILE')
+if not MNEMONIC_FILE:
+    _missing_vars.append('MNEMONIC_FILE')
+if _missing_vars:
+    print(f"ERROR: Required environment variables are not set: {', '.join(_missing_vars)}", file=sys.stderr)
+    sys.exit(1)
 
 # For Deploy
 with open(WALLET_API_KEY_FILE, 'r') as f:
@@ -122,25 +139,35 @@ async def transact_tron_network(user_id: int, asset: str, amount: float, to_addr
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Invalid amount")
 
-    # Verify if the user has enough balance    
+    # Acquire per-user lock to prevent TOCTOU race between balance check and transfer
+    async with _user_locks[user_id]:
+        return await _execute_transfer(user_id, asset, amount, to_address)
+
+
+async def _execute_transfer(user_id: int, asset: str, amount: float, to_address: str):
+    # Verify if the user has enough balance
     if asset == "TRX":
         user_balance = await get_user_trx_balance(user_id)
     else:
         user_balance = await get_user_usdt_balance(user_id)
-    
+
     if user_balance < amount:
-        raise HTTPException(status_code=400, detail="Insufficient balance. asset: {}, balance: {}, requested amount: {}".format(asset, user_balance, amount))
+        raise HTTPException(status_code=400, detail="Insufficient balance")
 
     private_key = PrivateKey(bytes.fromhex(await get_private_key_from_user_id(user_id)))
     user_address = await get_address_from_user_id(user_id)
 
     # Send the transaction
+    # Use Decimal for precise financial arithmetic
+    amount_decimal = Decimal(str(amount))
+    amount_sun = int(amount_decimal * Decimal('1000000'))
+
     if asset == "TRX":
         txn = (
             tron.trx.transfer(
             user_address,
             to_address,
-            (int(amount * 1e6))
+            amount_sun
         ).build()
         .sign(private_key)
         )
@@ -149,7 +176,7 @@ async def transact_tron_network(user_id: int, asset: str, amount: float, to_addr
         txn = (
             usdt_contract.functions.transfer(
             to_address,
-            int(amount * 1e6)
+            amount_sun
         ).with_owner(user_address)
         .fee_limit(50_000_000)
         .build()
@@ -163,9 +190,11 @@ async def transact_tron_network(user_id: int, asset: str, amount: float, to_addr
             response["to_address"] = to_address
             return response
         else:
-            raise HTTPException(status_code=500, detail=f"Transaction failed: {response}, user_address: {user_address}, to_address: {to_address}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Transaction failed: {e}, user_address: {user_address}, to_address: {to_address}")
+            raise HTTPException(status_code=500, detail="Transaction broadcast failed")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Transaction failed due to an internal error")
     
 async def fetch_parse_trx_data(address, deposit_only=False):
     """Interpret the transaction data and extract required fields asynchronously."""
@@ -335,5 +364,7 @@ async def get_user_transactions(user_id: int,
         
         
         return transactions
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch transactions: {e}")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to fetch transactions due to an internal error")

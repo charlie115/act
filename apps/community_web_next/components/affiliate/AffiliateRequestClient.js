@@ -55,14 +55,14 @@ export default function AffiliateRequestClient() {
       setIsSubmitted(true);
       updateUser({ affiliate_request_pending: true });
     } catch (requestError) {
-      const responseError = requestError.payload?.error;
+      const errorMessage = requestError.message || "";
 
-      if (responseError === "REQUEST_EXISTS") {
+      if (errorMessage.includes("REQUEST_EXISTS")) {
         setPageError("이미 신청이 접수되어 있습니다. 검토를 기다려 주세요.");
-      } else if (responseError === "INVALID_PARENT_CODE") {
+      } else if (errorMessage.includes("INVALID_PARENT_CODE")) {
         setPageError("유효하지 않은 상위 제휴 코드입니다. 다시 확인해 주세요.");
       } else {
-        setPageError(requestError.payload?.message || "신청 처리 중 오류가 발생했습니다.");
+        setPageError(requestError.message || "신청 처리 중 오류가 발생했습니다.");
       }
     } finally {
       setIsSubmitting(false);

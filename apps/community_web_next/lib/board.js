@@ -13,6 +13,6 @@ export async function getPost(postId) {
 }
 
 export async function getComments(postId) {
-  const data = await fetchCachedJson(`/api/board/posts/${postId}/comments/`, { ttlMs: 5000 });
+  const data = await fetchCachedJson(`/api/board/comments/?post=${postId}`, { ttlMs: 5000 });
   return Array.isArray(data) ? data : data?.results || [];
 }

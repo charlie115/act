@@ -186,9 +186,9 @@ class InitOkxAdaptor:
         okx_client = self.load_user_client(user_okx_access_key, user_okx_secret_key, passphrase)
         funding_balance = pd.DataFrame(okx_client.FundingAPI.get_balances()['data'])
         if len(funding_balance) != 0:
-            funding_balance[:, 'availBal'] = funding_balance[:, 'availBal'].astype(float)
-            funding_balance[:, 'bal'] = funding_balance[:, 'bal'].astype(float)
-            funding_balance[:, 'frozenBal'] = funding_balance[:, 'frozenBal'].astype(float)
+            funding_balance.loc[:, 'availBal'] = funding_balance['availBal'].astype(float)
+            funding_balance.loc[:, 'bal'] = funding_balance['bal'].astype(float)
+            funding_balance.loc[:, 'frozenBal'] = funding_balance['frozenBal'].astype(float)
         else:
             # Make a dummy dataframe having the same columns as funding_balance
             funding_balance = pd.DataFrame(columns=['availBal', 'bal', 'ccy', 'frozenBal'])
@@ -496,9 +496,9 @@ class InitOkxAdaptor:
         funding_df['funding_interval_hours'] = funding_df['funding_interval_hours'].astype('Int64')
 
         funding_df['fundingTime'] = pd.to_datetime(funding_df['fundingTime'], unit='ms', utc=True)
-        funding_df['fundingTime'] = funding_df['fundingTime'].dt.tz_localize(None)
+        funding_df['fundingTime'] = funding_df['fundingTime'].dt.tz_convert('UTC').dt.tz_localize(None)
         funding_df['nextFundingTime'] = pd.to_datetime(funding_df['nextFundingTime'], unit='ms', utc=True)
-        funding_df['nextFundingTime'] = funding_df['nextFundingTime'].dt.tz_localize(None)
+        funding_df['nextFundingTime'] = funding_df['nextFundingTime'].dt.tz_convert('UTC').dt.tz_localize(None)
         funding_df['symbol'] = funding_df['instId']
         funding_df['base_asset'] = funding_df['instId'].apply(lambda x: x.split("-")[0])
         funding_df['quote_asset'] = funding_df['instId'].apply(lambda x: x.split("-")[1])

@@ -47,7 +47,7 @@ def get_pboundary(mongo_db_dict, market_code_combination, base_asset, usdt_conve
         # check whether 'tp_close' column is full of NaN or null values
         if premium_df['tp_close'].isnull().all():
             premium_df.loc[:, 'tp_close'] = (premium_df['LS_close'] + premium_df['SL_close']) / 2
-        premium_df = premium_df.fillna(method='ffill')
+        premium_df = premium_df.ffill()
         if usdt_conversion:
             y_value = (1+premium_df['tp_close']/100) * premium_df['dollar']
             y_enter_value = (1+premium_df['LS_close']/100) * premium_df['dollar']

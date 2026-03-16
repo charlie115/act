@@ -104,7 +104,7 @@ export default function AffiliateDashboardClient() {
       setIsModalOpen(false);
       setForm({ code: "", user_discount_rate: 0.05 });
     } catch (requestError) {
-      setPageError(requestError.payload?.code?.[0] || "추천 코드 생성에 실패했습니다.");
+      setPageError(requestError.message || "추천 코드 생성에 실패했습니다.");
     } finally {
       setIsBusy(false);
     }

@@ -14,17 +14,11 @@ const backendPrefixes = [
   "users",
   "wallet",
 ];
-const publicDrfUrl = process.env.NEXT_PUBLIC_DRF_URL || process.env.NEXT_PUBLIC_SITE_URL || "";
-const wsOrigin = process.env.NEXT_PUBLIC_DRF_WS_URL ||
-  (publicDrfUrl ? publicDrfUrl.replace(/^http/i, "ws") : "");
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
   skipTrailingSlashRedirect: true,
   env: {
-    REACT_APP_DRF_WS_URL: wsOrigin,
-    REACT_APP_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
     REACT_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION || "next",
   },
   async rewrites() {

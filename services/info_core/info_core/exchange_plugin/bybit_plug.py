@@ -167,7 +167,7 @@ class InitBybitAdaptor:
         funding_df.loc[:, ['fundingRate', 'nextFundingTime']] = funding_df.loc[:, ['fundingRate', 'nextFundingTime']].apply(pd.to_numeric, errors='coerce')
         funding_df.loc[:, 'nextFundingTime'] = funding_df.loc[:, 'nextFundingTime'].apply(lambda x: datetime.datetime.fromtimestamp(x/1000, tz=datetime.timezone.utc))
         # Convert 'nextFundingTime' to datetime
-        funding_df.loc[:, 'nextFundingTime'] = pd.to_datetime(funding_df['nextFundingTime']).dt.tz_localize(None)
+        funding_df.loc[:, 'nextFundingTime'] = pd.to_datetime(funding_df['nextFundingTime']).dt.tz_convert('UTC').dt.tz_localize(None)
         funding_df = funding_df.rename(columns={'fundingRate': "funding_rate", "nextFundingTime": "funding_time"})
 
         # Add funding_interval_hours

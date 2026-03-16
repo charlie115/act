@@ -16,12 +16,12 @@ class InitAiDataCore:
         self.admin_id = admin_id
         self.node = node
         self.acw_api = acw_api
+        self.logger = InfoCoreLogger("aidata_core", logging_dir).logger
         self.trading_market_code_combinations = self.get_trading_market_code_combinations() # e.g. ['UPBIT_SPOT/KRW:BINANCE_USD_M/USDT']
         self.redis_dict = redis_dict # For server check for futures use. Currently not used.
         self.mongodb_dict = mongodb_dict
         self.ai_api_key = ai_api_key
         self.logging_dir = logging_dir
-        self.logger = InfoCoreLogger("aidata_core", logging_dir).logger
         self.worker_threads = []
         self.logger.info(f"InitAiDataCore Started.")
         

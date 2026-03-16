@@ -17,6 +17,8 @@ import {
 
 import AuthActions from "./auth/AuthActions";
 import ChatWidget from "./chat/ChatWidget";
+import Footer from "./Footer";
+import TVTickerWidget from "./home/TVTickerWidget";
 import NextBreadcrumbs from "./NextBreadcrumbs";
 import ScrollToTop from "./ui/ScrollToTop";
 
@@ -93,18 +95,19 @@ export default function AppShell({ children }) {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 mx-auto w-full rounded-none border-b border-border bg-background/94 backdrop-blur-lg md:top-1.5 md:w-[min(1280px,calc(100vw-20px))] md:rounded-xl md:border">
+      <div className="sticky top-0 z-20">
+      <header className="mx-auto w-full rounded-none border-b border-border bg-background/94 backdrop-blur-lg md:w-[min(1280px,calc(100vw-20px))] md:rounded-t-xl md:border md:border-b-0">
         <div className="relative z-1 mx-auto flex items-center justify-between gap-4 px-4 py-2 md:w-[min(1280px,calc(100vw-32px))]" style={{ minHeight: 56 }}>
           <div className="flex items-center gap-3 min-w-0">
-            <Link className="inline-flex items-center gap-2 font-bold text-ink" href="/">
+            <Link className="inline-flex items-center" href="/">
               <Image
                 alt="ArbiCrypto"
-                height={28}
+                height={30}
                 src="/images/logo-no-background.png"
-                width={28}
-                className="rounded-md"
+                width={140}
+                className="h-[30px] w-auto"
+                priority
               />
-              <span className="text-sm font-bold tracking-tight">ArbiCrypto</span>
             </Link>
           </div>
 
@@ -150,6 +153,10 @@ export default function AppShell({ children }) {
           </div>
         </div>
       </header>
+      <div className="mx-auto w-full overflow-hidden border-b border-border bg-background/94 backdrop-blur-lg md:w-[min(1280px,calc(100vw-20px))] md:rounded-b-xl md:border md:border-t-0" style={{ minHeight: 44 }}>
+        <TVTickerWidget />
+      </div>
+      </div>
 
       {/* Mobile drawer overlay */}
       {drawerOpen ? (
@@ -211,6 +218,7 @@ export default function AppShell({ children }) {
         <NextBreadcrumbs />
       </div>
       <main className="mx-auto w-[min(1280px,calc(100vw-24px))] pb-8">{children}</main>
+      <Footer />
       <ChatWidget />
       <ScrollToTop />
     </div>

@@ -1,554 +1,258 @@
 "use client";
 
-import { Fragment, memo, useCallback, useMemo, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 
 import { premiumHeatmap, spreadHeatmap } from "../../lib/heatmap";
 import PremiumChartPanel from "./PremiumChartPanel";
-import Tooltip from "../ui/Tooltip";
+
+const MINIO_BASE = process.env.NEXT_PUBLIC_MINIO_URL || "http://localhost:19000";
+const ASSET_ICON_PATH = `${MINIO_BASE}/community-media/assets/icons`;
+
+function AssetIcon({ symbol, size = 22 }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img alt={symbol} className="rounded-full" height={size} width={size}
+      src={`${ASSET_ICON_PATH}/${symbol}.PNG`}
+      onError={(e) => { e.currentTarget.style.display = "none"; if (e.currentTarget.nextSibling) e.currentTarget.nextSibling.style.display = "flex"; }}
+      style={{ objectFit: "cover" }} />
+  );
+}
+
+function AssetBadge({ symbol, size = 22 }) {
+  const bg = `hsl(${[...symbol].reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 55%, 42%)`;
+  return (
+    <span className="inline-flex flex-shrink-0">
+      <AssetIcon symbol={symbol} size={size} />
+      <span className="items-center justify-center rounded-full font-bold text-white"
+        style={{ width: size, height: size, fontSize: size * 0.42, backgroundColor: bg, display: "none" }}>
+        {symbol.slice(0, 1)}
+      </span>
+    </span>
+  );
+}
+
+function ExIcon({ exchange, size = 14 }) {
+  const key = exchange?.toLowerCase() || "";
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img alt={exchange} src={`/images/exchanges/${key}.svg`} width={size} height={size}
+      className="inline rounded-sm" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+  );
+}
 
 const PAGE_SIZE = 50;
+function fmt(v, d = 2, m = 0) { if (v == null || v === "") return "-"; return new Intl.NumberFormat("en-US", { maximumFractionDigits: d, minimumFractionDigits: m }).format(Number(v)); }
+function fmtVol(v) { const n = Number(v || 0); if (!Number.isFinite(n)) return "-"; if (Math.abs(n) >= 1e8) return `${(n/1e8).toFixed(1)}억`; if (Math.abs(n) >= 1e4) return `${(n/1e4).toFixed(0)}만`; return fmt(n, 0); }
+function pc(v) { const n = Number(v || 0); return n > 0 ? "text-positive" : n < 0 ? "text-negative" : "text-ink-muted"; }
 
-// Responsive visibility classes per column
-// mobile(<640): 자산, 현재가, 진입김프, 스프레드, 거래액 (5 cols)
-// tablet(640-1024): + 즐겨찾기, 탈출김프 (7 cols)
-// desktop(>1024): all 11 cols
-const VIS = {
-  fav: "hidden sm:table-cell",
-  exit: "hidden sm:table-cell",
-  lgOnly: "hidden lg:table-cell",
-};
-
-function formatNumber(value, maximumFractionDigits = 2, minimumFractionDigits = 0) {
-  if (value === null || value === undefined || value === "") {
-    return "-";
-  }
-
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits,
-    minimumFractionDigits,
-  }).format(Number(value));
-}
-
-function formatPercent(value) {
-  if (value === null || value === undefined || value === "") {
-    return "-";
-  }
-
-  return `${Number(value).toFixed(4)}%`;
-}
-
-function formatVolatility(value) {
-  if (value === null || value === undefined || value === "") {
-    return "-";
-  }
-
-  return Number(value).toFixed(3);
-}
-
-function formatKoreanVolume(value) {
-  const numberValue = Number(value || 0);
-
-  if (!Number.isFinite(numberValue)) {
-    return "-";
-  }
-
-  if (Math.abs(numberValue) >= 1_0000_0000) {
-    return `${(numberValue / 1_0000_0000).toFixed(1)}억`;
-  }
-
-  if (Math.abs(numberValue) >= 1_0000) {
-    return `${(numberValue / 1_0000).toFixed(0)}만`;
-  }
-
-  return formatNumber(numberValue, 0, 0);
-}
-
-function polarityColor(value) {
-  const n = Number(value || 0);
-  if (n > 0) return "text-positive";
-  if (n < 0) return "text-negative";
-  return "text-ink-muted";
-}
-
-function hasTransferRoute(walletStatus, targetMarketCode, originMarketCode, asset) {
-  const assetStatus = walletStatus?.[asset];
-  if (!assetStatus) {
-    return false;
-  }
-
-  const targetExchange = targetMarketCode.split("_")[0];
-  const originExchange = originMarketCode.split("_")[0];
-
-  const withdrawNetworks = assetStatus?.[targetExchange]?.withdraw || [];
-  const depositNetworks = assetStatus?.[originExchange]?.deposit || [];
-
-  return withdrawNetworks.some((network) => depositNetworks.includes(network));
-}
-
-function HighlightMatch({ text, query }) {
-  if (!query) {
-    return text;
-  }
-
-  const index = text.toLowerCase().indexOf(query.toLowerCase());
-
-  if (index === -1) {
-    return text;
-  }
-
-  return (
-    <>
-      {text.slice(0, index)}
-      <mark className="rounded-sm bg-accent/30 px-0.5 text-ink">{text.slice(index, index + query.length)}</mark>
-      {text.slice(index + query.length)}
-    </>
-  );
-}
-
-// Sort accessor functions
-const SORT_ACCESSORS = {
-  asset: (row) => row.base_asset || "",
-  price: (row) => Number(row.tp || 0),
-  enter: (row) => Number(row.LS_close || 0),
-  exit: (row) => Number(row.SL_close || 0),
-  spread: (row) => Number(row.SL_close || 0) - Number(row.LS_close || 0),
-  volume: (row) => Number(row.atp24h || 0),
-};
-
-function sortRows(rows, sortKey, sortDirection, favoriteSet) {
-  if (!sortKey) {
-    return rows;
-  }
-
-  const accessor = SORT_ACCESSORS[sortKey];
-
-  if (!accessor) {
-    return rows;
-  }
-
-  const sorted = [...rows];
-
-  sorted.sort((left, right) => {
-    const leftFav = favoriteSet.has(left.base_asset);
-    const rightFav = favoriteSet.has(right.base_asset);
-
-    if (leftFav && !rightFav) return -1;
-    if (!leftFav && rightFav) return 1;
-
-    const leftVal = accessor(left);
-    const rightVal = accessor(right);
-
-    if (sortKey === "asset") {
-      const cmp = String(leftVal).localeCompare(String(rightVal));
-      return sortDirection === "asc" ? cmp : -cmp;
-    }
-
-    const diff = leftVal - rightVal;
-    return sortDirection === "asc" ? diff : -diff;
+const ACCESSORS = { asset: r => r.base_asset||"", price: r => Number(r.tp||0), enter: r => Number(r.LS_close||0), exit: r => Number(r.SL_close||0), spread: r => Number(r.SL_close||0)-Number(r.LS_close||0), volume: r => Number(r.atp24h||0) };
+function doSort(rows, key, dir, favSet) {
+  if (!key || !ACCESSORS[key]) return rows;
+  return [...rows].sort((a, b) => {
+    const af = favSet.has(a.base_asset), bf = favSet.has(b.base_asset);
+    if (af && !bf) return -1; if (!af && bf) return 1;
+    const av = ACCESSORS[key](a), bv = ACCESSORS[key](b);
+    if (key === "asset") { const c = String(av).localeCompare(String(bv)); return dir === "asc" ? c : -c; }
+    return dir === "asc" ? av - bv : bv - av;
   });
-
-  return sorted;
 }
 
-// Responsive cell padding
-const CELL = "px-1.5 py-1.5 sm:px-2 sm:py-1.5 lg:px-2.5 lg:py-2";
-const CELL_MONO = `${CELL} tabular-nums font-mono`;
+const TD = "px-1 py-1 sm:px-2 sm:py-1.5 lg:px-3";
+const TDM = `${TD} tabular-nums`;
+const IBADGE = { 1: "bg-green-500", 2: "bg-blue-500", 4: "bg-amber-500", 8: "bg-purple-500" };
 
-const PremiumTableRow = memo(
-  function PremiumTableRow({
-    asset,
-    expanded,
-    row,
-    favoriteActive,
-    loggedIn,
-    onSelect,
-    targetFundingRate,
-    originFundingRate,
-    volatilityMeanDiff,
-    transferAvailable,
-    onToggleFavorite,
-    searchQuery,
-    aiLabel,
-  }) {
-    const lsClose = Number(row.LS_close || 0);
-    const slClose = Number(row.SL_close || 0);
-    const spread = slClose - lsClose;
-
-    return (
-      <tr
-        className={`cursor-pointer border-l-2 transition-colors hover:bg-surface-elevated/50 ${
-          expanded ? "border-l-accent bg-surface-elevated/30" : "border-l-transparent"
-        }`}
-        onClick={() => onSelect(asset)}
-      >
-        {/* ★ 즐겨찾기 — hidden mobile */}
-        <td className={`${CELL} ${VIS.fav}`}>
-          <button
-            className={`text-sm transition-colors ${favoriteActive ? "text-opportunity" : "text-ink-muted/50"} disabled:opacity-40`}
-            disabled={!loggedIn}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleFavorite(asset);
-            }}
-            type="button"
-          >
-            ★
-          </button>
-        </td>
-
-        {/* 자산 — always */}
-        <td className={CELL}>
-          <div className="grid gap-0.5">
-            <div className="inline-flex items-center gap-1">
-              <strong className="text-ink text-[0.68rem] sm:text-xs">
-                <HighlightMatch text={asset} query={searchQuery} />
-              </strong>
-              {aiLabel ? (
-                <span className="hidden items-center rounded-full bg-accent/15 px-1.5 py-0.5 text-[0.54rem] font-bold text-accent sm:inline-flex">
-                  {aiLabel}
-                </span>
-              ) : null}
-              <ChevronRight
-                className={`text-ink-muted transition-transform duration-200 ${expanded ? "rotate-90 text-accent" : ""}`}
-                size={10}
-                strokeWidth={2.5}
-              />
-            </div>
-            <small className="text-[0.56rem] sm:text-[0.6rem] text-ink-muted">{expanded ? "차트 숨기기" : "차트 보기"}</small>
-          </div>
-        </td>
-
-        {/* 현재가 — always */}
-        <td className={`${CELL_MONO} text-right`}>
-          <div className="text-xs font-semibold text-ink sm:text-sm">
-            {formatNumber(row.tp, 1)}
-          </div>
-          <small className={`text-[0.58rem] sm:text-[0.64rem] ${polarityColor(row.scr)}`}>
-            {row.scr > 0 ? "+" : ""}
-            {formatNumber(row.scr, 2, 2)}%
-          </small>
-        </td>
-
-        {/* 진입김프 — always */}
-        <td
-          className={`${CELL_MONO} text-right text-[0.68rem] sm:text-xs ${polarityColor(lsClose)}`}
-          style={{ backgroundColor: premiumHeatmap(lsClose) }}
-        >
-          {formatNumber(lsClose, 2, 2)}
-        </td>
-
-        {/* 탈출김프 — hidden mobile */}
-        <td
-          className={`${CELL_MONO} text-right text-[0.68rem] sm:text-xs ${VIS.exit} ${polarityColor(slClose)}`}
-          style={{ backgroundColor: premiumHeatmap(slClose) }}
-        >
-          {formatNumber(slClose, 2, 2)}
-        </td>
-
-        {/* 스프레드 — always */}
-        <td
-          className={`${CELL_MONO} text-right text-[0.68rem] sm:text-xs ${polarityColor(spread)}`}
-          style={{ backgroundColor: spreadHeatmap(spread) }}
-        >
-          {spread > 0 ? "+" : ""}
-          {formatNumber(spread, 2, 1)}%p
-        </td>
-
-        {/* 변동성 — desktop only */}
-        <td className={`${CELL_MONO} text-right text-xs text-ink-muted ${VIS.lgOnly}`}>
-          {formatVolatility(volatilityMeanDiff)}
-        </td>
-
-        {/* 타겟 펀딩 — desktop only */}
-        <td className={`${CELL_MONO} text-right text-xs ${VIS.lgOnly} ${polarityColor(targetFundingRate)}`}>
-          {formatPercent(targetFundingRate)}
-        </td>
-
-        {/* 오리진 펀딩 — desktop only */}
-        <td className={`${CELL_MONO} text-right text-xs ${VIS.lgOnly} ${polarityColor(originFundingRate)}`}>
-          {formatPercent(originFundingRate)}
-        </td>
-
-        {/* 전송 — desktop only */}
-        <td className={`${CELL_MONO} text-right text-xs ${VIS.lgOnly} ${transferAvailable ? "text-positive" : "text-ink-muted"}`}>
-          {transferAvailable ? "가능" : "-"}
-        </td>
-
-        {/* 거래액 — always */}
-        <td className={`${CELL_MONO} text-right text-[0.68rem] sm:text-xs text-ink-muted`}>
-          {formatKoreanVolume(row.atp24h)}
-        </td>
-      </tr>
-    );
-  },
-  (previousProps, nextProps) =>
-    previousProps.row === nextProps.row &&
-    previousProps.expanded === nextProps.expanded &&
-    previousProps.favoriteActive === nextProps.favoriteActive &&
-    previousProps.loggedIn === nextProps.loggedIn &&
-    previousProps.targetFundingRate === nextProps.targetFundingRate &&
-    previousProps.originFundingRate === nextProps.originFundingRate &&
-    previousProps.volatilityMeanDiff === nextProps.volatilityMeanDiff &&
-    previousProps.transferAvailable === nextProps.transferAvailable &&
-    previousProps.searchQuery === nextProps.searchQuery &&
-    previousProps.aiLabel === nextProps.aiLabel
-);
-
-// Column visibility classes matching PremiumTableRow order
-const SKELETON_COL_VIS = [
-  VIS.fav, "", "", "", VIS.exit, "",
-  VIS.lgOnly, VIS.lgOnly, VIS.lgOnly, VIS.lgOnly, "",
-];
-
-function SkeletonRows() {
-  return Array.from({ length: 8 }).map((_, i) => (
-    <tr key={i}>
-      {SKELETON_COL_VIS.map((vis, j) => (
-        <td key={j} className={`${CELL} ${vis}`}>
-          <div className="h-3 animate-pulse rounded bg-border/30" />
-        </td>
-      ))}
-    </tr>
-  ));
+function FundingCountdown({ fundingTime }) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const diff = new Date(fundingTime).getTime() - now;
+  if (diff <= 0) return null;
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  return <div className="text-[0.55rem] text-ink-muted/50 italic tabular-nums whitespace-nowrap">{h}시간 {String(m).padStart(2,"0")}분 {String(s).padStart(2,"0")}초 남음</div>;
 }
 
-function SortIcon({ active, direction }) {
-  if (!active) {
-    return <ChevronDown size={9} className="text-ink-muted/40" />;
+function FundingCell({ fi }) {
+  if (!fi) return <td className={`${TDM} text-right text-xs text-ink-muted/40 table-cell`}>-</td>;
+  const rate = Number(fi.funding_rate || 0);
+  const pct = (rate * 100).toFixed(3);
+  const intH = fi.funding_interval_hours;
+  const badge = IBADGE[intH] || "bg-blue-500";
+  return (
+    <td className={`${TDM} text-right text-xs table-cell`}>
+      <div className="flex items-center justify-end gap-1">
+        <span className={pc(rate)}>{pct}</span>
+        {intH != null && <span className={`rounded px-1 py-px text-[0.5rem] font-bold text-white leading-none ${badge}`}>{intH}h</span>}
+      </div>
+      {fi.funding_time && <FundingCountdown fundingTime={fi.funding_time} />}
+    </td>
+  );
+}
+
+function WalletCell({ walletData, targetMarketCode, originMarketCode }) {
+  if (!walletData || !targetMarketCode || !originMarketCode) {
+    return <td className={`${TD} text-center text-ink-muted/25 table-cell`}>-</td>;
+  }
+  const bothSpot = targetMarketCode.includes("SPOT") && originMarketCode.includes("SPOT");
+  const tEx = targetMarketCode.split("_")[0];
+  const oEx = originMarketCode.split("_")[0];
+  const tW = walletData[tEx]?.withdraw || [];
+  const tD = walletData[tEx]?.deposit || [];
+  const oW = walletData[oEx]?.withdraw || [];
+  const oD = walletData[oEx]?.deposit || [];
+
+  let canRight, canLeft;
+  if (bothSpot) {
+    // 현물↔현물: 출금→입금 네트워크 교집합
+    canRight = tW.some(n => oD.includes(n));
+    canLeft = oW.some(n => tD.includes(n));
+  } else {
+    // 현물↔선물: 전체 네트워크 합집합 존재 여부 (레거시 동일)
+    const all = [...new Set([...tD, ...tW, ...oD, ...oW])];
+    canRight = all.length > 0;
+    canLeft = all.length > 0;
   }
 
-  return direction === "asc" ? (
-    <ChevronUp size={9} className="text-accent" />
-  ) : (
-    <ChevronDown size={9} className="text-accent" />
+  return (
+    <td className={`${TD} text-center table-cell`}>
+      <div className="flex flex-col items-center leading-none">
+        <span className={`text-[0.7rem] ${canRight ? "text-positive" : "text-negative/40"}`}>→</span>
+        <span className={`text-[0.7rem] ${canLeft ? "text-positive" : "text-negative/40"}`}>←</span>
+      </div>
+    </td>
   );
 }
 
-function SortableHeader({ children, className = "", visClass = "", sortKey, currentSortKey, sortDirection, onSort, tooltip }) {
-  const isSortable = Boolean(sortKey);
-  const isActive = currentSortKey === sortKey;
-
-  const content = (
-    <button
-      className={`inline-flex items-center gap-0.5 ${isSortable ? "cursor-pointer select-none hover:text-ink" : ""}`}
-      onClick={isSortable ? () => onSort(sortKey) : undefined}
-      type="button"
-    >
-      {children}
-      {isSortable ? <SortIcon active={isActive} direction={isActive ? sortDirection : "desc"} /> : null}
-    </button>
-  );
-
+const Row = memo(function Row({ asset, row, expanded, favActive, loggedIn, onSelect, onFav, targetFI, originFI, volDiff, targetIsSpot, originIsSpot, walletData, targetMC, originMC }) {
+  const ls = Number(row.LS_close || 0), sl = Number(row.SL_close || 0), spread = sl - ls;
   return (
-    <th className={`sticky top-0 z-1 px-1.5 py-1.5 sm:px-2 sm:py-2 lg:px-2.5 text-[0.54rem] sm:text-[0.58rem] lg:text-[0.62rem] font-bold uppercase tracking-wider text-ink-muted ${visClass} ${className}`}>
-      {tooltip ? <Tooltip text={tooltip}>{content}</Tooltip> : content}
+    <tr className={`cursor-pointer transition-colors hover:bg-surface-elevated/40 ${expanded ? "bg-surface-elevated/20" : ""}`} onClick={() => onSelect(asset)}>
+      <td className={`${TD} hidden sm:table-cell w-7`}>
+        <button className={`text-xs ${favActive ? "text-opportunity" : "text-ink-muted/30 hover:text-ink-muted/60"} disabled:opacity-30`} disabled={!loggedIn} onClick={e => { e.stopPropagation(); onFav(asset); }} type="button">★</button>
+      </td>
+      <td className={TD}>
+        <div className="flex items-center gap-1.5">
+          <AssetBadge symbol={asset} size={16} />
+          <strong className="text-xs text-ink">{asset}</strong>
+          <ChevronRight size={8} strokeWidth={2.5} className={`flex-shrink-0 text-ink-muted/40 transition-transform hidden sm:inline-block ${expanded ? "rotate-90 text-accent" : ""}`} />
+        </div>
+      </td>
+      <WalletCell walletData={walletData} targetMarketCode={targetMC} originMarketCode={originMC} />
+      <td className={`${TDM} text-right whitespace-nowrap`}>
+        <div className="flex items-baseline justify-end gap-1"><span className="text-[0.64rem] sm:text-xs font-semibold text-ink">{fmt(row.tp, row.tp >= 10000 ? 0 : 1)}</span><span className={`rounded px-1 py-px text-[0.48rem] sm:text-[0.56rem] font-semibold leading-none ${Number(row.scr) >= 0 ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative"}`}>{row.scr > 0 ? "+" : ""}{fmt(row.scr, 2, 2)}%</span></div>
+        {row.converted_tp ? <div className="text-[0.5rem] sm:text-[0.58rem] text-ink-muted/40 tabular-nums">{fmt(row.converted_tp, row.converted_tp >= 10000 ? 1 : 2)}</div> : null}
+      </td>
+      <td className={`${TDM} text-right text-[0.62rem] sm:text-xs font-bold ${pc(ls)}`} style={{ backgroundColor: premiumHeatmap(ls) }}>{fmt(ls, 3, 3)}</td>
+      <td className={`${TDM} text-right text-[0.62rem] sm:text-xs font-bold ${pc(sl)} table-cell`} style={{ backgroundColor: premiumHeatmap(sl) }}>{fmt(sl, 3, 3)}</td>
+      <td className={`${TDM} text-right text-[0.62rem] sm:text-xs ${pc(spread)}`} style={{ backgroundColor: spreadHeatmap(spread) }}>{fmt(spread, 2, 2)} %p</td>
+      <td className={`${TDM} text-right text-[0.62rem] sm:text-xs ${pc(volDiff)} table-cell`}>{volDiff != null ? Number(volDiff).toFixed(2) : "-"}</td>
+      {targetIsSpot ? null : <FundingCell fi={targetFI} />}
+      {originIsSpot ? null : <FundingCell fi={originFI} />}
+      <td className={`${TDM} text-right text-[0.62rem] sm:text-xs text-ink-muted`}>{fmtVol(row.atp24h)}</td>
+    </tr>
+  );
+}, (p, n) => p.row === n.row && p.expanded === n.expanded && p.favActive === n.favActive && p.loggedIn === n.loggedIn && p.targetFI === n.targetFI && p.originFI === n.originFI && p.volDiff === n.volDiff && p.targetIsSpot === n.targetIsSpot && p.originIsSpot === n.originIsSpot && p.walletData === n.walletData);
+
+function SortBtn({ children, sortKey, current, dir, onSort, className = "", vis = "" }) {
+  const active = current === sortKey;
+  return (
+    <th className={`sticky top-0 z-[1] px-2 py-2.5 lg:px-3 text-[0.5rem] sm:text-[0.6rem] font-bold uppercase tracking-wider text-ink-muted/60 bg-background whitespace-nowrap ${vis} ${className}`}>
+      {sortKey ? (
+        <button className="inline-flex items-center gap-0.5 hover:text-ink" onClick={() => onSort(sortKey)} type="button">
+          {children}
+          {active ? (dir === "asc" ? <ChevronUp size={9} className="text-accent" /> : <ChevronDown size={9} className="text-accent" />) : <ChevronDown size={9} className="opacity-30" />}
+        </button>
+      ) : children}
     </th>
   );
 }
 
-export default function PremiumTable({
-  displayRows,
-  expandedAsset,
-  onSelectAsset,
-  favoriteMap,
-  loggedIn,
-  onToggleFavorite,
-  targetFunding,
-  originFunding,
-  volatilityMap,
-  walletStatus,
-  targetMarketCode,
-  originMarketCode,
-  connected,
-  searchQuery = "",
-  aiRecommendations = [],
-}) {
-  const [sortKey, setSortKey] = useState("");
-  const [sortDirection, setSortDirection] = useState("desc");
-  const [page, setPage] = useState(0);
+function SkeletonRows({ colCount }) {
+  return Array.from({ length: 10 }).map((_, i) => (
+    <tr key={i}>{[...Array(colCount)].map((_, j) => <td key={j} className={TD}><div className="h-3.5 animate-pulse rounded bg-border/20" style={{ width: `${40+Math.random()*40}%` }} /></td>)}</tr>
+  ));
+}
 
+export default function PremiumTable({ displayRows, expandedAsset, onSelectAsset, favoriteMap, loggedIn, onToggleFavorite, targetFunding, originFunding, volatilityMap, walletStatus, targetMarketCode, originMarketCode, connected, searchQuery = "", aiRecommendations = [] }) {
+  const [sortKey, setSortKey] = useState("");
+  const [sortDir, setSortDir] = useState("desc");
+  const [page, setPage] = useState(0);
   const handleSort = useCallback((key) => {
     setSortKey((prev) => {
-      if (prev === key) {
-        setSortDirection((dir) => (dir === "desc" ? "asc" : "desc"));
-        return key;
-      }
-
-      setSortDirection("desc");
-      return key;
+      if (prev !== key) { setSortDir("desc"); return key; }
+      if (sortDir === "desc") { setSortDir("asc"); return key; }
+      // asc → reset
+      setSortDir("desc");
+      return "";
     });
     setPage(0);
-  }, []);
+  }, [sortDir]);
 
-  const aiMap = useMemo(() => {
-    const map = {};
+  const targetIsSpot = targetMarketCode?.includes("SPOT");
+  const originIsSpot = originMarketCode?.includes("SPOT");
+  const targetEx = targetMarketCode?.split("_")[0] || "";
+  const originEx = originMarketCode?.split("_")[0] || "";
 
-    for (const rec of aiRecommendations) {
-      if (rec.base_asset && rec.ai_label) {
-        map[rec.base_asset] = rec.ai_label;
-      }
-    }
-
-    return map;
-  }, [aiRecommendations]);
-
-  const favoriteSet = useMemo(
-    () => new Set(Object.keys(favoriteMap).filter((key) => favoriteMap[key])),
-    [favoriteMap]
-  );
-
-  const sortedRows = useMemo(
-    () => sortRows(displayRows, sortKey, sortDirection, favoriteSet),
-    [displayRows, sortKey, sortDirection, favoriteSet]
-  );
-
-  const totalPages = Math.max(1, Math.ceil(sortedRows.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages - 1);
-  const paginatedRows = sortedRows.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+  const favSet = useMemo(() => new Set(Object.keys(favoriteMap).filter(k => favoriteMap[k])), [favoriteMap]);
+  const sorted = useMemo(() => doSort(displayRows, sortKey, sortDir, favSet), [displayRows, sortKey, sortDir, favSet]);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const sp = Math.min(page, totalPages - 1);
+  const pageRows = sorted.slice(sp * PAGE_SIZE, (sp + 1) * PAGE_SIZE);
+  let colCount = 8;
+  if (!targetIsSpot) colCount++;
+  if (!originIsSpot) colCount++;
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-lg border border-border bg-background/90">
-        <table className="w-full lg:min-w-[980px] border-collapse">
+      <div className="overflow-x-auto">
+        <table className="w-full">
           <thead>
-            <tr className="border-b border-border bg-background/98">
-              <SortableHeader className="text-left" visClass={VIS.fav} tooltip="즐겨찾기 등록/해제">
-                즐겨찾기
-              </SortableHeader>
-              <SortableHeader className="text-left" sortKey="asset" currentSortKey={sortKey} sortDirection={sortDirection} onSort={handleSort}>
-                자산
-              </SortableHeader>
-              <SortableHeader className="text-right" sortKey="price" currentSortKey={sortKey} sortDirection={sortDirection} onSort={handleSort}>
-                현재가
-              </SortableHeader>
-              <SortableHeader className="text-right" sortKey="enter" currentSortKey={sortKey} sortDirection={sortDirection} onSort={handleSort} tooltip="국내 매수 → 해외 선물 매도 시 프리미엄 (%)">
-                진입김프
-              </SortableHeader>
-              <SortableHeader className="text-right" visClass={VIS.exit} sortKey="exit" currentSortKey={sortKey} sortDirection={sortDirection} onSort={handleSort} tooltip="해외 선물 매수 → 국내 매도 시 프리미엄 (%)">
-                탈출김프
-              </SortableHeader>
-              <SortableHeader className="text-right" sortKey="spread" currentSortKey={sortKey} sortDirection={sortDirection} onSort={handleSort} tooltip="진입김프 - 탈출김프 차이 (%p)">
-                스프레드
-              </SortableHeader>
-              <SortableHeader className="text-right" visClass={VIS.lgOnly} tooltip="최근 변동률 평균 대비 차이">
-                변동성
-              </SortableHeader>
-              <SortableHeader className="text-right" visClass={VIS.lgOnly}>
-                타겟 펀딩
-              </SortableHeader>
-              <SortableHeader className="text-right" visClass={VIS.lgOnly}>
-                오리진 펀딩
-              </SortableHeader>
-              <SortableHeader className="text-right" visClass={VIS.lgOnly}>
-                전송
-              </SortableHeader>
-              <SortableHeader className="text-right" sortKey="volume" currentSortKey={sortKey} sortDirection={sortDirection} onSort={handleSort}>
-                거래액(24h)
-              </SortableHeader>
+            <tr className="border-b-2 border-border/60">
+              <SortBtn vis="table-cell" className="w-[30px]" />
+              <SortBtn className="text-left w-[90px]" sortKey="asset" current={sortKey} dir={sortDir} onSort={handleSort}>자산</SortBtn>
+              <SortBtn vis="table-cell" className="text-center w-[40px]">전송</SortBtn>
+              <SortBtn className="text-right w-[100px]" sortKey="price" current={sortKey} dir={sortDir} onSort={handleSort}>현재가</SortBtn>
+              <SortBtn className="text-right" sortKey="enter" current={sortKey} dir={sortDir} onSort={handleSort}>진입김프</SortBtn>
+              <SortBtn vis="table-cell" className="text-right" sortKey="exit" current={sortKey} dir={sortDir} onSort={handleSort}>탈출김프</SortBtn>
+              <SortBtn className="text-right" sortKey="spread" current={sortKey} dir={sortDir} onSort={handleSort}>스프레드</SortBtn>
+              <SortBtn vis="table-cell" className="text-right">변동성</SortBtn>
+              {!targetIsSpot && <SortBtn vis="table-cell" className="text-right"><span className="inline-flex items-center gap-1">펀딩률 <ExIcon exchange={targetEx} size={12} /></span></SortBtn>}
+              {!originIsSpot && <SortBtn vis="table-cell" className="text-right"><span className="inline-flex items-center gap-1">펀딩률 <ExIcon exchange={originEx} size={12} /></span></SortBtn>}
+              <SortBtn className="text-right w-[80px]" sortKey="volume" current={sortKey} dir={sortDir} onSort={handleSort}>거래액(일)</SortBtn>
             </tr>
           </thead>
-          <tbody>
-            {paginatedRows.length ? (
-              paginatedRows.map((row) => {
-                const asset = row.base_asset;
-                const targetFundingItem = targetFunding?.[asset]?.[0];
-                const originFundingItem = originFunding?.[asset]?.[0];
-                const volatilityItem = volatilityMap?.[asset];
-                const transferAvailable = hasTransferRoute(
-                  walletStatus,
-                  targetMarketCode,
-                  originMarketCode,
-                  asset
-                );
-
-                return (
-                  <Fragment key={asset}>
-                    <PremiumTableRow
-                      aiLabel={aiMap[asset]}
-                      asset={asset}
-                      expanded={expandedAsset === asset}
-                      favoriteActive={Boolean(favoriteMap[asset])}
-                      loggedIn={loggedIn}
-                      onSelect={onSelectAsset}
-                      onToggleFavorite={onToggleFavorite}
-                      originFundingRate={originFundingItem?.funding_rate}
-                      row={row}
-                      searchQuery={searchQuery}
-                      targetFundingRate={targetFundingItem?.funding_rate}
-                      transferAvailable={transferAvailable}
-                      volatilityMeanDiff={volatilityItem?.mean_diff}
-                    />
-                    {expandedAsset === asset ? (
-                      <tr>
-                        <td colSpan="99" className="p-0 bg-background/98">
-                          <PremiumChartPanel
-                            asset={asset}
-                            originFundingRate={originFundingItem?.funding_rate}
-                            originMarketCode={originMarketCode}
-                            row={row}
-                            targetFundingRate={targetFundingItem?.funding_rate}
-                            targetMarketCode={targetMarketCode}
-                          />
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })
-            ) : connected ? (
-              <SkeletonRows />
-            ) : (
-              <tr>
-                <td colSpan="99" className="px-4 py-12 text-center text-sm text-ink-muted">
-                  실시간 프리미엄 데이터를 불러오는 중입니다...
-                </td>
-              </tr>
+          <tbody className="divide-y divide-border/20">
+            {pageRows.length ? pageRows.map(row => {
+              const asset = row.base_asset;
+              const tfi = targetFunding?.[asset]?.[0];
+              const ofi = originFunding?.[asset]?.[0];
+              const vi = volatilityMap?.[asset];
+              return (
+                <Fragment key={asset}>
+                  <Row asset={asset} row={row} expanded={expandedAsset === asset} favActive={Boolean(favoriteMap[asset])} loggedIn={loggedIn} onSelect={onSelectAsset} onFav={onToggleFavorite} targetFI={tfi} originFI={ofi} volDiff={vi?.mean_diff} targetIsSpot={targetIsSpot} originIsSpot={originIsSpot} walletData={walletStatus?.[asset]} targetMC={targetMarketCode} originMC={originMarketCode} />
+                  {expandedAsset === asset && <tr><td colSpan="99" className="p-0"><PremiumChartPanel asset={asset} originFunding={ofi} originMarketCode={originMarketCode} row={row} targetFunding={tfi} targetMarketCode={targetMarketCode} walletNetworks={walletStatus?.[asset] || {}} /></td></tr>}
+                </Fragment>
+              );
+            }) : connected ? <SkeletonRows colCount={colCount} /> : (
+              <tr><td colSpan="99" className="py-16 text-center text-sm text-ink-muted">실시간 프리미엄 데이터를 불러오는 중입니다...</td></tr>
             )}
           </tbody>
         </table>
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 ? (
-        <div className="mt-2 flex items-center justify-between px-1">
-          <span className="text-[0.68rem] sm:text-xs text-ink-muted">
-            {sortedRows.length}개 중 {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, sortedRows.length)}
-          </span>
-          <div className="flex items-center gap-0.5 sm:gap-1">
-            <button
-              className="rounded px-2 py-1 text-[0.68rem] sm:text-xs font-semibold text-ink-muted transition-colors hover:bg-surface-elevated hover:text-ink disabled:opacity-40"
-              disabled={safePage === 0}
-              onClick={() => setPage((p) => p - 1)}
-              type="button"
-            >
-              이전
-            </button>
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                className={`rounded px-1.5 py-1 text-[0.68rem] sm:text-xs font-semibold transition-colors ${
-                  i === safePage
-                    ? "bg-accent/20 text-accent"
-                    : "text-ink-muted hover:bg-surface-elevated hover:text-ink"
-                }`}
-                onClick={() => setPage(i)}
-                type="button"
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button
-              className="rounded px-2 py-1 text-[0.68rem] sm:text-xs font-semibold text-ink-muted transition-colors hover:bg-surface-elevated hover:text-ink disabled:opacity-40"
-              disabled={safePage >= totalPages - 1}
-              onClick={() => setPage((p) => p + 1)}
-              type="button"
-            >
-              다음
-            </button>
+      {totalPages > 1 && (
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-xs text-ink-muted">{sorted.length}개 중 {sp*PAGE_SIZE+1}–{Math.min((sp+1)*PAGE_SIZE, sorted.length)}</span>
+          <div className="flex items-center gap-1">
+            <button className="rounded px-2 py-1 text-xs text-ink-muted hover:bg-surface-elevated disabled:opacity-30" disabled={sp===0} onClick={() => setPage(p => p-1)} type="button">이전</button>
+            {Array.from({length:totalPages}).map((_,i) => <button key={i} className={`rounded px-2 py-1 text-xs ${i===sp?"bg-accent/20 text-accent":"text-ink-muted hover:bg-surface-elevated"}`} onClick={() => setPage(i)} type="button">{i+1}</button>)}
+            <button className="rounded px-2 py-1 text-xs text-ink-muted hover:bg-surface-elevated disabled:opacity-30" disabled={sp>=totalPages-1} onClick={() => setPage(p => p+1)} type="button">다음</button>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

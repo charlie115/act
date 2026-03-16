@@ -7,7 +7,7 @@ import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 
 function msgKey(m) {
-  return `${m.username}-${m.datetime}`;
+  return `${m.username}-${m.datetime}-${(m.message || "").slice(0, 20)}`;
 }
 
 export default function CommunityMessages({ visible, onNewCount }) {
@@ -128,8 +128,18 @@ export default function CommunityMessages({ visible, onNewCount }) {
           if (msg && msg.username && msg.datetime) {
             setMessages((prev) => {
               const key = msgKey(msg);
-              if (prev.some((m) => msgKey(m) === key)) {
+              // If exact key exists, skip
+              if (prev.some((m) => msgKey(m) === key && !m._optimistic)) {
                 return prev;
+              }
+              // Replace optimistic message from same user with server version
+              const optimisticIdx = prev.findIndex(
+                (m) => m._optimistic && m.username === msg.username && m.message === msg.message
+              );
+              if (optimisticIdx !== -1) {
+                const next = [...prev];
+                next[optimisticIdx] = msg;
+                return next;
               }
               return [...prev, msg];
             });
@@ -139,7 +149,14 @@ export default function CommunityMessages({ visible, onNewCount }) {
               setNewMessageIds((prev) => new Set(prev).add(key));
             }
 
-            shouldScrollRef.current = true;
+            // Only auto-scroll if user is near the bottom
+            const el = containerRef.current;
+            if (el) {
+              const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+              if (nearBottom || msg.username === username) {
+                shouldScrollRef.current = true;
+              }
+            }
           }
         } catch {
           // ignore malformed
@@ -151,17 +168,23 @@ export default function CommunityMessages({ visible, onNewCount }) {
       };
 
       ws.onclose = () => {
-        console.log("[Chat] WebSocket closed, reconnecting...");
         wsRef.current = null;
-        reconnectTimeout = setTimeout(connect, 2000);
+        if (!destroyed) {
+          reconnectTimeout = setTimeout(connect, 2000);
+        }
       };
     }
 
+    let destroyed = false;
     connect();
 
     return () => {
+      destroyed = true;
       clearTimeout(reconnectTimeout);
-      ws?.close();
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
     };
   }, [username]);
 
@@ -193,6 +216,7 @@ export default function CommunityMessages({ visible, onNewCount }) {
       email: user?.email || "",
       message: text,
       datetime: now,
+      _optimistic: true,
     };
 
     setMessages((prev) => [...prev, localMsg]);
@@ -210,11 +234,11 @@ export default function CommunityMessages({ visible, onNewCount }) {
     }
   }
 
-  function handleBlock(blockedUsername) {
+  const handleBlock = useCallback((blockedUsername) => {
     setBlocklist((prev) =>
       prev.includes(blockedUsername) ? prev : [...prev, blockedUsername]
     );
-  }
+  }, []);
 
   const filtered = messages.filter(
     (m) => !blocklist.includes(m.username) && !(m.username !== username && m.status === "blocked")
@@ -243,7 +267,7 @@ export default function CommunityMessages({ visible, onNewCount }) {
         ) : null}
         {filtered.map((item, idx) => (
           <ChatMessage
-            key={`${msgKey(item)}-${idx}`}
+            key={msgKey(item)}
             datetime={item.datetime}
             id={item.id}
             isOwnMessage={item.username === username}

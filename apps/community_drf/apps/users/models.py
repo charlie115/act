@@ -3,7 +3,7 @@ import uuid
 
 from datetime import datetime
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import AbstractUser
 from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MinValueValidator, MaxValueValidator
@@ -283,16 +283,17 @@ class DepositHistory(models.Model):
     description = models.TextField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        try:
-            deposit_balance = self.user.deposit_balance
-        except User.deposit_balance.RelatedObjectDoesNotExist:
-            deposit_balance = DepositBalance(user=self.user)
+        with transaction.atomic():
+            try:
+                deposit_balance = self.user.deposit_balance
+            except User.deposit_balance.RelatedObjectDoesNotExist:
+                deposit_balance = DepositBalance(user=self.user)
 
-        self.balance = deposit_balance.balance + self.change
-        super(DepositHistory, self).save(*args, **kwargs)
+            self.balance = deposit_balance.balance + self.change
+            super(DepositHistory, self).save(*args, **kwargs)
 
-        deposit_balance.balance = self.balance
-        deposit_balance.save()
+            deposit_balance.balance = self.balance
+            deposit_balance.save()
 
     class Meta:
         verbose_name = "Deposit History"

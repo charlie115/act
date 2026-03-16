@@ -1,8 +1,6 @@
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 
-import "quill/dist/quill.snow.css";
-
 import AppShell from "../components/AppShell";
 import Providers from "../components/Providers";
 import { buildMetadata } from "../lib/site";

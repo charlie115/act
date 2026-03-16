@@ -8,6 +8,9 @@
 **/venv/
 apps/community_web/node_modules
 apps/community_web/build
+apps/community_web_next/node_modules
+apps/community_web_next/.next
+test-results
 **/dump.rdb
 **/logs
 **/.env

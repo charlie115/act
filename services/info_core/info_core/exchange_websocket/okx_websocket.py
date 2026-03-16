@@ -27,7 +27,7 @@ from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
 # Maximum allowed message delay in milliseconds - drop messages older than this
-MAX_MESSAGE_DELAY_MS = 100
+MAX_MESSAGE_DELAY_MS = 200
 
 # Standalone function for the websocket
 def init_websocket(stream_data_type, url, data, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=60):
@@ -52,8 +52,10 @@ def init_websocket(stream_data_type, url, data, error_event, proc_name, market_t
             if 'data' in message_dict.keys():
                 message_data_dict = message_dict['data'][0]
                 try:
-                    if '' in message_data_dict.values():
-                        logger.error(f"okx_websocket|Empty string detected.\n{message_data_dict}")
+                    # Only reject if critical price fields are empty/None
+                    critical_fields = ['last', 'askPx', 'bidPx']
+                    if any(message_data_dict.get(f) in ('', None) for f in critical_fields if f in message_data_dict):
+                        logger.warning(f"okx_websocket|Critical field empty.\n{message_data_dict}")
                         return
                 except Exception:
                     logger.error(f"okx_websocket|message_data_dict.values(): {message_data_dict.values()}")

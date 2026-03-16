@@ -133,11 +133,16 @@ class InitDBClient:
     @classmethod
     def close_all_connections(cls):
         """Close all cached MongoDB connections. Call during graceful shutdown."""
+        # Copy and clear under lock, then close outside lock to avoid
+        # holding _cache_lock during potentially slow close() calls
+        # (which could deadlock if close triggers callbacks that acquire the lock).
         with cls._cache_lock:
-            for _key, client in cls._client_cache.items():
-                try:
-                    client.close()
-                except Exception:
-                    pass
+            clients_to_close = list(cls._client_cache.values())
             cls._client_cache.clear()
+        with cls._index_lock:
             cls._indexes_created.clear()
+        for client in clients_to_close:
+            try:
+                client.close()
+            except Exception:
+                pass

@@ -227,7 +227,11 @@ class MarketIngestRuntime:
         self.convert_rate_initialized = False
         self.update_convert_rate_dict_thread = Thread(target=self.update_convert_rate_dict, daemon=True)
         self.update_convert_rate_dict_thread.start()
+        convert_rate_wait_start = time.time()
         while self.convert_rate_initialized is False:
+            if time.time() - convert_rate_wait_start > 60:
+                self.logger.warning("convert_rate initialization timed out after 60 seconds, continuing without it.")
+                break
             time.sleep(0.2)
         self.start_premium_cache_workers()
         self.start_latest_funding_workers()
@@ -528,10 +532,15 @@ class MarketIngestRuntime:
                         for quote_asset in self.enabled_markets_dict[exchange][market_type][contract_type]:
                             comparison_list.append({"exchange": exchange, "market_type": market_type, "contract_type":contract_type, "quote_asset": quote_asset})
 
+        target_market_dict = None
         for i, comparison_dict in enumerate(comparison_list):
             if comparison_dict['exchange'] == target_exchange and comparison_dict['market_type'] == target_market_type:
                 target_market_dict = comparison_list.pop(i)
                 break
+
+        if target_market_dict is None:
+            self.logger.warning(f"get_symbol_list|No matching market found for {target_market}")
+            return []
 
         # Start compare and concat
         target_market_symbols = []

@@ -53,11 +53,11 @@ class WalletMixin(object):
         if api_response.status_code == HTTP_400_BAD_REQUEST:
             raise exceptions.ParseError(detail)
         if api_response.status_code == HTTP_401_UNAUTHORIZED:
-            raise exceptions.AuthenticationFailed
+            raise exceptions.AuthenticationFailed()
         if api_response.status_code == HTTP_403_FORBIDDEN:
-            raise exceptions.PermissionDenied
+            raise exceptions.PermissionDenied()
         if api_response.status_code == HTTP_404_NOT_FOUND:
-            raise exceptions.NotFound
+            raise exceptions.NotFound()
 
         exception = exceptions.APIException(detail=detail)
         exception.status_code = api_response.status_code

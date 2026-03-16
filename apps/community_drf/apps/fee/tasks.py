@@ -2,7 +2,8 @@ import logging
 
 from config.celery import celery
 from datetime import datetime, timedelta
-from django.db.models import Q, Sum
+from decimal import Decimal
+from django.db.models import Q, Sum, DecimalField
 from django.db.models.functions import Coalesce
 from django.utils.timezone import now
 
@@ -101,14 +102,14 @@ def compute_user_monthly_fee_level():
         User.objects.annotate(
             total_fee=Coalesce(
                 Sum(
-                    "deposithistory__change",
+                    "deposit_history__change",
                     filter=Q(
-                        deposithistory__type=DepositHistory.FEE,
-                        deposithistory__registered_datetime__gte=last_month_first_day,
-                        deposithistory__registered_datetime__lte=last_month_last_day,
+                        deposit_history__type=DepositHistory.FEE,
+                        deposit_history__registered_datetime__gte=last_month_first_day,
+                        deposit_history__registered_datetime__lte=last_month_last_day,
                     ),
                 ),
-                0,
+                Decimal("0"), output_field=DecimalField(),
             )
         )
         .values("id", "total_fee")
@@ -132,10 +133,10 @@ def compute_user_fee_level():
         User.objects.annotate(
             total_fee=Coalesce(
                 Sum(
-                    "deposithistory__change",
-                    filter=Q(deposithistory__type=DepositHistory.FEE),
+                    "deposit_history__change",
+                    filter=Q(deposit_history__type=DepositHistory.FEE),
                 ),
-                0,
+                Decimal("0"), output_field=DecimalField(),
             )
         )
         .values("id", "total_fee")

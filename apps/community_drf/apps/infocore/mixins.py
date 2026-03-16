@@ -2,7 +2,6 @@ import json
 import string
 import logging
 
-from django_rq import job
 from django.conf import settings
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from io import BytesIO
@@ -21,7 +20,6 @@ class AssetMixin(object):
             api_key=settings.COINMARKETCAP_API_KEY,
         )
 
-    @job
     def pull_asset_info(self, symbol):
         """Get asset information from CoinMarketCap
 
@@ -86,7 +84,7 @@ class AssetMixin(object):
                 field_name=None,
                 name=f"{info['symbol']}.{logo.format}",
                 content_type=logo.format,
-                size=logo.tell(),
+                size=thumb_io.tell(),
                 charset=None,
             )
 

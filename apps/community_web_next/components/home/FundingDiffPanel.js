@@ -30,12 +30,7 @@ function SkeletonRows() {
 export default function FundingDiffPanel({ fundingDiff = [], loading = false }) {
   return (
     <section className="rounded-lg border border-border bg-background/92 p-4">
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <div>
-          <p className="mb-1.5 text-[0.66rem] font-bold uppercase tracking-[0.14em] text-accent">Funding Diff</p>
-          <h2 className="text-lg font-bold leading-tight text-ink">펀딩비 차이</h2>
-        </div>
-      </div>
+      <h2 className="mb-3 text-sm font-bold text-ink">펀딩비 차이</h2>
       <div className="overflow-x-auto rounded-lg border border-border bg-background/90">
         <table className="w-full border-collapse">
           <thead>
@@ -53,13 +48,13 @@ export default function FundingDiffPanel({ fundingDiff = [], loading = false }) 
               fundingDiff.map((item, index) => (
                 <tr key={`${item.base_asset}-${index}`} className="border-t border-border/50 transition-colors hover:bg-surface-elevated/30">
                   <td className="px-3 py-2 text-sm font-semibold text-ink">{item.base_asset}</td>
-                  <td className={`tabular-nums px-3 py-2 text-right font-mono text-sm ${polarityColor(item.funding_rate_x)}`}>
+                  <td className={`tabular-nums px-3 py-2 text-right text-sm ${polarityColor(item.funding_rate_x)}`}>
                     {formatPercent(item.funding_rate_x)}
                   </td>
-                  <td className={`tabular-nums px-3 py-2 text-right font-mono text-sm ${polarityColor(item.funding_rate_y)}`}>
+                  <td className={`tabular-nums px-3 py-2 text-right text-sm ${polarityColor(item.funding_rate_y)}`}>
                     {formatPercent(item.funding_rate_y)}
                   </td>
-                  <td className={`tabular-nums px-3 py-2 text-right font-mono text-sm font-semibold ${polarityColor(item.funding_rate_diff)}`}>
+                  <td className={`tabular-nums px-3 py-2 text-right text-sm font-semibold ${polarityColor(item.funding_rate_diff)}`}>
                     {formatPercent(item.funding_rate_diff)}
                   </td>
                 </tr>

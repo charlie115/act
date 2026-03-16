@@ -25,6 +25,8 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DATABASE_COMMUNITY}
       - PGDATA=/var/lib/postgresql/data/
+    volumes:
+      - ./scripts/init-extra-databases.sql:/docker-entrypoint-initdb.d/init-extra-databases.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -39,8 +41,8 @@ services:
   redis:
     image: redis:7-alpine
     command: ["redis-server", "/etc/redis/redis.conf"]
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     networks:
       - community-network
     restart: always

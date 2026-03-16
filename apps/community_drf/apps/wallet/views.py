@@ -1,4 +1,5 @@
 from django.core.cache import cache
+from django.db import transaction
 from django.shortcuts import render
 from rest_framework import views, response
 from wallet.mixins import WalletMixin
@@ -114,41 +115,42 @@ class UserWalletTransactionView(WalletMixin, views.APIView):
         data = self.get_data(validated_data)
         total_withdraw_amount = 0
         total_deposit_amount = 0
-            
-        for transaction in data:
-            # Filter out TRX transactions
-            if transaction.get("asset") == "TRX":
-                continue
-            txid = transaction.get('txid')
-            # Check whether the transaction is already processed (same txid)
-            if DepositHistory.objects.filter(txid=txid).exists():
-                continue
-            # Check whether it's incoming transaction(deposit)
-            if transaction.get("owner_address") == transaction.get("to_address"):
-                change = Decimal(transaction.get('amount')).quantize(
-                            Decimal('0.01'), 
-                            rounding=ROUND_HALF_UP
-                        )
-                type = DepositHistory.DEPOSIT
-                total_deposit_amount += change
-            # Check whether it's outgoing transaction(withdraw) -> 회사로 돈 뺄때는 어떻게 처리? -> 처리하지 말자. 이건 나중에 유저 withdrawl 에서 처리하기로.
-            else:
-                # change = (Decimal(transaction.get('amount')) * Decimal('-1')).quantize(
-                #             Decimal('0.01'),
-                #             rounding=ROUND_HALF_UP
-                #         )
-                # type = DepositHistory.WITHDRAW
-                # total_withdraw_amount += change * Decimal('-1')
-                continue
-                
-            # Save the transaction to the deposit history
-            DepositHistory.objects.create(
-                user=User.objects.get(uuid=validated_data.get("user")),
-                change=change,
-                txid=txid,
-                type=type,
-                pending=False,
-            )
+
+        with transaction.atomic():
+            for tx in data:
+                # Filter out TRX transactions
+                if tx.get("asset") == "TRX":
+                    continue
+                txid = tx.get('txid')
+                # Check whether the transaction is already processed (same txid)
+                if DepositHistory.objects.filter(txid=txid).exists():
+                    continue
+                # Check whether it's incoming transaction(deposit)
+                if tx.get("owner_address") == tx.get("to_address"):
+                    change = Decimal(tx.get('amount')).quantize(
+                                Decimal('0.01'),
+                                rounding=ROUND_HALF_UP
+                            )
+                    type = DepositHistory.DEPOSIT
+                    total_deposit_amount += change
+                # Check whether it's outgoing transaction(withdraw) -> 회사로 돈 뺄때는 어떻게 처리? -> 처리하지 말자. 이건 나중에 유저 withdrawl 에서 처리하기로.
+                else:
+                    # change = (Decimal(tx.get('amount')) * Decimal('-1')).quantize(
+                    #             Decimal('0.01'),
+                    #             rounding=ROUND_HALF_UP
+                    #         )
+                    # type = DepositHistory.WITHDRAW
+                    # total_withdraw_amount += change * Decimal('-1')
+                    continue
+
+                # Save the transaction to the deposit history
+                DepositHistory.objects.create(
+                    user=User.objects.get(uuid=validated_data.get("user")),
+                    change=change,
+                    txid=txid,
+                    type=type,
+                    pending=False,
+                )
         
         processed_data = {
             "message": "User wallet transaction processed successfully",

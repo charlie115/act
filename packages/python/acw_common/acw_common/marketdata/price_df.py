@@ -380,9 +380,10 @@ def get_hyperliquid_price_df(redis_client, market_type):
         merged_df["scr"] = 0.0
 
     try:
-        hyperliquid_info_df = pickle.loads(
-            redis_client.get_data(f"hyperliquid_{market_type.lower()}_info_df")
-        )
+        raw_info_data = redis_client.get_data(f"hyperliquid_{market_type.lower()}_info_df")
+        if raw_info_data is None:
+            raise ValueError("hyperliquid info_df not found in Redis")
+        hyperliquid_info_df = pickle.loads(raw_info_data)
         if hyperliquid_info_df is not None and not hyperliquid_info_df.empty:
             info_cols = hyperliquid_info_df[["symbol", "base_asset", "quote_asset"]]
             merged_df = merged_df.merge(info_cols, left_on="s", right_on="symbol", how="inner")

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Trash2, Edit3 } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "../auth/AuthProvider";
 import { getPost, getComments } from "../../lib/board";
@@ -56,11 +56,10 @@ export default function BoardPostClient({ postId }) {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-xl font-bold text-ink">{post.title}</h1>
-            <p className="mt-1 text-xs text-ink-muted">{post.author?.email?.split("@")[0]} · {new Date(post.created_at).toLocaleDateString("ko-KR")}</p>
+            <p className="mt-1 text-xs text-ink-muted">{post.author?.email?.split("@")[0]} · {new Date(post.date_created).toLocaleDateString("ko-KR")}</p>
           </div>
           {isAuthor && (
             <div className="flex gap-2">
-              <Link href={`/community-board/post/${postId}/edit`} className="text-ink-muted hover:text-ink"><Edit3 size={16} /></Link>
               <button onClick={handleDelete} className="text-ink-muted hover:text-negative" type="button"><Trash2 size={16} /></button>
             </div>
           )}
@@ -84,7 +83,7 @@ export default function BoardPostClient({ postId }) {
         <div className="space-y-3">
           {comments.map((c) => (
             <div key={c.id} className="border-b border-border/30 pb-3">
-              <p className="text-xs text-ink-muted">{c.author?.email?.split("@")[0]} · {new Date(c.created_at).toLocaleDateString("ko-KR")}</p>
+              <p className="text-xs text-ink-muted">{c.author?.email?.split("@")[0]} · {new Date(c.date_created).toLocaleDateString("ko-KR")}</p>
               <p className="mt-1 text-sm text-ink">{c.content}</p>
             </div>
           ))}

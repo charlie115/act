@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchCachedJson } from "../../../lib/clientCache";
 
@@ -8,6 +8,7 @@ export default function useKlineWebSocket(targetMarketCode, originMarketCode) {
   const [liveRows, setLiveRows] = useState([]);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState("");
+  const lastReceivedAtRef = useRef(null);
   const [lastReceivedAt, setLastReceivedAt] = useState(null);
 
   useEffect(() => {
@@ -32,7 +33,9 @@ export default function useKlineWebSocket(targetMarketCode, originMarketCode) {
           return;
         }
 
-        setLiveRows(Array.isArray(payload) ? payload : []);
+        setLiveRows((current) =>
+          current.length > 0 ? current : (Array.isArray(payload) ? payload : [])
+        );
       } catch {
         if (!active) {
           return;
@@ -93,7 +96,9 @@ export default function useKlineWebSocket(targetMarketCode, originMarketCode) {
             return next;
           });
 
-          setLastReceivedAt(Date.now());
+          const now = Date.now();
+          lastReceivedAtRef.current = now;
+          setLastReceivedAt(now);
         } catch {
           // Ignore malformed websocket payloads.
         }

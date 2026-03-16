@@ -10,6 +10,9 @@ class Asset(models.Model):
     icon = models.ImageField(upload_to="assets/icons/")
     note = models.CharField(max_length=300, blank=True)
     last_update = models.DateTimeField(default=now)
+    icon_fetch_failures = models.PositiveSmallIntegerField(default=0)
+    icon_fetch_last_attempt_at = models.DateTimeField(null=True, blank=True)
+    icon_fetch_last_error = models.CharField(max_length=500, blank=True)
 
     def __str__(self):
         return self.symbol

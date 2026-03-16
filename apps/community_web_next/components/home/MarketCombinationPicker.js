@@ -91,13 +91,28 @@ const BADGE_COLORS = {
 };
 
 function ExchangeBadge({ exchange, size = "sm" }) {
-  const colorClass = BADGE_COLORS[exchange.toLowerCase()] || "bg-ink-muted/20 text-ink";
-  const sizeClass = size === "sm" ? "h-5 w-5 text-[0.5rem]" : "h-6 w-6 text-[0.56rem]";
+  const px = size === "sm" ? 18 : 22;
+  const key = exchange?.toLowerCase() || "";
   const short = EXCHANGE_SHORT[exchange] || exchange.slice(0, 2);
+  const colorClass = BADGE_COLORS[key] || "bg-ink-muted/20 text-ink";
 
   return (
-    <span className={`inline-flex items-center justify-center rounded-md font-bold ${sizeClass} ${colorClass}`}>
-      {short}
+    <span className="inline-flex flex-shrink-0">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        alt={exchange}
+        className="rounded-md"
+        height={px}
+        width={px}
+        src={`/images/exchanges/${key}.svg`}
+        onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }}
+      />
+      <span
+        className={`items-center justify-center rounded-md font-bold ${colorClass}`}
+        style={{ width: px, height: px, fontSize: px * 0.42, display: "none" }}
+      >
+        {short}
+      </span>
     </span>
   );
 }

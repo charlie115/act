@@ -155,7 +155,11 @@ def build_premium_df(
             target_market_df = get_price_df_fn(redis_client, target_market)
             target_market_df = target_market_df[target_market_df["quote_asset"] == quote_asset_two]
         convert_rate = convert_rate_dict[f"{target_market_code}:{origin_market_code}"]
-        dollar_price = get_dollar_dict_fn(redis_client)["price"]
+        dollar_dict = get_dollar_dict_fn(redis_client)
+        if dollar_dict is None:
+            logger.warning("build_premium_df|get_dollar_dict returned None, skipping premium calculation")
+            return empty_premium_df()
+        dollar_price = dollar_dict["price"]
         return build_premium_df_from_market_snapshots(
             origin_market_df=origin_market_df,
             target_market_df=target_market_df,

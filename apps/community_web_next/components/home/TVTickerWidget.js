@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { TRADING_VIEW_TICKER_SYMBOLS } from "../../lib/constants";
 
 const TICKER_CONFIG = {
   isTransparent: true,
@@ -9,7 +8,13 @@ const TICKER_CONFIG = {
   autosize: true,
   colorTheme: "dark",
   locale: "kr",
-  symbols: TRADING_VIEW_TICKER_SYMBOLS,
+  symbols: [
+    { proName: "FX_IDC:USDKRW", description: "달러" },
+    { proName: "USDTKRW", description: "테더" },
+    { proName: "CRYPTOCAP:BTC.D", description: "BTC도미넌스" },
+    { proName: "BINANCE:BTCUSDT", description: "비트코인" },
+    { proName: "FOREXCOM:NSXUSD", description: "나스닥" },
+  ],
 };
 
 export default function TVTickerWidget() {
@@ -39,7 +44,7 @@ export default function TVTickerWidget() {
   }, []);
 
   return (
-    <div className="mx-auto w-[min(1280px,calc(100vw-20px))] overflow-hidden rounded-lg border border-border bg-background/80">
+    <div className="overflow-hidden" style={{ minHeight: 44 }}>
       <div ref={containerRef} className="tradingview-widget-container" />
     </div>
   );

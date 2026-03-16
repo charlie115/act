@@ -219,7 +219,7 @@ class InitBinanceAdaptor:
             # Convert 'funding_time' from milliseconds to datetime with UTC timezone
             binance_fund['funding_time'] = pd.to_datetime(binance_fund['funding_time'], unit='ms', utc=True)
             # Remove timezone information if needed
-            binance_fund['funding_time'] = binance_fund['funding_time'].dt.tz_localize(None)
+            binance_fund['funding_time'] = binance_fund['funding_time'].dt.tz_convert('UTC').dt.tz_localize(None)
 
             # Fetch and merge funding interval hours
             funding_info_df = self._get_funding_info()
@@ -248,7 +248,7 @@ class InitBinanceAdaptor:
             # Convert 'funding_time' from milliseconds to datetime with UTC timezone
             binance_fund['funding_time'] = pd.to_datetime(binance_fund['funding_time'], unit='ms', errors='coerce', utc=True)
             # Remove timezone information if needed
-            binance_fund['funding_time'] = binance_fund['funding_time'].dt.tz_localize(None)
+            binance_fund['funding_time'] = binance_fund['funding_time'].dt.tz_convert('UTC').dt.tz_localize(None)
             # COIN-M perpetuals use 8 hour funding interval
             binance_fund['funding_interval_hours'] = 8
             # replace '' to None

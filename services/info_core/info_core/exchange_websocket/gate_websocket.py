@@ -39,7 +39,7 @@ from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
 # Maximum allowed message delay in milliseconds - drop messages older than this
-MAX_MESSAGE_DELAY_MS = 100
+MAX_MESSAGE_DELAY_MS = 200
 
 
 def gate_ticker_websocket(symbol_list, error_event, proc_name, market_type, logging_dir, acw_api, admin_id, inactivity_time_secs=120):

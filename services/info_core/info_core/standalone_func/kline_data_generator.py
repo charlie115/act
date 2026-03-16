@@ -869,7 +869,7 @@ def ohlc_interval_generator(
         interval_seconds = interval_minutes * 60
         timestamp = dt.timestamp()
         interval_start_timestamp = (timestamp // interval_seconds) * interval_seconds
-        return datetime.datetime.fromtimestamp(interval_start_timestamp).replace(tzinfo=None)
+        return datetime.datetime.utcfromtimestamp(interval_start_timestamp).replace(tzinfo=None)
 
     # Initialize current interval start
     current_interval_start = None

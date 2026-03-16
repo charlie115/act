@@ -128,11 +128,11 @@ class KlineConsumer(AsyncWebsocketConsumer):
                     columns=[
                         "tp_open",
                         "tp_high",
-                        "tp_high",
                         "tp_low",
                         "tp_close",
                         "LS_open",
                         "LS_high",
+                        "LS_close",
                         "LS_low",
                         "SL_open",
                         "SL_high",

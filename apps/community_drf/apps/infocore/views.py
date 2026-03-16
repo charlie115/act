@@ -1086,7 +1086,7 @@ class RankIndicatorView(views.APIView):
             stream = REDIS_CLI.xread(
                 streams={channel_name: "0-0"},
                 count=1,
-                block=0,
+                block=5000,
             )
             
             if not stream:

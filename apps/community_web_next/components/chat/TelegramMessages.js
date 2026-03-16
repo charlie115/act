@@ -33,7 +33,7 @@ export default function TelegramMessages({ visible, onNewCount }) {
 
       try {
         const payload = await authorizedRequest(
-          `/api/messagecore/?page=${pageNum}`
+          `/messagecore/?page=${pageNum}`
         );
         const results = payload?.results || [];
         const reversed = [...results].reverse();
@@ -80,15 +80,21 @@ export default function TelegramMessages({ visible, onNewCount }) {
   }, [unreadCount, onNewCount]);
 
   // Mark messages as read when they become visible
+  const markedReadRef = useRef(new Set());
+
   useEffect(() => {
     if (!visible) {
       return;
     }
 
-    const unreadMessages = messages.filter((m) => !m.read);
+    const unread = messages.filter(
+      (m) => !m.read && !markedReadRef.current.has(m.id)
+    );
 
-    for (const msg of unreadMessages) {
-      authorizedRequest(`/api/messagecore/${msg.id}/`, {
+    for (const msg of unread) {
+      markedReadRef.current.add(msg.id);
+
+      authorizedRequest(`/messagecore/${msg.id}/`, {
         method: "PATCH",
         body: JSON.stringify({ read: true }),
         headers: { "Content-Type": "application/json" },
@@ -96,7 +102,9 @@ export default function TelegramMessages({ visible, onNewCount }) {
         setMessages((prev) =>
           prev.map((m) => (m.id === msg.id ? { ...m, read: true } : m))
         );
-      }).catch(() => {});
+      }).catch(() => {
+        markedReadRef.current.delete(msg.id);
+      });
     }
   }, [visible, messages, authorizedRequest]);
 

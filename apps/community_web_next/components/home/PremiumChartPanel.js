@@ -71,6 +71,7 @@ function polarityColor(value) {
 }
 
 function formatCompactPrice(price) {
+  if (!Number.isFinite(price)) return "-";
   const abs = Math.abs(price);
   if (abs >= 1_0000_0000) return `${(price / 1_0000_0000).toFixed(3)}억`;
   if (abs >= 100_0000) return `${(price / 1_0000).toFixed(0)}만`;
@@ -387,7 +388,6 @@ export default function PremiumChartPanel({
   targetFunding,
   targetMarketCode,
   walletNetworks = {},
-  walletStatusSummary = { right: [], left: [], all: [] },
 }) {
   const chartContainerRef = useRef(null);
   const tooltipRef = useRef(null);
@@ -406,7 +406,7 @@ export default function PremiumChartPanel({
   const loadingRef = useRef(true);
   const historyGenRef = useRef(0);
   const oldestDatetimeRef = useRef(null);
-  const [interval, setInterval] = useState("1T");
+  const [interval, setChartInterval] = useState("1T");
   const [chartStyle, setChartStyle] = useState("ohlc");
   const [dataMode, setDataMode] = useState("premium");
   const [history, setHistory] = useState([]);
@@ -1070,6 +1070,12 @@ export default function PremiumChartPanel({
   const targetWithdraw = uniq(walletNetworks?.[targetExchange]?.withdraw || []);
   const originDeposit = uniq(walletNetworks?.[originExchange]?.deposit || []);
   const originWithdraw = uniq(walletNetworks?.[originExchange]?.withdraw || []);
+  // Compute active networks: right = target withdraw ∩ origin deposit, left = origin withdraw ∩ target deposit
+  const walletStatusSummary = useMemo(() => {
+    const right = targetWithdraw.filter((n) => originDeposit.includes(n));
+    const left = originWithdraw.filter((n) => targetDeposit.includes(n));
+    return { right, left, all: [...new Set([...right, ...left])] };
+  }, [targetWithdraw, originDeposit, originWithdraw, targetDeposit]);
   const hasTargetFundingTime = !!targetFunding?.funding_time;
   const hasOriginFundingTime = !!originFunding?.funding_time;
 
@@ -1170,7 +1176,7 @@ export default function PremiumChartPanel({
                   ? "bg-accent/15 text-accent"
                   : "text-ink-muted hover:text-ink hover:bg-surface-elevated/60"
               }`}
-              onClick={() => setInterval(opt.value)}
+              onClick={() => setChartInterval(opt.value)}
               type="button"
             >
               {opt.label}

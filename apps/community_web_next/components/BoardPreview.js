@@ -12,23 +12,14 @@ const CATEGORY_COLORS = POST_CATEGORY_LIST.reduce((acc, cat) => {
 export default function BoardPreview({ posts = [] }) {
   return (
     <section className="rounded-lg border border-border bg-background/92 p-4">
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <div>
-          <p className="mb-1.5 text-[0.66rem] font-bold uppercase tracking-[0.14em] text-accent">Community Board</p>
-          <h2 className="text-lg font-bold leading-tight text-ink">최근 커뮤니티 업데이트</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1 text-[0.78rem] font-bold text-ink-muted">
-            <MessageSquareQuote size={14} strokeWidth={2} />
-            Discussion
-          </span>
-          <Link
-            className="inline-flex items-center rounded-lg border border-border/50 bg-background/70 px-3 py-1.5 text-xs font-bold text-ink-muted transition-colors hover:border-accent/30 hover:text-ink"
-            href="/community-board"
-          >
-            게시판 이동
-          </Link>
-        </div>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-bold text-ink">최근 게시글</h2>
+        <Link
+          className="text-xs font-semibold text-ink-muted transition-colors hover:text-accent"
+          href="/community-board"
+        >
+          게시판 이동
+        </Link>
       </div>
 
       {posts.length ? (
