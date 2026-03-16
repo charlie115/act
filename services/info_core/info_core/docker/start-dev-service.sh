@@ -2,10 +2,15 @@
 # Start Redis server in the background
 echo "Starting local Redis server..."
 redis-server --daemonize yes
- 
-# Verify that Redis started
-redis-cli ping
-if [ $? -eq 0 ]; then
+sleep 1
+
+# Verify that Redis started (retry up to 5 times)
+for i in $(seq 1 5); do
+    redis-cli ping && break
+    echo "Waiting for Redis to start... (attempt $i)"
+    sleep 1
+done
+if redis-cli ping > /dev/null 2>&1; then
     echo "Local Redis server started successfully."
 else
     echo "Failed to start local Redis server."

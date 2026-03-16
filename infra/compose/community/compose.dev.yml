@@ -57,8 +57,42 @@ services:
     volumes:
       - ${HOME}/dev-info-core/logs:/home/info_core/info_core/loggers/logs
 
+  minio:
+    image: minio/minio:latest
+    container_name: dev-community-minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin123
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    volumes:
+      - ${HOME}/dev-community-minio/data:/data
+    networks:
+      - community-network
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: dev-community-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 minioadmin minioadmin123;
+      mc mb local/community-media --ignore-existing;
+      mc anonymous set download local/community-media;
+      exit 0;
+      "
+    networks:
+      - community-network
+
   hdwallet-service:
-    profiles: ["disabled"]
+    container_name: dev-community-hdwallet
+    image: hdwallet-service:dev
+    volumes:
+      - ${HOME}/dev-community-apikey:/api_key:ro
 
   hd-api-key-generator:
     container_name: dev-hd-api-key-generator

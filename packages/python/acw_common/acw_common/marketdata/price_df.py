@@ -428,3 +428,35 @@ def get_price_df(redis_client, market_code):
         _store_cached_price_df(market_code, signature_after, df)
 
     return df
+
+
+def get_price_df_by_quote_asset(redis_client, market_code, quote_asset, copy_result=True):
+    """Get price DataFrame filtered by quote_asset, with per-quote caching."""
+    exchange = market_code.split("_")[0].upper()
+    market_type = "_".join(market_code.split("_")[1:]).upper()
+
+    handler = EXCHANGE_HANDLERS.get(exchange)
+    if handler is None:
+        raise ValueError(f"get_price_df_by_quote_asset|exchange: {exchange} is not supported!")
+
+    cache_key = _get_quote_cache_key(market_code, quote_asset)
+    signature = get_market_data_signature(redis_client, market_code)
+
+    if _signature_has_versions(signature):
+        cached_df = _get_cached_price_df_by_quote(cache_key, signature, copy_result=copy_result)
+        if cached_df is not None:
+            return cached_df
+
+    if exchange in {"BINANCE", "BYBIT", "OKX", "GATE", "HYPERLIQUID"}:
+        df = handler(redis_client, market_type)
+    else:
+        df = handler(redis_client)
+
+    df = df[df["quote_asset"] == quote_asset]
+
+    if _signature_has_versions(signature):
+        _store_cached_price_df_by_quote(cache_key, signature, df)
+
+    if copy_result:
+        return df.copy()
+    return df
