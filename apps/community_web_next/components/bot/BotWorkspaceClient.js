@@ -3,6 +3,19 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Activity,
+  ArrowLeftRight,
+  ChevronRight,
+  Crosshair,
+  History,
+  Key,
+  LayoutGrid,
+  MessageCircle,
+  ScanLine,
+  Settings,
+  Wallet,
+} from "lucide-react";
 
 import Box from "@mui/material/Box";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
@@ -27,14 +40,14 @@ import BotTriggersClient from "./BotTriggersClient";
 import { getMarketOption } from "../../lib/markets";
 
 const tabs = [
-  { key: "triggers", label: "Triggers" },
-  { key: "scanner", label: "Scanner" },
-  { key: "position", label: "Position" },
-  { key: "capital", label: "Capital" },
-  { key: "pnl-history", label: "PnL History" },
-  { key: "settings", label: "BOT Settings" },
-  { key: "api-key", label: "API Key Settings" },
-  { key: "deposit", label: "Deposit / Withdrawal" },
+  { key: "triggers", label: "트리거", icon: Crosshair },
+  { key: "scanner", label: "스캐너", icon: ScanLine },
+  { key: "position", label: "포지션", icon: Activity },
+  { key: "capital", label: "자본", icon: LayoutGrid },
+  { key: "pnl-history", label: "손익", icon: History },
+  { key: "settings", label: "설정", icon: Settings },
+  { key: "api-key", label: "API 키", icon: Key },
+  { key: "deposit", label: "입출금", icon: Wallet },
 ];
 
 const MARKET_CODES_REQUIRED = ["settings", "position", "capital"];
@@ -284,57 +297,66 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
     }
 
     return (
-        <BotPlaceholderPanel
-          title={`${tabs.find((item) => item.key === currentTab)?.label || "Bot"} 이전 중`}
-          description="이 탭은 아직 레거시 CRA 구현 전체를 다 옮기지 못했습니다."
-        />
-      );
+      <BotPlaceholderPanel
+        title={`${tabs.find((item) => item.key === currentTab)?.label || "Bot"} 이전 중`}
+        description="이 탭은 아직 레거시 CRA 구현 전체를 다 옮기지 못했습니다."
+      />
+    );
   }
 
+  const activeTab = tabs.find((t) => t.key === currentTab);
+
   return (
-    <div className="section-stack">
+    <div className="grid gap-4">
+      {/* Telegram connect banner */}
       {!user?.telegram_chat_id ? (
-        <section className="surface-card">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Telegram</p>
-              <h1>봇 사용 전 텔레그램 연결이 필요합니다.</h1>
-            </div>
-          </div>
-          <div className="inline-note">
-            트리거 생성, 알림, 자동매매 운영 UX를 기존과 같게 유지하려면 텔레그램 계정을 먼저 연결해야 합니다.
-          </div>
-          <div className="modal-card__actions">
-            <TelegramConnectButton />
-          </div>
-        </section>
-      ) : null}
-      <section className="surface-card">
-        <div className="section-heading">
+        <div className="flex flex-col gap-3 rounded-lg border border-amber-500/20 bg-amber-950/20 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="eyebrow">Bot</p>
-            <h1>트레이딩 봇 콘솔</h1>
+            <div className="mb-1 flex items-center gap-2">
+              <MessageCircle size={16} strokeWidth={2} className="text-amber-400" />
+              <span className="text-sm font-bold text-ink">텔레그램 연결 필요</span>
+            </div>
+            <p className="text-[0.78rem] leading-relaxed text-ink-muted">
+              트리거 알림, 자동매매 운영을 위해 텔레그램을 먼저 연결해주세요.
+            </p>
           </div>
-          <div className="tab-strip">
-            {tabs.map((tab) => (
+          <TelegramConnectButton />
+        </div>
+      ) : null}
+
+      {/* Tab bar + Market selector */}
+      <div className="rounded-lg border border-border bg-background/92 overflow-hidden">
+        {/* Tab navigation */}
+        <div className="flex items-center gap-1 overflow-x-auto border-b border-border/50 px-3 py-2">
+          {tabs.map((tab) => {
+            const active = currentTab === tab.key;
+            const Icon = tab.icon;
+            return (
               <Link
                 key={tab.key}
-                className={`tab-pill${currentTab === tab.key ? " tab-pill--active" : ""}`}
+                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-[0.74rem] font-semibold transition-all ${
+                  active
+                    ? "bg-accent/15 text-accent shadow-sm"
+                    : "text-ink-muted hover:bg-surface-elevated/50 hover:text-ink"
+                }`}
                 href={buildHref(tab.key)}
               >
+                <Icon size={14} strokeWidth={2} />
                 {tab.label}
               </Link>
-            ))}
-          </div>
+            );
+          })}
         </div>
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Trade Config</p>
-            <h2>조회 대상 선택</h2>
+
+        {/* Market code selector row */}
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-surface-elevated/10">
+          <div className="flex items-center gap-2 text-[0.72rem] text-ink-muted">
+            <ArrowLeftRight size={14} strokeWidth={2} className="text-accent/60" />
+            <span>거래 대상</span>
           </div>
           <BotMarketCodeCombinationSelector
             ref={marketCodeSelectorRef}
-            buttonStyle={{ minWidth: 320 }}
+            buttonStyle={{ minWidth: 280 }}
             marketCodesRequired={MARKET_CODES_REQUIRED.includes(currentTab) && currentTab !== "settings"}
             onSelectItem={(nextValue) => {
               const nextConfig = nextValue?.trade_config_uuid;
@@ -344,7 +366,6 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
                 );
                 return;
               }
-
               router.replace(`/bot/${currentTab}?config=${nextConfig}`);
             }}
             options={marketCodeCombinationList}
@@ -359,8 +380,14 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
             }
           />
         </div>
-      </section>
-      {user?.telegram_chat_id ? renderContent() : null}
+      </div>
+
+      {/* Content area */}
+      {user?.telegram_chat_id ? (
+        <div className="rounded-lg border border-border bg-background/92">
+          {renderContent()}
+        </div>
+      ) : null}
     </div>
   );
 }

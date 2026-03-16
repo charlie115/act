@@ -1,136 +1,22 @@
 "use client";
 
-import { memo, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
 import { fetchCachedJson } from "../../lib/clientCache";
+import MarketCombinationPicker from "./MarketCombinationPicker";
+import MarketSummaryBar from "./MarketSummaryBar";
+import PremiumTable from "./PremiumTable";
+import AiRankPanel from "./AiRankPanel";
+import FundingDiffPanel from "./FundingDiffPanel";
 import SurfaceNotice from "../ui/SurfaceNotice";
-
-function formatNumber(value, maximumFractionDigits = 2, minimumFractionDigits = 0) {
-  if (value === null || value === undefined || value === "") {
-    return "-";
-  }
-
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits,
-    minimumFractionDigits,
-  }).format(Number(value));
-}
-
-function formatPercent(value) {
-  if (value === null || value === undefined || value === "") {
-    return "-";
-  }
-
-  return `${Number(value).toFixed(4)}%`;
-}
-
-function formatVolatility(value) {
-  if (value === null || value === undefined || value === "") {
-    return "-";
-  }
-
-  return Number(value).toFixed(3);
-}
-
-function formatShortVolume(value) {
-  const numberValue = Number(value || 0);
-
-  if (!Number.isFinite(numberValue)) {
-    return "-";
-  }
-
-  if (Math.abs(numberValue) >= 1_000_000_000) {
-    return `${(numberValue / 1_000_000_000).toFixed(2)}B`;
-  }
-
-  if (Math.abs(numberValue) >= 1_000_000) {
-    return `${(numberValue / 1_000_000).toFixed(2)}M`;
-  }
-
-  if (Math.abs(numberValue) >= 1_000) {
-    return `${(numberValue / 1_000).toFixed(1)}K`;
-  }
-
-  return formatNumber(numberValue, 2, 0);
-}
+import { TextInput } from "../ui/text-input.jsx";
+import useKlineWebSocket from "./hooks/useKlineWebSocket";
+import useMarketData from "./hooks/useMarketData";
 
 function prettifyMarketCode(code) {
   return code?.replaceAll("_", " ") || "";
 }
-
-function hasTransferRoute(walletStatus, targetMarketCode, originMarketCode, asset) {
-  const assetStatus = walletStatus?.[asset];
-  if (!assetStatus) {
-    return false;
-  }
-
-  const targetExchange = targetMarketCode.split("_")[0];
-  const originExchange = originMarketCode.split("_")[0];
-
-  const withdrawNetworks = assetStatus?.[targetExchange]?.withdraw || [];
-  const depositNetworks = assetStatus?.[originExchange]?.deposit || [];
-
-  return withdrawNetworks.some((network) => depositNetworks.includes(network));
-}
-
-const PremiumTableRow = memo(
-  function PremiumTableRow({
-    asset,
-    row,
-    favoriteActive,
-    loggedIn,
-    targetFundingRate,
-    originFundingRate,
-    volatilityMeanDiff,
-    transferAvailable,
-    onToggleFavorite,
-  }) {
-    const spread = Number(row.SL_close || 0) - Number(row.LS_close || 0);
-
-    return (
-      <tr>
-        <td>
-          <button
-            className={`favorite-button${favoriteActive ? " favorite-button--active" : ""}`}
-            disabled={!loggedIn}
-            onClick={() => onToggleFavorite(asset)}
-            type="button"
-          >
-            ★
-          </button>
-        </td>
-        <td>{asset}</td>
-        <td>
-          <div>{formatNumber(row.tp, 1)}</div>
-          <small className="muted-copy">
-            {row.scr > 0 ? "+" : ""}
-            {formatNumber(row.scr, 2, 2)}%
-          </small>
-        </td>
-        <td>{formatNumber(row.LS_close, 3, 2)}</td>
-        <td>{formatNumber(row.SL_close, 3, 2)}</td>
-        <td>
-          {spread > 0 ? "+" : ""}
-          {formatNumber(spread, 2, 1)}%p
-        </td>
-        <td>{formatVolatility(volatilityMeanDiff)}</td>
-        <td>{formatPercent(targetFundingRate)}</td>
-        <td>{formatPercent(originFundingRate)}</td>
-        <td>{transferAvailable ? "가능" : "-"}</td>
-        <td>{formatShortVolume(row.atp24h)}</td>
-      </tr>
-    );
-  },
-  (previousProps, nextProps) =>
-    previousProps.row === nextProps.row &&
-    previousProps.favoriteActive === nextProps.favoriteActive &&
-    previousProps.loggedIn === nextProps.loggedIn &&
-    previousProps.targetFundingRate === nextProps.targetFundingRate &&
-    previousProps.originFundingRate === nextProps.originFundingRate &&
-    previousProps.volatilityMeanDiff === nextProps.volatilityMeanDiff &&
-    previousProps.transferAvailable === nextProps.transferAvailable
-);
 
 export default function HomeMarketOverviewClient() {
   const { authorizedListRequest, authorizedRequest, loggedIn } = useAuth();
@@ -138,18 +24,8 @@ export default function HomeMarketOverviewClient() {
   const [statuses, setStatuses] = useState([]);
   const [targetMarketCode, setTargetMarketCode] = useState("");
   const [originMarketCode, setOriginMarketCode] = useState("");
-  const [fundingDiff, setFundingDiff] = useState([]);
-  const [aiRecommendations, setAiRecommendations] = useState([]);
-  const [favoriteAssets, setFavoriteAssets] = useState([]);
   const [search, setSearch] = useState("");
-  const [volatility, setVolatility] = useState([]);
-  const [targetFunding, setTargetFunding] = useState({});
-  const [originFunding, setOriginFunding] = useState({});
-  const [walletStatus, setWalletStatus] = useState({});
-  const [liveRows, setLiveRows] = useState([]);
-  const [realtimeConnected, setRealtimeConnected] = useState(false);
-  const [realtimeError, setRealtimeError] = useState("");
-  const [lastRealtimeAt, setLastRealtimeAt] = useState(null);
+  const [expandedAsset, setExpandedAsset] = useState("");
   const [pageError, setPageError] = useState("");
 
   const deferredSearch = useDeferredValue(search);
@@ -171,6 +47,7 @@ export default function HomeMarketOverviewClient() {
     return originOptions[0];
   }, [originMarketCode, originOptions]);
 
+  // Load base data: market codes + statuses
   useEffect(() => {
     let active = true;
 
@@ -211,310 +88,48 @@ export default function HomeMarketOverviewClient() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!targetMarketCode || !effectiveOriginMarketCode) {
-      return;
-    }
-
-    let active = true;
-    let reconnectTimer = null;
-    let socket = null;
-
-    async function seedCurrentSnapshot() {
-      try {
-        const payload = await fetchCachedJson(
-          `/api/infocore/kline-current/?target_market_code=${encodeURIComponent(
-            targetMarketCode
-          )}&origin_market_code=${encodeURIComponent(effectiveOriginMarketCode)}`,
-          { ttlMs: 250 }
-        );
-
-        if (!active) {
-          return;
-        }
-
-        setLiveRows(Array.isArray(payload) ? payload : []);
-      } catch {
-        if (!active) {
-          return;
-        }
-        setLiveRows([]);
-      }
-    }
-
-    const wsBase = (
-      process.env.NEXT_PUBLIC_DRF_WS_URL ||
-      process.env.NEXT_PUBLIC_DRF_URL?.replace(/^http/i, "ws") ||
-      window.location.origin.replace(/^http/i, "ws")
-    ).replace(/\/$/, "");
-
-    const url = new URL(`${wsBase}/kline/`);
-    url.searchParams.set("target_market_code", targetMarketCode);
-    url.searchParams.set("origin_market_code", effectiveOriginMarketCode);
-    url.searchParams.set("interval", "1T");
-
-    const connect = () => {
-      socket = new WebSocket(url.toString());
-
-      socket.addEventListener("open", () => {
-        setRealtimeConnected(true);
-        setRealtimeError("");
-      });
-
-      socket.addEventListener("message", (event) => {
-        const message = JSON.parse(event.data);
-        if (message.type !== "publish") {
-          return;
-        }
-
-        try {
-          const payload = JSON.parse(message.result);
-          if (!Array.isArray(payload)) {
-            return;
-          }
-
-          setLiveRows((current) => {
-            const next = Array.isArray(current) ? [...current] : [];
-            const nextIndex = new Map(next.map((item, index) => [item.base_asset, index]));
-
-            payload.forEach((item) => {
-              if (!item?.base_asset) {
-                return;
-              }
-
-              const existingIndex = nextIndex.get(item.base_asset);
-              if (existingIndex === undefined) {
-                nextIndex.set(item.base_asset, next.length);
-                next.push(item);
-              } else {
-                next[existingIndex] = item;
-              }
-            });
-
-            return next;
-          });
-
-          setLastRealtimeAt(Date.now());
-        } catch {
-          // Ignore malformed websocket payloads.
-        }
-      });
-
-      socket.addEventListener("error", () => {
-        setRealtimeConnected(false);
-        setRealtimeError("실시간 프리미엄 연결이 불안정합니다.");
-      });
-
-      socket.addEventListener("close", () => {
-        setRealtimeConnected(false);
-        if (!active) {
-          return;
-        }
-        reconnectTimer = window.setTimeout(connect, 1500);
-      });
-    };
-
-    seedCurrentSnapshot();
-    connect();
-
-    return () => {
-      active = false;
-      if (reconnectTimer) {
-        window.clearTimeout(reconnectTimer);
-      }
-      if (socket) {
-        socket.close();
-      }
-    };
-  }, [effectiveOriginMarketCode, targetMarketCode]);
-
-  const realTimeDataList = useMemo(
-    () =>
-      [...liveRows].sort(
-        (left, right) => Number(right.atp24h || 0) - Number(left.atp24h || 0)
-      ),
-    [liveRows]
+  // WebSocket hook
+  const { liveRows, connected, error: realtimeError, lastReceivedAt } = useKlineWebSocket(
+    targetMarketCode,
+    effectiveOriginMarketCode
   );
 
+  // Filter & search
   const filteredRows = useMemo(() => {
     const normalizedQuery = deferredSearch.trim().toLowerCase();
 
-    return realTimeDataList.filter((item) =>
+    return liveRows.filter((item) =>
       normalizedQuery ? item.base_asset?.toLowerCase().includes(normalizedQuery) : true
     );
-  }, [deferredSearch, realTimeDataList]);
+  }, [deferredSearch, liveRows]);
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadDerivedData() {
-      if (!targetMarketCode || !effectiveOriginMarketCode) {
-        return;
-      }
-
-      try {
-        const [fundingDiffPayload, aiPayload] = await Promise.all([
-          fetchCachedJson(
-            `/api/infocore/funding-rate/diff/?market_code_x=${encodeURIComponent(
-              targetMarketCode
-            )}&market_code_y=${encodeURIComponent(effectiveOriginMarketCode)}`,
-            { ttlMs: 15000 }
-          ),
-          fetchCachedJson(
-            `/api/infocore/ai-rank-recommendation/?target_market_code=${encodeURIComponent(
-              targetMarketCode
-            )}&origin_market_code=${encodeURIComponent(effectiveOriginMarketCode)}`,
-            { ttlMs: 30000 }
-          ),
-        ]);
-
-        if (!active) {
-          return;
-        }
-
-        setFundingDiff(fundingDiffPayload || []);
-        setAiRecommendations(aiPayload || []);
-      } catch {
-        if (!active) {
-          return;
-        }
-
-        setFundingDiff([]);
-        setAiRecommendations([]);
-      }
-    }
-
-    loadDerivedData();
-
-    return () => {
-      active = false;
-    };
-  }, [effectiveOriginMarketCode, targetMarketCode]);
-
+  // Symbol list for detail fetches
   const detailSymbols = useMemo(
     () => filteredRows.slice(0, 60).map((item) => item.base_asset).filter(Boolean),
     [filteredRows]
   );
 
-  const detailSymbolSet = useMemo(
-    () => [...new Set(detailSymbols)].sort(),
-    [detailSymbols]
-  );
+  // Market data hook
+  const {
+    fundingDiff,
+    aiRecommendations,
+    volatilityMap,
+    targetFunding,
+    originFunding,
+    walletStatus,
+    favoriteAssets,
+    favoriteMap,
+    toggleFavorite,
+  } = useMarketData({
+    targetMarketCode,
+    originMarketCode: effectiveOriginMarketCode,
+    symbolList: detailSymbols,
+    loggedIn,
+    authorizedListRequest,
+    authorizedRequest,
+  });
 
-  const detailSymbolQuery = useMemo(
-    () => detailSymbolSet.join(","),
-    [detailSymbolSet]
-  );
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadAssetDetails() {
-      if (!targetMarketCode || !effectiveOriginMarketCode || detailSymbolSet.length === 0) {
-        setVolatility([]);
-        setTargetFunding({});
-        setOriginFunding({});
-        setWalletStatus({});
-        return;
-      }
-
-      const assetParams = new URLSearchParams();
-      assetParams.set("base_asset", detailSymbolQuery);
-      assetParams.set("target_market_code", targetMarketCode);
-      assetParams.set("origin_market_code", effectiveOriginMarketCode);
-      assetParams.set("tz", "Asia/Seoul");
-
-      const targetFundingParams = new URLSearchParams();
-      targetFundingParams.set("base_asset", detailSymbolQuery);
-      targetFundingParams.set("market_code", targetMarketCode);
-      targetFundingParams.set("last_n", "1");
-      targetFundingParams.set("tz", "Asia/Seoul");
-
-      const originFundingParams = new URLSearchParams();
-      originFundingParams.set("base_asset", detailSymbolQuery);
-      originFundingParams.set("market_code", effectiveOriginMarketCode);
-      originFundingParams.set("last_n", "1");
-      originFundingParams.set("tz", "Asia/Seoul");
-
-      try {
-        const [volatilityPayload, targetFundingPayload, originFundingPayload, walletStatusPayload] =
-          await Promise.all([
-            fetchCachedJson(`/api/infocore/kline-volatility/?${assetParams.toString()}`, {
-              ttlMs: 30000,
-            }),
-            fetchCachedJson(`/api/infocore/funding-rate/?${targetFundingParams.toString()}`, {
-              ttlMs: 15000,
-            }),
-            fetchCachedJson(`/api/infocore/funding-rate/?${originFundingParams.toString()}`, {
-              ttlMs: 15000,
-            }),
-            fetchCachedJson(`/api/infocore/wallet-status/?${assetParams.toString()}`, {
-              ttlMs: 30000,
-            }),
-          ]);
-
-        if (!active) {
-          return;
-        }
-
-        setVolatility(volatilityPayload || []);
-        setTargetFunding(targetFundingPayload || {});
-        setOriginFunding(originFundingPayload || {});
-        setWalletStatus(walletStatusPayload || {});
-      } catch {
-        if (!active) {
-          return;
-        }
-
-        setVolatility([]);
-        setTargetFunding({});
-        setOriginFunding({});
-        setWalletStatus({});
-      }
-    }
-
-    loadAssetDetails();
-
-    return () => {
-      active = false;
-    };
-  }, [detailSymbolQuery, detailSymbolSet.length, effectiveOriginMarketCode, targetMarketCode]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadFavorites() {
-      if (!loggedIn || !targetMarketCode || !effectiveOriginMarketCode) {
-        setFavoriteAssets([]);
-        return;
-      }
-
-      try {
-        const payload = await authorizedListRequest(
-          `/users/favorite-assets/?market_codes=${encodeURIComponent(
-            targetMarketCode
-          )}&market_codes=${encodeURIComponent(effectiveOriginMarketCode)}`
-        );
-
-        if (!active) {
-          return;
-        }
-
-        setFavoriteAssets(payload);
-      } catch {
-        if (active) {
-          setFavoriteAssets([]);
-        }
-      }
-    }
-
-    loadFavorites();
-
-    return () => {
-      active = false;
-    };
-  }, [authorizedListRequest, effectiveOriginMarketCode, loggedIn, targetMarketCode]);
-
+  // Maintenance checks
   const maintenanceItems = useMemo(
     () =>
       statuses.filter(
@@ -526,24 +141,7 @@ export default function HomeMarketOverviewClient() {
     [effectiveOriginMarketCode, statuses, targetMarketCode]
   );
 
-  const volatilityMap = useMemo(
-    () =>
-      volatility.reduce((accumulator, item) => {
-        accumulator[item.base_asset] = item;
-        return accumulator;
-      }, {}),
-    [volatility]
-  );
-
-  const favoriteMap = useMemo(
-    () =>
-      favoriteAssets.reduce((accumulator, item) => {
-        accumulator[item.base_asset] = item.id;
-        return accumulator;
-      }, {}),
-    [favoriteAssets]
-  );
-
+  // Display rows: favorites first, then by volume
   const displayRows = useMemo(() => {
     const favoriteSymbols = new Set(favoriteAssets.map((item) => item.base_asset));
     const items = [...filteredRows];
@@ -560,96 +158,102 @@ export default function HomeMarketOverviewClient() {
     return items;
   }, [favoriteAssets, filteredRows]);
 
-  async function toggleFavorite(symbol) {
-    if (!loggedIn) {
-      return;
+  // Only show expanded asset if it's in the visible list
+  const visibleExpandedAsset = useMemo(() => {
+    if (!expandedAsset) {
+      return "";
     }
 
+    return displayRows.some((row) => row.base_asset === expandedAsset) ? expandedAsset : "";
+  }, [displayRows, expandedAsset]);
+
+  const selectedPairLabel = useMemo(() => {
+    if (!targetMarketCode || !effectiveOriginMarketCode) {
+      return "시장 조합 대기 중";
+    }
+
+    return `${prettifyMarketCode(targetMarketCode)} → ${prettifyMarketCode(effectiveOriginMarketCode)}`;
+  }, [effectiveOriginMarketCode, targetMarketCode]);
+
+  async function handleToggleFavorite(symbol) {
     try {
-      const favoriteId = favoriteMap[symbol];
-
-      if (favoriteId) {
-        await authorizedRequest(`/users/favorite-assets/${favoriteId}/`, {
-          method: "DELETE",
-        });
-      } else {
-        await authorizedRequest("/users/favorite-assets/", {
-          method: "POST",
-          body: {
-            base_asset: symbol,
-            market_codes: [targetMarketCode, effectiveOriginMarketCode],
-          },
-        });
-      }
-
-      const payload = await authorizedListRequest(
-        `/users/favorite-assets/?market_codes=${encodeURIComponent(
-          targetMarketCode
-        )}&market_codes=${encodeURIComponent(effectiveOriginMarketCode)}`
-      );
-      setFavoriteAssets(payload);
+      await toggleFavorite(symbol);
     } catch (requestError) {
       setPageError(requestError.message || "즐겨찾기 업데이트에 실패했습니다.");
     }
   }
 
   return (
-    <div className="section-stack">
-      <section className="surface-card">
-        <div className="section-heading">
+    <div className="grid gap-4">
+      {/* Market Summary Bar */}
+      <MarketSummaryBar
+        liveRows={liveRows}
+        connected={connected}
+        lastReceivedAt={lastReceivedAt}
+      />
+
+      {/* Premium Table Section */}
+      <section className="rounded-lg border border-border bg-background/92 p-4">
+        <div className="mb-3 flex items-end justify-between gap-3">
           <div>
-            <p className="eyebrow">Live Premium Table</p>
-            <h2>실시간 프리미엄 테이블</h2>
+            <p className="mb-1.5 text-[0.66rem] font-bold uppercase tracking-[0.14em] text-accent">Live Premium Table</p>
+            <h2 className="text-xl font-bold leading-tight text-ink">실시간 프리미엄 테이블</h2>
           </div>
-          <span className="auth-chip">{displayRows.length} assets</span>
+          <span className="rounded-lg border border-border bg-background/70 px-3 py-1.5 text-xs font-semibold text-ink-muted">
+            {displayRows.length}개 자산
+          </span>
         </div>
 
-        <div className="home-selector-grid">
-          <select
-            className="select-input"
-            onChange={(event) => setTargetMarketCode(event.target.value)}
-            value={targetMarketCode}
-          >
-            {Object.keys(marketCodes).map((marketCode) => (
-              <option key={marketCode} value={marketCode}>
-                {prettifyMarketCode(marketCode)}
-              </option>
-            ))}
-          </select>
-          <select
-            className="select-input"
-            onChange={(event) => setOriginMarketCode(event.target.value)}
-            value={effectiveOriginMarketCode}
-          >
-            {originOptions.map((marketCode) => (
-              <option key={marketCode} value={marketCode}>
-                {prettifyMarketCode(marketCode)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="news-filter-bar">
-          <input
-            className="auth-form__input"
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="자산 검색"
-            value={search}
+        <div className="mb-3 grid gap-2.5">
+          <MarketCombinationPicker
+            marketCodes={marketCodes}
+            onOriginChange={setOriginMarketCode}
+            onTargetChange={setTargetMarketCode}
+            originMarketCode={effectiveOriginMarketCode}
+            targetMarketCode={targetMarketCode}
           />
+          <div className="justify-self-end" style={{ width: "min(320px, 100%)" }}>
+            <TextInput
+              label="자산 검색"
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="자산 검색"
+              value={search}
+            />
+          </div>
+        </div>
+
+        {/* Status strip */}
+        <div className="mb-3 grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-border bg-border">
+          <div className="flex flex-col gap-1 bg-background/96 px-3 py-2">
+            <span className="text-[0.56rem] font-bold uppercase tracking-[0.14em] text-accent">선택 조합</span>
+            <strong className="text-xs font-bold text-ink">{selectedPairLabel}</strong>
+          </div>
+          <div className="flex flex-col gap-1 bg-background/96 px-3 py-2">
+            <span className="text-[0.56rem] font-bold uppercase tracking-[0.14em] text-accent">실시간 상태</span>
+            <strong className="text-xs font-bold text-ink">{connected ? "연결됨" : "재연결 중"}</strong>
+          </div>
+          <div className="flex flex-col gap-1 bg-background/96 px-3 py-2">
+            <span className="text-[0.56rem] font-bold uppercase tracking-[0.14em] text-accent">즐겨찾기</span>
+            <strong className="text-xs font-bold text-ink">{favoriteAssets.length}</strong>
+          </div>
+          <div className="flex flex-col gap-1 bg-background/96 px-3 py-2">
+            <span className="text-[0.56rem] font-bold uppercase tracking-[0.14em] text-accent">점검</span>
+            <strong className="text-xs font-bold text-ink">{maintenanceItems.length}</strong>
+          </div>
         </div>
 
         <SurfaceNotice
           description={
-            realtimeConnected
-              ? `실시간 연결 중${lastRealtimeAt ? ` · 마지막 수신 ${new Date(lastRealtimeAt).toLocaleTimeString()}` : ""}`
+            connected
+              ? `실시간 연결 중${lastReceivedAt ? ` · 마지막 수신 ${new Date(lastReceivedAt).toLocaleTimeString()}` : ""}`
               : realtimeError || "실시간 프리미엄 연결을 준비 중입니다."
           }
-          title={realtimeConnected ? "WebSocket 연결 정상" : "WebSocket 연결 확인"}
-          variant={realtimeConnected ? "info" : "loading"}
+          title={connected ? "WebSocket 연결 정상" : "WebSocket 연결 확인"}
+          variant={connected ? "info" : "loading"}
         />
 
         {maintenanceItems.length ? (
-          <div className="maintenance-banner">
+          <div className="mt-3 grid gap-2 rounded-lg bg-amber-900/20 p-3 text-sm text-amber-300">
             {maintenanceItems.map((item) => (
               <div key={item.id}>
                 <strong>{item.market_code}</strong>: {item.message || "점검 중"}
@@ -658,124 +262,31 @@ export default function HomeMarketOverviewClient() {
           </div>
         ) : null}
 
-        <div className="table-shell">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Fav</th>
-                <th>Asset</th>
-                <th>현재가</th>
-                <th>진입 김프</th>
-                <th>탈출 김프</th>
-                <th>스프레드</th>
-                <th>변동성</th>
-                <th>타겟 펀딩</th>
-                <th>오리진 펀딩</th>
-                <th>전송</th>
-                <th>거래액(24h)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayRows.length ? (
-                displayRows.map((row) => {
-                  const asset = row.base_asset;
-                  const targetFundingItem = targetFunding?.[asset]?.[0];
-                  const originFundingItem = originFunding?.[asset]?.[0];
-                  const volatilityItem = volatilityMap?.[asset];
-                  const transferAvailable = hasTransferRoute(
-                    walletStatus,
-                    targetMarketCode,
-                    effectiveOriginMarketCode,
-                    asset
-                  );
-
-                  return (
-                    <PremiumTableRow
-                      key={asset}
-                      asset={asset}
-                      favoriteActive={Boolean(favoriteMap[asset])}
-                      loggedIn={loggedIn}
-                      onToggleFavorite={toggleFavorite}
-                      originFundingRate={originFundingItem?.funding_rate}
-                      row={row}
-                      targetFundingRate={targetFundingItem?.funding_rate}
-                      transferAvailable={transferAvailable}
-                      volatilityMeanDiff={volatilityItem?.mean_diff}
-                    />
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="11">실시간 프리미엄 데이터가 아직 없습니다.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mt-3">
+          <PremiumTable
+            displayRows={displayRows}
+            expandedAsset={visibleExpandedAsset}
+            onSelectAsset={(nextAsset) =>
+              setExpandedAsset((current) => (current === nextAsset ? "" : nextAsset))
+            }
+            favoriteMap={favoriteMap}
+            loggedIn={loggedIn}
+            onToggleFavorite={handleToggleFavorite}
+            targetFunding={targetFunding}
+            originFunding={originFunding}
+            volatilityMap={volatilityMap}
+            walletStatus={walletStatus}
+            targetMarketCode={targetMarketCode}
+            originMarketCode={effectiveOriginMarketCode}
+            connected={connected}
+          />
         </div>
       </section>
 
-      <div className="two-column-grid">
-        <section className="surface-card">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">AI Rank</p>
-              <h2>추천 자산</h2>
-            </div>
-          </div>
-          <div className="stacked-list">
-            {aiRecommendations.length ? (
-              aiRecommendations.map((item) => (
-                <article key={`${item.base_asset}-${item.rank}`} className="stacked-list__item">
-                  <div className="content-list__meta">
-                    <span>Rank #{item.rank}</span>
-                    <span>Risk {item.risk_level}</span>
-                  </div>
-                  <h2>{item.base_asset}</h2>
-                  <p>{item.explanation}</p>
-                </article>
-              ))
-            ) : (
-              <div className="empty-state">추천 데이터가 없습니다.</div>
-            )}
-          </div>
-        </section>
-
-        <section className="surface-card">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Funding Diff</p>
-              <h2>펀딩비 차이</h2>
-            </div>
-          </div>
-          <div className="table-shell">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Base Asset</th>
-                  <th>Funding X</th>
-                  <th>Funding Y</th>
-                  <th>Diff</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fundingDiff.length ? (
-                  fundingDiff.map((item, index) => (
-                    <tr key={`${item.base_asset}-${index}`}>
-                      <td>{item.base_asset}</td>
-                      <td>{formatPercent(item.funding_rate_x)}</td>
-                      <td>{formatPercent(item.funding_rate_y)}</td>
-                      <td>{formatPercent(item.funding_rate_diff)}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="4">표시할 펀딩 차이 데이터가 없습니다.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+      {/* AI Rank + Funding Diff */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <AiRankPanel recommendations={aiRecommendations} />
+        <FundingDiffPanel fundingDiff={fundingDiff} />
       </div>
 
       {pageError ? <SurfaceNotice description={pageError} variant="error" /> : null}

@@ -17,15 +17,16 @@ const LEGAL_LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="mt-6 bg-background/98">
-      <div className="h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
+    <footer className="mt-12 border-t border-border bg-background/98">
       <div className="mx-auto w-[min(1280px,calc(100vw-24px))] py-8">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div>
             <div className="mb-3 flex items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt="ArbiCrypto" className="h-6 w-auto" src="/images/logo-no-background.png" />
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-accent to-sky-400 text-[0.64rem] font-mono text-white shadow-sm">
+                A
+              </span>
+              <span className="text-sm font-bold tracking-tight text-ink">ArbiCrypto</span>
             </div>
             <p className="text-[0.78rem] leading-relaxed text-ink-muted">
               실시간 김프·프리미엄 데이터와 아비트리지 분석 플랫폼
@@ -67,19 +68,17 @@ export default function Footer() {
           {/* Disclaimer */}
           <div>
             <h3 className="mb-2.5 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-accent">면책사항</h3>
-            <p className="text-[0.72rem] leading-relaxed text-ink-muted">
+            <p className="text-[0.72rem] leading-relaxed text-ink-muted/70">
               본 서비스는 정보 제공 목적이며 투자 조언을 구성하지 않습니다. 암호화폐 거래는 원금 손실 위험이 있습니다.
             </p>
           </div>
         </div>
 
-        <div className="mt-8 border-t border-border/30 pt-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-[0.68rem] text-ink-muted/60">
-              © {new Date().getFullYear()} ArbiCrypto. All rights reserved.
-            </span>
-            <span className="text-[0.62rem] font-mono text-ink-muted/40">v0.1.0</span>
-          </div>
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-4">
+          <span className="text-[0.68rem] text-ink-muted/60">
+            © {new Date().getFullYear()} ArbiCrypto. All rights reserved.
+          </span>
+          <span className="text-[0.62rem] font-mono text-ink-muted/40">v0.1.0</span>
         </div>
       </div>
     </footer>

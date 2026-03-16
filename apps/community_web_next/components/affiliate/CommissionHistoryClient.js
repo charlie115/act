@@ -46,7 +46,7 @@ export default function CommissionHistoryClient() {
           return;
         }
 
-        setPageError(requestError.message || "Failed to load commission history.");
+        setPageError(requestError.message || "정산 내역을 불러오지 못했습니다.");
       }
     }
 
@@ -61,7 +61,7 @@ export default function CommissionHistoryClient() {
     const map = {};
 
     if (affiliate?.id) {
-      map[affiliate.id] = "Self";
+      map[affiliate.id] = "본인";
     }
 
     subAffiliates.forEach((subAffiliate) => {
@@ -132,84 +132,97 @@ export default function CommissionHistoryClient() {
   }
 
   return (
-    <div className="section-stack">
-      <section className="surface-card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Commission History</p>
-            <h1>커미션 정산 내역</h1>
-          </div>
-          <select
-            className="select-input"
-            onChange={(event) => setFilterAffiliateId(event.target.value)}
-            value={filterAffiliateId}
-          >
-            <option value="all">All affiliates</option>
-            <option value="self">Self</option>
-            {subAffiliates.map((subAffiliate) => (
-              <option key={subAffiliate.id} value={String(subAffiliate.id)}>
-                {subAffiliate.user}
-              </option>
+    <div className="grid gap-4">
+      <div className="rounded-lg border border-border bg-background/92 p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-bold text-ink">커미션 정산 내역</h2>
+          <div className="flex items-center gap-1">
+            <button
+              className={`rounded-md px-2.5 py-1 text-xs font-bold transition-colors ${
+                filterAffiliateId === "all" ? "bg-accent/15 text-accent" : "text-ink-muted hover:bg-surface-elevated/40 hover:text-ink"
+              }`}
+              onClick={() => setFilterAffiliateId("all")}
+              type="button"
+            >
+              전체
+            </button>
+            <button
+              className={`rounded-md px-2.5 py-1 text-xs font-bold transition-colors ${
+                filterAffiliateId === "self" ? "bg-accent/15 text-accent" : "text-ink-muted hover:bg-surface-elevated/40 hover:text-ink"
+              }`}
+              onClick={() => setFilterAffiliateId("self")}
+              type="button"
+            >
+              본인
+            </button>
+            {subAffiliates.map((sub) => (
+              <button
+                key={sub.id}
+                className={`rounded-md px-2.5 py-1 text-xs font-bold transition-colors ${
+                  filterAffiliateId === String(sub.id) ? "bg-accent/15 text-accent" : "text-ink-muted hover:bg-surface-elevated/40 hover:text-ink"
+                }`}
+                onClick={() => setFilterAffiliateId(String(sub.id))}
+                type="button"
+              >
+                {sub.user}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
-        <div className="table-shell">
-          <table className="data-table">
+        <div className="overflow-x-auto rounded-lg border border-border bg-background/90">
+          <table className="w-full border-collapse">
             <thead>
-              <tr>
-                <th>Affiliate</th>
-                <th>Tier</th>
-                <th>Type</th>
-                <th>
-                  <button className="table-sort" onClick={() => toggleSort("change")} type="button">
-                    Change
+              <tr className="border-b border-border">
+                <th className="px-3 py-2 text-left text-[0.62rem] font-bold uppercase tracking-widest text-ink-muted">제휴사</th>
+                <th className="px-3 py-2 text-left text-[0.62rem] font-bold uppercase tracking-widest text-ink-muted">등급</th>
+                <th className="px-3 py-2 text-left text-[0.62rem] font-bold uppercase tracking-widest text-ink-muted">유형</th>
+                <th className="px-3 py-2 text-right text-[0.62rem] font-bold uppercase tracking-widest text-ink-muted">
+                  <button className="hover:text-ink transition-colors" onClick={() => toggleSort("change")} type="button">
+                    변동액 {orderBy === "change" ? (order === "asc" ? "↑" : "↓") : ""}
                   </button>
                 </th>
-                <th>
-                  <button className="table-sort" onClick={() => toggleSort("created_at")} type="button">
-                    Created At
+                <th className="px-3 py-2 text-left text-[0.62rem] font-bold uppercase tracking-widest text-ink-muted">
+                  <button className="hover:text-ink transition-colors" onClick={() => toggleSort("created_at")} type="button">
+                    일시 {orderBy === "created_at" ? (order === "asc" ? "↑" : "↓") : ""}
                   </button>
                 </th>
-                <th>Service Type</th>
-                <th>Trade UUID</th>
+                <th className="px-3 py-2 text-left text-[0.62rem] font-bold uppercase tracking-widest text-ink-muted">서비스</th>
+                <th className="px-3 py-2 text-left text-[0.62rem] font-bold uppercase tracking-widest text-ink-muted">거래 ID</th>
               </tr>
             </thead>
             <tbody>
               {filteredHistory.length ? (
                 filteredHistory.map((record) => (
-                  <tr key={record.id}>
-                    <td>{affiliateNameMap[record.affiliate] || record.affiliate}</td>
-                    <td>{affiliateTierMap[record.affiliate] || "-"}</td>
-                    <td>{record.type}</td>
-                    <td>{formatAmount(record.change)}</td>
-                    <td>{new Date(record.created_at).toLocaleString()}</td>
-                    <td>{record.service_type || "-"}</td>
-                    <td className="mono-cell">{record.trade_uuid || "-"}</td>
+                  <tr key={record.id} className="border-t border-border/50 transition-colors hover:bg-surface-elevated/30">
+                    <td className="px-3 py-2 text-sm text-ink">{affiliateNameMap[record.affiliate] || record.affiliate}</td>
+                    <td className="px-3 py-2 text-xs text-ink-muted">{affiliateTierMap[record.affiliate] || "-"}</td>
+                    <td className="px-3 py-2 text-xs text-ink-muted">{record.type}</td>
+                    <td className="tabular-nums px-3 py-2 text-right font-mono text-sm text-ink">{formatAmount(record.change)}</td>
+                    <td className="px-3 py-2 text-xs text-ink-muted">{new Date(record.created_at).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-xs text-ink-muted">{record.service_type || "-"}</td>
+                    <td className="px-3 py-2 font-mono text-[0.68rem] text-ink-muted">{record.trade_uuid || "-"}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7">No commission history found.</td>
+                  <td colSpan="7" className="px-4 py-8 text-center text-sm text-ink-muted">
+                    정산 내역이 없습니다.
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-      </section>
+      </div>
 
-      <section className="surface-card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Summary</p>
-            <h2>필터 기준 커미션 합계</h2>
-          </div>
-        </div>
-        <div className="inline-note">
-          Total earned commission: <strong>{formatAmount(totalCommission)}</strong>
-        </div>
-      </section>
+      <div className="rounded-lg border border-border bg-background/92 p-4">
+        <h2 className="mb-2 text-sm font-bold text-ink">정산 합계</h2>
+        <p className="text-sm text-ink-muted">
+          총 정산 커미션: <strong className="text-ink">{formatAmount(totalCommission)}</strong>
+        </p>
+      </div>
 
-      {pageError ? <p className="auth-card__error">{pageError}</p> : null}
+      {pageError ? <p className="mt-3 text-sm text-negative">{pageError}</p> : null}
     </div>
   );
 }

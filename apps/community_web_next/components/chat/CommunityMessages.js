@@ -220,8 +220,12 @@ export default function CommunityMessages({ visible, onNewCount }) {
     (m) => !blocklist.includes(m.username) && !(m.username !== username && m.status === "blocked")
   );
 
+  if (!visible) {
+    return null;
+  }
+
   return (
-    <div className={`flex flex-1 flex-col min-h-0 overflow-hidden ${visible ? "" : "hidden"}`}>
+    <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
       <div
         ref={containerRef}
         className="flex-1 overflow-y-auto p-3"

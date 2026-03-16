@@ -1,30 +1,28 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
-
 import { useAuth } from "./AuthProvider";
 
 export default function RequireAuth({ children }) {
-  const pathname = usePathname();
+  const { loggedIn, loading } = useAuth();
   const router = useRouter();
-  const { isReady, loggedIn } = useAuth();
 
   useEffect(() => {
-    if (isReady && !loggedIn) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    if (!loading && !loggedIn) {
+      router.push(`/login?next=${window.location.pathname}`);
     }
-  }, [isReady, loggedIn, pathname, router]);
+  }, [loggedIn, loading, router]);
 
-  if (!isReady || !loggedIn) {
+  if (loading) {
     return (
-      <section className="surface-card placeholder-card">
-        <p className="eyebrow">Authentication</p>
-        <h1>세션을 확인하는 중입니다.</h1>
-        <p>로그인이 필요하면 로그인 페이지로 이동합니다.</p>
-      </section>
+      <div className="grid min-h-[50vh] place-items-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-accent" />
+      </div>
     );
   }
+
+  if (!loggedIn) return null;
 
   return children;
 }

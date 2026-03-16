@@ -1,143 +1,54 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-
-import Avatar from "@mui/material/Avatar";
-import Badge from "@mui/material/Badge";
-import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import AppRegistrationIcon from "@mui/icons-material/AppRegistration";
-import Divider from "@mui/material/Divider";
-import IconButton from "@mui/material/IconButton";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText";
-import LogoutIcon from "@mui/icons-material/Logout";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-
+import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
+import { ChevronDown, User, Settings, LogOut } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 
 export default function NextHeaderUserMenu() {
-  const router = useRouter();
-  const { authorizedListRequest, signOut, user } = useAuth();
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [coupons, setCoupons] = useState([]);
-  const [redemptions, setRedemptions] = useState([]);
+  const { user, loggedIn, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
 
   useEffect(() => {
-    let active = true;
-
-    async function loadCoupons() {
-      try {
-        const [nextCoupons, nextRedemptions] = await Promise.all([
-          authorizedListRequest("/coupon/coupons/"),
-          authorizedListRequest("/coupon/coupon-redemption/"),
-        ]);
-
-        if (!active) {
-          return;
-        }
-
-        setCoupons(nextCoupons);
-        setRedemptions(nextRedemptions);
-      } catch {
-        if (!active) {
-          return;
-        }
-
-        setCoupons([]);
-        setRedemptions([]);
-      }
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
-    loadCoupons();
-
-    return () => {
-      active = false;
-    };
-  }, [authorizedListRequest]);
-
-  const unusedCount = useMemo(() => {
-    const redeemedCouponNames = new Set(redemptions.map((item) => item.coupon));
-    return coupons.filter((coupon) => !redeemedCouponNames.has(coupon.name)).length;
-  }, [coupons, redemptions]);
-
-  const hasAffiliate = !!user?.affiliate;
+  if (!loggedIn) return null;
 
   return (
-    <>
-      <IconButton id="next-user-menu-btn" onClick={(event) => setAnchorEl(event.currentTarget)} sx={{ p: 0 }}>
-        <Avatar
-          alt={user?.username || user?.email || "Account"}
-          src={user?.profile?.picture}
-          sx={{ bgcolor: user ? "primary.main" : null }}
-        />
-      </IconButton>
-      <Menu
-        anchorEl={anchorEl}
-        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-        id="next-user-menu"
-        onClose={() => setAnchorEl(null)}
-        open={!!anchorEl}
-        transformOrigin={{ horizontal: "right", vertical: "top" }}
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-ink-muted transition-colors hover:bg-surface-elevated hover:text-ink"
+        type="button"
       >
-        <MenuItem
-          onClick={() => {
-            router.push("/my-page");
-            setAnchorEl(null);
-          }}
-        >
-          <Avatar sx={{ width: 24, height: 24, mr: 1 }} />
-          My Page
-        </MenuItem>
-        <Divider />
-        <MenuItem
-          onClick={() => {
-            router.push("/coupon-dashboard");
-            setAnchorEl(null);
-          }}
-        >
-          <ListItemIcon>
-            <Badge
-              badgeContent={unusedCount}
-              color="error"
-              invisible={unusedCount === 0}
-              overlap="rectangular"
-            >
-              <ConfirmationNumberIcon />
-            </Badge>
-          </ListItemIcon>
-          <ListItemText>Coupon Dashboard</ListItemText>
-        </MenuItem>
-        <Divider />
-        <MenuItem
-          onClick={() => {
-            router.push(hasAffiliate ? "/affiliate/dashboard" : "/request-affiliate");
-            setAnchorEl(null);
-          }}
-        >
-          <ListItemIcon>
-            {hasAffiliate ? <DashboardIcon /> : <AppRegistrationIcon />}
-          </ListItemIcon>
-          <ListItemText>
-            {hasAffiliate ? "Affiliate Dashboard" : "Apply for Affiliate Program"}
-          </ListItemText>
-        </MenuItem>
-        <Divider />
-        <MenuItem
-          onClick={async () => {
-            await signOut();
-            setAnchorEl(null);
-            router.push("/");
-          }}
-        >
-          <ListItemIcon>
-            <LogoutIcon />
-          </ListItemIcon>
-          <ListItemText>Logout</ListItemText>
-        </MenuItem>
-      </Menu>
-    </>
+        <User size={14} />
+        <span className="hidden sm:inline">{user?.email?.split("@")[0]}</span>
+        <ChevronDown size={12} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-border bg-surface p-1 shadow-xl">
+          <Link
+            href="/my-page"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-ink-muted hover:bg-surface-elevated hover:text-ink"
+          >
+            <Settings size={14} /> 마이페이지
+          </Link>
+          <button
+            onClick={() => { logout(); setOpen(false); }}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-negative hover:bg-surface-elevated"
+            type="button"
+          >
+            <LogOut size={14} /> 로그아웃
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

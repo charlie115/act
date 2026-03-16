@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRightLeft, ChevronDown, Search } from "lucide-react";
 
-import ExchangeIcon from "../ui/ExchangeIcon";
-
 function prettifyMarketCode(code) {
   return code?.replaceAll("_", " ") || "";
 }
@@ -81,6 +79,28 @@ function pairPriority(targetCode, originCode) {
   return score;
 }
 
+const BADGE_COLORS = {
+  upbit: "bg-[#0a4abf] text-white",
+  bithumb: "bg-[#f37321] text-white",
+  coinone: "bg-[#0062df] text-white",
+  binance: "bg-[#f0b90b] text-black",
+  bybit: "bg-[#f7a600] text-black",
+  okx: "bg-white text-black",
+  gate: "bg-[#2354e6] text-white",
+  hyperliquid: "bg-[#6ee7b7] text-black",
+};
+
+function ExchangeBadge({ exchange, size = "sm" }) {
+  const colorClass = BADGE_COLORS[exchange.toLowerCase()] || "bg-ink-muted/20 text-ink";
+  const sizeClass = size === "sm" ? "h-5 w-5 text-[0.5rem]" : "h-6 w-6 text-[0.56rem]";
+  const short = EXCHANGE_SHORT[exchange] || exchange.slice(0, 2);
+
+  return (
+    <span className={`inline-flex items-center justify-center rounded-md font-bold ${sizeClass} ${colorClass}`}>
+      {short}
+    </span>
+  );
+}
 
 export default function MarketCombinationPicker({
   marketCodes,
@@ -195,12 +215,10 @@ export default function MarketCombinationPicker({
     <div className="relative" ref={rootRef}>
       {/* Compact pill trigger */}
       <button
-        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-all ${
+        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
           open
-            ? "border-accent/40 bg-accent/10 text-ink shadow-[0_0_12px_-3px_rgba(43,115,255,0.35)]"
-            : selectedTarget.code
-              ? "border-border bg-background/70 text-ink shadow-[0_0_8px_-4px_rgba(43,115,255,0.2)] hover:border-accent/30 hover:shadow-[0_0_12px_-3px_rgba(43,115,255,0.3)]"
-              : "border-border bg-background/70 text-ink hover:border-border/80 hover:bg-surface-elevated/40"
+            ? "border-accent/40 bg-accent/10 text-ink"
+            : "border-border bg-background/70 text-ink hover:border-border/80 hover:bg-surface-elevated/40"
         }`}
         onClick={() => {
           if (open) {
@@ -216,10 +234,10 @@ export default function MarketCombinationPicker({
       >
         {selectedTarget.code ? (
           <>
-            <ExchangeIcon exchange={selectedTarget.exchange} size={20} />
+            <ExchangeBadge exchange={selectedTarget.exchange} />
             <span className="text-ink">{selectedTarget.exchangeLabel}</span>
             <ArrowRightLeft className="text-ink-muted" size={14} strokeWidth={2} />
-            <ExchangeIcon exchange={selectedOrigin.exchange} size={20} />
+            <ExchangeBadge exchange={selectedOrigin.exchange} />
             <span className="text-ink">
               {selectedOrigin.exchangeLabel} {selectedOrigin.productLabel}/{selectedOrigin.quoteAsset}
             </span>
@@ -236,7 +254,7 @@ export default function MarketCombinationPicker({
 
       {/* Dropdown panel */}
       {open ? (
-        <div className="absolute left-0 top-full z-30 mt-1 w-[min(640px,calc(100vw-32px))] rounded-xl border border-border bg-background shadow-2xl" style={{ animation: "riseIn 200ms cubic-bezier(0.4, 0, 0.15, 1) both" }}>
+        <div className="absolute left-0 top-full z-30 mt-1 w-[min(640px,calc(100vw-32px))] rounded-xl border border-border bg-background shadow-2xl">
           {/* Search */}
           <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
             <Search className="text-ink-muted" size={14} strokeWidth={2} />
@@ -265,10 +283,10 @@ export default function MarketCombinationPicker({
                 }}
                 type="button"
               >
-                <ExchangeIcon exchange={pair.targetMeta.exchange} size={16} />
+                <ExchangeBadge exchange={pair.targetMeta.exchange} size="sm" />
                 <span>{pair.targetMeta.quoteAsset}</span>
                 <ArrowRightLeft className="text-ink-muted/50" size={10} strokeWidth={2} />
-                <ExchangeIcon exchange={pair.originMeta.exchange} size={16} />
+                <ExchangeBadge exchange={pair.originMeta.exchange} size="sm" />
                 <span>{pair.originMeta.productLabel}</span>
               </button>
             ))}
@@ -293,7 +311,7 @@ export default function MarketCombinationPicker({
                     onClick={() => setDraftTarget(option.code)}
                     type="button"
                   >
-                    <ExchangeIcon exchange={option.exchange} size={20} />
+                    <ExchangeBadge exchange={option.exchange} />
                     <div>
                       <div className="font-semibold">{option.exchangeLabel}</div>
                       <div className="text-[0.6rem] text-ink-muted">{option.productLabel}/{option.quoteAsset}</div>
@@ -325,7 +343,7 @@ export default function MarketCombinationPicker({
                     }}
                     type="button"
                   >
-                    <ExchangeIcon exchange={option.exchange} size={20} />
+                    <ExchangeBadge exchange={option.exchange} />
                     <div>
                       <div className="font-semibold">{option.exchangeLabel}</div>
                       <div className="text-[0.6rem] text-ink-muted">{option.productLabel}/{option.quoteAsset}</div>

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { fetchCachedJson } from "../../../lib/clientCache";
-import { getBrowserTimezone } from "../../../lib/constants";
 
 export default function useMarketData({
   targetMarketCode,
@@ -75,7 +74,6 @@ export default function useMarketData({
   }, [originMarketCode, targetMarketCode]);
 
   // Asset details: volatility, funding rates, wallet status
-  // Re-fetches every 60s to keep funding countdowns fresh after funding time passes.
   useEffect(() => {
     let active = true;
 
@@ -92,19 +90,19 @@ export default function useMarketData({
       assetParams.set("base_asset", symbolQuery);
       assetParams.set("target_market_code", targetMarketCode);
       assetParams.set("origin_market_code", originMarketCode);
-      assetParams.set("tz", getBrowserTimezone());
+      assetParams.set("tz", "Asia/Seoul");
 
       const targetFundingParams = new URLSearchParams();
       targetFundingParams.set("base_asset", symbolQuery);
       targetFundingParams.set("market_code", targetMarketCode);
       targetFundingParams.set("last_n", "1");
-      targetFundingParams.set("tz", getBrowserTimezone());
+      targetFundingParams.set("tz", "Asia/Seoul");
 
       const originFundingParams = new URLSearchParams();
       originFundingParams.set("base_asset", symbolQuery);
       originFundingParams.set("market_code", originMarketCode);
       originFundingParams.set("last_n", "1");
-      originFundingParams.set("tz", getBrowserTimezone());
+      originFundingParams.set("tz", "Asia/Seoul");
 
       try {
         const [volatilityPayload, targetFundingPayload, originFundingPayload, walletStatusPayload] =
@@ -145,11 +143,8 @@ export default function useMarketData({
 
     loadAssetDetails();
 
-    const refreshTimer = window.setInterval(loadAssetDetails, 60000);
-
     return () => {
       active = false;
-      window.clearInterval(refreshTimer);
     };
   }, [symbolQuery, originMarketCode, targetMarketCode]);
 

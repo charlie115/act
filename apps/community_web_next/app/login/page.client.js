@@ -33,10 +33,10 @@ export default function LoginClientPage({ nextPath = "/" }) {
 
   return (
     <AuthCard
-      description="현재 DRF 인증 계약을 그대로 사용합니다. Google OAuth 완료 후 사용자 상태를 불러와 세션을 유지합니다."
-      eyebrow="Authentication"
+      description="Google 계정으로 간편하게 로그인하세요."
+      eyebrow="로그인"
       error={error}
-      title="ACW 계정 로그인"
+      title="ArbiCrypto 로그인"
     >
       <GoogleSignInButton />
       <p className="auth-card__hint">

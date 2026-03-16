@@ -20,7 +20,7 @@ function SkeletonRows() {
     <tr key={i}>
       {Array.from({ length: 4 }).map((_, j) => (
         <td key={j} className="px-3 py-2.5">
-          <div className="h-3 rounded bg-gradient-to-r from-border/20 via-border/40 to-border/20 bg-[length:200%_100%] animate-[shimmer_1.4s_linear_infinite]" />
+          <div className="h-3 animate-pulse rounded bg-border/30" />
         </td>
       ))}
     </tr>
@@ -30,10 +30,12 @@ function SkeletonRows() {
 export default function FundingDiffPanel({ fundingDiff = [], loading = false }) {
   return (
     <section className="rounded-lg border border-border bg-background/92 p-4">
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-ink">
-        <span className="h-3.5 w-0.5 rounded-full bg-accent" />
-        펀딩비 차이
-      </h2>
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div>
+          <p className="mb-1.5 text-[0.66rem] font-bold uppercase tracking-[0.14em] text-accent">Funding Diff</p>
+          <h2 className="text-lg font-bold leading-tight text-ink">펀딩비 차이</h2>
+        </div>
+      </div>
       <div className="overflow-x-auto rounded-lg border border-border bg-background/90">
         <table className="w-full border-collapse">
           <thead>
@@ -64,11 +66,8 @@ export default function FundingDiffPanel({ fundingDiff = [], loading = false }) 
               ))
             ) : (
               <tr>
-                <td colSpan="4" className="px-4 py-8 text-center">
-                  <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-surface-elevated/40">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-ink-muted/40"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                  </div>
-                  <p className="text-[0.78rem] text-ink-muted">펀딩비 데이터가 아직 없습니다.</p>
+                <td colSpan="4" className="px-4 py-8 text-center text-sm text-ink-muted">
+                  표시할 펀딩 차이 데이터가 없습니다.
                 </td>
               </tr>
             )}

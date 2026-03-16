@@ -39,7 +39,7 @@ export default function TVTickerWidget() {
   }, []);
 
   return (
-    <div className="mx-auto w-[min(1280px,calc(100vw-20px))] overflow-hidden rounded-lg border border-border bg-background/80" style={{ minHeight: 46 }}>
+    <div className="mx-auto w-[min(1280px,calc(100vw-20px))] overflow-hidden rounded-lg border border-border bg-background/80">
       <div ref={containerRef} className="tradingview-widget-container" />
     </div>
   );

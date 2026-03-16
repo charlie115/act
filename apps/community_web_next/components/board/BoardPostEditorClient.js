@@ -1,156 +1,71 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import mime from "mime";
-
 import { useAuth } from "../auth/AuthProvider";
-import { getAllowedBoardCategories } from "../../lib/board";
-import BoardRichTextEditor from "./BoardRichTextEditor";
 
-export default function BoardPostEditorClient() {
+export default function BoardPostEditorClient({ post = null }) {
+  const { authorizedRequest } = useAuth();
   const router = useRouter();
-  const { authorizedRequest, user } = useAuth();
-  const quillRef = useRef(null);
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("");
-  const [content, setContent] = useState("");
-  const [isBusy, setIsBusy] = useState(false);
-  const [pageError, setPageError] = useState("");
+  const [title, setTitle] = useState(post?.title || "");
+  const [content, setContent] = useState(post?.content || "");
+  const [submitting, setSubmitting] = useState(false);
 
-  const categories = useMemo(() => getAllowedBoardCategories(user), [user]);
+  const isEdit = Boolean(post);
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setIsBusy(true);
-    setPageError("");
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim() || !content.trim()) return;
+    setSubmitting(true);
     try {
-      const attachedImages =
-        quillRef.current
-          ?.getContents()
-          ?.ops?.filter?.((op) => op.insert?.image) || [];
-
-      const formData = new FormData();
-      let htmlContent = content;
-
-      const images = await Promise.all(
-        attachedImages.map(async (item) => {
-          const image = await fetch(item.insert.image);
-          const mimeType = image.headers.get("content-type");
-          const fileName = item.insert.image.split("/").pop();
-          const fileExtension = mimeType ? mime.getExtension(mimeType) : "png";
-          const normalizedName = `${fileName}.${fileExtension}`;
-
-          htmlContent = htmlContent.replace(item.insert.image, normalizedName);
-
-          const blob = await image.blob();
-          return new File([blob], normalizedName, {
-            type: blob.type,
-          });
-        })
-      );
-
-      images.forEach((image) => {
-        formData.append("image", image);
-      });
-
-      formData.append("author", user.uuid);
-      formData.append("title", title);
-      formData.append("category", category);
-      formData.append("content", htmlContent);
-
-      const payload = await authorizedRequest("/board/posts/", {
-        method: "POST",
-        body: formData,
-      });
-
-      router.replace(`/community-board/post/${payload.id}`);
-    } catch (requestError) {
-      setPageError(requestError.message || "Failed to create board post.");
+      if (isEdit) {
+        await authorizedRequest(`/board/posts/${post.id}/`, { method: "PATCH", body: { title, content } });
+        router.push(`/community-board/post/${post.id}`);
+      } else {
+        const created = await authorizedRequest("/board/posts/", { method: "POST", body: { title, content } });
+        router.push(`/community-board/post/${created.id}`);
+      }
+    } catch {
+      alert("저장에 실패했습니다.");
     } finally {
-      setIsBusy(false);
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
-    <section className="surface-card">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Community Board</p>
-          <h1>새 게시글 작성</h1>
-        </div>
-      </div>
-
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <label className="auth-form__field" htmlFor="board-title">
-          Title
-        </label>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <h1 className="text-2xl font-bold text-ink">{isEdit ? "게시글 수정" : "새 게시글"}</h1>
+      <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-surface p-6 space-y-4">
         <input
-          className="auth-form__input"
-          id="board-title"
-          maxLength={150}
-          onChange={(event) => setTitle(event.target.value)}
-          required
           value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="제목"
+          className="w-full rounded-lg border border-border bg-background px-4 py-3 text-ink placeholder:text-ink-muted/50 focus:border-accent focus:outline-none"
         />
-
-        <label className="auth-form__field" htmlFor="board-category">
-          Category
-        </label>
-        <select
-          className="select-input"
-          id="board-category"
-          onChange={(event) => setCategory(event.target.value)}
-          required
-          value={category}
-        >
-          <option value="">Select a category</option>
-          {categories.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.getLabel?.() || item.value}
-            </option>
-          ))}
-        </select>
-
-        <label className="auth-form__field" htmlFor="board-content">
-          Content
-        </label>
-        <div className="legacy-rich-editor" id="board-content">
-          <BoardRichTextEditor
-            showToolbar
-            ref={quillRef}
-            readOnly={isBusy}
-            onTextChange={(change) => {
-              if (change?.ops?.[0]?.delete) {
-                setContent("");
-                return;
-              }
-
-              setContent(quillRef.current?.getSemanticHTML?.() || "");
-            }}
-          />
-        </div>
-
-        <div className="modal-card__actions">
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="내용을 입력하세요"
+          rows={12}
+          className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm text-ink placeholder:text-ink-muted/50 focus:border-accent focus:outline-none resize-none"
+        />
+        <div className="flex justify-end gap-3">
           <button
-            className="ghost-button ghost-button--button"
-            onClick={() => router.push("/community-board")}
             type="button"
+            onClick={() => router.back()}
+            className="rounded-lg border border-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-elevated"
           >
-            Cancel
+            취소
           </button>
           <button
-            className="primary-button ghost-button--button"
-            disabled={!title.trim() || !category || !content.trim() || isBusy}
             type="submit"
+            disabled={submitting}
+            className="rounded-lg bg-accent px-6 py-2 text-sm font-bold text-white hover:bg-accent/80 disabled:opacity-50"
           >
-            {isBusy ? "Submitting..." : "Complete"}
+            {submitting ? "저장 중..." : isEdit ? "수정" : "등록"}
           </button>
         </div>
       </form>
-
-      {pageError ? <p className="auth-card__error">{pageError}</p> : null}
-    </section>
+    </div>
   );
 }

@@ -28,7 +28,7 @@ export default async function HomePage() {
   ]);
 
   return (
-    <div className="section-stack">
+    <div className="grid gap-6">
       <HomeMarketOverviewClient />
       <NewsDigest
         announcements={announcements.slice(0, 3)}

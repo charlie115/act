@@ -1,125 +1,43 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-
+import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 
-function formatAmount(value, digits = 4) {
-  if (value === null || value === undefined || value === "") {
-    return "-";
-  }
-
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: digits,
-    minimumFractionDigits: 0,
-  }).format(Number(value));
-}
-
 export default function BotPnlHistoryClient({ marketCodeCombination }) {
-  const { authorizedRequest } = useAuth();
-  const [data, setData] = useState([]);
-  const [pageError, setPageError] = useState("");
+  const { authorizedRequest, loggedIn } = useAuth();
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let active = true;
+    if (!loggedIn) return;
+    authorizedRequest("/tradecore/pnl-history/")
+      .then((data) => setHistory(Array.isArray(data) ? data : data?.results || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [loggedIn, authorizedRequest]);
 
-    async function loadHistory() {
-      setPageError("");
-
-      try {
-        const payload = await authorizedRequest(
-          `/tradecore/pnl-history/?trade_config_uuid=${marketCodeCombination.tradeConfigUuid}`
-        );
-
-        if (!active) {
-          return;
-        }
-
-        setData(payload || []);
-      } catch (requestError) {
-        if (!active) {
-          return;
-        }
-
-        setPageError(requestError.message || "Failed to load PnL history.");
-      }
-    }
-
-    loadHistory();
-
-    return () => {
-      active = false;
-    };
-  }, [authorizedRequest, marketCodeCombination.tradeConfigUuid]);
-
-  const rows = useMemo(
-    () =>
-      [...data].sort(
-        (left, right) => new Date(right.registered_datetime) - new Date(left.registered_datetime)
-      ),
-    [data]
-  );
-
-  const totalPnlAfterFee = useMemo(
-    () => rows.reduce((sum, item) => sum + Number(item.total_pnl_after_fee || 0), 0),
-    [rows]
-  );
+  if (loading) return <div className="grid place-items-center py-8"><div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-accent" /></div>;
 
   return (
-    <div className="section-stack">
-      <section className="surface-card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">PnL History</p>
-            <h2>실현 손익 내역</h2>
-          </div>
-        </div>
-        <div className="table-shell">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Registered</th>
-                <th>Trade UUID</th>
-                <th>Premium Gap</th>
-                <th>Total Currency</th>
-                <th>Total PnL</th>
-                <th>Total PnL After Fee</th>
-              </tr>
-            </thead>
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-ink">손익 히스토리</h3>
+      {history.length === 0 ? (
+        <p className="text-sm text-ink-muted py-8 text-center">손익 기록이 없습니다.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-border bg-background/50"><th className="px-3 py-2 text-left text-xs text-ink-muted">일시</th><th className="px-3 py-2 text-right text-xs text-ink-muted">손익</th></tr></thead>
             <tbody>
-              {rows.length ? (
-                rows.map((item) => (
-                  <tr key={item.uuid}>
-                    <td>{new Date(item.registered_datetime).toLocaleString()}</td>
-                    <td className="mono-cell mono-cell--wrap">{item.trade_uuid}</td>
-                    <td>{formatAmount(item.realized_premium_gap_p, 4)}</td>
-                    <td>{item.total_currency}</td>
-                    <td>{formatAmount(item.total_pnl)}</td>
-                    <td>{formatAmount(item.total_pnl_after_fee)}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6">No PnL history found.</td>
+              {history.map((h) => (
+                <tr key={h.id} className="border-b border-border/30">
+                  <td className="px-3 py-2 text-ink-muted">{new Date(h.created_at).toLocaleDateString("ko-KR")}</td>
+                  <td className={`px-3 py-2 text-right font-medium ${h.pnl >= 0 ? "text-positive" : "text-negative"}`}>{h.pnl > 0 ? "+" : ""}{Number(h.pnl).toFixed(2)}</td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>
-      </section>
-
-      <section className="surface-card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Summary</p>
-            <h2>누적 손익</h2>
-          </div>
-        </div>
-        <div className="inline-note">
-          Total PnL after fee: <strong>{formatAmount(totalPnlAfterFee)}</strong>
-        </div>
-        {pageError ? <p className="auth-card__error">{pageError}</p> : null}
-      </section>
+      )}
     </div>
   );
 }

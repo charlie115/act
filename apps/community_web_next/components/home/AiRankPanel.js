@@ -18,10 +18,7 @@ const RISK_LABELS = ["", "매우 낮음", "낮음", "보통", "높음", "매우 
 export default function AiRankPanel({ recommendations = [], loading = false }) {
   return (
     <section className="rounded-lg border border-border bg-background/92 p-4">
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-ink">
-        <span className="h-3.5 w-0.5 rounded-full bg-accent" />
-        추천 자산
-      </h2>
+      <h2 className="mb-3 text-sm font-bold text-ink">추천 자산</h2>
       <div className="grid gap-3">
         {loading ? (
           <SkeletonCards />
@@ -51,12 +48,10 @@ export default function AiRankPanel({ recommendations = [], loading = false }) {
             </article>
           ))
         ) : (
-          <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/50 text-sm text-ink-muted">
+          <div className="grid min-h-[120px] place-items-center rounded-lg bg-surface-elevated/30 text-sm text-ink-muted">
             <div className="text-center">
-              <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-surface-elevated/40">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-ink-muted/40"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 4 6-6"/></svg>
-              </div>
-              <p className="text-[0.78rem]">추천 데이터가 아직 없습니다.</p>
+              <div className="mx-auto mb-2 h-5 w-5 animate-spin rounded-full border-2 border-border border-t-accent" />
+              실시간 분석 중...
             </div>
           </div>
         )}

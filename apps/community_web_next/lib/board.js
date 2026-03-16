@@ -1,30 +1,18 @@
-import { USER_ROLE } from "./constants";
+import { fetchCachedJson } from "./clientCache";
 
 export const POST_CATEGORY_LIST = [
-  { value: "Announcement", color: "#c2410c", getLabel: () => "Announcement" },
-  { value: "Freewriting", color: "#7c3aed", getLabel: () => "Freewriting" },
-  { value: "Question", color: "#0a7e6a", getLabel: () => "Question" },
-  {
-    value: "Investment Strategy",
-    color: "#0f766e",
-    getLabel: () => "Investment Strategy",
-  },
-  { value: "Information", color: "#0284c7", getLabel: () => "Information" },
-  { value: "User Guide", color: "#0891b2", getLabel: () => "User Guide" },
+  { label: "자유", value: "FREE", color: "#8f9bb7" },
+  { label: "질문", value: "QUESTION", color: "#2b73ff" },
+  { label: "정보", value: "INFO", color: "#16c784" },
+  { label: "분석", value: "ANALYSIS", color: "#f0b90b" },
+  { label: "후기", value: "REVIEW", color: "#e879f9" },
 ];
 
-export function getAllowedBoardCategories(user) {
-  if (!user) {
-    return POST_CATEGORY_LIST.filter(
-      (item) => item.value !== "Announcement" && item.value !== "User Guide"
-    );
-  }
+export async function getPost(postId) {
+  return fetchCachedJson(`/api/board/posts/${postId}/`, { ttlMs: 5000 });
+}
 
-  if (user.role === USER_ROLE.admin || user.role === USER_ROLE.internal) {
-    return POST_CATEGORY_LIST;
-  }
-
-  return POST_CATEGORY_LIST.filter(
-    (item) => item.value !== "Announcement" && item.value !== "User Guide"
-  );
+export async function getComments(postId) {
+  const data = await fetchCachedJson(`/api/board/posts/${postId}/comments/`, { ttlMs: 5000 });
+  return Array.isArray(data) ? data : data?.results || [];
 }
