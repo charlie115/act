@@ -1,4 +1,4 @@
-import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 
 import "quill/dist/quill.snow.css";
@@ -13,7 +13,7 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-sans",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
   weight: ["400", "500", "600", "700"],
@@ -27,7 +27,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="ko">
       <body
-        className={`${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
+        className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}
         suppressHydrationWarning
       >
         <AppRouterCacheProvider>

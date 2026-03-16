@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 
 import AuthActions from "./auth/AuthActions";
+import ChatWidget from "./chat/ChatWidget";
 import NextBreadcrumbs from "./NextBreadcrumbs";
 import ScrollToTop from "./ui/ScrollToTop";
 
@@ -95,9 +97,13 @@ export default function AppShell({ children }) {
         <div className="relative z-1 mx-auto flex items-center justify-between gap-4 px-4 py-2 md:w-[min(1280px,calc(100vw-32px))]" style={{ minHeight: 56 }}>
           <div className="flex items-center gap-3 min-w-0">
             <Link className="inline-flex items-center gap-2 font-bold text-ink" href="/">
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-sky-400 text-[0.78rem] font-mono text-white shadow-md">
-                A
-              </span>
+              <Image
+                alt="ArbiCrypto"
+                height={28}
+                src="/images/logo-no-background.png"
+                width={28}
+                className="rounded-md"
+              />
               <span className="text-sm font-bold tracking-tight">ArbiCrypto</span>
             </Link>
           </div>
@@ -205,6 +211,7 @@ export default function AppShell({ children }) {
         <NextBreadcrumbs />
       </div>
       <main className="mx-auto w-[min(1280px,calc(100vw-24px))] pb-8">{children}</main>
+      <ChatWidget />
       <ScrollToTop />
     </div>
   );

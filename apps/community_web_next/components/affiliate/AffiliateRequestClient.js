@@ -58,11 +58,11 @@ export default function AffiliateRequestClient() {
       const responseError = requestError.payload?.error;
 
       if (responseError === "REQUEST_EXISTS") {
-        setPageError("You have already submitted an application. Please wait for review.");
+        setPageError("이미 신청이 접수되어 있습니다. 검토를 기다려 주세요.");
       } else if (responseError === "INVALID_PARENT_CODE") {
-        setPageError("Invalid parent affiliate code. Please check and try again.");
+        setPageError("유효하지 않은 상위 제휴 코드입니다. 다시 확인해 주세요.");
       } else {
-        setPageError(requestError.payload?.message || "Failed to submit application.");
+        setPageError(requestError.payload?.message || "신청 처리 중 오류가 발생했습니다.");
       }
     } finally {
       setIsSubmitting(false);
@@ -84,7 +84,7 @@ export default function AffiliateRequestClient() {
       ) : (
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-form__field" htmlFor="contact">
-            Contact
+            연락처
           </label>
           <input
             className="auth-form__input"
@@ -114,28 +114,28 @@ export default function AffiliateRequestClient() {
               onChange={(event) => setField("noUrl", event.target.checked)}
               type="checkbox"
             />
-            <span>No URL</span>
+            <span>URL 없음</span>
           </label>
 
           <label className="auth-form__field" htmlFor="parent_affiliate_code">
-            Parent Affiliate Code
+            상위 제휴 코드
           </label>
           <input
             className="auth-form__input"
             id="parent_affiliate_code"
             onChange={(event) => setField("parent_affiliate_code", event.target.value)}
-            placeholder="Optional"
+            placeholder="선택 사항"
             value={form.parent_affiliate_code}
           />
 
           <label className="auth-form__field" htmlFor="description">
-            Description
+            설명
           </label>
           <textarea
             className="auth-form__textarea"
             id="description"
             onChange={(event) => setField("description", event.target.value)}
-            placeholder="Tell us about your channel, audience, or business."
+            placeholder="채널, 타겟 사용자, 비즈니스에 대해 알려주세요."
             required
             rows={6}
             value={form.description}
@@ -146,7 +146,7 @@ export default function AffiliateRequestClient() {
             disabled={!form.contact || (!form.noUrl && !form.url) || !form.description || isSubmitting || isLoading}
             type="submit"
           >
-            {isSubmitting ? "Submitting..." : "Submit"}
+            {isSubmitting ? "제출 중..." : "신청하기"}
           </button>
         </form>
       )}

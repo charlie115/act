@@ -57,6 +57,28 @@ def _store_cached_price_df(cache_key, signature, df):
         }
 
 
+def _get_quote_cache_key(market_code, quote_asset):
+    return f"{market_code}|{quote_asset}"
+
+
+def _get_cached_price_df_by_quote(cache_key, signature, copy_result=True):
+    with _PRICE_DF_CACHE_LOCK:
+        cached_entry = _PRICE_DF_CACHE.get(cache_key)
+        if not cached_entry:
+            return None
+        if cached_entry["signature"] != signature:
+            return None
+        return cached_entry["df"].copy() if copy_result else cached_entry["df"]
+
+
+def _store_cached_price_df_by_quote(cache_key, signature, df):
+    with _PRICE_DF_CACHE_LOCK:
+        _PRICE_DF_CACHE[cache_key] = {
+            "signature": signature,
+            "df": df.copy(),
+        }
+
+
 def get_binance_price_df(redis_client, market_type):
     binance_ticker_df = pd.DataFrame(
         redis_client.get_all_exchange_stream_data("ticker", f"BINANCE_{market_type}")

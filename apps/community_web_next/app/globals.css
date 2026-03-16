@@ -12,12 +12,12 @@
   --color-negative: #ea3943;
   --color-opportunity: #f0b90b;
   --font-sans: "Space Grotesk", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-mono: "IBM Plex Mono", monospace;
 }
 
 :root {
   --font-sans: "Space Grotesk", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-mono: "IBM Plex Mono", monospace;
   --background: #080c16;
   --surface: rgba(12, 18, 31, 0.94);
   --surface-strong: #121a2c;

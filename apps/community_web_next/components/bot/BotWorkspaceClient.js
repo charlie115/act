@@ -320,7 +320,21 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
               트리거 알림, 자동매매 운영을 위해 텔레그램을 먼저 연결해주세요.
             </p>
           </div>
-          <TelegramConnectButton />
+          <TelegramConnectButton
+            botUsername={user?.socialapps?.find((a) => a.provider === "telegram")?.client_id}
+            onAuth={async (telegramUser) => {
+              try {
+                await fetch("/api/auth/login/telegram/", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ user: user.uuid, ...telegramUser }),
+                });
+                window.location.reload();
+              } catch {
+                // ignore
+              }
+            }}
+          />
         </div>
       ) : null}
 

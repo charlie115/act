@@ -21,6 +21,7 @@ export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("acw_auth");
@@ -33,6 +34,8 @@ export default function AuthProvider({ children }) {
     }
     setLoading(false);
   }, []);
+
+  const clearError = useCallback(() => setError(null), []);
 
   const login = useCallback((authData) => {
     setToken(authData.access);
@@ -83,18 +86,103 @@ export default function AuthProvider({ children }) {
     [token, authorizedRequest],
   );
 
+  const signInWithGoogle = useCallback(
+    async (googleAccessToken) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/auth/google/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ access_token: googleAccessToken }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.detail || "Google 로그인 실패");
+        }
+        const authData = await res.json();
+        login(authData);
+      } catch (err) {
+        setError(err.message);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [login],
+  );
+
+  const updateUser = useCallback(
+    (patch) => {
+      setUser((prev) => {
+        const updated = { ...prev, ...patch };
+        const stored = localStorage.getItem("acw_auth");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.user = updated;
+          localStorage.setItem("acw_auth", JSON.stringify(parsed));
+        }
+        return updated;
+      });
+    },
+    [],
+  );
+
+  const registerUsername = useCallback(
+    async (username) => {
+      try {
+        const res = await fetch("/api/users/register-username/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ username }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.detail || data.username?.[0] || "등록 실패");
+        }
+        const data = await res.json();
+        setUser(data.user || { ...user, username });
+        const stored = localStorage.getItem("acw_auth");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.user = data.user || { ...user, username };
+          localStorage.setItem("acw_auth", JSON.stringify(parsed));
+        }
+      } catch (err) {
+        setError(err.message);
+        throw err;
+      }
+    },
+    [token, user],
+  );
+
+  const isReady = !loading;
+  const isVisitor = Boolean(user && !user.username);
+  const loggedIn = Boolean(token && user?.username);
+
   const value = useMemo(
     () => ({
       user,
       token,
-      loggedIn: Boolean(token),
+      loggedIn,
+      isReady,
+      isVisitor,
+      isLoading: loading,
       loading,
+      error,
+      clearError,
       login,
       logout,
       authorizedRequest,
       authorizedListRequest,
+      signInWithGoogle,
+      updateUser,
+      registerUsername,
     }),
-    [user, token, loading, login, logout, authorizedRequest, authorizedListRequest],
+    [user, token, loggedIn, isReady, isVisitor, loading, error, clearError, login, logout, authorizedRequest, authorizedListRequest, signInWithGoogle, updateUser, registerUsername],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

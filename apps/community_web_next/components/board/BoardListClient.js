@@ -119,7 +119,7 @@ export default function BoardListClient({ count, currentCategory = "", currentPa
               }}
               type="button"
             >
-              {item.getLabel?.() || item.value}
+              {item.label || item.value}
             </button>
           ))}
         </div>
@@ -143,7 +143,7 @@ export default function BoardListClient({ count, currentCategory = "", currentPa
                     className="rounded px-1.5 py-0.5 text-[0.64rem] font-bold"
                     style={{ backgroundColor: `${catColor}22`, color: catColor }}
                   >
-                    {categoryItem?.getLabel?.() || post.category}
+                    {categoryItem?.label || post.category}
                   </span>
                   <span>{post.author_profile?.username || "익명"}</span>
                   <span>{formatDate(post.date_created)}</span>

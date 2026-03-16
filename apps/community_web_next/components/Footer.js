@@ -23,10 +23,8 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="mb-3 flex items-center gap-2">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-accent to-sky-400 text-[0.64rem] font-mono text-white shadow-sm">
-                A
-              </span>
-              <span className="text-sm font-bold tracking-tight text-ink">ArbiCrypto</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img alt="ArbiCrypto" className="h-6 w-auto" src="/images/logo-no-background.png" />
             </div>
             <p className="text-[0.78rem] leading-relaxed text-ink-muted">
               실시간 김프·프리미엄 데이터와 아비트리지 분석 플랫폼

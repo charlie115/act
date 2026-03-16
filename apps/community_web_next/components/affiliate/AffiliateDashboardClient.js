@@ -62,7 +62,7 @@ export default function AffiliateDashboardClient() {
           return;
         }
 
-        setPageError(requestError.message || "Failed to load affiliate dashboard.");
+        setPageError(requestError.message || "제휴 대시보드 로드에 실패했습니다.");
       }
     }
 
@@ -104,7 +104,7 @@ export default function AffiliateDashboardClient() {
       setIsModalOpen(false);
       setForm({ code: "", user_discount_rate: 0.05 });
     } catch (requestError) {
-      setPageError(requestError.payload?.code?.[0] || "Failed to create referral code.");
+      setPageError(requestError.payload?.code?.[0] || "추천 코드 생성에 실패했습니다.");
     } finally {
       setIsBusy(false);
     }
@@ -120,14 +120,14 @@ export default function AffiliateDashboardClient() {
       });
       await refreshCodes();
     } catch (requestError) {
-      setPageError(requestError.message || "Failed to delete referral code.");
+      setPageError(requestError.message || "추천 코드 삭제에 실패했습니다.");
     } finally {
       setIsBusy(false);
     }
   }
 
   if (!affiliate) {
-    return <div className="empty-state">아직 affiliate 계정이 아닙니다.</div>;
+    return <div className="empty-state">아직 제휴 계정이 아닙니다.</div>;
   }
 
   return (
@@ -135,30 +135,30 @@ export default function AffiliateDashboardClient() {
       <section className="surface-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Affiliate Dashboard</p>
+            <p className="eyebrow">Affiliate</p>
             <h1>제휴 수익 개요</h1>
           </div>
           <button className="primary-button ghost-button--button" onClick={() => setIsModalOpen(true)} type="button">
-            Generate Referral Code
+            추천 코드 생성
           </button>
         </div>
         <div className="profile-panel">
-          <InfoRow label="Tier Level" value={userTier?.name || "-"} />
+          <InfoRow label="등급" value={userTier?.name || "-"} />
           <InfoRow
-            label="Base Commission Rate"
+            label="기본 수수료율"
             value={`${formatAmount(Number(userTier?.base_commission_rate || 0) * 100, 2)}%`}
           />
-          <InfoRow label="Affiliate Code" value={affiliate.affiliate_code || "-"} />
+          <InfoRow label="제휴 코드" value={affiliate.affiliate_code || "-"} />
           <InfoRow
-            label="Direct Commission"
+            label="직접 수수료"
             value={formatAmount(affiliate.total_direct_commission)}
           />
           <InfoRow
-            label="Forwarded Commission"
+            label="하위 수수료"
             value={formatAmount(affiliate.total_forwarded_commission)}
           />
           <InfoRow
-            label="Total Earned Commission"
+            label="총 수수료"
             value={formatAmount(affiliate.total_earned_commission)}
           />
         </div>
@@ -177,12 +177,12 @@ export default function AffiliateDashboardClient() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>User</th>
-                    <th>Tier</th>
-                    <th>Referral Count</th>
-                    <th>Total Earned</th>
-                    <th>Forwarding</th>
-                    <th>Created</th>
+                    <th>사용자</th>
+                    <th>등급</th>
+                    <th>추천 수</th>
+                    <th>총 수익</th>
+                    <th>전달 수수료</th>
+                    <th>생성일</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -200,7 +200,7 @@ export default function AffiliateDashboardClient() {
               </table>
             </div>
           ) : (
-            <div className="inline-note">하위 affiliate 계정이 없습니다.</div>
+            <div className="inline-note">하위 제휴 계정이 없습니다.</div>
           )}
         </section>
       ) : null}
@@ -216,13 +216,13 @@ export default function AffiliateDashboardClient() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Code</th>
-                <th>User Discount</th>
-                <th>Self Commission</th>
-                <th>Referral Count</th>
-                <th>Total Earned</th>
-                <th>Created</th>
-                <th>Delete</th>
+                <th>코드</th>
+                <th>사용자 할인</th>
+                <th>자체 수수료</th>
+                <th>추천 수</th>
+                <th>총 수익</th>
+                <th>생성일</th>
+                <th>삭제</th>
               </tr>
             </thead>
             <tbody>
@@ -242,14 +242,14 @@ export default function AffiliateDashboardClient() {
                         onClick={() => handleDeleteCode(code.id)}
                         type="button"
                       >
-                        Delete
+                        삭제
                       </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7">No referral codes available.</td>
+                  <td colSpan="7">추천 코드가 없습니다.</td>
                 </tr>
               )}
             </tbody>
@@ -268,7 +268,7 @@ export default function AffiliateDashboardClient() {
             </div>
             <form className="auth-form" onSubmit={handleCreateCode}>
               <label className="auth-form__field" htmlFor="referral-code">
-                Code
+                코드
               </label>
               <input
                 className="auth-form__input"
@@ -279,7 +279,7 @@ export default function AffiliateDashboardClient() {
               />
 
               <label className="auth-form__field" htmlFor="discount-rate">
-                User Discount Rate: {formatAmount(Number(form.user_discount_rate) * 100, 0)}%
+                사용자 할인율: {formatAmount(Number(form.user_discount_rate) * 100, 0)}%
               </label>
               <input
                 id="discount-rate"
@@ -296,7 +296,7 @@ export default function AffiliateDashboardClient() {
                 value={form.user_discount_rate}
               />
               <div className="inline-note">
-                Self commission rate: {formatAmount(selfCommissionRate * 100, 0)}%
+                자체 수수료율: {formatAmount(selfCommissionRate * 100, 0)}%
               </div>
 
               <div className="modal-card__actions">
@@ -305,10 +305,10 @@ export default function AffiliateDashboardClient() {
                   onClick={() => setIsModalOpen(false)}
                   type="button"
                 >
-                  Cancel
+                  취소
                 </button>
                 <button className="primary-button ghost-button--button" disabled={isBusy} type="submit">
-                  {isBusy ? "Creating..." : "Create"}
+                  {isBusy ? "생성 중..." : "생성"}
                 </button>
               </div>
             </form>

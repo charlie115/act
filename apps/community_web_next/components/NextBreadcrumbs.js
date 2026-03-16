@@ -5,29 +5,31 @@ import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 
 const LABELS = {
-  affiliate: "Affiliate",
-  arbitrage: "Arbitrage",
-  board: "Board",
-  bot: "Bot",
-  capital: "Capital",
-  "commission-history": "Commission History",
-  "community-board": "Community Board",
-  "coupon-dashboard": "Coupon Dashboard",
-  dashboard: "Dashboard",
-  deposit: "Deposit",
-  diff: "Difference",
-  "funding-rate": "Funding Rate",
-  login: "Login",
-  "my-page": "My Page",
-  news: "News",
-  "pnl-history": "PnL History",
-  position: "Position",
-  post: "Post",
-  register: "Register",
-  "request-affiliate": "Affiliate Request",
-  scanner: "Scanner",
-  settings: "Settings",
-  triggers: "Triggers",
+  affiliate: "제휴",
+  arbitrage: "아비트리지",
+  board: "게시판",
+  bot: "봇",
+  capital: "자본",
+  "commission-history": "수수료 내역",
+  "community-board": "게시판",
+  "coupon-dashboard": "쿠폰",
+  dashboard: "대시보드",
+  deposit: "입금",
+  diff: "차이",
+  "funding-rate": "펀딩비",
+  login: "로그인",
+  "my-page": "마이페이지",
+  news: "뉴스",
+  "pnl-history": "손익 내역",
+  position: "포지션",
+  post: "게시글",
+  register: "회원가입",
+  "request-affiliate": "제휴 신청",
+  scanner: "스캐너",
+  settings: "설정",
+  triggers: "트리거",
+  avg: "평균",
+  new: "새 글",
 };
 
 function prettifySegment(segment) {
@@ -48,7 +50,7 @@ export default function NextBreadcrumbs() {
 
     return segments.map((segment, index) => ({
       href: `/${segments.slice(0, index + 1).join("/")}`,
-      label: /^\d+$/.test(segment) ? "Detail" : prettifySegment(segment),
+      label: /^\d+$/.test(segment) ? "상세" : prettifySegment(segment),
     }));
   }, [pathname]);
 
@@ -59,7 +61,7 @@ export default function NextBreadcrumbs() {
   return (
     <nav aria-label="Breadcrumb" className="next-breadcrumbs">
       <Link className="next-breadcrumbs__link" href="/">
-        Home
+        홈
       </Link>
       {crumbs.map((crumb, index) => {
         const isLast = index === crumbs.length - 1;

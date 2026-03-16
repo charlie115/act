@@ -417,16 +417,12 @@ class MarketIngestRuntime:
                 elif data_name == "binance_usd_m_ticker_df":
                     self.store_info_dict_to_redis(
                         data_name,
-                        self.binance_adaptor.usd_m_all_tickers(
-                            allowed_quote_assets=self._get_enabled_quote_assets("BINANCE", "USD_M"),
-                        ),
+                        self.binance_adaptor.usd_m_all_tickers(),
                     )
                 elif data_name == "binance_usd_m_info_df":
                     self.store_info_dict_to_redis(
                         data_name,
-                        self.binance_adaptor.usd_m_exchange_info(
-                            allowed_quote_assets=self._get_enabled_quote_assets("BINANCE", "USD_M"),
-                        ),
+                        self.binance_adaptor.usd_m_exchange_info(),
                     )
                 elif data_name == "binance_coin_m_ticker_df":
                     self.store_info_dict_to_redis(data_name, self.binance_adaptor.coin_m_all_tickers())
