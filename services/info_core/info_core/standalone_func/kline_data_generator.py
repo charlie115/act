@@ -13,7 +13,8 @@ import re
 from pymongo.errors import BulkWriteError
 from pymongo import UpdateOne
 from standalone_func.get_dollar_dict import get_dollar_dict
-from standalone_func.premium_data_generator import get_or_build_premium_df
+from standalone_func.premium_data_generator import get_convert_rate_version, get_or_build_premium_df
+from standalone_func.price_df_generator import get_market_data_signature
 from standalone_func.store_exchange_status import fetch_market_servercheck
 
 # Module-level thread pool for insert operations
@@ -21,6 +22,10 @@ from standalone_func.store_exchange_status import fetch_market_servercheck
 # 4 workers is optimal: balances throughput with connection pool usage
 _INSERT_THREAD_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="kline_insert")
 VOLATILITY_WINDOW_PREFIX = "VOLATILITY_WINDOW"
+
+
+def _market_state_code(market_code):
+    return market_code.split("/")[0]
 
 def store_kline_volatility_info(mongo_db_client, market_code_combination, logger, last_n=180, stale_threshold_minutes=10):
     """
@@ -256,30 +261,38 @@ def _bulk_insert_with_retry(db, collection_name, docs, mongodb_client, database_
     mongodb_client.ensure_indexes(database_name, collection_name)
     collection = db[collection_name]
 
+    total_inserted = 0
+    remaining_docs = docs
+
     for attempt in range(max_retries):
         try:
-            result = collection.insert_many(docs, ordered=False)
-            return len(result.inserted_ids), False
+            result = collection.insert_many(remaining_docs, ordered=False)
+            return total_inserted + len(result.inserted_ids), False
         except BulkWriteError as bwe:
-            # Some documents may have succeeded
             inserted = bwe.details.get('nInserted', 0)
-            if inserted == len(docs):
-                # All docs inserted despite error (e.g., duplicate key warnings)
-                return inserted, False
+            total_inserted += inserted
 
-            # Get documents that failed (for potential retry)
+            if total_inserted >= len(docs):
+                return total_inserted, False
+
+            # Retry only documents that failed with transient errors (not duplicate key)
             write_errors = bwe.details.get('writeErrors', [])
+            failed_indices = {e['index'] for e in write_errors if e.get('code') != 11000}
+            if not failed_indices:
+                # All failures were duplicate keys — nothing to retry
+                return total_inserted, False
+
+            remaining_docs = [remaining_docs[i] for i in failed_indices]
+
             if attempt == max_retries - 1:
-                # Last attempt failed
-                return inserted, True
-            # Wait before retry with exponential backoff
+                return total_inserted, True
             time.sleep(0.1 * (attempt + 1))
         except Exception as e:
             if attempt == max_retries - 1:
-                raise  # Re-raise on final attempt
+                raise
             time.sleep(0.1 * (attempt + 1))
 
-    return 0, True
+    return total_inserted, True
 
 
 def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict, admin_id, node, logger):
@@ -436,15 +449,19 @@ def _publish_kline_stream(
     publish_local_stream=True,
 ):
     pickled_snapshot_df = pickle.dumps(snapshot_df)
-    if store_local_key:
-        local_redis.set_data(stream_key, pickled_snapshot_df)
-    if publish_local_stream:
-        local_redis.get_redis_client().xadd(
-            _build_local_stream_key(stream_key),
-            {"data": pickled_snapshot_df},
-            maxlen=maxlen,
-            approximate=True,
-        )
+    if store_local_key or publish_local_stream:
+        local_client = local_redis.get_redis_client()
+        local_pipeline = local_client.pipeline(transaction=False)
+        if store_local_key:
+            local_pipeline.set(stream_key, pickled_snapshot_df)
+        if publish_local_stream:
+            local_pipeline.xadd(
+                _build_local_stream_key(stream_key),
+                {"data": pickled_snapshot_df},
+                maxlen=maxlen,
+                approximate=True,
+            )
+        local_pipeline.execute()
     remote_redis.get_redis_client().xadd(
         stream_key,
         {"data": pickled_snapshot_df},
@@ -518,6 +535,19 @@ def ohlc_1T_generator(
     for col in ohlc_columns + other_columns:
         per_minute_ohlc_df[col] = np.nan  # Initialize columns with NaN
 
+    # Local cache for dollar price (avoid Redis round-trip every 50ms)
+    _cached_dollar_price = None
+    _cached_dollar_time = 0
+    _DOLLAR_CACHE_TTL = 10  # seconds
+
+    def _get_dollar_price():
+        nonlocal _cached_dollar_price, _cached_dollar_time
+        now = time.time()
+        if _cached_dollar_price is None or (now - _cached_dollar_time) > _DOLLAR_CACHE_TTL:
+            _cached_dollar_price = get_dollar_dict(local_redis)['price']
+            _cached_dollar_time = now
+        return _cached_dollar_price
+
     one_t_now_key = f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_now"
     one_t_closed_key = f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_closed"
     remote_redis.get_redis_client().xtrim(one_t_now_key, maxlen=max_length)
@@ -526,10 +556,13 @@ def ohlc_1T_generator(
     local_redis.get_redis_client().xtrim(_build_local_stream_key(one_t_closed_key), maxlen=max_length)
     
     # Initialize convert_rate_dict
+    market_code_combination = f"{target_market_code}:{origin_market_code}"
+    last_convert_rate_version = None
     while True:
         fetched_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
         if fetched_convert_rate_dict:
             fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
+            last_convert_rate_version = get_convert_rate_version(local_redis, market_code_combination)
             break
         logger.info("convert_rate_dict is not ready yet. Waiting for 1 second...")
         time.sleep(1)
@@ -552,6 +585,10 @@ def ohlc_1T_generator(
     save_servercheck_status_thread.start()
 
     loop_downtime_sec = 0.05
+    target_market_state_code = _market_state_code(target_market_code)
+    origin_market_state_code = _market_state_code(origin_market_code)
+    last_source_signature = None
+    last_prices_index = None
     while True:
         try:
             # Check if one of the markets is in maintenance
@@ -564,14 +601,26 @@ def ohlc_1T_generator(
             # # Performance tracking - start of iteration
             # loop_start_time = time.time()
             
-            # datetime_before = datetime_now
             datetime_before = datetime_now.replace(second=0, microsecond=0)
-            # datetime_now = datetime.datetime.utcnow()
             datetime_now = datetime.datetime.utcnow().replace(second=0, microsecond=0)
+
+            current_convert_rate_version = get_convert_rate_version(local_redis, market_code_combination)
+            if current_convert_rate_version != last_convert_rate_version:
+                fetched_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
+                fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in fetched_convert_rate_dict.items()}
+                last_convert_rate_version = current_convert_rate_version
+
+            source_signature = (
+                get_market_data_signature(local_redis, target_market_state_code),
+                get_market_data_signature(local_redis, origin_market_state_code),
+                current_convert_rate_version,
+            )
+            minute_changed = datetime_before != datetime_now
+            if not minute_changed and source_signature == last_source_signature:
+                continue
             
             # # Performance tracking - premium data fetch
             # premium_fetch_start = time.time()
-            market_code_combination = f"{target_market_code}:{origin_market_code}"
             premium_df = get_or_build_premium_df(
                 local_redis,
                 market_code_combination,
@@ -584,16 +633,24 @@ def ohlc_1T_generator(
             # premium_fetch_time = time.time() - premium_fetch_start
             # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Fetching premium data took {premium_fetch_time:.4f} seconds")
 
-            # Extract necessary columns and set 'base_asset' as the index
-            # # Performance tracking - data preparation
-            # prep_start = time.time()
-            prices_df = premium_df.set_index('base_asset')[price_columns + other_columns]
+            current_index = pd.Index(
+                premium_df["base_asset"].to_numpy(copy=False),
+                name="base_asset",
+            )
+            price_matrix = premium_df[price_columns].to_numpy(dtype="float64", copy=False)
+            other_matrix = premium_df[other_columns].to_numpy(copy=False)
 
             # Keep only base_assets that are in prices_df (remove delisted cryptos)
-            per_minute_ohlc_df = per_minute_ohlc_df.reindex(prices_df.index)
+            if (
+                last_prices_index is None
+                or per_minute_ohlc_df.empty
+                or not current_index.equals(last_prices_index)
+            ):
+                per_minute_ohlc_df = per_minute_ohlc_df.reindex(current_index)
+                last_prices_index = current_index.copy()
 
             # Identify new base_assets (where 'LS_open' is NaN)
-            mask_new = per_minute_ohlc_df['LS_open'].isna()
+            mask_new = per_minute_ohlc_df['LS_open'].isna().to_numpy()
             # prep_time = time.time() - prep_start
             # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Data preparation took {prep_time:.4f} seconds")
 
@@ -601,8 +658,7 @@ def ohlc_1T_generator(
             # new_assets_start = time.time()
             # For new base_assets, initialize OHLC values
             if mask_new.any():
-                # Extract prices for new base_assets
-                new_prices = prices_df.loc[mask_new, price_columns]
+                new_index = current_index[mask_new]
                 
                 # Create a DataFrame for the OHLC columns
                 # This will have columns like 'tp_open', 'tp_high', ..., 'SL_close'
@@ -611,54 +667,27 @@ def ohlc_1T_generator(
                 # Repeat the prices for 'open', 'high', 'low', 'close'
                 # The shape of new_prices.values is (num_assets, num_prefixes)
                 # We need to repeat each price 4 times (for 'open', 'high', 'low', 'close')
-                repeated_prices = np.repeat(new_prices.values, 4, axis=1)
-                
-                # Create a DataFrame with the repeated prices
-                new_ohlc_values = pd.DataFrame(
-                    data=repeated_prices,
-                    index=new_prices.index,
-                    columns=ohlc_cols
-                )
+                repeated_prices = np.repeat(price_matrix[mask_new], 4, axis=1)
                 
                 # Assign the new OHLC values to per_minute_ohlc_df
-                per_minute_ohlc_df.loc[mask_new, ohlc_cols] = new_ohlc_values.astype('float64')
-                
-                # Assign other columns
-                per_minute_ohlc_df.loc[mask_new, other_columns] = prices_df.loc[mask_new, other_columns].astype('float64')
+                per_minute_ohlc_df.loc[new_index, ohlc_cols] = repeated_prices
             # new_assets_time = time.time() - new_assets_start
             # if mask_new.any():
             #     logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Processing {mask_new.sum()} new assets took {new_assets_time:.4f} seconds")
 
-            # Update other columns for new base_assets
-            per_minute_ohlc_df.loc[mask_new, other_columns] = prices_df.loc[mask_new, other_columns].astype('float64')
-
             # # Performance tracking - update OHLC values
             # update_ohlc_start = time.time()
-            # Create a mapping from prefixes to price columns
-            prefix_price_map = dict(zip(prefixes, price_columns))
-
-            # Create prices_df_prices with columns as prefixes
-            prices_df_prices = prices_df[price_columns].rename(columns=dict(zip(price_columns, prefixes)))
-
-            # Update 'high' for all prefixes
-            per_minute_ohlc_df_high = per_minute_ohlc_df[[f'{prefix}_high' for prefix in prefixes]].rename(columns=lambda x: x.replace('_high', ''))
-            per_minute_ohlc_df_high = np.maximum(per_minute_ohlc_df_high, prices_df_prices).astype('float64')
-            per_minute_ohlc_df_high.columns = [f'{col}_high' for col in per_minute_ohlc_df_high.columns]
-            per_minute_ohlc_df.update(per_minute_ohlc_df_high)
-
-            # Update 'low' for all prefixes
-            per_minute_ohlc_df_low = per_minute_ohlc_df[[f'{prefix}_low' for prefix in prefixes]].rename(columns=lambda x: x.replace('_low', ''))
-            per_minute_ohlc_df_low = np.minimum(per_minute_ohlc_df_low, prices_df_prices).astype('float64')
-            per_minute_ohlc_df_low.columns = [f'{col}_low' for col in per_minute_ohlc_df_low.columns]
-            per_minute_ohlc_df.update(per_minute_ohlc_df_low)
-
-            # Update 'close' for all prefixes
-            per_minute_ohlc_df_close = prices_df_prices.copy().astype('float64')
-            per_minute_ohlc_df_close.columns = [f'{col}_close' for col in per_minute_ohlc_df_close.columns]
-            per_minute_ohlc_df.update(per_minute_ohlc_df_close)
+            for prefix, price_column in zip(prefixes, price_columns):
+                price_values = premium_df[price_column].to_numpy(dtype="float64", copy=False)
+                high_values = per_minute_ohlc_df[f"{prefix}_high"].to_numpy(dtype="float64", copy=False)
+                low_values = per_minute_ohlc_df[f"{prefix}_low"].to_numpy(dtype="float64", copy=False)
+                close_values = per_minute_ohlc_df[f"{prefix}_close"].to_numpy(dtype="float64", copy=False)
+                np.maximum(high_values, price_values, out=high_values)
+                np.minimum(low_values, price_values, out=low_values)
+                close_values[:] = price_values
 
             # Update other columns
-            per_minute_ohlc_df[other_columns] = prices_df[other_columns]
+            per_minute_ohlc_df[other_columns] = other_matrix
             # update_ohlc_time = time.time() - update_ohlc_start
             # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Updating OHLC values took {update_ohlc_time:.4f} seconds")
 
@@ -667,7 +696,7 @@ def ohlc_1T_generator(
             # Update per_minute_ohlc_df in the Redis 'now' data
             ohlc_now_df = per_minute_ohlc_df.reset_index()
             ohlc_now_df['datetime_now'] = datetime_now
-            ohlc_now_df['dollar'] = get_dollar_dict(local_redis)['price']
+            ohlc_now_df['dollar'] = _get_dollar_price()
             _publish_kline_stream(
                 local_redis,
                 remote_redis,
@@ -678,6 +707,7 @@ def ohlc_1T_generator(
             )
             # redis_update_time = time.time() - redis_update_start
             # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Redis updates took {redis_update_time:.4f} seconds")
+            last_source_signature = source_signature
 
             # # Performance tracking - minute transition
             # minute_transition_start = None
@@ -692,7 +722,7 @@ def ohlc_1T_generator(
                 # Finalize the per-minute OHLC DataFrame
                 ohlc_df = per_minute_ohlc_df.reset_index()
                 ohlc_df['datetime_now'] = adjusted_datetime_now - datetime.timedelta(minutes=1)
-                ohlc_df['dollar'] = get_dollar_dict(local_redis)['price']
+                ohlc_df['dollar'] = _get_dollar_price()
                 ohlc_df['closed'] = True
 
                 _publish_kline_stream(
@@ -731,17 +761,11 @@ def ohlc_1T_generator(
                 
                 # Reset per_minute_ohlc_df for the new minute
                 per_minute_ohlc_df = pd.DataFrame()
+                last_prices_index = None
                 # Re-initialize columns for the new DataFrame
                 for col in ohlc_columns + other_columns:
                     per_minute_ohlc_df[col] = np.nan
                     
-            # Performance tracking - info dict reload
-            # convert_rate_dict_reload_start = time.time()
-            # Reload convert_rate_dict
-            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in local_redis.hgetall_dict('convert_rate_dict').items()}
-            # convert_rate_dict_reload_time = time.time() - convert_rate_dict_reload_start
-            # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Info dict reload took {convert_rate_dict_reload_time:.4f} seconds")
-            
             # # Performance tracking - full iteration
             # total_loop_time = time.time() - loop_start_time
             # logger.info(f"ohlc_1T_generator|{target_market_code}:{origin_market_code}, Full iteration took {total_loop_time:.4f} seconds [premium:{premium_fetch_time:.4f}, prep:{prep_time:.4f}, update:{update_ohlc_time:.4f}, redis:{redis_update_time:.4f}, minute_change:{minute_transition_time:.4f}, reload:{convert_rate_dict_reload_time:.4f}]")

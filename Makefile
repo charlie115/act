@@ -7,8 +7,9 @@ ACTION ?= ps
 ARGS ?=
 FORCE ?= 0
 WEB_PORT ?= 3000
+NAME ?=
 
-.PHONY: help doctor env-init build-images build-web web-dev sync-web stack dev-up dev-down prod-up prod-down
+.PHONY: help doctor env-init build-images build-web web-dev sync-web stack dev-up dev-down prod-up prod-down worker-up worker-down worker-list
 
 help:
 	@$(WORKFLOW) help
@@ -45,3 +46,12 @@ prod-up:
 
 prod-down:
 	@$(WORKFLOW) prod-down $(STACK)
+
+worker-up:
+	@$(WORKFLOW) worker-up $(NAME) $(ENV)
+
+worker-down:
+	@$(WORKFLOW) worker-down $(NAME) $(ENV)
+
+worker-list:
+	@$(WORKFLOW) worker-list

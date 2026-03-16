@@ -3,6 +3,8 @@ import json
 import math
 import pickle
 import threading
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 from platform_common.integrations.infocore import get_infocore_redis_connection
@@ -12,6 +14,8 @@ from users.models import User  # noqa: F401
 
 
 REDIS_CLI = get_infocore_redis_connection()
+KST = ZoneInfo("Asia/Seoul")
+UTC = ZoneInfo("UTC")
 
 
 def _normalize_signature_value(value):
@@ -34,6 +38,36 @@ def _normalize_stream_id(value):
     if isinstance(value, bytes):
         return value.decode()
     return value
+
+
+def _json_safe_value(value):
+    normalized = _normalize_signature_value(value)
+    if normalized is None:
+        return None
+
+    if isinstance(normalized, bytes):
+        return normalized.decode()
+
+    if isinstance(normalized, (datetime, date)):
+        if isinstance(normalized, datetime):
+            if normalized.tzinfo is None:
+                normalized = normalized.replace(tzinfo=UTC)
+            normalized = normalized.astimezone(KST)
+        return normalized.isoformat()
+
+    if hasattr(normalized, "isoformat") and not isinstance(normalized, str):
+        try:
+            return normalized.isoformat()
+        except Exception:
+            pass
+
+    if hasattr(normalized, "item"):
+        try:
+            return normalized.item()
+        except Exception:
+            pass
+
+    return normalized
 
 
 class KlineConsumer(AsyncWebsocketConsumer):
@@ -135,6 +169,12 @@ class KlineConsumer(AsyncWebsocketConsumer):
                 return None
 
             self._initialized = True
+            if self._base_asset:
+                changed_records = [
+                    {key: _json_safe_value(value) for key, value in record.items()}
+                    for record in changed_records
+                ]
+
             data["result"] = json.dumps(changed_records, ensure_ascii=False)
             return data
         except Exception as err:
@@ -170,6 +210,7 @@ class KlineConsumer(AsyncWebsocketConsumer):
         self._stop = True
 
         if self._thread:
-            del self._thread
+            self._thread.join(timeout=5)
+            self._thread = None
 
-        super().disconnect(code)
+        await super().disconnect(code)

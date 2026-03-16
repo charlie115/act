@@ -7,29 +7,42 @@ Use the monorepo root as the single entry point for:
 - environment file initialization
 - Docker image builds
 - frontend image build and local Next.js dev server
-- testing stack startup and shutdown
-- production stack startup and shutdown
+- development, testing, and production stack management
+- multi-worker deployment with per-worker market code assignment
 
-The root workflow now prefers the normalized compose layout and the official Next.js frontend:
+## Node Types
 
-- `infra/compose/community/compose.base.yml`
-- `infra/compose/community/compose.testing.yml`
-- `infra/compose/community/compose.production.yml`
-- `infra/compose/trade/compose.base.yml`
-- `infra/compose/trade/compose.testing.yml`
-- `infra/compose/trade/compose.production.yml`
+| Node | Stack | Services | Purpose |
+|------|-------|----------|---------|
+| **Master** | `community` | Django, info_core (MASTER=true), Celery, PostgreSQL, Redis, MongoDB, news_core, hdwallet | User-facing backend + market data |
+| **Worker** | `worker` | info_core (MASTER=false) | Kline generation for assigned market codes |
+| **Trade** | `trade` | trade_core, trade_core_api, PostgreSQL | Trading execution + trigger evaluation |
 
-Legacy environment-specific `testing/docker-compose.yml` and `production/docker-compose.yml`
-are left in place as fallback references.
+## Compose Layout
 
-The official public frontend is now `apps/community_web_next`.
-The CRA app remains in the repo as legacy source, but the root workflow no longer depends on its build artifact.
-
-For day-to-day frontend development:
-
-- backend/data services run in Docker
-- `community_web_next` runs locally with `next dev`
-- hot reload happens outside Docker
+```
+infra/compose/
+├── community/              # Master node
+│   ├── compose.base.yml
+│   ├── compose.dev.yml
+│   ├── compose.testing.yml
+│   └── compose.production.yml
+│
+├── worker/                 # Worker nodes (multi-instance)
+│   ├── compose.base.yml
+│   ├── compose.dev.yml
+│   ├── compose.testing.yml
+│   ├── compose.production.yml
+│   └── workers/            # Per-worker configs
+│       ├── worker1.env
+│       └── worker2.env.example
+│
+└── trade/                  # Trade node
+    ├── compose.base.yml
+    ├── compose.dev.yml
+    ├── compose.testing.yml
+    └── compose.production.yml
+```
 
 ## Commands
 
@@ -49,28 +62,21 @@ Initialize missing env files:
 make env-init
 ```
 
-Bring up the backend/data services for local development:
-
-```bash
-make dev-up STACK=all
-```
-
-Bring up only the community-side backend stack:
+Bring up the Master node backend:
 
 ```bash
 make dev-up STACK=community
 ```
 
-Start the local Next.js dev server:
+Start the local Next.js dev server (runs outside Docker):
 
 ```bash
 make web-dev
 ```
 
-The local frontend will be available on `http://localhost:3000`.
-The backend will be available on `http://localhost:8000`.
+The local frontend: `http://localhost:3000`, backend: `http://localhost:8000`.
 
-Bring up only the trade-side stack:
+Bring up the Trade node:
 
 ```bash
 make dev-up STACK=trade
@@ -79,36 +85,81 @@ make dev-up STACK=trade
 Stop stacks:
 
 ```bash
+make dev-down STACK=community
+make dev-down STACK=trade
 make dev-down STACK=all
 ```
 
 Inspect compose status or logs:
 
 ```bash
-make stack STACK=community ENV=testing ACTION=ps
-make stack STACK=community ENV=testing ACTION=logs ARGS="drf -f"
-make stack STACK=trade ENV=testing ACTION=logs ARGS="trade-core -f"
+make stack STACK=community ENV=dev ACTION=ps
+make stack STACK=community ENV=dev ACTION=logs ARGS="drf -f"
+make stack STACK=trade ENV=dev ACTION=logs ARGS="trade-core -f"
 ```
+
+## Worker Workflow
+
+Workers run independently with per-worker market code assignment.
+
+List available worker configs:
+
+```bash
+make worker-list
+```
+
+Start a specific worker:
+
+```bash
+make worker-up NAME=worker1              # dev (default)
+make worker-up NAME=worker1 ENV=prod     # production
+```
+
+Stop a worker:
+
+```bash
+make worker-down NAME=worker1
+make worker-down NAME=worker1 ENV=prod
+```
+
+### Adding a New Worker
+
+1. Copy the example: `cp infra/compose/worker/workers/worker2.env.example infra/compose/worker/workers/worker3.env`
+2. Edit `worker3.env`:
+   - Set `WORKER_NAME=worker3`
+   - Set `WORKER_MARKET_KLINES="BITHUMB_SPOT/KRW:OKX_USD_M/USDT"`
+   - Set Master node connection (MongoDB, Redis, ACW API URL)
+3. Start: `make worker-up NAME=worker3`
+
+Each worker runs as an independent Docker project with isolated containers and networks.
 
 ## Production Workflow
 
-Build and deploy both stacks:
-
-```bash
-make prod-up STACK=all
-```
-
-Deploy only one stack:
+Build and deploy Master node:
 
 ```bash
 make prod-up STACK=community
+```
+
+Deploy Trade node:
+
+```bash
 make prod-up STACK=trade
+```
+
+Deploy workers:
+
+```bash
+make worker-up NAME=worker1 ENV=prod
+make worker-up NAME=worker2 ENV=prod
 ```
 
 Shut down:
 
 ```bash
-make prod-down STACK=all
+make prod-down STACK=community
+make prod-down STACK=trade
+make worker-down NAME=worker1 ENV=prod
 ```
 
 ## Lower-Level Commands
@@ -116,34 +167,49 @@ make prod-down STACK=all
 Build backend images only:
 
 ```bash
-make build-images STACK=all ENV=testing
+make build-images STACK=community ENV=dev
+make build-images STACK=trade ENV=testing
 make build-images STACK=all ENV=production
 ```
 
 Build frontend only:
 
 ```bash
-make build-web ENV=testing
 make build-web ENV=production
 ```
 
-Run the local frontend dev server:
+## Environment Configuration
 
-```bash
-make web-dev
-```
+### Master Node
 
-The old frontend artifact sync command is now a no-op because the official frontend runs as a container:
+Service-level `.env` files in each service directory:
+- `services/info_core/.env.dev`, `.env.test`, `.env.prod`
+- `apps/community_drf/.env.dev`, `.env.test`, `.env.prod`
 
-```bash
-make sync-web ENV=testing
-make sync-web ENV=production
-```
+Compose-level `.env` in `infra/compose/community/{dev,testing,production}/.env`
+
+### Worker Node
+
+Per-worker configs in `infra/compose/worker/workers/workerN.env`:
+- `WORKER_MARKET_KLINES` — market codes this worker processes
+- `WORKER_MONGODB_HOST` — Master's MongoDB for kline storage
+- `WORKER_REDIS_HOST` — Master's Redis for shared data
+- `WORKER_ACW_API_URL` — Master's Django for messaging
+
+### Trade Node
+
+- `services/trade_core/.env.dev`, `.env.test`, `.env.prod`
+- `infra/compose/trade/{dev,testing,production}/.env`
+
+### Dev-Only Settings
+
+- `DEV_MAX_SYMBOLS=10` — limits symbols to top 10 by volume (reduces CPU/memory)
+- `BINANCE_PROC_MULTIPLIER=1` — reduces WebSocket processes
 
 ## Notes
 
 - `make env-init` only creates missing files unless `FORCE=1` is passed.
-- `make build-web` now runs a local Next.js production build in `apps/community_web_next`.
-- `make web-dev` runs `community_web_next` locally with hot reload on port `3000`.
-- Community `dev-up` uses `infra/compose/community/compose.dev.yml` and does not start the frontend container.
+- Community `dev-up` does not start the frontend container (runs locally via `make web-dev`).
+- Workers connect to Master's MongoDB/Redis — ensure network connectivity.
+- `apps/community_web` is the legacy CRA frontend (reference only).
 - Runtime services remain separated even though source control is unified.

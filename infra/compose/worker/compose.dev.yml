@@ -1,0 +1,13 @@
+services:
+  info-core:
+    image: info-core:dev
+    environment:
+      - BINANCE_PROC_MULTIPLIER=1
+      - DEV_MAX_SYMBOLS=10
+      - PROD=false
+    volumes:
+      - ${HOME}/${WORKER_NAME:-worker}-info-core/logs:/home/info_core/info_core/loggers/logs
+
+networks:
+  worker-network:
+    name: ${WORKER_NAME:-worker}-network

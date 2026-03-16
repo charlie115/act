@@ -17,5 +17,12 @@ def get_infocore_mongo_client(appname):
         username=settings.MONGODB["USERNAME"],
         password=settings.MONGODB["PASSWORD"],
         appname=appname,
+        maxPoolSize=30,
+        minPoolSize=5,
+        maxIdleTimeMS=60000,
+        waitQueueTimeoutMS=5000,
+        serverSelectionTimeoutMS=10000,
+        connectTimeoutMS=5000,
+        socketTimeoutMS=30000,
     )
 

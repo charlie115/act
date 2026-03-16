@@ -77,7 +77,7 @@ def _premium_cache_is_fresh(cache_payload, expected_metadata):
     )
 
 
-def get_premium_df(redis_client, convert_rate_dict, target_market_code, origin_market_code, logger):
+def get_premium_df(redis_client, convert_rate_dict, target_market_code, origin_market_code, logger, sort_by_atp24h=True):
     return build_premium_df(
         redis_client=redis_client,
         convert_rate_dict=convert_rate_dict,
@@ -86,6 +86,7 @@ def get_premium_df(redis_client, convert_rate_dict, target_market_code, origin_m
         logger=logger,
         get_dollar_dict_fn=get_dollar_dict,
         get_price_df_fn=get_price_df,
+        sort_by_atp24h=sort_by_atp24h,
     )
 
 
@@ -173,6 +174,7 @@ def get_or_build_premium_df(
         target_market_code,
         origin_market_code,
         logger,
+        sort_by_atp24h=False,
     )
     if not premium_df.empty:
         stored_metadata = build_premium_cache_metadata(

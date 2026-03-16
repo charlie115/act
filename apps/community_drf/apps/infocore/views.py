@@ -4,6 +4,7 @@ import json
 import time
 import pandas as pd
 import pickle
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.cache import cache
@@ -11,7 +12,7 @@ from django_filters import FilterSet
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import exceptions, response, views
-from pymongo import DESCENDING
+from pymongo import ASCENDING, DESCENDING
 from pytz import timezone
 
 from infocore.models import Asset
@@ -46,6 +47,35 @@ from lib.views import BaseViewSet
 REDIS_CLI = get_infocore_redis_connection()
 MONGODB_CLI = get_infocore_mongo_client(appname="django-infocore-api")
 logger = logging.getLogger(__name__)
+KST = ZoneInfo("Asia/Seoul")
+UTC = ZoneInfo("UTC")
+
+
+def _normalize_nullable_value(value):
+    if pd.isna(value):
+        return None
+    return value
+
+
+def _normalize_latest_funding_doc(doc):
+    if not isinstance(doc, dict):
+        return doc
+    normalized = dict(doc)
+    for key in ("funding_rate", "funding_time", "funding_interval_hours", "datetime_now"):
+        if key in normalized:
+            normalized[key] = _normalize_nullable_value(normalized[key])
+    return normalized
+
+
+def _normalize_chart_datetime(value):
+    if value is None or pd.isna(value):
+        return None
+
+    timestamp = pd.Timestamp(value)
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.tz_localize(UTC)
+
+    return timestamp.tz_convert(KST)
 
 
 class AssetFilter(FilterSet):
@@ -93,6 +123,36 @@ class MarketCodesView(views.APIView):
     _prefix = "INFO_CORE|ACTIVATED|"
     _index_key = "INFO_CORE|ACTIVATED_INDEX"
     _ttl_seconds = 35
+    _kline_now_pattern = "INFO_CORE|*_1T_now"
+
+    def _collect_from_streams(self, minimum_score):
+        market_codes = {}
+        for redis_key in REDIS_CLI.scan_iter(match=self._kline_now_pattern):
+            redis_key = redis_key.decode() if isinstance(redis_key, bytes) else redis_key
+            if not redis_key.startswith("INFO_CORE|") or not redis_key.endswith("_1T_now"):
+                continue
+
+            channel_name = redis_key[len("INFO_CORE|") : -len("_1T_now")]
+            try:
+                stream_info = REDIS_CLI.xinfo_stream(redis_key)
+                last_generated_id = stream_info.get("last-generated-id")
+                if isinstance(last_generated_id, bytes):
+                    last_generated_id = last_generated_id.decode()
+                last_timestamp = int(str(last_generated_id).split("-")[0]) / 1000
+            except Exception:
+                continue
+
+            if last_timestamp < minimum_score:
+                continue
+
+            try:
+                target_market, origin_market = channel_name.split(":")
+            except ValueError:
+                continue
+
+            market_codes.setdefault(target_market, []).append(origin_market)
+
+        return market_codes
 
     def get(self, request):
         market_codes = {}
@@ -106,6 +166,9 @@ class MarketCodesView(views.APIView):
                 market_codes[target_market].append(origin_market)
             else:
                 market_codes[target_market] = [origin_market]
+
+        if not market_codes:
+            market_codes = self._collect_from_streams(minimum_score)
 
         data = {key: sorted(market_codes[key]) for key in sorted(market_codes.keys())}
 
@@ -126,13 +189,15 @@ class CurrentKlineSnapshotView(views.APIView):
     def get(self, request):
         target_market_code = request.query_params.get("target_market_code")
         origin_market_code = request.query_params.get("origin_market_code")
+        base_asset = request.query_params.get("base_asset")
+        interval = request.query_params.get("interval", "1T")
 
         if not target_market_code or not origin_market_code:
             raise exceptions.ValidationError(
                 {"detail": "target_market_code and origin_market_code are required."}
             )
 
-        channel_name = f"INFO_CORE|{target_market_code}:{origin_market_code}_1T_now"
+        channel_name = f"INFO_CORE|{target_market_code}:{origin_market_code}_{interval}_now"
 
         try:
             latest_entries = REDIS_CLI.xrevrange(channel_name, count=1)
@@ -141,23 +206,31 @@ class CurrentKlineSnapshotView(views.APIView):
 
             _, entry_data = latest_entries[0]
             kline_df = pickle.loads(entry_data[b"data"])
-            concise_kline_df = kline_df.drop(
-                columns=[
-                    "tp_open",
-                    "tp_high",
-                    "tp_low",
-                    "tp_close",
-                    "LS_open",
-                    "LS_high",
-                    "LS_low",
-                    "SL_open",
-                    "SL_high",
-                    "SL_low",
-                    "datetime_now",
-                ],
-                errors="ignore",
-            )
-            return response.Response(json.loads(concise_kline_df.to_json(orient="records")))
+            if base_asset:
+                concise_kline_df = kline_df[kline_df["base_asset"] == base_asset]
+                if "datetime_now" in concise_kline_df.columns:
+                    concise_kline_df = concise_kline_df.copy()
+                    concise_kline_df["datetime_now"] = concise_kline_df["datetime_now"].apply(
+                        _normalize_chart_datetime
+                    )
+            else:
+                concise_kline_df = kline_df.drop(
+                    columns=[
+                        "tp_open",
+                        "tp_high",
+                        "tp_low",
+                        "tp_close",
+                        "LS_open",
+                        "LS_high",
+                        "LS_low",
+                        "SL_open",
+                        "SL_high",
+                        "SL_low",
+                        "datetime_now",
+                    ],
+                    errors="ignore",
+                )
+            return response.Response(concise_kline_df.to_dict(orient="records"))
         except Exception:
             logger.exception("Error fetching current kline snapshot")
             return response.Response([])
@@ -227,6 +300,17 @@ class KlineDataView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
     page_size = 200
+    CACHE_TTL_LATEST = 6
+    CACHE_TTL_HISTORICAL = 1800
+    EXISTENCE_CACHE_TTL = 300
+    INTERVAL_SECONDS = {
+        "1T": 60,
+        "5T": 300,
+        "15T": 900,
+        "30T": 1800,
+        "1H": 3600,
+        "4H": 14400,
+    }
 
     def get(self, request):
         query_params = KlineDataQueryParamsSerializer(data=request.query_params)
@@ -238,6 +322,7 @@ class KlineDataView(views.APIView):
             origin_market_code=query.get("origin_market_code", "").replace("/", "__"),
             base_asset=query.get("base_asset", ""),
             interval=query.get("interval", ""),
+            limit=query.get("limit"),
             start_time=query.get("start_time", None),
             end_time=query.get("end_time", None),
             tz=query.get("tz"),
@@ -251,42 +336,53 @@ class KlineDataView(views.APIView):
         origin_market_code,
         base_asset,
         interval,
+        limit,
         start_time,
         end_time,
         tz,
     ):
-        if start_time and end_time:
+        if start_time:
             start_time = timezone(tz).localize(start_time.replace(tzinfo=None))
+        if end_time:
             end_time = timezone(tz).localize(end_time.replace(tzinfo=None))
+
+        requested_limit = limit or self.page_size
+
+        cache_key = self._get_cache_key(
+            target_market_code=target_market_code,
+            origin_market_code=origin_market_code,
+            base_asset=base_asset,
+            interval=interval,
+            limit=requested_limit,
+            start_time=start_time,
+            end_time=end_time,
+            tz=tz,
+        )
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return cached_data
 
         database = f"{target_market_code}-{origin_market_code}"
         collection = f"{base_asset}_{interval}"
 
-        # Get database
-        databases = MONGODB_CLI.list_database_names()
-        if database not in databases:
+        if not self._database_exists(database):
             raise exceptions.ValidationError({"detail": "Invalid market code."})
 
         db = MONGODB_CLI.get_database(database)
 
-        # Get collection
-        collections = db.list_collection_names()
-        if collection not in collections:
+        if not self._collection_exists(db, database, collection):
             raise exceptions.ValidationError({"detail": "Invalid base asset/interval."})
 
         coll = db.get_collection(collection)
 
         # Prepare parameters
-        query_filter = (
-            {
-                "datetime_now": {
-                    "$gte": start_time,
-                    "$lte": end_time,
-                }
-            }
-            if start_time and end_time
-            else {}
-        )
+        datetime_filter = {}
+        if start_time:
+            datetime_filter["$gte"] = start_time
+        if end_time:
+            datetime_filter["$lte"] = end_time
+
+        query_filter = {"datetime_now": datetime_filter} if datetime_filter else {}
         projection = {
             "_id": False,
         }
@@ -297,17 +393,91 @@ class KlineDataView(views.APIView):
             projection=projection,
         )
 
-        # If no start_time and end_time, get latest n data
-        if not (start_time and end_time):
-            cursor = cursor.sort("datetime_now", DESCENDING).limit(self.page_size)
+        should_limit = limit is not None or not (start_time and end_time)
+        if should_limit:
+            if end_time or not start_time:
+                cursor = cursor.sort("datetime_now", DESCENDING).limit(requested_limit)
+            else:
+                cursor = cursor.sort("datetime_now", ASCENDING).limit(requested_limit)
 
-        # Serialize and sort back for display
-        results = sorted(
-            [KlineDataSerializer(item, context={"tz": tz}).data for item in cursor],
-            key=lambda item: item["datetime_now"],
-        )
+        # Serialize results
+        results = [KlineDataSerializer(item, context={"tz": tz}).data for item in cursor]
+
+        # MongoDB returns DESC for most queries — reverse for chronological order
+        if should_limit and (end_time or not start_time):
+            results.reverse()
+        elif not should_limit:
+            # No cursor sort applied — sort in Python
+            results.sort(key=lambda item: item["datetime_now"])
+
+        cache.set(cache_key, results, self._get_cache_ttl(interval, start_time, end_time, tz))
 
         return results
+
+    def _get_cache_key(
+        self,
+        target_market_code,
+        origin_market_code,
+        base_asset,
+        interval,
+        limit,
+        start_time,
+        end_time,
+        tz,
+    ):
+        key_data = ":".join(
+            [
+                "kline",
+                target_market_code or "",
+                origin_market_code or "",
+                base_asset or "",
+                interval or "",
+                str(limit or ""),
+                start_time.isoformat() if start_time else "",
+                end_time.isoformat() if end_time else "",
+                tz or "",
+            ]
+        )
+        return f"kline:{hashlib.md5(key_data.encode()).hexdigest()}"
+
+    def _get_existence_cache_key(self, kind, database, collection=None):
+        key_data = f"{kind}:{database}:{collection or ''}"
+        return f"kline_meta:{hashlib.md5(key_data.encode()).hexdigest()}"
+
+    def _database_exists(self, database):
+        cache_key = self._get_existence_cache_key("db", database)
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        exists = database in MONGODB_CLI.list_database_names()
+        cache.set(cache_key, exists, self.EXISTENCE_CACHE_TTL)
+        return exists
+
+    def _collection_exists(self, db, database, collection):
+        cache_key = self._get_existence_cache_key("coll", database, collection)
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        exists = collection in db.list_collection_names()
+        cache.set(cache_key, exists, self.EXISTENCE_CACHE_TTL)
+        return exists
+
+    def _get_cache_ttl(self, interval, start_time, end_time, tz):
+        interval_seconds = self.INTERVAL_SECONDS.get(interval, 60)
+        now = timezone(tz).localize(pd.Timestamp.utcnow().to_pydatetime().replace(tzinfo=None))
+
+        if start_time and end_time:
+            if (now - end_time).total_seconds() >= interval_seconds:
+                return self.CACHE_TTL_HISTORICAL
+
+            return max(3, min(self.CACHE_TTL_LATEST, interval_seconds // 10))
+
+        if end_time and (now - end_time).total_seconds() >= interval_seconds:
+            return self.CACHE_TTL_HISTORICAL
+
+        return max(3, min(self.CACHE_TTL_LATEST, interval_seconds // 10))
 
 
 @extend_schema_view(
@@ -323,6 +493,7 @@ class KlineVolatilityView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
     page_size = 200
+    CACHE_TTL = 30
 
     def get(self, request):
         query_params = KlineVolatilityQueryParamsSerializer(data=request.query_params)
@@ -338,6 +509,16 @@ class KlineVolatilityView(views.APIView):
 
         return response.Response(data)
 
+    def _get_cache_key(self, target_market_code, origin_market_code, base_assets, tz):
+        key_data = ":".join([
+            "volatility",
+            target_market_code or "",
+            origin_market_code or "",
+            ",".join(sorted(base_assets)) if base_assets else "",
+            tz or "",
+        ])
+        return f"volatility:{hashlib.md5(key_data.encode()).hexdigest()}"
+
     def get_data(
         self,
         target_market_code,
@@ -345,6 +526,11 @@ class KlineVolatilityView(views.APIView):
         base_assets,
         tz,
     ):
+        cache_key = self._get_cache_key(target_market_code, origin_market_code, base_assets, tz)
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+
         try:
             database = target_market_code.replace("/", "__") + '-' + origin_market_code.replace("/", "__")
             collection = "volatility_info"
@@ -366,12 +552,14 @@ class KlineVolatilityView(views.APIView):
             })
 
             cursor = coll.aggregate(pipeline)
-            
+
             # Return a list of serialized values instead of a dictionary with base_asset keys
             results = [
                 KlineVolatilitySerializer(item["data"], context={"tz": tz}).data
                 for item in cursor
             ]
+
+            cache.set(cache_key, results, self.CACHE_TTL)
             return results
         except Exception:
             logger.exception("Error fetching volatility data")
@@ -425,7 +613,8 @@ class FundingRateDataView(views.APIView):
         latest_payload = pickle.loads(cached)
         results = {}
         for base_asset in base_assets:
-            results[base_asset] = latest_payload.get(base_asset, [])
+            docs = latest_payload.get(base_asset, [])
+            results[base_asset] = [_normalize_latest_funding_doc(doc) for doc in docs]
         return results
 
     def get_data(

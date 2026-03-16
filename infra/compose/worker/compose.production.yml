@@ -1,0 +1,11 @@
+services:
+  info-core:
+    image: info-core
+    environment:
+      - PROD=true
+    volumes:
+      - ${HOME}/${WORKER_NAME:-worker}-info-core/logs:/home/info_core/info_core/loggers/logs
+
+networks:
+  worker-network:
+    name: ${WORKER_NAME:-worker}-network

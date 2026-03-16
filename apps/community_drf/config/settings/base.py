@@ -120,6 +120,7 @@ API_APP_SETTINGS = {
 }
 
 MIDDLEWARE = (
+    "django.middleware.gzip.GZipMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -254,6 +255,14 @@ REST_FRAMEWORK = {
         "dj_rest_auth.jwt_auth.JWTCookieAuthentication",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/minute",
+        "user": "300/minute",
+    },
 }
 
 REST_AUTH = {
@@ -321,6 +330,28 @@ STATIC_URL = urljoin(SCRIPT_NAME, "static/")
 MEDIA_ROOT = join(os.path.dirname(BASE_DIR), "media")
 
 MEDIA_URL = urljoin(SCRIPT_NAME, "media/")
+
+OBJECT_STORAGE_ENABLED = env.bool("OBJECT_STORAGE_ENABLED", default=False)
+OBJECT_STORAGE_BUCKET_NAME = env("OBJECT_STORAGE_BUCKET_NAME", default="")
+OBJECT_STORAGE_ENDPOINT_URL = env("OBJECT_STORAGE_ENDPOINT_URL", default="")
+OBJECT_STORAGE_PUBLIC_URL = env("OBJECT_STORAGE_PUBLIC_URL", default="")
+OBJECT_STORAGE_ACCESS_KEY_ID = env("OBJECT_STORAGE_ACCESS_KEY_ID", default="")
+OBJECT_STORAGE_SECRET_ACCESS_KEY = env("OBJECT_STORAGE_SECRET_ACCESS_KEY", default="")
+OBJECT_STORAGE_REGION_NAME = env("OBJECT_STORAGE_REGION_NAME", default="us-east-1")
+OBJECT_STORAGE_LOCATION = env("OBJECT_STORAGE_LOCATION", default="")
+
+if OBJECT_STORAGE_ENABLED:
+    INSTALLED_APPS += ("storages",)
+    STORAGES = {
+        "default": {
+            "BACKEND": "config.storage_backends.MinIOMediaStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    if OBJECT_STORAGE_PUBLIC_URL:
+        MEDIA_URL = urljoin(f"{OBJECT_STORAGE_PUBLIC_URL.rstrip('/')}/", OBJECT_STORAGE_LOCATION.strip("/") + "/") if OBJECT_STORAGE_LOCATION else f"{OBJECT_STORAGE_PUBLIC_URL.rstrip('/')}/"
 
 TEMPLATES_DIRS = ["templates"]
 

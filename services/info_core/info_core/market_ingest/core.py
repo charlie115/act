@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 # from price_websocket import dict_convert, update_dollar, price_websocket
 from exchange_plugin.okx_plug import InitOkxAdaptor
@@ -277,16 +278,62 @@ class MarketIngestRuntime:
             for each_data_name in self.total_data_name_list:
                 if each_market.lower() in each_data_name:
                     enabled_data_name_list.append(each_data_name)
-            exchange_name = each_market.split('_')[0].lower()
-            spot_info = f"{exchange_name}_spot_info_df"
-            spot_ticker = f"{exchange_name}_spot_ticker_df"
-            # Only add spot data names if they exist in total_data_name_list
-            # (some exchanges like Gate.io only have futures, not spot)
-            if spot_info not in enabled_data_name_list and spot_info in self.total_data_name_list:
-                enabled_data_name_list.append(spot_info)
-            if spot_ticker not in enabled_data_name_list and spot_ticker in self.total_data_name_list:
-                enabled_data_name_list.append(spot_ticker)
+
+        for each_market_combi in self.enabled_market_klines:
+            target_market_code, origin_market_code = each_market_combi.split(":")
+            for market_code in (target_market_code, origin_market_code):
+                exchange_name, market_type, _ = self._parse_market_code(market_code)
+                if market_type == "SPOT":
+                    continue
+                if not self._market_combination_requires_spot_reference(
+                    target_market_code,
+                    origin_market_code,
+                    exchange_name,
+                ):
+                    continue
+                spot_info = f"{exchange_name.lower()}_spot_info_df"
+                spot_ticker = f"{exchange_name.lower()}_spot_ticker_df"
+                if spot_info not in enabled_data_name_list and spot_info in self.total_data_name_list:
+                    enabled_data_name_list.append(spot_info)
+                if spot_ticker not in enabled_data_name_list and spot_ticker in self.total_data_name_list:
+                    enabled_data_name_list.append(spot_ticker)
         return list(set(enabled_data_name_list))
+
+    def _parse_market_code(self, market_code):
+        market_name, quote_asset = market_code.split("/")
+        normalized_quote_asset = "USDT" if quote_asset == "USD" else quote_asset
+        if "USD_M" in market_name:
+            exchange_name = market_name.replace("_USD_M", "")
+            market_type = "USD_M"
+        elif "COIN_M" in market_name:
+            exchange_name = market_name.replace("_COIN_M", "")
+            market_type = "COIN_M"
+        else:
+            exchange_name, market_type = market_name.split("_", 1)
+        return exchange_name, market_type, normalized_quote_asset
+
+    def _quotes_need_spot_reference(self, quote_asset_one, quote_asset_two):
+        if quote_asset_one == quote_asset_two:
+            return False
+        if {quote_asset_one, quote_asset_two} == {"KRW", "USDT"}:
+            return False
+        return True
+
+    def _market_combination_requires_spot_reference(
+        self,
+        target_market_code,
+        origin_market_code,
+        exchange_name,
+    ):
+        target_exchange, target_market_type, target_quote_asset = self._parse_market_code(target_market_code)
+        origin_exchange, origin_market_type, origin_quote_asset = self._parse_market_code(origin_market_code)
+        if not self._quotes_need_spot_reference(origin_quote_asset, target_quote_asset):
+            return False
+        if target_exchange == exchange_name and target_market_type != "SPOT":
+            return True
+        if origin_exchange == exchange_name and origin_market_type != "SPOT":
+            return True
+        return False
 
     def get_enabled_futures_market_codes(self):
         enabled_futures_markets = set()
@@ -368,9 +415,19 @@ class MarketIngestRuntime:
                 elif data_name == "binance_spot_info_df":
                     self.store_info_dict_to_redis(data_name, self.binance_adaptor.spot_exchange_info())
                 elif data_name == "binance_usd_m_ticker_df":
-                    self.store_info_dict_to_redis(data_name, self.binance_adaptor.usd_m_all_tickers())
+                    self.store_info_dict_to_redis(
+                        data_name,
+                        self.binance_adaptor.usd_m_all_tickers(
+                            allowed_quote_assets=self._get_enabled_quote_assets("BINANCE", "USD_M"),
+                        ),
+                    )
                 elif data_name == "binance_usd_m_info_df":
-                    self.store_info_dict_to_redis(data_name, self.binance_adaptor.usd_m_exchange_info())
+                    self.store_info_dict_to_redis(
+                        data_name,
+                        self.binance_adaptor.usd_m_exchange_info(
+                            allowed_quote_assets=self._get_enabled_quote_assets("BINANCE", "USD_M"),
+                        ),
+                    )
                 elif data_name == "binance_coin_m_ticker_df":
                     self.store_info_dict_to_redis(data_name, self.binance_adaptor.coin_m_all_tickers())
                 elif data_name == "binance_coin_m_info_df":
@@ -431,6 +488,16 @@ class MarketIngestRuntime:
                     self.logger.error(f"update_exchange_info_as_df|name:{data_name}, {traceback.format_exc()}")
                     self.acw_api.create_message_thread(self.admin_id, f"update_exchange_info_as_df|name:{data_name} failed.", f"update_exchange_info_as_df|name:{data_name} failed.")
                 time.sleep(loop_time_secs)
+
+    def _get_enabled_quote_assets(self, exchange_name, market_type):
+        market_dict = self.enabled_markets_dict.get(exchange_name, {})
+        if market_type == "SPOT":
+            return sorted(set(market_dict.get("SPOT", [])))
+        futures_dict = market_dict.get(market_type, {})
+        quote_assets = []
+        for contract_type in futures_dict:
+            quote_assets.extend(futures_dict.get(contract_type, []))
+        return sorted(set(quote_assets))
     
     def dollar_update_thread_status(self):
         dollar_update_alive_flag = self.update_dollar_thread.is_alive()
@@ -442,13 +509,19 @@ class MarketIngestRuntime:
             integrity_flag = False
         return integrity_flag, dollar_update_status_str
 
+    def _load_redis_df(self, key):
+        """Load a pickled DataFrame from Redis, returning None if missing."""
+        data = self.local_redis.get_data(key)
+        if data is None:
+            return None
+        return pickle.loads(data)
+
     def get_symbol_list(self, target_market): # E.g) UPBIT_SPOT, BINANCE_SPOT, BINANCE_USD_M, BINANCE_COIN_M
         target_exchange = target_market.split('_')[0]
         target_market_type = '_'.join(target_market.split('_')[1:])
 
         comparing_exchanges = self.enabled_markets_dict.keys()
         comparison_list = []
-        total_df = pd.DataFrame()
         for exchange in comparing_exchanges:
             for market_type in self.enabled_markets_dict[exchange]:
                 if market_type == "SPOT":
@@ -466,18 +539,26 @@ class MarketIngestRuntime:
 
         # Start compare and concat
         target_market_symbols = []
-        target_market_ticker_df = pickle.loads(self.local_redis.get_data(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"))
+        target_market_ticker_df = self._load_redis_df(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df")
+        if target_market_ticker_df is None:
+            return []
         # check if it's spot or not
         if target_market_dict['market_type'] != "SPOT":
-            target_market_info_df = pickle.loads(self.local_redis.get_data(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_info_df"))[['symbol','perpetual']]
+            info_df = self._load_redis_df(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_info_df")
+            if info_df is None:
+                return []
+            target_market_info_df = info_df[['symbol','perpetual']]
             target_market_ticker_df = target_market_ticker_df.merge(target_market_info_df, on='symbol', how='inner')
             if target_market_dict['contract_type'] == "PERPETUAL":
                 target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['perpetual'] == True]
             else: # FUTURES
                 target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['perpetual'] == False]
         target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['quote_asset']==target_market_dict['quote_asset']][['symbol','lastPrice','atp24h','base_asset','quote_asset']]
+        merged_dfs = []
         for each_comparison_dict in comparison_list:
-            each_market_info_df = pickle.loads(self.local_redis.get_data(f"{each_comparison_dict['exchange'].lower()}_{each_comparison_dict['market_type'].lower()}_info_df"))
+            each_market_info_df = self._load_redis_df(f"{each_comparison_dict['exchange'].lower()}_{each_comparison_dict['market_type'].lower()}_info_df")
+            if each_market_info_df is None:
+                continue
             if each_comparison_dict['contract_type'] is None:
                 each_market_info_df = each_market_info_df[each_market_info_df['quote_asset']==each_comparison_dict['quote_asset']]
             else: # contract_type is PERPETUAL or FUTURES
@@ -493,18 +574,21 @@ class MarketIngestRuntime:
             if (each_comparison_dict['exchange'] == target_market_dict['exchange'] and
                 each_comparison_dict['market_type'] == target_market_dict['market_type']):
                 target_market_symbols += merged_df[new_symbol].to_list()
-            total_df = pd.concat([total_df, merged_df], axis=0, ignore_index=True)
-            target_market_symbols += total_df['symbol'].to_list()
-        
+            merged_dfs.append(merged_df)
+            target_market_symbols += merged_df['symbol'].to_list()
+
         target_market_symbols = list(set(target_market_symbols))
-        total_target_market_ticker_df = pickle.loads(self.local_redis.get_data(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"))
+        total_target_market_ticker_df = self._load_redis_df(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df")
+        if total_target_market_ticker_df is None:
+            return []
         total_target_market_df = total_target_market_ticker_df[total_target_market_ticker_df['symbol'].isin(target_market_symbols)]
         final_symbol_list = total_target_market_df.sort_values('atp24h', ascending=False)['symbol'].to_list()
 
-        # total_df.drop_duplicates(['symbol'], inplace=True)
-        # total_df.sort_values('atp24h', ascending=False)
-        # total_df.reset_index(drop=True, inplace=True)
-        # return total_df['symbol'].to_list()
+        # DEV_MAX_SYMBOLS: limit symbols in dev to reduce CPU/memory load
+        dev_max = int(os.getenv("DEV_MAX_SYMBOLS", 0))
+        if dev_max > 0:
+            final_symbol_list = final_symbol_list[:dev_max]
+
         return final_symbol_list
     
     def check_status(self, print_result=False, include_text=False):
@@ -527,7 +611,10 @@ class MarketIngestRuntime:
                 except Exception:
                     self.logger.error(f"MarketIngestRuntime|shutdown|{traceback.format_exc()}")
     
-    def convert_asset_rate(self, origin_market, origin_quote_asset, target_market, target_quote_asset):
+    def convert_asset_rate(self, origin_market, origin_quote_asset, target_market, target_quote_asset, _depth=0):
+        if _depth > 3:
+            return None
+
         if origin_quote_asset == "USD":
             origin_quote_asset = "USDT"
         if target_quote_asset == "USD":
@@ -552,27 +639,30 @@ class MarketIngestRuntime:
             if len(df) == 1:
                 convert_rate = df['lastPrice'].values[0]
             elif len(reverse_df) == 1:
-                convert_rate = 1 / reverse_df['lastPrice'].values[0]
+                price = reverse_df['lastPrice'].values[0]
+                convert_rate = 1 / price if price != 0 else None
             else:
                 convert_rate = None
             return convert_rate
         convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, target_quote_asset)
         if convert_rate is None: # not between coins
+            dollar_price = get_dollar_dict(self.local_redis).get('price')
             if target_quote_asset == "KRW" and origin_quote_asset == "USDT":
-                convert_rate = get_dollar_dict(self.local_redis)['price']
+                convert_rate = dollar_price
             elif target_quote_asset == "USDT" and origin_quote_asset == "KRW":
-                convert_rate = 1 / get_dollar_dict(self.local_redis)['price']
+                convert_rate = 1 / dollar_price if dollar_price else None
             elif target_quote_asset == "KRW":
-                convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, "USDT") * get_dollar_dict(self.local_redis)['price']
+                usdt_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, "USDT")
+                convert_rate = usdt_rate * dollar_price if usdt_rate and dollar_price else None
             elif origin_quote_asset == "KRW":
-                temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset)
+                temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset, _depth + 1)
                 if temp_convert_rate is not None:
                     convert_rate = 1 / temp_convert_rate
                 else:
                     title = f"target_market: {target_market}, target_quote_asset: {target_quote_asset}, origin_market:{origin_market}, origin_quote_asset: {origin_quote_asset}"
                     raise Exception(f"Cannot find the convert rate for {title}")
             else:
-                temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset)
+                temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset, _depth + 1)
                 if temp_convert_rate is not None:
                     convert_rate = 1 / temp_convert_rate
                     return convert_rate
@@ -791,7 +881,7 @@ class MarketIngestRuntime:
 
             # Basic validation of response structure
             countries = response_dict.get('country')
-            if not isinstance(countries, list):
+            if not isinstance(countries, list) or len(countries) < 2:
                 update_dollar_logger.error(f"Unexpected response format from Naver API. 'country' list invalid or too short. response_dict: {response_dict}")
                 self.acw_api.create_message_thread(self.admin_id, "Naver 환율 API 응답 형식 오류", f"Naver 환율 API에서 예상치 못한 응답 형식을 받았습니다. response_dict: {response_dict}")
                 return self.update_dollar_return_dict # Return previous state or handle error appropriately

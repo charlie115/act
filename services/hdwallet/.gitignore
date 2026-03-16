@@ -1,0 +1,6 @@
+# ignore *.ipynb
+*.ipynb
+
+# ignore *.pyc and __pycache__
+*.pyc
+__pycache__/

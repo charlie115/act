@@ -1,0 +1,26 @@
+services:
+  trade-postgres:
+    container_name: dev-trade-postgres
+    volumes:
+      - ${HOME}/dev-trade-postgres/data/:/var/lib/postgresql/data/
+
+  trade-core-api:
+    image: trade-core-api:dev
+    container_name: dev-trade-core-api
+    ports:
+      - "20080:8000"
+    volumes:
+      - ${HOME}/dev-trade-core-api/logs:/home/trade_core/trade_core/loggers/logs
+
+  trade-core:
+    image: trade-core:dev
+    container_name: dev-trade-core
+    volumes:
+      - ${HOME}/dev-trade-core/logs:/home/trade_core/trade_core/loggers/logs
+
+  trade-nginx:
+    profiles: ["disabled"]
+
+networks:
+  trade-network:
+    name: dev-trade-network

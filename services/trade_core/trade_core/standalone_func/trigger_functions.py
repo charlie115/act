@@ -1016,6 +1016,5 @@ def fetch_fundingrate_and_save_to_redis(mongo_db_dict, market_code_combination, 
         }
     ])
     fundingrate_df = pd.DataFrame(list(cursor))
-    conn.close()
     local_redis.set_data(redis_key_name, pickle.dumps(fundingrate_df), ex=ex)
     return fundingrate_df

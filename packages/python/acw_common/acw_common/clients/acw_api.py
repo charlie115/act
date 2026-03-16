@@ -30,7 +30,7 @@ class AcwApi:
         return not self.verify and response.status_code == 401
 
     def _skip_message_api(self):
-        return not self.verify
+        return False
 
     def _format_message_content(self, title, content, type_):
         if content is None:
@@ -50,24 +50,28 @@ class AcwApi:
         url = self.url + self.message_url
         params = {"type": type} if type is not None else None
 
-        if id is not None:
-            response = requests.get(
-                url + str(id) + "/",
-                verify=self.verify,
-                params=params,
-            )
+        try:
+            if id is not None:
+                response = requests.get(
+                    url + str(id) + "/",
+                    verify=self.verify,
+                    params=params,
+                    timeout=10,
+                )
+                if response.status_code == 200:
+                    return pd.DataFrame([response.json()])
+                if self._is_best_effort_dev_auth_failure(response):
+                    return pd.DataFrame()
+                self._raise_error(response)
+
+            response = requests.get(url, verify=self.verify, params=params, timeout=10)
             if response.status_code == 200:
-                return pd.DataFrame([response.json()])
+                return pd.DataFrame(response.json()["results"])
             if self._is_best_effort_dev_auth_failure(response):
                 return pd.DataFrame()
             self._raise_error(response)
-
-        response = requests.get(url, verify=self.verify, params=params)
-        if response.status_code == 200:
-            return pd.DataFrame(response.json()["results"])
-        if self._is_best_effort_dev_auth_failure(response):
+        except requests.RequestException:
             return pd.DataFrame()
-        self._raise_error(response)
 
     def create_message(
         self,
@@ -98,7 +102,11 @@ class AcwApi:
             "send_times": send_times,
             "send_term": send_term,
         }
-        response = requests.post(url, json=payload, verify=self.verify)
+        try:
+            response = requests.post(url, json=payload, verify=self.verify, timeout=10)
+        except requests.RequestException:
+            # Network error — silently skip to avoid crashing the caller
+            return None
         if response.status_code == 201:
             return response.json()
         if self._is_best_effort_dev_auth_failure(response):
@@ -110,11 +118,15 @@ class AcwApi:
             return None
 
         url = self.url + self.message_url
-        response = requests.patch(
-            url + str(id) + "/",
-            json={"read": True},
-            verify=self.verify,
-        )
+        try:
+            response = requests.patch(
+                url + str(id) + "/",
+                json={"read": True},
+                verify=self.verify,
+                timeout=10,
+            )
+        except requests.RequestException:
+            return None
         if response.status_code == 200:
             return response.json()
         if self._is_best_effort_dev_auth_failure(response):
@@ -132,7 +144,10 @@ class AcwApi:
             return False
 
         url = self.url + self.message_url
-        response = requests.delete(url + str(id) + "/", verify=self.verify)
+        try:
+            response = requests.delete(url + str(id) + "/", verify=self.verify, timeout=10)
+        except requests.RequestException:
+            return False
         if response.status_code == 204:
             return True
         if self._is_best_effort_dev_auth_failure(response):

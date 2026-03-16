@@ -1,0 +1,12 @@
+ecdsa>=0.18.0,<1
+crcmod>=1.7,<2
+pycryptodome>=3.20,<4
+ed25519-blake2b>=1.4.1,<2
+coincurve>=20.0.0,<21
+pynacl>=1.5.0,<2
+base58>=2.1.1,<3
+cbor2>=5.6.1,<6
+hdwallet==3.0.1
+tronpy==0.5.0
+fastapi==0.115.6
+uvicorn==0.32.1

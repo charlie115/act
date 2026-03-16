@@ -51,6 +51,9 @@ services:
   info-core:
     image: info-core:dev
     container_name: dev-info-core
+    environment:
+      - BINANCE_PROC_MULTIPLIER=1
+      - DEV_MAX_SYMBOLS=10
     volumes:
       - ${HOME}/dev-info-core/logs:/home/info_core/info_core/loggers/logs
 

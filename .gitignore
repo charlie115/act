@@ -21,6 +21,13 @@
 **/*.log
 **/dump.rdb
 
+# Test artifacts
+**/test-results/
+tmp-*.js
+
+# Jupyter notebooks (dev/debug only)
+**/*.ipynb
+
 # Local env and secrets
 **/.env
 **/.env.*

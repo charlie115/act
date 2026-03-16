@@ -167,6 +167,7 @@ build_community_images() {
   fi
   docker build "${ROOT_DIR}/services/news_core" --target "${target}" -t "news-core${suffix}"
   docker build -f "${ROOT_DIR}/services/info_core/Dockerfile" "${ROOT_DIR}" --target "${target}" -t "info-core${suffix}"
+  docker build -f "${ROOT_DIR}/services/hdwallet/Dockerfile" "${ROOT_DIR}" -t "hdwallet-service${suffix}"
 }
 
 build_trade_images() {
@@ -400,6 +401,10 @@ build_images() {
     community)
       build_community_images "${env_name}"
       ;;
+    worker)
+      # Worker uses the same info-core image as community
+      build_community_images "${env_name}"
+      ;;
     trade)
       build_trade_images "${env_name}"
       ;;
@@ -447,15 +452,19 @@ dev_up() {
       build_images community dev
       stack_command community dev up
       ;;
+    worker)
+      build_images worker dev
+      stack_command worker dev up
+      ;;
     trade)
-      build_images trade testing
-      stack_command trade testing up
+      build_images trade dev
+      stack_command trade dev up
       ;;
     all)
       build_images community dev
-      build_images trade testing
+      build_images trade dev
       stack_command community dev up
-      stack_command trade testing up
+      stack_command trade dev up
       ;;
     *)
       echo "Unsupported stack: ${stack}" >&2
@@ -471,12 +480,15 @@ dev_down() {
     community)
       stack_command community dev down
       ;;
+    worker)
+      stack_command worker dev down
+      ;;
     trade)
-      stack_command trade testing down
+      stack_command trade dev down
       ;;
     all)
       stack_command community dev down
-      stack_command trade testing down
+      stack_command trade dev down
       ;;
     *)
       echo "Unsupported stack: ${stack}" >&2
@@ -494,6 +506,10 @@ prod_up() {
     community)
       build_images community production
       stack_command community production up
+      ;;
+    worker)
+      build_images worker production
+      stack_command worker production up
       ;;
     trade)
       build_images trade production
@@ -518,6 +534,9 @@ prod_down() {
     community)
       stack_command community production down
       ;;
+    worker)
+      stack_command worker production down
+      ;;
     trade)
       stack_command trade production down
       ;;
@@ -530,6 +549,61 @@ prod_down() {
       exit 1
       ;;
   esac
+}
+
+worker_compose_command() {
+  local worker_name="$1"
+  local env_name="$2"
+  local action="$3"
+  shift 3
+
+  local stack_root="${ROOT_DIR}/infra/compose/worker"
+  local worker_env="${stack_root}/workers/${worker_name}.env"
+
+  if [[ ! -f "${worker_env}" ]]; then
+    echo "Worker config not found: ${worker_env}" >&2
+    echo "Available workers:" >&2
+    ls "${stack_root}/workers/"*.env 2>/dev/null | xargs -I{} basename {} .env >&2
+    exit 1
+  fi
+
+  docker compose \
+    --project-name "${worker_name}" \
+    --env-file "${worker_env}" \
+    -f "${stack_root}/compose.base.yml" \
+    -f "${stack_root}/compose.${env_name}.yml" \
+    ${action} "$@"
+}
+
+worker_up() {
+  local worker_name="${1:?Usage: worker-up <worker_name> [ENV]}"
+  local env_name
+  env_name="$(normalize_env "${2:-dev}")"
+
+  build_images worker "${env_name}"
+  worker_compose_command "${worker_name}" "${env_name}" "up -d"
+}
+
+worker_down() {
+  local worker_name="${1:?Usage: worker-down <worker_name> [ENV]}"
+  local env_name
+  env_name="$(normalize_env "${2:-dev}")"
+
+  worker_compose_command "${worker_name}" "${env_name}" "down"
+}
+
+worker_list() {
+  local stack_root="${ROOT_DIR}/infra/compose/worker"
+  echo "Available worker configs:"
+  for f in "${stack_root}"/workers/*.env; do
+    if [[ -f "$f" ]]; then
+      local name
+      name="$(basename "$f" .env)"
+      local klines
+      klines="$(grep WORKER_MARKET_KLINES "$f" | head -1 | cut -d= -f2 | tr -d '"')"
+      echo "  ${name}: ${klines}"
+    fi
+  done
 }
 
 main() {
@@ -572,6 +646,15 @@ main() {
       ;;
     prod-down)
       prod_down "$@"
+      ;;
+    worker-up)
+      worker_up "$@"
+      ;;
+    worker-down)
+      worker_down "$@"
+      ;;
+    worker-list)
+      worker_list
       ;;
     *)
       echo "Unknown command: ${command}" >&2

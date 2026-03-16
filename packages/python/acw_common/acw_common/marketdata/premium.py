@@ -1,7 +1,7 @@
 import pandas as pd
 import traceback
 
-from .price_df import get_price_df
+from .price_df import get_price_df, get_price_df_by_quote_asset
 
 
 PREMIUM_COLUMNS = [
@@ -38,14 +38,21 @@ def build_premium_df_from_market_snapshots(
     target_market_code=None,
     origin_market_code=None,
     sort_by_atp24h=True,
+    pre_filtered=False,
 ):
     try:
-        origin_filtered = origin_market_df[
-            origin_market_df["quote_asset"] == quote_asset_one
-        ][["base_asset", "tp", "ap", "bp"]]
-        target_filtered = target_market_df[
-            target_market_df["quote_asset"] == quote_asset_two
-        ][["base_asset", "quote_asset", "tp", "ap", "bp", "scr", "atp24h"]]
+        if pre_filtered:
+            origin_filtered = origin_market_df[["base_asset", "tp", "ap", "bp"]]
+            target_filtered = target_market_df[
+                ["base_asset", "quote_asset", "tp", "ap", "bp", "scr", "atp24h"]
+            ]
+        else:
+            origin_filtered = origin_market_df[
+                origin_market_df["quote_asset"] == quote_asset_one
+            ][["base_asset", "tp", "ap", "bp"]]
+            target_filtered = target_market_df[
+                target_market_df["quote_asset"] == quote_asset_two
+            ][["base_asset", "quote_asset", "tp", "ap", "bp", "scr", "atp24h"]]
 
         if origin_filtered.empty or target_filtered.empty:
             if logger:
@@ -119,6 +126,7 @@ def build_premium_df(
     logger,
     get_dollar_dict_fn,
     get_price_df_fn=get_price_df,
+    sort_by_atp24h=True,
 ):
     try:
         origin_market = origin_market_code.split("/")[0]
@@ -126,10 +134,26 @@ def build_premium_df(
         target_market = target_market_code.split("/")[0]
         quote_asset_two = target_market_code.split("/")[1]
 
-        origin_market_df = get_price_df_fn(redis_client, origin_market)
-        origin_market_df = origin_market_df[origin_market_df["quote_asset"] == quote_asset_one]
-        target_market_df = get_price_df_fn(redis_client, target_market)
-        target_market_df = target_market_df[target_market_df["quote_asset"] == quote_asset_two]
+        try:
+            origin_market_df = get_price_df_by_quote_asset(
+                redis_client,
+                origin_market,
+                quote_asset_one,
+                copy_result=False,
+            )
+        except TypeError:
+            origin_market_df = get_price_df_fn(redis_client, origin_market)
+            origin_market_df = origin_market_df[origin_market_df["quote_asset"] == quote_asset_one]
+        try:
+            target_market_df = get_price_df_by_quote_asset(
+                redis_client,
+                target_market,
+                quote_asset_two,
+                copy_result=False,
+            )
+        except TypeError:
+            target_market_df = get_price_df_fn(redis_client, target_market)
+            target_market_df = target_market_df[target_market_df["quote_asset"] == quote_asset_two]
         convert_rate = convert_rate_dict[f"{target_market_code}:{origin_market_code}"]
         dollar_price = get_dollar_dict_fn(redis_client)["price"]
         return build_premium_df_from_market_snapshots(
@@ -142,6 +166,8 @@ def build_premium_df(
             logger=logger,
             target_market_code=target_market_code,
             origin_market_code=origin_market_code,
+            pre_filtered=True,
+            sort_by_atp24h=sort_by_atp24h,
         )
     except Exception as exc:
         logger.error(

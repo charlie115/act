@@ -127,8 +127,6 @@ def get_pboundary(mongo_db_dict, market_code_combination, base_asset, usdt_conve
         }
         if return_dict is not None:
             return_dict['return'] = output_dict
-        # Close the connection
-        mongo_db_conn.close()
         return output_dict
     except Exception as e:
         logger.error(f"get_pboundary|{converted_market_code_combination}|{base_asset}|{interval}|{traceback.format_exc()}")

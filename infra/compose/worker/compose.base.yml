@@ -1,0 +1,25 @@
+services:
+  info-core:
+    container_name: ${WORKER_NAME:-worker}
+    environment:
+      - MASTER=false
+      - NODE=${WORKER_NODE:-worker}
+      - ENABLED_MARKET_KLINES=${WORKER_MARKET_KLINES:-}
+      - ENABLED_ARBITRAGE_MARKETS=
+      - MONGODB_HOST=${WORKER_MONGODB_HOST:-mongodb}
+      - MONGODB_PORT=${WORKER_MONGODB_PORT:-27017}
+      - MONGODB_USER=${WORKER_MONGODB_USER:-}
+      - MONGODB_PASS=${WORKER_MONGODB_PASS:-}
+      - REDIS_HOST=${WORKER_REDIS_HOST:-redis}
+      - REDIS_PORT=${WORKER_REDIS_PORT:-6379}
+      - REDIS_PASS=${WORKER_REDIS_PASS:-}
+      - ACW_API_URL=${WORKER_ACW_API_URL:-}
+    expose:
+      - "6379"
+    networks:
+      - worker-network
+    restart: always
+
+networks:
+  worker-network:
+    driver: bridge
