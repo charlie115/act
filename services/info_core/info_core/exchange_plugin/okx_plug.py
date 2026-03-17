@@ -95,6 +95,7 @@ class InitOkxAdaptor:
         info_df['perpetual'] = True
         temp = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='FUTURES')['data'])
         # temp['base_asset']
+        temp = temp[temp['state'] == 'live']
         temp['perpetual'] = False
         info_df = pd.concat([info_df, temp], axis=0, ignore_index=True)
         info_df['symbol'] = info_df['instId']
@@ -122,6 +123,7 @@ class InitOkxAdaptor:
         info_df['perpetual'] = True
         temp = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='FUTURES')['data'])
         # temp['base_asset']
+        temp = temp[temp['state'] == 'live']
         temp['perpetual'] = False
         info_df = pd.concat([info_df, temp], axis=0, ignore_index=True)
         info_df['symbol'] = info_df['instId']

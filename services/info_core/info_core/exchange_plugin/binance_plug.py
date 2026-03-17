@@ -176,7 +176,24 @@ class InitBinanceAdaptor:
         df.loc[:, self.coin_m_all_tickers_columns_to_convert] = df.loc[:, self.coin_m_all_tickers_columns_to_convert].apply(pd.to_numeric, errors='coerce')
         df['base_asset'] = df['symbol'].str.split('USD_').str[0]
         df['quote_asset'] = 'USD' # ?
-        df['atp24h'] = df['volume'] * 100
+        # Calculate notional volume using contractSize from exchange info (varies per contract:
+        # 100 USD for BTC, 10 USD for most altcoins). Fall back to baseVolume * lastPrice if unavailable.
+        fetched_binance_coin_m_info_df = self.local_redis.get_data('binance_coin_m_info_df')
+        if fetched_binance_coin_m_info_df is not None:
+            coin_m_exchange_info_df = pickle.loads(fetched_binance_coin_m_info_df)
+            if 'contractSize' in coin_m_exchange_info_df.columns:
+                df = df.merge(coin_m_exchange_info_df[['symbol', 'contractSize']], on='symbol', how='left')
+                df['contractSize'] = pd.to_numeric(df['contractSize'], errors='coerce').fillna(100)
+                df['atp24h'] = df['volume'] * df['contractSize']
+                df.drop(columns=['contractSize'], inplace=True)
+            else:
+                # contractSize column missing — use baseVolume * lastPrice as notional volume
+                df['atp24h'] = df['baseVolume'] * df['lastPrice']
+                df.loc[df['lastPrice'] == 0, 'atp24h'] = 0
+        else:
+            # Exchange info not yet cached — use baseVolume * lastPrice as notional volume
+            df['atp24h'] = df['baseVolume'] * df['lastPrice']
+            df.loc[df['lastPrice'] == 0, 'atp24h'] = 0
         return df
 
     def _get_funding_info(self):

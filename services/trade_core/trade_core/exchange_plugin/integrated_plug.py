@@ -354,7 +354,7 @@ class UserExchangeAdaptor:
         if exchange not in self.exchange_adaptor_dict:
             raise Exception(f'exchange {exchange} not supported')
         if exchange == "BINANCE":
-            self.exchange_adaptor_dict[exchange].get_market_maxqty(market_type, symbol)
+            return self.exchange_adaptor_dict[exchange].get_market_maxqty(market_type, symbol)
         else:
             # temporary
             return None

@@ -24,7 +24,13 @@ class Bithumb:
         for each_market in market_list:
             url = f"/public/ticker/ALL_{each_market}"
             res = requests.get(self.server_url + url, headers=self.headers)
-            ticker_df = pd.DataFrame(res.json()['data']).T.reset_index()
+            res.raise_for_status()
+            res_json = res.json()
+            if res_json.get('status') != '0000':
+                raise ValueError(f"Bithumb API error: status={res_json.get('status')}, message={res_json.get('message', 'unknown')}")
+            if not res_json.get('data'):
+                raise ValueError(f"Bithumb API error: 'data' field is missing or empty for market {each_market}")
+            ticker_df = pd.DataFrame(res_json['data']).T.reset_index()
             ticker_df['quote_asset'] = each_market
             total_df = pd.concat([total_df, ticker_df], axis=0)
         total_df.reset_index(drop=True, inplace=True)
@@ -41,7 +47,15 @@ class Bithumb:
         base_asset_list = self.spot_all_tickers()['base_asset'].to_list()
         for each_base_asset in base_asset_list:
             res = requests.get(f'https://api.bithumb.com/public/assetsstatus/multichain/{each_base_asset}')
-            df = pd.DataFrame(res.json()['data'])
+            res.raise_for_status()
+            res_json = res.json()
+            if res_json.get('status') != '0000':
+                raise ValueError(f"Bithumb API error: status={res_json.get('status')}, message={res_json.get('message', 'unknown')}")
+            if not res_json.get('data'):
+                # Some assets may not have multichain data; skip them
+                time.sleep(0.025)
+                continue
+            df = pd.DataFrame(res_json['data'])
             df.loc[:, 'currency'] = each_base_asset
             network_df = pd.concat([network_df, df])
             time.sleep(0.025)

@@ -10,6 +10,7 @@ from etc.db_handler.postgres_client import InitDBClient as InitPostgresDBClient
 from exchange_plugin.integrated_plug import UserExchangeAdaptor
 from etc.utils import get_trade_config_df, get_trade_df, get_users_with_negative_balance
 from loggers.logger import TradeCoreLogger
+import psycopg2
 from psycopg2 import extras
 from threading import Thread
 from standalone_func.premium_data_generator import get_or_build_premium_df
@@ -357,8 +358,10 @@ def start_trigger_loop(
                 if curr.rowcount == 0:
                     logger.error(f"No row has been updated for low_break_trade_df even though there are {len(low_break_trade_df)} rows")
                 low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures, logger, postgres_db_dict, table_name)
-            # Reload convert_rate_dict
-            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in local_redis.hgetall_dict('convert_rate_dict').items()}
+            # Reload convert_rate_dict (only update if non-empty to guard against Redis restart)
+            _new_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
+            if _new_convert_rate_dict:
+                fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in _new_convert_rate_dict.items()}
             time.sleep(loop_interval_secs)
         except Exception as e:
             title = f"Error in start_trigger_loop"
@@ -374,13 +377,19 @@ def start_trigger_loop(
 
 def _rollback_trade_switch(trade_uuid, error_state, postgres_db_dict, table_name, logger):
     """P1-5: Rollback trade_switch from 3 to an error state when trade execution fails.
-    Uses a dedicated connection to ensure the rollback is independent of the main loop's transaction.
+    Uses a direct psycopg2 connection (not a pool) to ensure the rollback is independent
+    of the main loop's transaction without leaking connection pools.
     error_state: -2 (entry error) or 2 (exit error)
     """
     rollback_conn = None
     try:
-        rollback_client = InitPostgresDBClient(**{**postgres_db_dict, 'database': 'trade_core'})
-        rollback_conn = rollback_client.pool.getconn()
+        rollback_conn = psycopg2.connect(
+            host=postgres_db_dict['host'],
+            port=postgres_db_dict['port'],
+            user=postgres_db_dict['user'],
+            password=postgres_db_dict['passwd'],
+            database='trade_core'
+        )
         rollback_curr = rollback_conn.cursor()
         rollback_curr.execute(
             f"UPDATE {table_name} SET trade_switch = %s WHERE uuid = %s AND trade_switch = 3",
@@ -389,13 +398,13 @@ def _rollback_trade_switch(trade_uuid, error_state, postgres_db_dict, table_name
         rollback_conn.commit()
         if logger:
             logger.info(f"_rollback_trade_switch|uuid:{trade_uuid}|trade_switch rolled back from 3 to {error_state}")
-        rollback_client.pool.putconn(rollback_conn)
     except Exception as rollback_e:
         if logger:
             logger.error(f"_rollback_trade_switch|uuid:{trade_uuid}|Failed to rollback trade_switch: {rollback_e}\n{traceback.format_exc()}")
+    finally:
         if rollback_conn is not None:
             try:
-                rollback_client.pool.putconn(rollback_conn, close=True)
+                rollback_conn.close()
             except Exception:
                 pass
 
@@ -508,7 +517,8 @@ def load_merged_repeat_df(postgres_client,
         # put the connection back to the pool
         postgres_client.pool.putconn(conn, close=True)
         acw_api.create_message_thread(admin_id, title, full_content)
-        
+        return pd.DataFrame()
+
 def handle_repeat_trade_loop(postgres_db_dict, mongo_db_dict, market_code_combination, admin_id, acw_api, logging_dir, loop_interval_secs=1):
     logger = TradeCoreLogger("handle_repeat_trade", logging_dir).logger
     logger.info(f"handle_repeat_trade_loop started for {market_code_combination}")
@@ -562,8 +572,10 @@ def handle_repeat_trade_loop(postgres_db_dict, mongo_db_dict, market_code_combin
                                 simple_premium_df,
                                 logger,
                                 logging_dir)
-            # Reload convert_rate_dict
-            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in local_redis.hgetall_dict('convert_rate_dict').items()}
+            # Reload convert_rate_dict (only update if non-empty to guard against Redis restart)
+            _new_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
+            if _new_convert_rate_dict:
+                fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in _new_convert_rate_dict.items()}
             time.sleep(loop_interval_secs)
         except Exception as e:
             title = f"Error in handle_repeat_trade_loop"
@@ -991,8 +1003,10 @@ def fetch_fundingrate_loop(admin_id, acw_api, mongo_db_dict, market_code_combina
         time.sleep(1)
     while True:
         try:
-            # Reload convert_rate_dict
-            fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in local_redis.hgetall_dict('convert_rate_dict').items()}
+            # Reload convert_rate_dict (only update if non-empty to guard against Redis restart)
+            _new_convert_rate_dict = local_redis.hgetall_dict('convert_rate_dict')
+            if _new_convert_rate_dict:
+                fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in _new_convert_rate_dict.items()}
             fetch_fundingrate_and_save_to_redis(mongo_db_dict, market_code_combination, market_code, fetched_convert_rate_dict, logger)
             time.sleep(60)
         except Exception as e:
