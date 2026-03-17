@@ -172,6 +172,10 @@ def get_bybit_price_df(redis_client, market_type):
         ["symbol", "base_asset", "quote_asset"]
     ]
     merged_df = merged_df.merge(bybit_info_df, on="symbol", how="inner")
+    merged_df = merged_df[
+        merged_df["b"].apply(lambda x: len(x) > 0) &
+        merged_df["a"].apply(lambda x: len(x) > 0)
+    ]
     merged_df["b"] = merged_df["b"].apply(lambda x: x[0][0])
     merged_df["a"] = merged_df["a"].apply(lambda x: x[0][0])
     merged_df["price24hPcnt"] = merged_df["price24hPcnt"].astype(float) * 100
@@ -230,6 +234,9 @@ def get_upbit_price_df(redis_client):
     upbit_orderbook_df = pd.DataFrame(
         redis_client.get_all_exchange_stream_data("orderbook", "UPBIT_SPOT")
     ).T.reset_index(drop=True)[["cd", "tms", "obu"]]
+    upbit_orderbook_df = upbit_orderbook_df[
+        upbit_orderbook_df["obu"].apply(lambda x: len(x) > 0)
+    ]
     upbit_orderbook_df["ap"] = upbit_orderbook_df["obu"].apply(lambda x: x[0]["ap"])
     upbit_orderbook_df["bp"] = upbit_orderbook_df["obu"].apply(lambda x: x[0]["bp"])
     upbit_orderbook_df.drop("obu", axis=1, inplace=True)

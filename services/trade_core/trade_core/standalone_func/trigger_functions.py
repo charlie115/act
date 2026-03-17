@@ -596,6 +596,7 @@ def handle_repeat_trade(postgres_client,
                         logging_dir,
                         print_update=False,
                         update_low_high_interval_secs=180):
+    conn = None
     try:
         target_market_code, origin_market_code = market_code_combination.split(':')
         between_futures = True if 'SPOT' not in target_market_code and 'SPOT' not in origin_market_code else False
@@ -741,7 +742,8 @@ def handle_repeat_trade(postgres_client,
     except Exception as e:
         logger.error(f"Error in handle_repeat_trade: {e}\n{traceback.format_exc()}")
         # put the connection back to the pool
-        postgres_client.pool.putconn(conn, close=True)
+        if conn is not None:
+            postgres_client.pool.putconn(conn, close=True)
         raise e
     
 async def async_create_trade(row, admin_id, acw_api, logger):

@@ -111,7 +111,8 @@ class InitTrigger:
                             self.mongo_db_dict,
                             market_code_combination_name,
                             origin_market_code,
-                            logging_dir))
+                            logging_dir),
+                        daemon=True)
                     self.fetch_fundingrate_thread_dict[f"{market_code_combination_name}|{origin_market_code}"].start()
                     # Start Trigger Scanner
                     self.trigger_scanner_proc_dict[market_code_combination_name] = Process(
@@ -153,6 +154,7 @@ class InitTrigger:
         
     def check_status(self, print_result=False, include_text=False):
         trade_proc_status_tup_list = [(each_key, each_proc.is_alive()) for each_key, each_proc in self.trade_proc_dict.items()]
+        trade_proc_status_tup_list += [(each_key, each_proc.is_alive()) for each_key, each_proc in self.trigger_scanner_proc_dict.items()]
         proc_status = all([each_result[1] for each_result in trade_proc_status_tup_list])
         print_text = ""
         for each_result in trade_proc_status_tup_list:

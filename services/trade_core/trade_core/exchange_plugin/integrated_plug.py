@@ -484,7 +484,7 @@ class UserExchangeAdaptor:
                         title = f"{self.target_exchange_name_kr} LONG 실패"
                         body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.target_exchange_name_kr} {target_symbol} LONG거래({float(target_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다. {e}"
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
-                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\nerror:{e}\n{body}"
                         self.logger.error(error_log + '\n' + traceback.format_exc())
                         # Monitoring purpose
                         self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
@@ -521,7 +521,7 @@ class UserExchangeAdaptor:
                         title = f"{self.origin_exchange_name_kr} SHORT 실패"
                         body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.origin_exchange_name_kr} {origin_symbol} SHORT거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다. {e}"
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
-                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\nerror:{e}\n{body}"
                         self.logger.error(error_log + '\n' + traceback.format_exc())
                         # Monitoring purpose
                         self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
@@ -561,7 +561,7 @@ class UserExchangeAdaptor:
                         title = f"{self.target_exchange_name_kr} LONG 실패"
                         body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.target_exchange_name_kr} {target_symbol} LONG거래({float(target_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다. {e}"
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
-                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\nerror:{e}\n{body}"
                         self.logger.error(error_log + '\n' + traceback.format_exc())
                         # Monitoring purpose
                         self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
@@ -733,7 +733,7 @@ class UserExchangeAdaptor:
                     title = f"{self.target_exchange_name_kr} 매수 실패"
                     body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.target_exchange_name_kr} {target_symbol} 매수거래({float(qty)}개, {round(merged_row['trade_capital'])}원)가 실패하였습니다. {e}"
                     self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
-                    error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                    error_log = f"{title}|trade uuid:{merged_row['uuid']}\nerror:{e}\n{body}"
                     self.logger.error(error_log + '\n' + traceback.format_exc())
                     # Monitoring purpose
                     self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
@@ -951,7 +951,7 @@ class UserExchangeAdaptor:
                         title = f"{self.target_exchange_name_kr} SHORT 실패"
                         body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.target_exchange_name_kr} {target_symbol} SHORT거래({float(target_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다. {e}"
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
-                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\nerror:{e}\n{body}"
                         self.logger.error(error_log + '\n' + traceback.format_exc())
                         # Monitoring purpose
                         self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
@@ -988,7 +988,7 @@ class UserExchangeAdaptor:
                         title = f"{self.origin_exchange_name_kr} LONG 실패"
                         body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.origin_exchange_name_kr} {origin_symbol} LONG거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다. {e}"
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
-                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\nerror:{e}\n{body}"
                         self.logger.error(error_log + '\n' + traceback.format_exc())
                         # Monitoring purpose
                         self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
@@ -1027,7 +1027,7 @@ class UserExchangeAdaptor:
                         title = f"{self.target_exchange_name_kr} SHORT 실패"
                         body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.target_exchange_name_kr} {target_symbol} SHORT거래({float(target_qty)}개, {round(merged_row['trade_capital'])}USDT)가 실패하였습니다. {e}"
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
-                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                        error_log = f"{title}|trade uuid:{merged_row['uuid']}\nerror:{e}\n{body}"
                         self.logger.error(error_log + '\n' + traceback.format_exc())
                         # Monitoring purpose
                         self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
@@ -1214,7 +1214,7 @@ class UserExchangeAdaptor:
                     title = f"{self.target_exchange_name_kr} 매도 실패"
                     body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.target_exchange_name_kr} {target_symbol} 매도거래({float(target_qty)}개, {round(merged_row['trade_capital'])}원)가 실패하였습니다. {e}"
                     self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
-                    error_log = f"{title}|trade uuid:{merged_row['uuid']}\error:{e}\n{body}"
+                    error_log = f"{title}|trade uuid:{merged_row['uuid']}\nerror:{e}\n{body}"
                     self.logger.error(error_log + '\n' + traceback.format_exc())
                     # Monitoring purpose
                     self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
@@ -1323,6 +1323,16 @@ class UserExchangeAdaptor:
                     self.trade_info_dict_queue.put(trade_info_dict)
                     return trade_info_dict
                 else:
+                    if target_trade_error:
+                        # Liquidation with target trade failure: set trade_switch to error state
+                        conn = self.postgres_client.pool.getconn()
+                        curr = conn.cursor()
+                        sql = f"""UPDATE trade SET trade_switch = %s WHERE uuid = %s"""
+                        val = (2, merged_row['uuid'])
+                        curr.execute(sql, val)
+                        conn.commit()
+                        self.postgres_client.pool.putconn(conn)
+                        raise MyException(f"{self.target_exchange_name_kr} 매도 거래가 실패하였습니다. 에러내용을 확인하시기 바랍니다.", error_code=3)
                     # Liquidation success: update trade_switch to completed (1) and generate trade_info_dict
                     conn = self.postgres_client.pool.getconn()
                     curr = conn.cursor()

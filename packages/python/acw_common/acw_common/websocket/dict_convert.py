@@ -55,6 +55,9 @@ def get_kimp_df(OKX_TICKER_DICT, UPBIT_TICKER_DICT, UPBIT_ORDERBOOK_DICT, curren
     merged_allticker_df['okx_bid_price_krw'] = merged_allticker_df['bidPx'] * current_dollar
     merged_allticker_df['okx_ask_price_krw'] = merged_allticker_df['askPx'] * current_dollar
     merged_allticker_df['okx_last_price_krw'] = merged_allticker_df['last'] * current_dollar
+    merged_allticker_df = merged_allticker_df[
+        merged_allticker_df['obu'].apply(lambda x: len(x) > 0)
+    ]
     merged_allticker_df['upbit_ask_price'] = merged_allticker_df['obu'].apply(lambda x: x[0]['ap'])
     merged_allticker_df['upbit_bid_price'] = merged_allticker_df['obu'].apply(lambda x: x[0]['bp'])
 
