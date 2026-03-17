@@ -22,10 +22,16 @@ def get_user_withdrawable_balance(user):
     return net
 
 def get_user_withdrawable_commission(user):
-    commission_sum = user.deposit_history.filter(type='COMMISSION').aggregate(total=Sum('change'))['total'] or Decimal('0')
+    from referral.models import CommissionBalance
+    from users.models import WithdrawalRequest
+
+    # Read commission balance from CommissionBalance (via affiliate)
+    try:
+        commission_sum = CommissionBalance.objects.get(affiliate__user=user).balance
+    except CommissionBalance.DoesNotExist:
+        commission_sum = Decimal('0')
 
     # Subtract pending/approved commission withdrawal requests
-    from users.models import WithdrawalRequest
     pending_commission_withdrawals = WithdrawalRequest.objects.filter(
         user=user,
         type=WithdrawalRequest.COMMISSION,

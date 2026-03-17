@@ -692,8 +692,7 @@ def handle_repeat_trade(postgres_client,
                     curr.execute(sql, val)
                     trade_log_df = pd.DataFrame(curr.fetchall())
                     if len(trade_log_df) == 0:
-                        # raise error
-                        postgres_client.pool.putconn(conn, close=True)
+                        # raise error (let except block handle putconn)
                         raise Exception(f"trade_log_df is empty for trade uuid: {row['uuid_x']}")
                     low_to_apply = trade_log_df['low'].iloc[0]
                     high_to_apply = trade_log_df['high'].iloc[0]

@@ -36,6 +36,7 @@ from users.models import (
     DepositHistory,
     WithdrawalRequest,
 )
+from referral.models import CommissionHistory
 from users.utils import get_user_withdrawable_balance, get_user_withdrawable_commission
 
 from wallet.mixins import WalletMixin
@@ -449,16 +450,23 @@ class WithdrawalRequestAdmin(ModelAdmin):
                     wr.authorized_by = request.user
                     wr.save()
 
-                    # Update deposit history to reflect the withdrawal
-                    # Use COMMISSION type for commission withdrawals, WITHDRAW for deposit withdrawals
-                    history_type = DepositHistory.COMMISSION if wr.type == WithdrawalRequest.COMMISSION else DepositHistory.WITHDRAW
-                    DepositHistory.objects.create(
-                        user=wr.user,
-                        change=-wr.amount,
-                        type=history_type,
-                        txid=txid,
-                        description=f"Withdrawal executed to {wr.address}"
-                    )
+                    # Update history to reflect the withdrawal
+                    if wr.type == WithdrawalRequest.COMMISSION:
+                        # Commission withdrawals: create CommissionHistory (its save() updates CommissionBalance)
+                        CommissionHistory.objects.create(
+                            affiliate=wr.user.affiliate,
+                            type=CommissionHistory.WITHDRAW,
+                            change=-wr.amount,
+                        )
+                    else:
+                        # Deposit withdrawals: create DepositHistory as before
+                        DepositHistory.objects.create(
+                            user=wr.user,
+                            change=-wr.amount,
+                            type=DepositHistory.WITHDRAW,
+                            txid=txid,
+                            description=f"Withdrawal executed to {wr.address}"
+                        )
             except Exception:
                 logger.critical(
                     "WITHDRAWAL DB WRITE FAILED after successful API transfer! "

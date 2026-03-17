@@ -1321,7 +1321,7 @@ class TriggerScannerViewSet(
     def get_queryset(self):
         "Override get_queryset since we don't have model"
         query_serializer = TriggerScannerQueryParamsSerializer(
-            data=self.request.query_params, context={"request": self.request}
+            data=self.request.query_params, context={"view": self, "request": self.request}
         )
         query_serializer.is_valid(raise_exception=True)
         query = query_serializer.validated_data

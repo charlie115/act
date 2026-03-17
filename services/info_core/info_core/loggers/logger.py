@@ -1,5 +1,6 @@
 import logging
 from logging.handlers import TimedRotatingFileHandler
+import re
 import time
 from datetime import datetime, timedelta
 import os
@@ -10,7 +11,7 @@ class MonthlyRotatingFileHandler(TimedRotatingFileHandler):
     def __init__(self, filename, backupCount=0, encoding=None, delay=False, utc=False):
         super().__init__(filename, when='midnight', interval=1, backupCount=backupCount, encoding=encoding, delay=delay, utc=utc)
         self.suffix = "%Y-%m"
-        self.extMatch = r"^\d{4}-\d{2}$"
+        self.extMatch = re.compile(r"^\d{4}-\d{2}$")
 
     def shouldRollover(self, record):
         """
