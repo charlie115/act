@@ -7,6 +7,8 @@ services:
 
   postgres:
     container_name: dev-community-postgres
+    ports:
+      - "5432:5432"
     volumes:
       - ${HOME}/dev-community-postgres/data/:/var/lib/postgresql/data/
 
@@ -20,6 +22,8 @@ services:
 
   mongodb:
     container_name: dev-community-mongodb
+    ports:
+      - "27017:27017"
     volumes:
       - ${HOME}/dev-community-mongodb/data/:/data/
 

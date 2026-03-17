@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "5"
+
 services:
   certbot:
     container_name: certbot
@@ -6,6 +12,7 @@ services:
       - ${HOME}/certbot/www:/var/www/certbot
     networks:
       - community-network
+    logging: *default-logging
 
   nginx:
     ports:
@@ -17,9 +24,10 @@ services:
     networks:
       - community-network
     restart: always
+    logging: *default-logging
 
   postgres:
-    image: postgres:16rc1-alpine
+    image: postgres:16-alpine
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -27,8 +35,8 @@ services:
       - PGDATA=/var/lib/postgresql/data/
     volumes:
       - ./scripts/init-extra-databases.sql:/docker-entrypoint-initdb.d/init-extra-databases.sql:ro
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     healthcheck:
       test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "${POSTGRES_USER}"]
       interval: 5s
@@ -37,6 +45,7 @@ services:
     networks:
       - community-network
     restart: always
+    logging: *default-logging
 
   redis:
     image: redis:7-alpine
@@ -46,6 +55,7 @@ services:
     networks:
       - community-network
     restart: always
+    logging: *default-logging
 
   mongodb:
     image: mongo:6.0
@@ -53,11 +63,12 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-    ports:
-      - "27017:27017"
+    expose:
+      - "27017"
     networks:
       - community-network
     restart: always
+    logging: *default-logging
 
   community-web-next:
     build:
@@ -74,6 +85,7 @@ services:
     networks:
       - community-network
     restart: always
+    logging: *default-logging
 
   drf:
     depends_on:
@@ -89,26 +101,31 @@ services:
     networks:
       - community-network
     restart: always
+    logging: *default-logging
 
   celery-worker:
     networks:
       - community-network
     restart: always
+    logging: *default-logging
 
   celery-beat:
     networks:
       - community-network
     restart: always
+    logging: *default-logging
 
   news-core:
     networks:
       - community-network
     restart: always
+    logging: *default-logging
 
   info-core:
     networks:
       - community-network
     restart: always
+    logging: *default-logging
 
   hdwallet-service:
     container_name: hdwallet-service
@@ -123,15 +140,17 @@ services:
     depends_on:
       - hd-api-key-generator
       - drf
+    logging: *default-logging
 
   hd-api-key-generator:
     container_name: hd-api-key-generator
     image: alpine:latest
-    command: sh -c "mkdir -p /api_key && head -c 32 /dev/urandom | base64 > /api_key/wallet_api_key.txt"
+    command: sh -c "mkdir -p /api_key && [ -f /api_key/wallet_api_key.txt ] || head -c 32 /dev/urandom | base64 > /api_key/wallet_api_key.txt"
     networks:
       - community-network
     deploy:
       replicas: 1
+    logging: *default-logging
 
 secrets:
   hd_mnemonic: {}

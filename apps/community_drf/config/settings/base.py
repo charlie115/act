@@ -137,12 +137,18 @@ MIDDLEWARE = (
 DATABASES = {
     "default": dj_database_url.config(
         default=env("COMMUNITY_DB_URL"),
+        conn_max_age=600,
+        conn_health_checks=True,
     ),
     "newscore": dj_database_url.config(
         default=env("NEWSCORE_DB_URL"),
+        conn_max_age=600,
+        conn_health_checks=True,
     ),
     "messagecore": dj_database_url.config(
         default=env("MESSAGECORE_DB_URL"),
+        conn_max_age=600,
+        conn_health_checks=True,
     ),
 }
 
@@ -207,6 +213,62 @@ CELERY_RESULT_BACKEND = "django-db"
 CELERY_CACHE_BACKEND = "default"
 
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+CELERY_TASK_ACKS_LATE = True
+
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+
+CELERY_TASK_TIME_LIMIT = 300
+
+CELERY_TASK_SOFT_TIME_LIMIT = 240
+
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
+
+CELERY_RESULT_EXPIRES = 86400
+
+# LOGGING
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "[%(asctime)s] %(levelname)s %(name)s %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+        },
+    },
+    "loggers": {
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "celery": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "apps": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

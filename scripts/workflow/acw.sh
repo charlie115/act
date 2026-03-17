@@ -231,11 +231,6 @@ build_web() {
   )
 }
 
-sync_web() {
-  local env_name="$1"
-  echo "sync-web is not required for official Next.js frontend (${env_name})."
-}
-
 stack_command() {
   local stack="$1"
   local env_name="$2"
@@ -262,7 +257,7 @@ stack_command() {
       (cd "${dir}" && "${compose_cmd[@]}" up --build -d "$@")
       ;;
     down)
-      (cd "${dir}" && "${compose_cmd[@]}" down -v "$@")
+      (cd "${dir}" && "${compose_cmd[@]}" down "$@")
       ;;
     *)
       (cd "${dir}" && "${compose_cmd[@]}" "${action}" "$@")
@@ -280,7 +275,6 @@ Usage:
   ./scripts/workflow/acw.sh build-images <community|trade|all> <dev|testing|production>
   ./scripts/workflow/acw.sh build-web <testing|production>
   ./scripts/workflow/acw.sh web-dev
-  ./scripts/workflow/acw.sh sync-web <testing|production>
   ./scripts/workflow/acw.sh stack <community|trade> <dev|testing|production> <up|down|ps|logs|restart|config> [extra args...]
   ./scripts/workflow/acw.sh dev-up <community|trade|all>
   ./scripts/workflow/acw.sh dev-down <community|trade|all>
@@ -371,8 +365,6 @@ env_init() {
   copy_template "${ROOT_DIR}/services/trade_core/.env.example" "${ROOT_DIR}/services/trade_core/.env.test" "${force}"
   copy_template "${ROOT_DIR}/services/trade_core/.env.example" "${ROOT_DIR}/services/trade_core/.env.prod" "${force}"
 
-  copy_template "${ROOT_DIR}/apps/community_web/.env.test.example" "${ROOT_DIR}/apps/community_web/.env.test" "${force}"
-  copy_template "${ROOT_DIR}/apps/community_web/.env.production.example" "${ROOT_DIR}/apps/community_web/.env.production" "${force}"
   copy_template "${ROOT_DIR}/apps/community_web_next/.env.example" "${ROOT_DIR}/apps/community_web_next/.env.development" "${force}"
   copy_template "${ROOT_DIR}/apps/community_web_next/.env.example" "${ROOT_DIR}/apps/community_web_next/.env.testing" "${force}"
   copy_template "${ROOT_DIR}/apps/community_web_next/.env.example" "${ROOT_DIR}/apps/community_web_next/.env.production" "${force}"
@@ -628,9 +620,6 @@ main() {
       ;;
     web-dev)
       web_dev
-      ;;
-    sync-web)
-      sync_web "$(normalize_env "$1")"
       ;;
     stack)
       stack_command "$1" "$(normalize_env "$2")" "$3" "${@:4}"

@@ -9,7 +9,7 @@ FORCE ?= 0
 WEB_PORT ?= 3000
 NAME ?=
 
-.PHONY: help doctor env-init build-images build-web web-dev sync-web stack dev-up dev-down prod-up prod-down worker-up worker-down worker-list
+.PHONY: help doctor env-init build-images build-web web-dev stack dev-up dev-down prod-up prod-down worker-up worker-down worker-list
 
 help:
 	@$(WORKFLOW) help
@@ -28,9 +28,6 @@ build-web:
 
 web-dev:
 	@WEB_PORT=$(WEB_PORT) $(WORKFLOW) web-dev
-
-sync-web:
-	@$(WORKFLOW) sync-web $(ENV)
 
 stack:
 	@$(WORKFLOW) stack $(STACK) $(ENV) $(ACTION) $(ARGS)

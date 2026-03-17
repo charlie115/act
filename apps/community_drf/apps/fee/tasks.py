@@ -75,8 +75,8 @@ def _compute_fee_levels(user_fees, total_paid_fee_required_list):
     return results
 
 
-@celery.task
-def compute_user_monthly_fee_level():
+@celery.task(bind=True, autoretry_for=(Exception,), retry_backoff=30, max_retries=3, retry_jitter=True)
+def compute_user_monthly_fee_level(self):
     """This task is scheduled to run every 1st day of the month, to compute fee levels for last month"""
 
     today = datetime.now(tz=TZ_ASIA_SEOUL)
@@ -120,8 +120,8 @@ def compute_user_monthly_fee_level():
     return _compute_fee_levels(user_fees, total_paid_fee_required_list)
 
 
-@celery.task
-def compute_user_fee_level():
+@celery.task(bind=True, autoretry_for=(Exception,), retry_backoff=30, max_retries=3, retry_jitter=True)
+def compute_user_fee_level(self):
     """
     This task calculates the total accumulated fee spent by each user and updates their fee level accordingly.
     """

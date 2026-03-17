@@ -9,18 +9,18 @@ from domains.marketdata import (
 logger = logging.getLogger(__name__)
 
 
-@celery.task
-def check_volatility_notifications():
+@celery.task(bind=True, autoretry_for=(Exception,), retry_backoff=30, max_retries=3, retry_jitter=True)
+def check_volatility_notifications(self):
     return check_volatility_notifications_service()
 
 
-@celery.task
-def cleanup_old_notification_history(days_to_keep=7):
+@celery.task(bind=True, autoretry_for=(Exception,), retry_backoff=30, max_retries=3, retry_jitter=True)
+def cleanup_old_notification_history(self, days_to_keep=7):
     return cleanup_old_notification_history_service(days_to_keep=days_to_keep)
 
 
-@celery.task
-def backfill_missing_asset_icons():
+@celery.task(bind=True, autoretry_for=(Exception,), retry_backoff=30, max_retries=3, retry_jitter=True)
+def backfill_missing_asset_icons(self):
     """Fetch icons from CoinMarketCap for assets that have no icon."""
     from infocore.models import Asset
     from infocore.mixins import AssetMixin

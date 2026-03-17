@@ -1,4 +1,5 @@
 import datetime
+import logging
 from threading import Thread
 
 import pandas as pd
@@ -6,6 +7,8 @@ import requests
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+logger = logging.getLogger(__name__)
 
 
 class AcwApi:
@@ -70,7 +73,8 @@ class AcwApi:
             if self._is_best_effort_dev_auth_failure(response):
                 return pd.DataFrame()
             self._raise_error(response)
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logger.warning("get_message|%s", e)
             return pd.DataFrame()
 
     def create_message(
@@ -104,8 +108,8 @@ class AcwApi:
         }
         try:
             response = requests.post(url, json=payload, verify=self.verify, timeout=10)
-        except requests.RequestException:
-            # Network error — silently skip to avoid crashing the caller
+        except requests.RequestException as e:
+            logger.warning("create_message|%s", e)
             return None
         if response.status_code == 201:
             return response.json()
@@ -125,7 +129,8 @@ class AcwApi:
                 verify=self.verify,
                 timeout=10,
             )
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logger.warning("update_read_message|%s", e)
             return None
         if response.status_code == 200:
             return response.json()
@@ -146,7 +151,8 @@ class AcwApi:
         url = self.url + self.message_url
         try:
             response = requests.delete(url + str(id) + "/", verify=self.verify, timeout=10)
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logger.warning("delete_message|%s", e)
             return False
         if response.status_code == 204:
             return True
@@ -171,7 +177,8 @@ class AcwApi:
             if self._is_best_effort_dev_auth_failure(response):
                 return pd.DataFrame([{"market_code_combinations": []}])
             self._raise_error(response)
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logger.warning("get_node|%s", e)
             return pd.DataFrame([{"market_code_combinations": []}])
 
     def get_referral_commission(
@@ -197,7 +204,8 @@ class AcwApi:
 
         try:
             response = requests.get(url, params=params, verify=self.verify, timeout=10)
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logger.warning("get_referral_commission|%s", e)
             return None
         if response.status_code == 200:
             return response.json()
@@ -222,7 +230,8 @@ class AcwApi:
                 verify=self.verify,
                 timeout=10,
             )
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logger.warning("get_deposit_history|%s", e)
             return pd.DataFrame()
         if response.status_code == 200:
             return pd.DataFrame(response.json()["results"])
@@ -252,7 +261,8 @@ class AcwApi:
         }
         try:
             response = requests.post(url, json=payload, verify=self.verify, timeout=10)
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logger.warning("create_deposit_history|%s", e)
             return None
         if response.status_code == 201:
             return response.json()
@@ -267,7 +277,8 @@ class AcwApi:
                 verify=self.verify,
                 timeout=10,
             )
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logger.warning("get_deposit_balance|%s", e)
             return pd.DataFrame()
         if response.status_code == 200:
             return pd.DataFrame(response.json()["results"])
@@ -277,7 +288,8 @@ class AcwApi:
         url = self.url + self.exchange_status
         try:
             response = requests.get(url, verify=self.verify, timeout=10)
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logger.warning("get_exchange_status|%s", e)
             return []
         if response.status_code == 200:
             return response.json()
@@ -287,7 +299,8 @@ class AcwApi:
         url = self.url + self.activated_market_codes
         try:
             response = requests.get(url, verify=self.verify, timeout=10)
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logger.warning("get_activated_market_codes|%s", e)
             return []
         if response.status_code == 200:
             return response.json()
