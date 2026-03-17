@@ -76,6 +76,14 @@ services:
     volumes:
       - ${HOME}/prod-info-core/logs:/home/info_core/info_core/loggers/logs
 
+  minio:
+    container_name: prod-community-minio
+    volumes:
+      - ${HOME}/prod-community-minio/data:/data
+
+  minio-init:
+    container_name: prod-community-minio-init
+
   hdwallet-service:
     image: hdwallet-service
     volumes:

@@ -66,6 +66,14 @@ services:
     volumes:
       - ${HOME}/test-info-core/logs:/home/info_core/info_core/loggers/logs
 
+  minio:
+    container_name: test-community-minio
+    volumes:
+      - ${HOME}/test-community-minio/data:/data
+
+  minio-init:
+    container_name: test-community-minio-init
+
   hdwallet-service:
     image: hdwallet-service:test
     volumes:
