@@ -88,7 +88,16 @@ class UserOwnedViewSet(BaseViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
 
-        if self.request.user:
+        if self.request.user and isinstance(self.request.user, User):
+            # Admin and Internal roles already get full queryset from BaseViewSet
+            if self.request.user.role.name == UserRole.ADMIN:
+                return queryset
+            if (
+                self.request.user.role.name == UserRole.INTERNAL_USER
+                and ACWBasePermission().has_api_permission(self.request)
+            ):
+                return queryset
+
             if queryset.model is User:
                 queryset = queryset.filter(id=self.request.user.id)
 

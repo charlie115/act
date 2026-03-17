@@ -28,6 +28,9 @@ def _compute_fee_levels(user_fees, total_paid_fee_required_list):
         for ufl in UserFeeLevel.objects.all()
     }
 
+    # Pre-fetch all FeeRate objects into a dict to avoid N+1 queries
+    fee_rate_map = {fr.total_paid_fee_required: fr for fr in FeeRate.objects.all()}
+
     bulk_create = []
     bulk_update = []
 
@@ -38,9 +41,8 @@ def _compute_fee_levels(user_fees, total_paid_fee_required_list):
         total_paid_fee_required = search_closest_number(
             total_paid_fee_required_list, total_paid_fee
         )
-        try:
-            fee_rate = FeeRate.objects.get(total_paid_fee_required=total_paid_fee_required)
-        except FeeRate.DoesNotExist:
+        fee_rate = fee_rate_map.get(total_paid_fee_required)
+        if fee_rate is None:
             continue
 
         user_fee_level = existing_levels.get(user_id)

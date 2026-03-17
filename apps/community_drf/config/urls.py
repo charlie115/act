@@ -47,8 +47,6 @@ urlpatterns = [
     path(mkpath("wallet/"), include("wallet.urls.urls")),
     path(mkpath("coupon/"), include("coupon.urls")),
     path(mkpath("exchange-status/"), include("exchangestatus.urls")),
-    # redis queue
-    path(mkpath("django-rq/"), include("django_rq.urls")),
     # docs
     path(
         mkpath("docs/"),
@@ -66,6 +64,9 @@ urlpatterns = [
         name="swagger",
     ),
 ]
+
+if settings.DEBUG:
+    urlpatterns += [path(mkpath("django-rq/"), include("django_rq.urls"))]
 
 if os.environ["DJANGO_SETTINGS_MODULE"] == "config.settings.dev":
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

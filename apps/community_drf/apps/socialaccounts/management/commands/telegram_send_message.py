@@ -44,15 +44,17 @@ class Command(BaseCommand):
                         f"Message {message.id} | {message.title} | {message.telegram_chat_id}"
                     )
 
+                    # Mark as sent before spawning thread to prevent re-queuing.
+                    # The thread will revert to sent=False if delivery fails.
+                    message.sent = True
+                    message.save()
+
                     thread = threading.Thread(
                         target=self.process_message,
                         args=(message,),
                         daemon=True,
                     )
                     thread.start()
-
-                    message.sent = True
-                    message.save()
 
                 time.sleep(1)
 
@@ -65,18 +67,24 @@ class Command(BaseCommand):
             sys.exit(1)
 
     def process_message(self, message):
-        sent_times = message.send_times
+        try:
+            sent_times = message.send_times
 
-        while sent_times > 0:
-            asyncio.run(
-                self.send_message(
-                    msg_id=message.id,
-                    chat_id=message.telegram_chat_id,
-                    text=message.content,
+            while sent_times > 0:
+                asyncio.run(
+                    self.send_message(
+                        msg_id=message.id,
+                        chat_id=message.telegram_chat_id,
+                        text=message.content,
+                    )
                 )
-            )
-            sent_times -= 1
-            time.sleep(message.send_term)
+                sent_times -= 1
+                time.sleep(message.send_term)
+        except Exception:
+            # Revert sent flag so the message can be retried
+            message.sent = False
+            message.save()
+            traceback.print_exc(file=sys.stdout)
 
     async def send_message(self, msg_id, chat_id, text):
         url = TELEGRAM_BOT_SENDMESSAGE_URL.format(token=self.bot.secret)

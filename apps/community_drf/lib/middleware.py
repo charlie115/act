@@ -45,9 +45,11 @@ class TokenAuthMiddleware:
 
         scope["user"] = AnonymousUser()
         if b"authorization" in headers:
-            token_name, token_key = headers[b"authorization"].decode().split()
-            if token_name == "Bearer":
-                scope["user"] = await get_user_from_jwt(token_key)
+            parts = headers[b"authorization"].decode().split()
+            if len(parts) == 2:
+                token_name, token_key = parts
+                if token_name == "Bearer":
+                    scope["user"] = await get_user_from_jwt(token_key)
 
         return await self.app(scope, receive, send)
 

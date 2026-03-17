@@ -92,8 +92,10 @@ class Command(BaseCommand):
             user = user if user.role.name == UserRole.ADMIN else None
             return user
         except User.DoesNotExist:
-            raise CommandError(
+            self.stderr.write(
                 f"Admin user with telegram_chat_id={telegram_chat_id} does not exist!"
             )
+            return None
         except User.MultipleObjectsReturned:
-            raise CommandError("This telegram_chat_id is linked to multiple users!")
+            self.stderr.write("This telegram_chat_id is linked to multiple users!")
+            return None

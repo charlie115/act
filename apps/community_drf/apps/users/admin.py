@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django import forms
 from django.contrib import admin
@@ -8,6 +9,8 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 import datetime
+
+logger = logging.getLogger(__name__)
 
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
@@ -389,16 +392,24 @@ class WithdrawalRequestAdmin(ModelAdmin):
 
     def approve_withdrawal(self, request, queryset):
         for wr in queryset.filter(status=WithdrawalRequest.PENDING):
-            wr.status = WithdrawalRequest.APPROVED
-            wr.approved_datetime = now()
-            wr.authorized_by = request.user
-            wr.save()
+            with transaction.atomic():
+                wr = WithdrawalRequest.objects.select_for_update().get(pk=wr.pk)
+                if wr.status != WithdrawalRequest.PENDING:
+                    continue
+                wr.status = WithdrawalRequest.APPROVED
+                wr.approved_datetime = now()
+                wr.authorized_by = request.user
+                wr.save()
 
     def reject_withdrawal(self, request, queryset):
         for wr in queryset.filter(status=WithdrawalRequest.PENDING):
-            wr.status = WithdrawalRequest.REJECTED
-            wr.authorized_by = request.user
-            wr.save()
+            with transaction.atomic():
+                wr = WithdrawalRequest.objects.select_for_update().get(pk=wr.pk)
+                if wr.status != WithdrawalRequest.PENDING:
+                    continue
+                wr.status = WithdrawalRequest.REJECTED
+                wr.authorized_by = request.user
+                wr.save()
 
     def mark_completed(self, request, queryset):
         # filter in both APPROVED and PENDING status
@@ -425,23 +436,34 @@ class WithdrawalRequestAdmin(ModelAdmin):
             txid = api_response.json().get("txid")
 
             # Atomically update withdrawal status and create deposit history
-            with transaction.atomic():
-                wr.txid = txid
-                # Check whether it wasn't APPROVED state, if so also update the approved_datetime
-                if wr.status != WithdrawalRequest.APPROVED:
-                    wr.approved_datetime = now()
-                wr.status = WithdrawalRequest.COMPLETED
-                wr.completed_datetime = now()
-                wr.authorized_by = request.user
-                wr.save()
+            # API call already succeeded above; if DB write fails, log for manual recovery
+            try:
+                with transaction.atomic():
+                    wr = WithdrawalRequest.objects.select_for_update().get(pk=wr.pk)
+                    wr.txid = txid
+                    # Check whether it wasn't APPROVED state, if so also update the approved_datetime
+                    if wr.status != WithdrawalRequest.APPROVED:
+                        wr.approved_datetime = now()
+                    wr.status = WithdrawalRequest.COMPLETED
+                    wr.completed_datetime = now()
+                    wr.authorized_by = request.user
+                    wr.save()
 
-                # Update deposit history to reflect the withdrawal
-                DepositHistory.objects.create(
-                    user=wr.user,
-                    change=-wr.amount,
-                    type=DepositHistory.WITHDRAW,
-                    txid=txid,
-                    description=f"Withdrawal executed to {wr.address}"
+                    # Update deposit history to reflect the withdrawal
+                    DepositHistory.objects.create(
+                        user=wr.user,
+                        change=-wr.amount,
+                        type=DepositHistory.WITHDRAW,
+                        txid=txid,
+                        description=f"Withdrawal executed to {wr.address}"
+                    )
+            except Exception:
+                logger.critical(
+                    "WITHDRAWAL DB WRITE FAILED after successful API transfer! "
+                    "Manual recovery required. "
+                    "withdrawal_request_id=%s user_id=%s amount=%s address=%s txid=%s",
+                    wr.pk, wr.user_id, wr.amount, wr.address, txid,
+                    exc_info=True,
                 )
             
     def has_add_permission(self, request):

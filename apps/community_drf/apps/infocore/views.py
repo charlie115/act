@@ -966,6 +966,8 @@ class WalletStatusView(views.APIView):
         if target_market == "SPOT":
             for item in target_cursor:
                 asset = item["asset"]
+                if asset not in results:
+                    continue
                 network = item["network_type"]
 
                 if target_exchange not in results[asset]:
@@ -990,6 +992,8 @@ class WalletStatusView(views.APIView):
             # Temporary fix for huge duplicate records, source data must be fixed
             for item in origin_cursor:
                 asset = item["asset"]
+                if asset not in results:
+                    continue
                 network = item["network_type"]
 
                 if origin_exchange not in results[asset]:
@@ -1087,7 +1091,7 @@ class RankIndicatorView(views.APIView):
             stream = REDIS_CLI.xread(
                 streams={channel_name: "0-0"},
                 count=1,
-                block=5000,
+                block=100,
             )
             
             if not stream:

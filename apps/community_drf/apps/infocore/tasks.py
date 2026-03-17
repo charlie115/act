@@ -26,10 +26,11 @@ def backfill_missing_asset_icons():
     from infocore.mixins import AssetMixin
 
     mixin = AssetMixin()
-    missing = Asset.objects.filter(icon="")
+    missing_list = list(Asset.objects.filter(icon=""))
+    total = len(missing_list)
     filled = 0
 
-    for asset in missing:
+    for asset in missing_list:
         try:
             info = mixin.pull_asset_info(asset.symbol)
             icon = mixin.get_icon_image(info)
@@ -38,6 +39,6 @@ def backfill_missing_asset_icons():
                 asset.save(update_fields=["icon"])
                 filled += 1
         except Exception:
-            logger.warning("backfill_missing_asset_icons|Failed for %s", asset.symbol)
+            logger.warning("backfill_missing_asset_icons|Failed for %s", asset.symbol, exc_info=True)
 
-    logger.info("backfill_missing_asset_icons|Filled %d/%d missing icons", filled, missing.count())
+    logger.info("backfill_missing_asset_icons|Filled %d/%d missing icons", filled, total)
