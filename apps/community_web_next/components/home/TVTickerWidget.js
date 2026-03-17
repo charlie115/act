@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 
 const TICKER_CONFIG = {
   isTransparent: true,
@@ -17,7 +17,7 @@ const TICKER_CONFIG = {
   ],
 };
 
-export default function TVTickerWidget() {
+const TVTickerWidget = memo(function TVTickerWidget() {
   const containerRef = useRef(null);
   const scriptLoadedRef = useRef(false);
 
@@ -48,4 +48,6 @@ export default function TVTickerWidget() {
       <div ref={containerRef} className="tradingview-widget-container" />
     </div>
   );
-}
+});
+
+export default TVTickerWidget;

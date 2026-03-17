@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
 import ChatMessage from "./ChatMessage";
@@ -240,8 +240,11 @@ export default function CommunityMessages({ visible, onNewCount }) {
     );
   }, []);
 
-  const filtered = messages.filter(
-    (m) => !blocklist.includes(m.username) && !(m.username !== username && m.status === "blocked")
+  const filtered = useMemo(() =>
+    messages.filter(
+      (m) => !blocklist.includes(m.username) && !(m.username !== username && m.status === "blocked")
+    ),
+    [messages, blocklist, username]
   );
 
   return (

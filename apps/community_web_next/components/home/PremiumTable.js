@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { premiumHeatmap, spreadHeatmap } from "../../lib/heatmap";
 import PremiumChartPanel from "./PremiumChartPanel";
 
+const EMPTY_OBJ = {};
 const MINIO_BASE = process.env.NEXT_PUBLIC_MINIO_URL || "http://localhost:19000";
 const ASSET_ICON_PATH = `${MINIO_BASE}/community-media/assets/icons`;
 
@@ -234,7 +235,7 @@ export default function PremiumTable({ displayRows, expandedAsset, onSelectAsset
               return (
                 <Fragment key={asset}>
                   <Row asset={asset} row={row} expanded={expandedAsset === asset} favActive={Boolean(favoriteMap[asset])} loggedIn={loggedIn} onSelect={onSelectAsset} onFav={onToggleFavorite} targetFI={tfi} originFI={ofi} volDiff={vi?.mean_diff} targetIsSpot={targetIsSpot} originIsSpot={originIsSpot} walletData={walletStatus?.[asset]} targetMC={targetMarketCode} originMC={originMarketCode} />
-                  {expandedAsset === asset && <tr><td colSpan="99" className="p-0"><PremiumChartPanel asset={asset} originFunding={ofi} originMarketCode={originMarketCode} row={row} targetFunding={tfi} targetMarketCode={targetMarketCode} walletNetworks={walletStatus?.[asset] || {}} /></td></tr>}
+                  {expandedAsset === asset && <tr><td colSpan="99" className="p-0"><PremiumChartPanel asset={asset} originFunding={ofi} originMarketCode={originMarketCode} row={row} targetFunding={tfi} targetMarketCode={targetMarketCode} walletNetworks={walletStatus?.[asset] ?? EMPTY_OBJ} /></td></tr>}
                 </Fragment>
               );
             }) : connected ? <SkeletonRows colCount={colCount} /> : (

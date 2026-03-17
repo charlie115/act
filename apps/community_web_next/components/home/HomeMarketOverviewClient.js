@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -55,12 +55,13 @@ export default function HomeMarketOverviewClient() {
   }, []);
 
   const { liveRows, connected, lastReceivedAt } = useKlineWebSocket(targetMarketCode, effectiveOriginMarketCode);
+  const deferredLiveRows = useDeferredValue(liveRows);
   const [expandedAsset, setExpandedAsset] = useState("");
 
   const filteredRows = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
-    return liveRows.filter((item) => (q ? item.base_asset?.toLowerCase().includes(q) : true));
-  }, [deferredSearch, liveRows]);
+    return deferredLiveRows.filter((item) => (q ? item.base_asset?.toLowerCase().includes(q) : true));
+  }, [deferredSearch, deferredLiveRows]);
 
   const detailSymbols = useMemo(
     () => filteredRows.slice(0, 60).map((item) => item.base_asset).filter(Boolean),
@@ -100,6 +101,16 @@ export default function HomeMarketOverviewClient() {
     if (!expandedAsset) return "";
     return displayRows.some((row) => row.base_asset === expandedAsset) ? expandedAsset : "";
   }, [displayRows, expandedAsset]);
+
+  const handleSelectAsset = useCallback(
+    (next) => setExpandedAsset((cur) => (cur === next ? "" : next)),
+    []
+  );
+
+  const handleToggleFavorite = useCallback(
+    (symbol) => toggleFavorite(symbol).catch(() => {}),
+    [toggleFavorite]
+  );
 
   return (
     <div className="grid gap-5">
@@ -141,10 +152,10 @@ export default function HomeMarketOverviewClient() {
       <PremiumTable
         displayRows={displayRows}
         expandedAsset={visibleExpandedAsset}
-        onSelectAsset={(next) => setExpandedAsset((cur) => (cur === next ? "" : next))}
+        onSelectAsset={handleSelectAsset}
         favoriteMap={favoriteMap}
         loggedIn={loggedIn}
-        onToggleFavorite={(symbol) => toggleFavorite(symbol).catch(() => {})}
+        onToggleFavorite={handleToggleFavorite}
         targetFunding={targetFunding}
         originFunding={originFunding}
         volatilityMap={volatilityMap}

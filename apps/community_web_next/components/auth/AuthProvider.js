@@ -144,19 +144,22 @@ export default function AuthProvider({ children }) {
           throw new Error(data.detail || data.username?.[0] || "등록 실패");
         }
         const data = await res.json();
-        setUser(data.user || { ...user, username });
-        const stored = localStorage.getItem("acw_auth");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          parsed.user = data.user || { ...user, username };
-          localStorage.setItem("acw_auth", JSON.stringify(parsed));
-        }
+        setUser((prev) => {
+          const updated = data.user || { ...prev, username };
+          const stored = localStorage.getItem("acw_auth");
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            parsed.user = updated;
+            localStorage.setItem("acw_auth", JSON.stringify(parsed));
+          }
+          return updated;
+        });
       } catch (err) {
         setError(err.message);
         throw err;
       }
     },
-    [token, user],
+    [token],
   );
 
   const isReady = !loading;

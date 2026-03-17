@@ -1066,10 +1066,12 @@ export default function PremiumChartPanel({
   const originExchange = extractExchange(originMarketCode);
   const targetLabel = formatMarketLabel(targetMarketCode);
   const originLabel = formatMarketLabel(originMarketCode);
-  const targetDeposit = uniq(walletNetworks?.[targetExchange]?.deposit || []);
-  const targetWithdraw = uniq(walletNetworks?.[targetExchange]?.withdraw || []);
-  const originDeposit = uniq(walletNetworks?.[originExchange]?.deposit || []);
-  const originWithdraw = uniq(walletNetworks?.[originExchange]?.withdraw || []);
+  const { targetDeposit, targetWithdraw, originDeposit, originWithdraw } = useMemo(() => ({
+    targetDeposit: uniq(walletNetworks?.[targetExchange]?.deposit || []),
+    targetWithdraw: uniq(walletNetworks?.[targetExchange]?.withdraw || []),
+    originDeposit: uniq(walletNetworks?.[originExchange]?.deposit || []),
+    originWithdraw: uniq(walletNetworks?.[originExchange]?.withdraw || []),
+  }), [walletNetworks, targetExchange, originExchange]);
   // Compute active networks: right = target withdraw ∩ origin deposit, left = origin withdraw ∩ target deposit
   const walletStatusSummary = useMemo(() => {
     const right = targetWithdraw.filter((n) => originDeposit.includes(n));

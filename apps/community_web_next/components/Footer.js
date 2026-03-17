@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 
 const NAV_LINKS = [
@@ -15,7 +16,7 @@ const LEGAL_LINKS = [
   { href: "/privacy", label: "개인정보처리방침" },
 ];
 
-export default function Footer() {
+const Footer = memo(function Footer() {
   return (
     <footer className="mt-12 border-t border-border bg-background/98">
       <div className="mx-auto w-[min(1280px,calc(100vw-24px))] py-8">
@@ -81,4 +82,6 @@ export default function Footer() {
       </div>
     </footer>
   );
-}
+});
+
+export default Footer;
