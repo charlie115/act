@@ -119,21 +119,14 @@ class KlineConsumer(AsyncWebsocketConsumer):
             if self._base_asset:
                 concise_kline_df = kline_df[kline_df["base_asset"] == self._base_asset]
             else:
+                columns_to_drop = [
+                    "tp_open", "tp_high", "tp_low", "tp_close",
+                    "LS_open", "LS_high", "LS_low",
+                    "SL_open", "SL_high", "SL_low",
+                    "datetime_now",
+                ]
                 concise_kline_df = kline_df.drop(
-                    columns=[
-                        "tp_open",
-                        "tp_high",
-                        "tp_low",
-                        "tp_close",
-                        "LS_open",
-                        "LS_high",
-                        "LS_close",
-                        "LS_low",
-                        "SL_open",
-                        "SL_high",
-                        "SL_low",
-                        "datetime_now",
-                    ]
+                    columns=[c for c in columns_to_drop if c in kline_df.columns],
                 )
 
             if concise_kline_df.empty:
