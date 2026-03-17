@@ -65,7 +65,7 @@ function ExIcon({ name, size = 14 }) {
 }
 
 const TH = "sticky top-0 z-[1] bg-background px-3 py-2.5 text-[0.6rem] font-bold uppercase tracking-wider text-ink-muted/60 whitespace-nowrap";
-const TD = "px-3 py-2 tabular-nums";
+const TD = "px-2 py-1.5 tabular-nums whitespace-nowrap text-[0.7rem] sm:text-xs";
 
 export default function ArbitrageFundingRateDiffClient() {
   const [data, setData] = useState([]);
@@ -152,7 +152,7 @@ export default function ArbitrageFundingRateDiffClient() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[520px]">
             <thead>
               <tr className="border-b-2 border-border/60">
                 <th className={`${TH} text-left`}>자산</th>

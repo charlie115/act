@@ -32,7 +32,7 @@ export default function FundingDiffPanel({ fundingDiff = [], loading = false }) 
     <section className="rounded-lg border border-border bg-background/92 p-4">
       <h2 className="mb-3 text-sm font-bold text-ink">펀딩비 차이</h2>
       <div className="overflow-x-auto rounded-lg border border-border bg-background/90">
-        <table className="w-full border-collapse">
+        <table className="w-full min-w-[480px] border-collapse">
           <thead>
             <tr className="border-b border-border">
               <th className="px-3 py-2 text-left text-[0.62rem] font-bold uppercase tracking-widest text-ink-muted">자산</th>

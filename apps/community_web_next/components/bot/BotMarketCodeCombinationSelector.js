@@ -95,7 +95,8 @@ const BotMarketCodeCombinationSelector = forwardRef(function BotMarketCodeCombin
         sx={{
           fontSize: { xs: "0.72rem", md: "0.82rem" },
           justifyContent: "space-between",
-          minWidth: 320,
+          minWidth: 0,
+          width: "100%",
           textTransform: "none",
           ...buttonStyle,
         }}

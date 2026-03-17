@@ -54,8 +54,8 @@ export default function BoardPostClient({ postId }) {
       </Link>
       <article className="rounded-xl border border-border bg-surface p-6 space-y-4">
         <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-ink">{post.title}</h1>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-ink break-words">{post.title}</h1>
             <p className="mt-1 text-xs text-ink-muted">{post.author?.email?.split("@")[0]} · {new Date(post.date_created).toLocaleDateString("ko-KR")}</p>
           </div>
           {isAuthor && (

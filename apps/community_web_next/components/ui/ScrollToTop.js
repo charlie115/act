@@ -22,7 +22,7 @@ export default function ScrollToTop() {
   return (
     <button
       aria-label="맨 위로"
-      className="fixed bottom-6 right-6 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface-elevated/90 text-ink-muted shadow-lg backdrop-blur transition-all hover:border-accent/30 hover:text-accent hover:shadow-accent/10"
+      className="fixed bottom-20 right-6 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface-elevated/90 text-ink-muted shadow-lg backdrop-blur transition-all hover:border-accent/30 hover:text-accent hover:shadow-accent/10"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       type="button"
     >

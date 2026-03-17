@@ -32,11 +32,11 @@ export default function MyPageClient() {
         <div className="grid gap-3 text-sm">
           <div className="flex justify-between border-b border-border/50 pb-2">
             <span className="text-ink-muted">이메일</span>
-            <span className="text-ink">{profile.email}</span>
+            <span className="text-ink truncate min-w-0">{profile.email}</span>
           </div>
           <div className="flex justify-between border-b border-border/50 pb-2">
             <span className="text-ink-muted">텔레그램</span>
-            <span className="text-ink">
+            <span className="text-ink truncate min-w-0">
               {profile.telegram_chat_id ? `연결됨 (${profile.telegram_chat_id})` : "미연결"}
             </span>
           </div>

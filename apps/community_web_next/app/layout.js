@@ -21,6 +21,12 @@ export const metadata = buildMetadata({
   title: "ACW Next",
 });
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#080c16",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">

@@ -44,7 +44,7 @@ export default function BoardPreview({ posts = [] }) {
                 <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
                   <div>
                     <h3 className="mb-1 text-sm font-bold text-ink group-hover:text-accent transition-colors">{post.title}</h3>
-                    <p className="text-[0.82rem] leading-relaxed text-ink-muted">{stripHtml(post.content).slice(0, 160)}</p>
+                    <p className="text-[0.82rem] leading-relaxed text-ink-muted line-clamp-3">{stripHtml(post.content).slice(0, 160)}</p>
                   </div>
                   <div className="flex flex-wrap gap-2 font-mono text-[0.68rem] text-ink-muted sm:flex-col sm:items-end">
                     <span>{post.comments} 댓글</span>

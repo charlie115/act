@@ -200,7 +200,7 @@ export default function NewsHubClient() {
       {/* Header + tabs */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-lg font-bold text-ink">시장 뉴스</h1>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {TABS.map((tab) => (
             <button
               key={tab.key}
@@ -263,7 +263,7 @@ export default function NewsHubClient() {
             return (
               <button
                 key={category}
-                className={`rounded-md px-2.5 py-1 text-xs font-bold transition-colors ${
+                className={`rounded-md px-2.5 py-2 text-xs font-bold transition-colors ${
                   selected
                     ? "bg-accent/15 text-accent"
                     : "text-ink-muted hover:bg-surface-elevated/40 hover:text-ink"

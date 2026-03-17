@@ -1165,7 +1165,7 @@ export default function PremiumChartPanel({
       </div>
 
       {/* Interval bar + data mode + chart type — inside the chart area */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-elevated/20">
+      <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 bg-surface-elevated/20">
         {/* Intervals */}
         <div className="flex items-center gap-0.5">
           {INTERVALS.map((opt) => (

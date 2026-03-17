@@ -62,7 +62,7 @@ function FundingBar({ value, maxAbs }) {
   const color = n >= 0 ? "bg-positive/40" : "bg-negative/40";
   return (
     <div className="flex items-center gap-2">
-      <div className="h-1.5 w-16 rounded-full bg-border/30 overflow-hidden">
+      <div className="h-1.5 w-10 sm:w-16 rounded-full bg-border/30 overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -77,7 +77,7 @@ const LOOKBACK_OPTIONS = [
 ];
 
 const TH = "sticky top-0 z-[1] bg-background px-3 py-2.5 text-[0.6rem] font-bold uppercase tracking-wider text-ink-muted/60 whitespace-nowrap";
-const TD = "px-3 py-2 tabular-nums";
+const TD = "px-2 py-1.5 tabular-nums whitespace-nowrap text-[0.7rem] sm:text-xs";
 
 export default function ArbitrageAverageFundingRateClient() {
   const [lookback, setLookback] = useState(10);
@@ -139,7 +139,7 @@ export default function ArbitrageAverageFundingRateClient() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[400px]">
             <thead>
               <tr className="border-b-2 border-border/60">
                 <th className={`${TH} text-left`}>자산</th>

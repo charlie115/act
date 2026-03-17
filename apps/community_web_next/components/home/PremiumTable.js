@@ -9,7 +9,7 @@ import PremiumChartPanel from "./PremiumChartPanel";
 const MINIO_BASE = process.env.NEXT_PUBLIC_MINIO_URL || "http://localhost:19000";
 const ASSET_ICON_PATH = `${MINIO_BASE}/community-media/assets/icons`;
 
-function AssetIcon({ symbol, size = 22 }) {
+function AssetIcon({ symbol, size = 14 }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img alt={symbol} className="rounded-full" height={size} width={size}
@@ -19,7 +19,7 @@ function AssetIcon({ symbol, size = 22 }) {
   );
 }
 
-function AssetBadge({ symbol, size = 22 }) {
+function AssetBadge({ symbol, size = 14 }) {
   const bg = `hsl(${[...symbol].reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 55%, 42%)`;
   return (
     <span className="inline-flex flex-shrink-0">
@@ -58,7 +58,7 @@ function doSort(rows, key, dir, favSet) {
   });
 }
 
-const TD = "px-1 py-1 sm:px-2 sm:py-1.5 lg:px-3";
+const TD = "px-0.5 py-1 sm:px-2 sm:py-1.5 lg:px-3";
 const TDM = `${TD} tabular-nums`;
 const IBADGE = { 1: "bg-green-500", 2: "bg-blue-500", 4: "bg-amber-500", 8: "bg-purple-500" };
 
@@ -73,20 +73,20 @@ function FundingCountdown({ fundingTime }) {
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   const s = Math.floor((diff % 60000) / 1000);
-  return <div className="text-[0.55rem] text-ink-muted/50 italic tabular-nums whitespace-nowrap">{h}시간 {String(m).padStart(2,"0")}분 {String(s).padStart(2,"0")}초 남음</div>;
+  return <div className="text-[0.46rem] sm:text-[0.55rem] text-ink-muted/50 italic tabular-nums whitespace-nowrap">{h}시간 {String(m).padStart(2,"0")}분 {String(s).padStart(2,"0")}초 남음</div>;
 }
 
 function FundingCell({ fi }) {
-  if (!fi) return <td className={`${TDM} text-right text-xs text-ink-muted/40 table-cell`}>-</td>;
+  if (!fi) return <td className={`${TDM} text-right text-[0.56rem] sm:text-xs text-ink-muted/40 table-cell`}>-</td>;
   const rate = Number(fi.funding_rate || 0);
   const pct = (rate * 100).toFixed(3);
   const intH = fi.funding_interval_hours;
   const badge = IBADGE[intH] || "bg-blue-500";
   return (
-    <td className={`${TDM} text-right text-xs table-cell`}>
+    <td className={`${TDM} text-right text-[0.56rem] sm:text-xs table-cell`}>
       <div className="flex items-center justify-end gap-1">
         <span className={pc(rate)}>{pct}</span>
-        {intH != null && <span className={`rounded px-1 py-px text-[0.5rem] font-bold text-white leading-none ${badge}`}>{intH}h</span>}
+        {intH != null && <span className={`rounded px-1 py-px text-[0.42rem] sm:text-[0.5rem] font-bold text-white leading-none ${badge}`}>{intH}h</span>}
       </div>
       {fi.funding_time && <FundingCountdown fundingTime={fi.funding_time} />}
     </td>
@@ -137,22 +137,22 @@ const Row = memo(function Row({ asset, row, expanded, favActive, loggedIn, onSel
       <td className={TD}>
         <div className="flex items-center gap-1.5">
           <AssetBadge symbol={asset} size={16} />
-          <strong className="text-xs text-ink">{asset}</strong>
+          <strong className="text-[0.6rem] sm:text-xs text-ink">{asset}</strong>
           <ChevronRight size={8} strokeWidth={2.5} className={`flex-shrink-0 text-ink-muted/40 transition-transform hidden sm:inline-block ${expanded ? "rotate-90 text-accent" : ""}`} />
         </div>
       </td>
       <WalletCell walletData={walletData} targetMarketCode={targetMC} originMarketCode={originMC} />
       <td className={`${TDM} text-right whitespace-nowrap`}>
-        <div className="flex items-baseline justify-end gap-1"><span className="text-[0.64rem] sm:text-xs font-semibold text-ink">{fmt(row.tp, row.tp >= 10000 ? 0 : 1)}</span><span className={`rounded px-1 py-px text-[0.48rem] sm:text-[0.56rem] font-semibold leading-none ${Number(row.scr) >= 0 ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative"}`}>{row.scr > 0 ? "+" : ""}{fmt(row.scr, 2, 2)}%</span></div>
+        <div className="flex items-baseline justify-end gap-1"><span className="text-[0.58rem] sm:text-xs font-semibold text-ink">{fmt(row.tp, row.tp >= 10000 ? 0 : 1)}</span><span className={`rounded px-1 py-px text-[0.5rem] sm:text-[0.56rem] font-semibold leading-none ${Number(row.scr) >= 0 ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative"}`}>{row.scr > 0 ? "+" : ""}{fmt(row.scr, 2, 2)}%</span></div>
         {row.converted_tp ? <div className="text-[0.5rem] sm:text-[0.58rem] text-ink-muted/40 tabular-nums">{fmt(row.converted_tp, row.converted_tp >= 10000 ? 1 : 2)}</div> : null}
       </td>
-      <td className={`${TDM} text-right text-[0.62rem] sm:text-xs font-bold ${pc(ls)}`} style={{ backgroundColor: premiumHeatmap(ls) }}>{fmt(ls, 3, 3)}</td>
-      <td className={`${TDM} text-right text-[0.62rem] sm:text-xs font-bold ${pc(sl)} table-cell`} style={{ backgroundColor: premiumHeatmap(sl) }}>{fmt(sl, 3, 3)}</td>
-      <td className={`${TDM} text-right text-[0.62rem] sm:text-xs ${pc(spread)}`} style={{ backgroundColor: spreadHeatmap(spread) }}>{fmt(spread, 2, 2)} %p</td>
-      <td className={`${TDM} text-right text-[0.62rem] sm:text-xs ${pc(volDiff)} table-cell`}>{volDiff != null ? Number(volDiff).toFixed(2) : "-"}</td>
+      <td className={`${TDM} text-right text-[0.56rem] sm:text-xs font-bold ${pc(ls)}`} style={{ backgroundColor: premiumHeatmap(ls) }}>{fmt(ls, 3, 3)}</td>
+      <td className={`${TDM} text-right text-[0.56rem] sm:text-xs font-bold ${pc(sl)} table-cell`} style={{ backgroundColor: premiumHeatmap(sl) }}>{fmt(sl, 3, 3)}</td>
+      <td className={`${TDM} text-right text-[0.56rem] sm:text-xs ${pc(spread)}`} style={{ backgroundColor: spreadHeatmap(spread) }}>{fmt(spread, 2, 2)} %p</td>
+      <td className={`${TDM} text-right text-[0.56rem] sm:text-xs ${pc(volDiff)} table-cell`}>{volDiff != null ? Number(volDiff).toFixed(2) : "-"}</td>
       {targetIsSpot ? null : <FundingCell fi={targetFI} />}
       {originIsSpot ? null : <FundingCell fi={originFI} />}
-      <td className={`${TDM} text-right text-[0.62rem] sm:text-xs text-ink-muted`}>{fmtVol(row.atp24h)}</td>
+      <td className={`${TDM} text-right text-[0.56rem] sm:text-xs text-ink-muted`}>{fmtVol(row.atp24h)}</td>
     </tr>
   );
 }, (p, n) => p.row === n.row && p.expanded === n.expanded && p.favActive === n.favActive && p.loggedIn === n.loggedIn && p.targetFI === n.targetFI && p.originFI === n.originFI && p.volDiff === n.volDiff && p.targetIsSpot === n.targetIsSpot && p.originIsSpot === n.originIsSpot && p.walletData === n.walletData);
@@ -160,7 +160,7 @@ const Row = memo(function Row({ asset, row, expanded, favActive, loggedIn, onSel
 function SortBtn({ children, sortKey, current, dir, onSort, className = "", vis = "" }) {
   const active = current === sortKey;
   return (
-    <th className={`sticky top-0 z-[1] px-2 py-2.5 lg:px-3 text-[0.5rem] sm:text-[0.6rem] font-bold uppercase tracking-wider text-ink-muted/60 bg-background whitespace-nowrap ${vis} ${className}`}>
+    <th className={`sticky top-0 z-[1] px-0.5 py-2.5 sm:px-2 lg:px-3 text-[0.46rem] sm:text-[0.6rem] font-bold uppercase tracking-wider text-ink-muted/60 bg-background whitespace-nowrap ${vis} ${className}`}>
       {sortKey ? (
         <button className="inline-flex items-center gap-0.5 hover:text-ink" onClick={() => onSort(sortKey)} type="button">
           {children}

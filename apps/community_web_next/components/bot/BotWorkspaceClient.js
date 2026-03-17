@@ -370,7 +370,7 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
           </div>
           <BotMarketCodeCombinationSelector
             ref={marketCodeSelectorRef}
-            buttonStyle={{ minWidth: 280 }}
+            buttonStyle={{ minWidth: 0 }}
             marketCodesRequired={MARKET_CODES_REQUIRED.includes(currentTab) && currentTab !== "settings"}
             onSelectItem={(nextValue) => {
               const nextConfig = nextValue?.trade_config_uuid;

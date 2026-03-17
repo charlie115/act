@@ -308,7 +308,7 @@ export default function MarketCombinationPicker({
           </div>
 
           {/* Two-column grid */}
-          <div className="grid grid-cols-2 divide-x divide-border">
+          <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-border">
             <div className="flex flex-col">
               <div className="flex items-center justify-between px-3 py-2 text-[0.62rem] font-bold uppercase tracking-wider text-ink-muted">
                 <span>타겟 시장</span>

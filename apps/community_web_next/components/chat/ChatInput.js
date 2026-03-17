@@ -37,7 +37,7 @@ export default function ChatInput({ onSend, disabled }) {
     <div className={`flex items-end gap-1.5 border-t border-border p-2 ${disabled ? "opacity-40 pointer-events-none" : ""}`}>
       <textarea
         ref={inputRef}
-        className="flex-1 resize-none rounded-lg border border-border bg-surface-elevated px-3 py-2 text-[0.78rem] text-ink placeholder:text-ink-muted/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
+        className="flex-1 resize-none rounded-lg border border-border bg-surface-elevated px-3 py-2 text-base text-ink placeholder:text-ink-muted/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
         disabled={disabled}
         maxLength={500}
         onChange={(event) => {
@@ -60,7 +60,7 @@ export default function ChatInput({ onSend, disabled }) {
         value={message}
       />
       <button
-        className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-accent/10 disabled:text-ink-muted/40"
+        className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-accent/10 disabled:text-ink-muted/40"
         disabled={!/\S/.test(message)}
         onClick={handleSubmit}
         title="전송"

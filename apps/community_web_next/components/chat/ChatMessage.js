@@ -120,7 +120,7 @@ const ChatMessage = memo(function ChatMessage({
           } ${typeColor}`}
         >
           {linkifyText(message)}
-          <span className="block mt-1 text-[0.54rem] text-ink-muted/60 text-right">
+          <span className="block mt-1 text-[0.6rem] text-ink-muted/60 text-right">
             {formatDatetime(datetime)}
           </span>
         </div>
