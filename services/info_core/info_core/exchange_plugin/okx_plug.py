@@ -383,8 +383,14 @@ class InitOkxAdaptor:
                 else:
                     return_dict['state'] = 'ERROR'
             return res
+        elif qty == 0:
+            res = {"sMsg": f"포지션 수량이 0이므로 정리할 수 없습니다. 포지션 정보: {symbol} qty={qty}", "sCode": "-1"}
+            if return_dict is not None:
+                return_dict['res'] = res
+                return_dict['state'] = 'ERROR'
+            return res
         else:
-            res = {"sMsg": f"현재 LONG 포지션만 보유하고 있으므로 정리할 수 없습니다. 포지션 정보: {symbol} LONG {qty}개", "sCode": "-1"}
+            res = {"sMsg": f"현재 LONG 포지션만 보유하고 있으므로 SHORT 정리를 할 수 없습니다. 포지션 정보: {symbol} LONG {qty}개", "sCode": "-1"}
             if return_dict is not None:
                 return_dict['res'] = res
                 return_dict['state'] = 'ERROR'

@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from lib.authentication import NodeIPAuthentication
 from lib.permissions import IsAdmin, IsInternal
-from django.db import models
+from django.db import models, transaction
 
 from referral.constants import (
     PROFIT_TYPE_FEE,
@@ -191,7 +191,10 @@ class ReferralCommissionView(APIView):
         if initial_profit < 0:
             raise exceptions.ValidationError({"initial_profit": ["Profit cannot be negative."]})
         # Calculate the user fee from from the profit using user's fee rate
-        user_fee_rate = FeeRate.objects.get(level=user.fee_level.fee_level)
+        try:
+            user_fee_rate = FeeRate.objects.get(level=user.fee_level.fee_level)
+        except FeeRate.DoesNotExist:
+            raise exceptions.ValidationError({"fee_rate": [f"No FeeRate configured for level {user.fee_level.fee_level}."]})
         user_fee = initial_profit * user_fee_rate.rate
         apply_to_deposit = validated.get("apply_to_deposit")
         trade_uuid = validated.get("trade_uuid")
@@ -272,26 +275,34 @@ class ReferralCommissionView(APIView):
         # For simplicity, you can integrate that logic in utils or here.
         # Example:
         if apply_to_deposit:
-            for record in result["records"]:
-                if record["data_type"] == "deposit_history":
-                    DepositHistory.objects.create(
-                        user=record["user"],
-                        change=record["change"],
-                        referral_discount=record.get("referral_discount", 0),
-                        type=record["type"],
-                        trade_uuid=trade_uuid,
-                        description=record.get("description")
-                    )
-                elif record["data_type"] == "commission_history":
-                    CommissionHistory.objects.create(
-                        affiliate=record["affiliate"],
-                        child_affiliate=record["child_affiliate"],
-                        user_who_paid=record["user_who_paid"],
-                        service_type=record["service_type"],
-                        type=record["type"],
-                        trade_uuid=record["trade_uuid"],
-                        change=record["change"],
-                    )
+            # Guard against duplicate application for the same trade
+            if trade_uuid and DepositHistory.objects.filter(trade_uuid=trade_uuid).exists():
+                raise exceptions.ValidationError({
+                    "error": "DUPLICATE_TRADE",
+                    "message": f"Records for trade_uuid {trade_uuid} already exist."
+                })
+
+            with transaction.atomic():
+                for record in result["records"]:
+                    if record["data_type"] == "deposit_history":
+                        DepositHistory.objects.create(
+                            user=record["user"],
+                            change=record["change"],
+                            referral_discount=record.get("referral_discount", 0),
+                            type=record["type"],
+                            trade_uuid=trade_uuid,
+                            description=record.get("description")
+                        )
+                    elif record["data_type"] == "commission_history":
+                        CommissionHistory.objects.create(
+                            affiliate=record["affiliate"],
+                            child_affiliate=record["child_affiliate"],
+                            user_who_paid=record["user_who_paid"],
+                            service_type=record["service_type"],
+                            type=record["type"],
+                            trade_uuid=record["trade_uuid"],
+                            change=record["change"],
+                        )
                 
         # change user model to user uuid
         for record in result["records"]:

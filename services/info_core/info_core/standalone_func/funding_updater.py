@@ -83,7 +83,10 @@ def update_fundingrate(
                 read_time_start = time.time()
                 mongo_db = mongo_db_conn[f"{exchange_name}_fundingrate"]
                 collection = mongo_db[futures_type]
-                data = collection.find({})
+                # Only load recent records (last 24h) instead of entire collection
+                # to avoid unbounded memory growth as history accumulates.
+                recent_cutoff = datetime.datetime.utcnow() - datetime.timedelta(hours=24)
+                data = collection.find({"funding_time": {"$gte": recent_cutoff}})
                 df = pd.DataFrame(data)
                 read_time += time.time() - read_time_start
 

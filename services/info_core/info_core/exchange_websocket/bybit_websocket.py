@@ -367,14 +367,9 @@ class BybitWebsocket:
                 time.sleep(0.5)
         self.handle_price_procs_thread = Thread(target=handle_price_procs, daemon=True)
         self.handle_price_procs_thread.start()
-        
-        # Start the per-process stale checker (only if not already running):
-        if not hasattr(self, 'stale_data_per_proc_thread') or not self.stale_data_per_proc_thread.is_alive():
-            self.stale_data_per_proc_thread = Thread(
-                target=self.monitor_stale_data_per_proc,
-                daemon=True
-            )
-            self.stale_data_per_proc_thread.start()
+
+        # NOTE: monitor_stale_data_per_proc is started by __init__ after _start_websocket returns.
+        # Do NOT start it here to avoid duplicate monitor threads.
 
     def terminate_websocket(self):
         terminate_process_group(

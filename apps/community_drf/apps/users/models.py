@@ -283,6 +283,11 @@ class DepositHistory(models.Model):
     description = models.TextField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError(
+                "DepositHistory records are immutable. "
+                "Cannot re-save an existing record — this would corrupt the balance."
+            )
         with transaction.atomic():
             try:
                 deposit_balance = DepositBalance.objects.select_for_update().get(user=self.user)

@@ -1,8 +1,13 @@
+import logging
+
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.db.models import F
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
+
+logger = logging.getLogger(__name__)
 
 
 class Post(models.Model):
@@ -92,19 +97,22 @@ class PostReactions(models.Model):
     date_updated = models.DateTimeField(_("date updated"), default=now)
 
     def save(self, *args, **kwargs):
+        is_new = self._state.adding
         super(PostReactions, self).save(*args, **kwargs)
 
-        if self.reaction == PostReactions.LIKE:
-            UserLevels().update_level(
-                user=self.post.user,
-                points=UserLevels.LIKE_POINTS,
-            )
+        # Only award points on creation, not on every update
+        if is_new:
+            if self.reaction == PostReactions.LIKE:
+                UserLevels().update_level(
+                    user=self.post.user,
+                    points=UserLevels.LIKE_POINTS,
+                )
 
-        if self.reaction == PostReactions.DISLIKE:
-            UserLevels().update_level(
-                user=self.post.user,
-                points=UserLevels.DISLIKE_POINTS,
-            )
+            if self.reaction == PostReactions.DISLIKE:
+                UserLevels().update_level(
+                    user=self.post.user,
+                    points=UserLevels.DISLIKE_POINTS,
+                )
 
     class Meta:
         constraints = [
@@ -155,19 +163,22 @@ class CommentReactions(models.Model):
     date_updated = models.DateTimeField(_("date updated"), default=now)
 
     def save(self, *args, **kwargs):
+        is_new = self._state.adding
         super(CommentReactions, self).save(*args, **kwargs)
 
-        if self.reaction == CommentReactions.LIKE:
-            UserLevels().update_level(
-                user=self.comment.user,
-                points=UserLevels.LIKE_POINTS,
-            )
+        # Only award points on creation, not on every update
+        if is_new:
+            if self.reaction == CommentReactions.LIKE:
+                UserLevels().update_level(
+                    user=self.comment.user,
+                    points=UserLevels.LIKE_POINTS,
+                )
 
-        if self.reaction == CommentReactions.DISLIKE:
-            UserLevels().update_level(
-                user=self.comment.user,
-                points=UserLevels.DISLIKE_POINTS,
-            )
+            if self.reaction == CommentReactions.DISLIKE:
+                UserLevels().update_level(
+                    user=self.comment.user,
+                    points=UserLevels.DISLIKE_POINTS,
+                )
 
     class Meta:
         constraints = [
@@ -216,26 +227,38 @@ class UserLevels(models.Model):
     )  # just following fee level naming...
 
     def update_level(self, user, points=1):
-        # Get or create User community_level
-        try:
-            user_community_level = UserLevels.objects.get(user=user)
-        except UserLevels.DoesNotExist:
-            user_community_level = UserLevels.objects.create(user=user)
+        # Atomically get or create User community_level (S3-BUG4 fix)
+        user_community_level, _ = UserLevels.objects.get_or_create(user=user)
 
-        user_community_level.total_points += points
+        # Atomically update total_points using F() expression (S3-BUG3 fix)
+        UserLevels.objects.filter(pk=user_community_level.pk).update(
+            total_points=F("total_points") + points,
+        )
 
-        # Get User's new level based on the updated points
+        # Refresh to get the updated value
+        user_community_level.refresh_from_db()
+
+        # Get User's new level based on the updated points (S3-BUG5 fix)
         if user_community_level.total_points < 0:
-            community_level = Level.objects.get(points__lte=0)
+            community_level = Level.objects.filter(points__lte=0).first()
         else:
             community_level = Level.objects.filter(
                 points__lte=user_community_level.total_points
-            ).last()
+            ).order_by("-points").first()
+
+        if community_level is None:
+            logger.warning(
+                f"No Level row found for total_points={user_community_level.total_points}, "
+                f"user={user.pk}. Defaulting to level 1."
+            )
+            new_level = 1
+        else:
+            new_level = community_level.level
 
         # Set User's new community_level
-        user_community_level.community_level = community_level.level
+        user_community_level.community_level = new_level
         user_community_level.last_updated_datetime = now()
-        user_community_level.save()
+        user_community_level.save(update_fields=["community_level", "last_updated_datetime"])
 
     def __str__(self):
         return (

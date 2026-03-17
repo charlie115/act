@@ -161,11 +161,12 @@ class MarketCodesView(views.APIView):
         for redis_key in redis_keys:
             redis_key = redis_key.decode() if isinstance(redis_key, bytes) else redis_key
 
-            target_market, origin_market = redis_key.split(":")
-            if target_market in market_codes:
-                market_codes[target_market].append(origin_market)
-            else:
-                market_codes[target_market] = [origin_market]
+            try:
+                target_market, origin_market = redis_key.split(":")
+            except ValueError:
+                continue
+
+            market_codes.setdefault(target_market, []).append(origin_market)
 
         if not market_codes:
             market_codes = self._collect_from_streams(minimum_score)

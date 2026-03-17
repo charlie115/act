@@ -22,7 +22,7 @@ import datetime
 import httpx
 from decimal import Decimal
 import asyncio
-from collections import defaultdict
+from collections import OrderedDict
 
 app = FastAPI()
 
@@ -30,7 +30,31 @@ app = FastAPI()
 # WARNING: asyncio.Lock only works within a single process. This service MUST be
 # deployed with a single worker (e.g., uvicorn --workers 1). If multi-worker
 # deployment is needed, replace with a Redis distributed lock (redis.lock.Lock).
-_user_locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
+_USER_LOCKS_MAX = 4096
+
+# BIP32 non-hardened child index must fit in 31 bits (0 to 2^31 - 1).
+_BIP32_MAX_INDEX = 2**31 - 1
+
+
+class _BoundedLockDict:
+    """An LRU-bounded dict of asyncio.Lock keyed by user_id."""
+
+    def __init__(self, maxsize: int = _USER_LOCKS_MAX):
+        self._locks: OrderedDict[int, asyncio.Lock] = OrderedDict()
+        self._maxsize = maxsize
+
+    def __getitem__(self, key: int) -> asyncio.Lock:
+        if key in self._locks:
+            self._locks.move_to_end(key)
+            return self._locks[key]
+        if len(self._locks) >= self._maxsize:
+            self._locks.popitem(last=False)
+        lock = asyncio.Lock()
+        self._locks[key] = lock
+        return lock
+
+
+_user_locks = _BoundedLockDict()
 
 # Load secrets
 WALLET_API_KEY_FILE = os.environ.get('WALLET_API_KEY_FILE', None)
@@ -89,7 +113,17 @@ async def get_hd_wallet():
     )
     return hd_wallet
 
+def _validate_user_id_for_derivation(user_id: int):
+    """Validate that user_id is within BIP32 non-hardened child index range."""
+    if user_id < 0 or user_id > _BIP32_MAX_INDEX:
+        raise HTTPException(
+            status_code=400,
+            detail=f"user_id must be between 0 and {_BIP32_MAX_INDEX}"
+        )
+
+
 async def get_private_key_from_user_id(user_id: int):
+    _validate_user_id_for_derivation(user_id)
     hd_wallet = await get_hd_wallet()
     user_wallet = hd_wallet.from_derivation(
         derivation=BIP44Derivation(
@@ -100,8 +134,9 @@ async def get_private_key_from_user_id(user_id: int):
         )
     )
     return user_wallet.private_key()
-    
+
 async def get_address_from_user_id(user_id: int):
+    _validate_user_id_for_derivation(user_id)
     # Initialize master HDWallet inside the function to prevent HDWallet object from being shared between requests
     hd_wallet = await get_hd_wallet()
     # Derive child wallet for the user
@@ -215,7 +250,7 @@ async def fetch_parse_trx_data(address, deposit_only=False):
 
     # Use httpx for asynchronous HTTP requests
     trongrid_headers = {"TRON-PRO-API-KEY": TRON_GRID_API_KEY} if TRON_GRID_API_KEY else {}
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(f"https://api.trongrid.io/v1/accounts/{address}/transactions", params=params, headers=trongrid_headers)
         response.raise_for_status()  # Raise an exception for HTTP errors
         data = response.json()
@@ -273,7 +308,7 @@ async def fetch_parse_usdt_data(address, deposit_only=False):
 
     # Use httpx for asynchronous HTTP requests
     trongrid_headers = {"TRON-PRO-API-KEY": TRON_GRID_API_KEY} if TRON_GRID_API_KEY else {}
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(f"https://api.trongrid.io/v1/accounts/{address}/transactions/trc20", params=params, headers=trongrid_headers)
         response.raise_for_status()  # Raise an exception for HTTP errors
         data = response.json()

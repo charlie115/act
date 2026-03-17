@@ -82,7 +82,10 @@ class CommentViewSet(BaseViewSet):
     pagination_class = CustomPageNumberPagination
 
     def get_queryset(self):
-        return super(BaseViewSet, self).get_queryset()
+        # For list/retrieve, return all comments (public); for mutations, use BaseViewSet ownership filter
+        if self.action in ["list", "retrieve"]:
+            return super(BaseViewSet, self).get_queryset()
+        return super().get_queryset()
 
     def get_permissions(self):
         permission_classes = self.permission_classes
@@ -146,7 +149,10 @@ class PostViewSet(BaseViewSet):
     pagination_class = CustomPageNumberPagination
 
     def get_queryset(self):
-        return super(BaseViewSet, self).get_queryset()
+        # For list/retrieve, return all posts (public); for mutations, use BaseViewSet ownership filter
+        if self.action in ["list", "retrieve"]:
+            return super(BaseViewSet, self).get_queryset()
+        return super().get_queryset()
 
     def get_permissions(self):
         permission_classes = self.permission_classes

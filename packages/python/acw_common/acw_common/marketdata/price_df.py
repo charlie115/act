@@ -214,7 +214,9 @@ def get_okx_price_df(redis_client, market_type):
         lambda x: x["tp"] * x["atp24h"] if x["instType"] != "SPOT" else x["atp24h"],
         axis=1,
     )
-    ticker_df["scr"] = (ticker_df["tp"] - ticker_df["open24h"]) / ticker_df["open24h"] * 100
+    ticker_df["scr"] = ticker_df["open24h"].replace(0, np.nan).pipe(
+        lambda open24h: (ticker_df["tp"] - open24h) / open24h * 100
+    ).fillna(0.0)
     return ticker_df[["instId", "base_asset", "quote_asset", "tp", "ap", "bp", "scr", "atp24h"]]
 
 
@@ -259,7 +261,9 @@ def get_coinone_price_df(redis_client):
     ticker_df[["tp", "atp24h", "openPrice"]] = ticker_df[
         ["tp", "atp24h", "openPrice"]
     ].astype(float)
-    ticker_df["scr"] = ((ticker_df["tp"] - ticker_df["openPrice"]) / ticker_df["openPrice"]) * 100
+    ticker_df["scr"] = ticker_df["openPrice"].replace(0, np.nan).pipe(
+        lambda openPrice: (ticker_df["tp"] - openPrice) / openPrice * 100
+    ).fillna(0.0)
     ticker_df.drop("openPrice", axis=1, inplace=True)
 
     def extract_best_ask(order_list):

@@ -25,7 +25,8 @@ def _decode_us(raw_value):
 
 
 def touch_market_ready(redis_client, market_code, stream_type, timestamp_us=None, ex=180):
-    timestamp_us = timestamp_us or int(time.time() * 1_000_000)
+    if timestamp_us is None:
+        timestamp_us = int(time.time() * 1_000_000)
     redis_client.set_data(
         _build_ready_key(market_code, stream_type),
         str(timestamp_us),
@@ -41,7 +42,8 @@ def touch_process_heartbeat(
     timestamp_us=None,
     ex=180,
 ):
-    timestamp_us = timestamp_us or int(time.time() * 1_000_000)
+    if timestamp_us is None:
+        timestamp_us = int(time.time() * 1_000_000)
     redis_client.set_data(
         _build_heartbeat_key(market_code, stream_type, proc_name),
         str(timestamp_us),
@@ -56,7 +58,8 @@ def has_recent_market_ready(
     max_age_secs=30,
     now_us=None,
 ):
-    now_us = now_us or int(time.time() * 1_000_000)
+    if now_us is None:
+        now_us = int(time.time() * 1_000_000)
     max_age_us = int(max_age_secs * 1_000_000)
     for stream_type in required_stream_types:
         heartbeat_us = _decode_us(
@@ -75,7 +78,8 @@ def is_process_heartbeat_stale(
     stale_threshold_secs=90,
     now_us=None,
 ):
-    now_us = now_us or int(time.time() * 1_000_000)
+    if now_us is None:
+        now_us = int(time.time() * 1_000_000)
     heartbeat_us = _decode_us(
         redis_client.get_data(_build_heartbeat_key(market_code, stream_type, proc_name))
     )

@@ -1096,8 +1096,9 @@ class UserBinanceAdaptor:
                                 self.logger.info(f"trade_config_uuid: {row['trade_config_uuid']}'s user_stream monitor thread has been initiated.")
                             time.sleep(0.25)
                         # Remove dead thread or unauthorized thread from the list
-                        for i,each_tup in enumerate(self.user_stream_monitoring_list):
-                            trade_config_uuid = self.user_stream_monitoring_list[i][0]
+                        to_remove = []
+                        for i, each_tup in enumerate(self.user_stream_monitoring_list):
+                            trade_config_uuid = each_tup[0]
                             status_flag = True
                             if each_tup[1].is_alive() is False:
                                 status_flag = False
@@ -1111,7 +1112,10 @@ class UserBinanceAdaptor:
                             if status_flag is False:
                                 title = f"trade_config_uuid: {trade_config_uuid}'s user_stream monitoring thread has been removed!"
                                 self.logger.info(title)
-                                self.user_stream_monitoring_list.pop(i)
+                                to_remove.append(i)
+                        # Remove in reverse order to preserve indices
+                        for i in reversed(to_remove):
+                            self.user_stream_monitoring_list.pop(i)
                 except Exception:
                     self.logger.error(f"monitor_user_stream|{traceback.format_exc()}")
 

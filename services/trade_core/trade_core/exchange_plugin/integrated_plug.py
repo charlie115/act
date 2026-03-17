@@ -567,7 +567,14 @@ class UserExchangeAdaptor:
                         self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
                     # Binance response validation
                     origin_trade_error = False
-                    if origin_return_dict['error_code'] is None:
+                    if 'error_code' not in origin_return_dict:
+                        origin_trade_error = True
+                        title = f"{self.origin_exchange_name_kr} SHORT 비정상 종료"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.origin_exchange_name_kr} {origin_symbol} SHORT거래가 비정상 종료되었습니다. origin_return_dict: {origin_return_dict}"
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        self.logger.error(f"{title}|trade uuid:{merged_row['uuid']}\n{body}")
+                        self.acw_api.create_message_thread(self.admin_id, title, f"{title}|trade uuid:{merged_row['uuid']}\n{body}", 'MONITOR', send_times=1, send_term=1)
+                    elif origin_return_dict['error_code'] is None:
                         title = f"{self.origin_exchange_name_kr} SHORT 성공"
                         body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {self.origin_exchange_name_kr} {origin_symbol} SHORT거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}USDT)가 정상적으로 진행되었습니다."
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
@@ -733,7 +740,14 @@ class UserExchangeAdaptor:
 
                 # Binance response validation
                 origin_trade_error = False
-                if origin_return_dict['error_code'] is None:
+                if 'error_code' not in origin_return_dict:
+                    origin_trade_error = True
+                    title = f"{self.origin_exchange_name_kr} SHORT 비정상 종료"
+                    body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.origin_exchange_name_kr} {origin_symbol} SHORT거래가 비정상 종료되었습니다. origin_return_dict: {origin_return_dict}"
+                    self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                    self.logger.error(f"{title}|trade uuid:{merged_row['uuid']}\n{body}")
+                    self.acw_api.create_message_thread(self.admin_id, title, f"{title}|trade uuid:{merged_row['uuid']}\n{body}", 'MONITOR', send_times=1, send_term=1)
+                elif origin_return_dict['error_code'] is None:
                     title = f"{self.origin_exchange_name_kr} SHORT 성공"
                     body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {self.origin_exchange_name_kr} {origin_symbol} SHORT거래({float(qty)}개, {round(merged_row['trade_capital'])}원)가 정상적으로 진행되었습니다."
                     self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
@@ -1019,7 +1033,14 @@ class UserExchangeAdaptor:
                         self.acw_api.create_message_thread(self.admin_id, title, error_log, 'MONITOR', send_times=1, send_term=1)
                     # Binance response validation
                     origin_trade_error = False
-                    if origin_return_dict['error_code'] is None:
+                    if 'error_code' not in origin_return_dict:
+                        origin_trade_error = True
+                        title = f"{self.origin_exchange_name_kr} LONG 비정상 종료"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.origin_exchange_name_kr} {origin_symbol} LONG거래가 비정상 종료되었습니다. origin_return_dict: {origin_return_dict}"
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        self.logger.error(f"{title}|trade uuid:{merged_row['uuid']}\n{body}")
+                        self.acw_api.create_message_thread(self.admin_id, title, f"{title}|trade uuid:{merged_row['uuid']}\n{body}", 'MONITOR', send_times=1, send_term=1)
+                    elif origin_return_dict['error_code'] is None:
                         title = f"{self.origin_exchange_name_kr} LONG 성공"
                         body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {self.origin_exchange_name_kr} {origin_symbol} LONG거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}USDT)가 정상적으로 진행되었습니다."
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
@@ -1200,7 +1221,14 @@ class UserExchangeAdaptor:
                 if liquidation_call is False:
                     # Binance response validation
                     origin_trade_error = False
-                    if origin_return_dict['error_code'] is None:
+                    if 'error_code' not in origin_return_dict:
+                        origin_trade_error = True
+                        title = f"{self.origin_exchange_name_kr} LONG 비정상 종료"
+                        body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.origin_exchange_name_kr} {origin_symbol} LONG거래가 비정상 종료되었습니다. origin_return_dict: {origin_return_dict}"
+                        self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
+                        self.logger.error(f"{title}|trade uuid:{merged_row['uuid']}\n{body}")
+                        self.acw_api.create_message_thread(self.admin_id, title, f"{title}|trade uuid:{merged_row['uuid']}\n{body}", 'MONITOR', send_times=1, send_term=1)
+                    elif origin_return_dict['error_code'] is None:
                         title = f"{self.origin_exchange_name_kr} LONG 성공"
                         body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {self.origin_exchange_name_kr} {origin_symbol} LONG거래({float(origin_qty)}개, {round(merged_row['trade_capital'])}원)가 정상적으로 진행되었습니다."
                         self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO', send_times=merged_row['send_times'], send_term=merged_row['send_term'])

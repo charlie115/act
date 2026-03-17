@@ -48,10 +48,10 @@ def fetch_users_with_negative_balance_loop(admin_id,
             full_content = f"{title}:\n{traceback.format_exc()}"
             logger.error(full_content)
             acw_api.create_message_thread(admin_id, title, full_content)
-            time.sleep(5)
         time.sleep(loop_interval_secs)
         
 def load_trade_config(postgres_client, admin_id, acw_api, logger, ex, table_name='trade_config'):
+    conn = None
     try:
         conn = postgres_client.pool.getconn()
         curr = conn.cursor(cursor_factory=extras.RealDictCursor)
@@ -76,7 +76,8 @@ def load_trade_config(postgres_client, admin_id, acw_api, logger, ex, table_name
         postgres_client.pool.putconn(conn)
     except Exception as e:
         # rollback the transaction if any error while inserting
-        postgres_client.pool.putconn(conn, close=True)
+        if conn is not None:
+            postgres_client.pool.putconn(conn, close=True)
         title = f"Error in load_trade_config"
         full_content = f"{title}:\n{traceback.format_exc()}"
         logger.error(full_content)
@@ -938,9 +939,8 @@ def start_trigger_scanner_loop(
                         return results
                     
                     # Run the async function in a synchronous context
-                    loop = asyncio.get_event_loop()
                     try:
-                        trade_results = loop.run_until_complete(process_trades())
+                        trade_results = asyncio.run(process_trades())
                         logger.info(f"Created {len([r for r in trade_results if r is not None])} trades from trigger scanner")
                     except Exception as e:
                         logger.error(f"Error processing trades: {e}\n{traceback.format_exc()}")

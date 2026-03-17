@@ -255,11 +255,14 @@ class AffiliateRequestSerializer(serializers.ModelSerializer):
         
     def validate(self, attrs):
         request_user = self.context['request'].user
-        existing_requests = AffiliateRequest.objects.filter(user=request_user)
-        
-        # If you want to ensure the user has no requests at all:
+        # Block new requests only if user has a pending or approved request
+        existing_requests = AffiliateRequest.objects.filter(
+            user=request_user,
+            status__in=[AffiliateRequest.STATUS_PENDING, AffiliateRequest.STATUS_APPROVED],
+        )
+
         if existing_requests.exists():
-            raise serializers.ValidationError({"error": "REQUEST_EXISTS", "message": "You already have a request reigstered."})
+            raise serializers.ValidationError({"error": "REQUEST_EXISTS", "message": "You already have an active request registered."})
         
         # Check whether parent_affiliate_code in attrs is valid
         parent_affiliate_code = attrs.get('parent_affiliate_code')

@@ -184,7 +184,7 @@ class KlineConsumer(AsyncWebsocketConsumer):
             return data
 
     async def publish(self):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         last_entry_id = "0-0"
         latest_entries = await loop.run_in_executor(
             None, partial(REDIS_CLI.xrevrange, self._channel_name, count=1)

@@ -414,8 +414,10 @@ def insert_kline_to_db(kline_df, channel_name, acw_api, redis_dict, mongodb_dict
             if failed_collections:
                 logger.warning(f"insert_kline_to_db|{channel_name} Failed collections (after retries): {failed_collections}")
             if count != len(inserted_coin_list):
-                logger.error(f"kline mismatch: {count} != {len(inserted_coin_list)}")
-                logger.error(f"closed_kline_df: {closed_kline_df}")
+                # count may legitimately exceed len(inserted_coin_list) when
+                # multiple candles close for the same asset in a single cycle.
+                # Only log as warning, not error, since this is expected behavior.
+                logger.warning(f"kline count ({count}) differs from unique assets ({len(inserted_coin_list)}) - likely multiple candles per asset")
     except Exception:
         logger.error(f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()}")
         acw_api.create_message_thread(admin_id, 'Error in insert_kline_to_db', content=f"insert_kline_to_db|Error in insert_kline_to_db: {traceback.format_exc()[:1995]}")

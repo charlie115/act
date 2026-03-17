@@ -177,6 +177,11 @@ class CommissionHistory(models.Model):
         return f"Commission of {self.change} from trade {self.trade_uuid} by {self.affiliate.user.username}"
     
     def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError(
+                "CommissionHistory records are immutable. "
+                "Cannot re-save an existing record — this would corrupt the balance."
+            )
         with transaction.atomic():
             commission_balance, created = CommissionBalance.objects.get_or_create(
                 affiliate=self.affiliate, defaults={'balance': Decimal('0.00')}

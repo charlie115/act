@@ -49,8 +49,6 @@ def get_volatility_data(market_code_combination, mongodb_client, collection_name
 
     return volatility_data_df
 
-market_code_combination = 'UPBIT_SPOT/KRW:BINANCE_USD_M/USDT'
-
 
 def get_funding_data(market_code, mongodb_client):
     """

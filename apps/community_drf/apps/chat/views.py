@@ -1,4 +1,5 @@
 import logging
+import re
 
 from django.conf import settings
 from django.shortcuts import render
@@ -19,6 +20,9 @@ from lib.datetime import (
 )
 from lib.utils import get_client_ip, generate_username
 from users.models import UserBlocklist
+
+# Regex pattern matching date-formatted collection names (e.g., "20260317")
+_DATE_COLLECTION_RE = re.compile(r"^\d{8}$")
 
 MONGODB_CLI = get_chat_mongo_client(appname="django-chat-api")
 logger = logging.getLogger(__name__)
@@ -106,7 +110,11 @@ class PastChatMessagesView(views.APIView, PageNumberPagination):
                 DATE_FORMAT_NUM,
             )
         else:
-            collections = sorted(self.chat_db.list_collection_names())[-2:]
+            # S4-BUG5 fix: filter to only date-formatted collection names
+            all_names = self.chat_db.list_collection_names()
+            collections = sorted(
+                name for name in all_names if _DATE_COLLECTION_RE.match(name)
+            )[-2:]
 
         # Prepare parameters
         query_filter = {

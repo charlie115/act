@@ -116,6 +116,12 @@ class UserWalletTransactionView(WalletMixin, views.APIView):
         total_withdraw_amount = 0
         total_deposit_amount = 0
 
+        # Resolve user once outside the loop
+        try:
+            deposit_user = User.objects.get(uuid=validated_data.get("user"))
+        except User.DoesNotExist:
+            raise exceptions.ValidationError({"user": ["User not found."]})
+
         with transaction.atomic():
             for tx in data:
                 # Filter out TRX transactions
@@ -145,7 +151,7 @@ class UserWalletTransactionView(WalletMixin, views.APIView):
 
                 # Save the transaction to the deposit history
                 DepositHistory.objects.create(
-                    user=User.objects.get(uuid=validated_data.get("user")),
+                    user=deposit_user,
                     change=change,
                     txid=txid,
                     type=type,

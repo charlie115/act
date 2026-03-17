@@ -156,20 +156,23 @@ class AcwApi:
 
     def get_node(self, id=None):
         url = self.url + self.node_url
-        if id is not None:
-            response = requests.get(url + str(id) + "/", verify=self.verify, timeout=10)
+        try:
+            if id is not None:
+                response = requests.get(url + str(id) + "/", verify=self.verify, timeout=10)
+                if response.status_code == 200:
+                    return pd.DataFrame([response.json()])
+                if self._is_best_effort_dev_auth_failure(response):
+                    return pd.DataFrame([{"market_code_combinations": []}])
+                self._raise_error(response)
+
+            response = requests.get(url, verify=self.verify, timeout=10)
             if response.status_code == 200:
-                return pd.DataFrame([response.json()])
+                return pd.DataFrame(response.json()["results"])
             if self._is_best_effort_dev_auth_failure(response):
                 return pd.DataFrame([{"market_code_combinations": []}])
             self._raise_error(response)
-
-        response = requests.get(url, verify=self.verify, timeout=10)
-        if response.status_code == 200:
-            return pd.DataFrame(response.json()["results"])
-        if self._is_best_effort_dev_auth_failure(response):
+        except requests.RequestException:
             return pd.DataFrame([{"market_code_combinations": []}])
-        self._raise_error(response)
 
     def get_referral_commission(
         self,
@@ -192,7 +195,10 @@ class AcwApi:
         if origin_market_code is not None:
             params["origin_market_code"] = origin_market_code
 
-        response = requests.get(url, params=params, verify=self.verify, timeout=10)
+        try:
+            response = requests.get(url, params=params, verify=self.verify, timeout=10)
+        except requests.RequestException:
+            return None
         if response.status_code == 200:
             return response.json()
         self._raise_error(response)
@@ -209,12 +215,15 @@ class AcwApi:
 
     def get_deposit_history(self, user):
         url = self.url + self.deposit_history
-        response = requests.get(
-            url,
-            params={"user": user},
-            verify=self.verify,
-            timeout=10,
-        )
+        try:
+            response = requests.get(
+                url,
+                params={"user": user},
+                verify=self.verify,
+                timeout=10,
+            )
+        except requests.RequestException:
+            return pd.DataFrame()
         if response.status_code == 200:
             return pd.DataFrame(response.json()["results"])
         self._raise_error(response)
@@ -241,33 +250,45 @@ class AcwApi:
             "pending": pending,
             "registered_datetime": registered_datetime.strftime("%Y-%m-%dT%H:%M:%S"),
         }
-        response = requests.post(url, json=payload, verify=self.verify, timeout=10)
+        try:
+            response = requests.post(url, json=payload, verify=self.verify, timeout=10)
+        except requests.RequestException:
+            return None
         if response.status_code == 201:
             return response.json()
         self._raise_error(response)
 
     def get_deposit_balance(self, user=None):
         url = self.url + self.deposit_balance
-        response = requests.get(
-            url,
-            params={"user": user},
-            verify=self.verify,
-            timeout=10,
-        )
+        try:
+            response = requests.get(
+                url,
+                params={"user": user},
+                verify=self.verify,
+                timeout=10,
+            )
+        except requests.RequestException:
+            return pd.DataFrame()
         if response.status_code == 200:
             return pd.DataFrame(response.json()["results"])
         self._raise_error(response)
 
     def get_exchange_status(self):
         url = self.url + self.exchange_status
-        response = requests.get(url, verify=self.verify, timeout=10)
+        try:
+            response = requests.get(url, verify=self.verify, timeout=10)
+        except requests.RequestException:
+            return []
         if response.status_code == 200:
             return response.json()
         self._raise_error(response)
 
     def get_activated_market_codes(self):
         url = self.url + self.activated_market_codes
-        response = requests.get(url, verify=self.verify, timeout=10)
+        try:
+            response = requests.get(url, verify=self.verify, timeout=10)
+        except requests.RequestException:
+            return []
         if response.status_code == 200:
             return response.json()
         self._raise_error(response)

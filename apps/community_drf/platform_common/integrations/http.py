@@ -18,17 +18,17 @@ class JsonApiClient:
 
     def request(self, method, endpoint, path_param=None, query_params=None, data=None, headers=None):
         request_headers = {**self.default_headers, **(headers or {})}
-        request_data = (
-            json.dumps(data, cls=DjangoJSONEncoder)
-            if data is not None
-            else None
-        )
-        return requests.request(
-            method=method,
-            url=self.build_api_url(endpoint, path_param),
-            params=query_params,
-            data=request_data,
-            headers=request_headers,
-            timeout=30,
-        )
+        kwargs = {
+            "method": method,
+            "url": self.build_api_url(endpoint, path_param),
+            "params": query_params,
+            "headers": request_headers,
+            "timeout": 30,
+        }
+        if data is not None:
+            # Use DjangoJSONEncoder to handle Decimal, UUID, datetime, etc.
+            # and set Content-Type explicitly so the server parses it as JSON.
+            request_headers.setdefault("Content-Type", "application/json")
+            kwargs["data"] = json.dumps(data, cls=DjangoJSONEncoder)
+        return requests.request(**kwargs)
 

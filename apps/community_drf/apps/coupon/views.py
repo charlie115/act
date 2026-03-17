@@ -81,6 +81,19 @@ class CouponRedemptionViewSet(viewsets.ReadOnlyModelViewSet):
             with transaction.atomic():
                 # Lock the coupon row to prevent concurrent redemptions
                 coupon = Coupon.objects.select_for_update().get(pk=coupon.pk)
+
+                # Re-check validity inside the lock to prevent TOCTOU race
+                if not coupon.is_active:
+                    return Response({
+                        "error": "COUPON_INACTIVE",
+                        "message": "This coupon is no longer active.",
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                if coupon.is_expired():
+                    return Response({
+                        "error": "COUPON_EXPIRED",
+                        "message": "This coupon has expired.",
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
                 # Create a redemption record (unique_together constraint prevents duplicates)
                 CouponRedemption.objects.create(user=user, coupon=coupon)
 

@@ -1,3 +1,4 @@
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.filters import OrderingFilter
@@ -104,12 +105,13 @@ class UserViewSet(BaseViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Remove the allauth/social account record for telegram
-        user.socialaccount_set.filter(provider="telegram").delete()
-        
-        # Remove the telegram chat ID
-        user.telegram_chat_id = ""
-        user.save()
+        with transaction.atomic():
+            # Remove the allauth/social account record for telegram
+            user.socialaccount_set.filter(provider="telegram").delete()
+
+            # Remove the telegram chat ID
+            user.telegram_chat_id = ""
+            user.save()
         
         return Response(
             {"detail": "Telegram account successfully unbound."},

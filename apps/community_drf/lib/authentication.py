@@ -20,4 +20,4 @@ class NodeIPAuthentication(authentication.BaseAuthentication):
         if REMOTE_ADDR in authorized_ips:
             return (None, None)
         else:
-            raise exceptions.AuthenticationFailed("Not authorized.")
+            return None

@@ -19,7 +19,7 @@ class TradeCoreMixin(object):
 
         if queryset.model is User:
             query_field = "id__in"
-            query = {query_field: [self.request.user.uuid]}
+            query = {query_field: [self.request.user.id]}
 
         elif hasattr(queryset.model, "user"):
             query_field = "user_id__in"

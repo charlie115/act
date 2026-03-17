@@ -38,4 +38,4 @@ def update_last_username_change(sender, instance, **kwargs):
     dispatch_uid="signals.delete_user_from_blocklist_cache",
 )
 def add_user_to_blocklist_cache(sender, **kwargs):
-    cache.set(settings.REDIS_CHAT_BLOCKLIST_KEY, sender.objects.all(), timeout=None)
+    cache.set(settings.REDIS_CHAT_BLOCKLIST_KEY, list(sender.objects.all()), timeout=None)

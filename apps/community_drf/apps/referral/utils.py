@@ -111,12 +111,18 @@ def calculate_fee_and_commission_for_trade(user, user_fee, referral, trade_uuid=
 def get_all_affiliate_ids(affiliate):
     """
     Recursively get all affiliate ids including the affiliate itself and its descendants.
+    Uses a visited set to prevent infinite loops from data cycles.
     """
-    ids = [affiliate.id]
+    visited = set()
+    ids = []
     stack = [affiliate]
     while stack:
         current = stack.pop()
+        if current.id in visited:
+            continue
+        visited.add(current.id)
+        ids.append(current.id)
         for sub in current.sub_affiliates.all():
-            ids.append(sub.id)
-            stack.append(sub)
+            if sub.id not in visited:
+                stack.append(sub)
     return ids

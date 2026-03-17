@@ -61,7 +61,7 @@ class PostSerializer(serializers.ModelSerializer):
 
         post = super().create(validated_data)
 
-        new_content = post.content
+        new_content = post.content or ""
 
         for img in images:
             post_image = PostImage.objects.create(image=img, post=post)
@@ -87,10 +87,13 @@ class PostSerializer(serializers.ModelSerializer):
         return obj.views.count()
 
     def get_images(self, obj):
+        context = {}
+        if "request" in self.context:
+            context["request"] = self.context["request"]
         return PostImageSerializer(
             obj.post_images.all(),
             many=True,
-            context={"request": self.context["request"]},
+            context=context,
         ).data
 
     def get_user_reaction(self, obj):
@@ -217,9 +220,11 @@ class CommentSerializer(serializers.ModelSerializer):
     user_reaction = serializers.SerializerMethodField()
 
     def validate_content(self, value):
-        """Strip HTML tags to prevent XSS attacks."""
+        """Strip HTML tags to prevent XSS attacks and require non-empty content."""
         if value:
-            return strip_tags(value)
+            value = strip_tags(value)
+        if not value or not value.strip():
+            raise serializers.ValidationError("Comment content cannot be empty.")
         return value
 
     def get_fields(self):

@@ -92,9 +92,19 @@ class AuthTelegramLoginView(LoginView):
         telegram_provider = providers.registry.by_id(TelegramProvider.id, request)
 
         data = dict(request.data.items())
-        hash = data.pop("hash")
-        uuid = data.pop("user")
-        user = User.objects.get(uuid=uuid)
+        hash = data.pop("hash", None)
+        uuid = data.pop("user", None)
+
+        if not hash or not uuid:
+            raise exceptions.ValidationError(
+                {"detail": "hash and user fields are required."}
+            )
+
+        try:
+            user = User.objects.get(uuid=uuid)
+        except User.DoesNotExist:
+            raise exceptions.ValidationError({"user": ["User not found."]})
+
         payload = "\n".join(sorted(["{}={}".format(k, v) for k, v in data.items()]))
 
         # Get user's social app to get Telegram bot token
@@ -114,7 +124,19 @@ class AuthTelegramLoginView(LoginView):
             token_sha256, payload.encode(), hashlib.sha256
         ).hexdigest()
 
-        auth_date = int(data.pop("auth_date"))
+        auth_date_raw = data.pop("auth_date", None)
+        if auth_date_raw is None:
+            raise exceptions.ValidationError(
+                {"auth_date": ["This field is required."]}
+            )
+
+        try:
+            auth_date = int(auth_date_raw)
+        except (ValueError, TypeError):
+            raise exceptions.ValidationError(
+                {"auth_date": ["Must be a valid integer timestamp."]}
+            )
+
         if hash != expected_hash or time.time() - auth_date > 30:
             raise exceptions.ValidationError({"detail": "Telegram data is not valid."})
 

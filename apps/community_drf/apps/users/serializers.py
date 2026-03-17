@@ -43,7 +43,7 @@ class UserProfileSerializer(UserUUIDSerializerMixin, serializers.ModelSerializer
     def get_picture(self, obj):
         google_accounts = obj.user.socialaccount_set.filter(provider="google")
         if len(google_accounts) > 0:
-            return google_accounts.first().extra_data["picture"]
+            return google_accounts.first().extra_data.get("picture")
         else:
             return None
 
@@ -179,7 +179,7 @@ class WithdrawalRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = WithdrawalRequest
         fields = ['id', 'user', 'amount', 'address', 'type', 'status', 'requested_datetime', 'approved_datetime', 'completed_datetime', 'txid', 'remark']
-        read_only_fields = ['type', 'status', 'authorized_by', 'requested_datetime', 'approved_datetime', 'completed_datetime', 'txid', 'remark', 'user']
+        read_only_fields = ['status', 'authorized_by', 'requested_datetime', 'approved_datetime', 'completed_datetime', 'txid', 'remark', 'user']
 
     def validate(self, attrs):
         user = self.context['request'].user

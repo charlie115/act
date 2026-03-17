@@ -2,6 +2,7 @@ import json
 
 from django import forms
 from django.contrib import admin
+from django.db import transaction
 from django.utils.timezone import now
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.safestring import mark_safe
@@ -422,23 +423,26 @@ class WithdrawalRequestAdmin(ModelAdmin):
                 continue
             # Suppose we get a txid back:
             txid = api_response.json().get("txid")
-            wr.txid = txid
-            # Check whether it wasn't APPROVED state, if so also update the approved_datetime
-            if wr.status != WithdrawalRequest.APPROVED:
-                wr.approved_datetime = now()
-            wr.status = WithdrawalRequest.COMPLETED
-            wr.completed_datetime = now()
-            wr.authorized_by = request.user
-            wr.save()
-            
-            # Update deposit history to reflect the withdrawal
-            DepositHistory.objects.create(
-                user=wr.user,
-                change=-wr.amount,
-                type=DepositHistory.WITHDRAW,
-                txid=txid,
-                description=f"Withdrawal executed to {wr.address}"
-            )
+
+            # Atomically update withdrawal status and create deposit history
+            with transaction.atomic():
+                wr.txid = txid
+                # Check whether it wasn't APPROVED state, if so also update the approved_datetime
+                if wr.status != WithdrawalRequest.APPROVED:
+                    wr.approved_datetime = now()
+                wr.status = WithdrawalRequest.COMPLETED
+                wr.completed_datetime = now()
+                wr.authorized_by = request.user
+                wr.save()
+
+                # Update deposit history to reflect the withdrawal
+                DepositHistory.objects.create(
+                    user=wr.user,
+                    change=-wr.amount,
+                    type=DepositHistory.WITHDRAW,
+                    txid=txid,
+                    description=f"Withdrawal executed to {wr.address}"
+                )
             
     def has_add_permission(self, request):
         # Disallow adding new WithdrawalRequests from the admin

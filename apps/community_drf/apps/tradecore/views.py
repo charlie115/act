@@ -561,7 +561,8 @@ class RepeatTradesViewSet(
         serializer.save()
 
     def perform_destroy(self, instance):
-        node = self.get_node(trade_config_uuid=self.trade_config_uuid)
+        trade_config_uuid = getattr(self, "trade_config_uuid", None) or instance.get("trade_config_uuid")
+        node = self.get_node(trade_config_uuid=trade_config_uuid)
 
         api_response = self.tradecore_destroy_api(
             url=node.url,
