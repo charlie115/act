@@ -82,12 +82,6 @@ class KlineConsumer(AsyncWebsocketConsumer):
         self._record_columns = None
 
     async def connect(self):
-        # Authentication
-        user = self.scope.get("user")
-        if not user or not user.is_authenticated:
-            await self.close()
-            return
-
         query_params = dict(parse_qsl(self.scope["query_string"].decode()))
         target_market_code = query_params.get("target_market_code", None)
         origin_market_code = query_params.get("origin_market_code", None)
