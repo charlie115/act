@@ -9,6 +9,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from lib.authentication import NodeIPAuthentication
+from lib.permissions import IsAdmin, IsInternal
 from django.db import models
 
 from referral.constants import (
@@ -167,7 +168,7 @@ class ReferralViewSet(viewsets.ModelViewSet):
 )
 class ReferralCommissionView(APIView):
     http_method_names = ["get"]
-    permission_classes = []
+    permission_classes = [IsAdmin | IsInternal]
 
     def get(self, request):
         query_params = ReferralCommissionQueryParamsSerializer(

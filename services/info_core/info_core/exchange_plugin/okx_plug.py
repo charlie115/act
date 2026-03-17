@@ -52,7 +52,17 @@ class InitOkxAdaptor:
         self.retry_term_sec = 0.2
         self.retry_count_limit = 2
         self.okx_plug_logger.info(f"okx_plug_logger started.")
-        # self.instrument_info = self.get_swap_instrument_info()
+        self._instrument_info = None
+
+    @property
+    def instrument_info(self):
+        if self._instrument_info is None:
+            self._instrument_info = self.get_swap_instrument_info()
+        return self._instrument_info
+
+    @instrument_info.setter
+    def instrument_info(self, value):
+        self._instrument_info = value
 
     def spot_exchange_info(self):
         info_df = pd.DataFrame(self.pub_client.PublicAPI.get_instruments(instType='SPOT')['data'])
@@ -481,6 +491,9 @@ class InitOkxAdaptor:
                     fundingrate_data['msg'],
                 )
             time.sleep(0.15)
+
+        if not funding_data_list:
+            return pd.DataFrame()
 
         funding_df = pd.DataFrame(funding_data_list)
         funding_df.replace('', None, inplace=True)

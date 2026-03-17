@@ -377,10 +377,16 @@ class MarketRuntime:
 
         # Start compare and concat
         target_market_symbols = []
-        target_market_ticker_df = pickle.loads(self.local_redis.get_data(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"))
+        _ticker_data = self.local_redis.get_data(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df")
+        if _ticker_data is None:
+            raise ValueError(f"No ticker data available for {target_market_dict['exchange']}_{target_market_dict['market_type']}")
+        target_market_ticker_df = pickle.loads(_ticker_data)
         # check if it's spot or not
         if target_market_dict['market_type'] != "SPOT":
-            target_market_info_df = pickle.loads(self.local_redis.get_data(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_info_df"))[['symbol','perpetual']]
+            _info_data = self.local_redis.get_data(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_info_df")
+            if _info_data is None:
+                raise ValueError(f"No info data available for {target_market_dict['exchange']}_{target_market_dict['market_type']}")
+            target_market_info_df = pickle.loads(_info_data)[['symbol','perpetual']]
             target_market_ticker_df = target_market_ticker_df.merge(target_market_info_df, on='symbol', how='inner')
             if target_market_dict['contract_type'] == "PERPETUAL":
                 target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['perpetual'] == True]
@@ -388,7 +394,10 @@ class MarketRuntime:
                 target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['perpetual'] == False]
         target_market_ticker_df = target_market_ticker_df[target_market_ticker_df['quote_asset']==target_market_dict['quote_asset']][['symbol','lastPrice','atp24h','base_asset','quote_asset']]
         for each_comparison_dict in comparison_list:
-            each_market_info_df = pickle.loads(self.local_redis.get_data(f"{each_comparison_dict['exchange'].lower()}_{each_comparison_dict['market_type'].lower()}_info_df"))
+            _each_info_data = self.local_redis.get_data(f"{each_comparison_dict['exchange'].lower()}_{each_comparison_dict['market_type'].lower()}_info_df")
+            if _each_info_data is None:
+                continue
+            each_market_info_df = pickle.loads(_each_info_data)
             if each_comparison_dict['contract_type'] is None:
                 each_market_info_df = each_market_info_df[each_market_info_df['quote_asset']==each_comparison_dict['quote_asset']]
             else: # contract_type is PERPETUAL or FUTURES
@@ -408,7 +417,10 @@ class MarketRuntime:
             target_market_symbols += total_df['symbol'].to_list()
         
         target_market_symbols = list(set(target_market_symbols))
-        total_target_market_ticker_df = pickle.loads(self.local_redis.get_data(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df"))
+        _total_ticker_data = self.local_redis.get_data(f"{target_market_dict['exchange'].lower()}_{target_market_dict['market_type'].lower()}_ticker_df")
+        if _total_ticker_data is None:
+            return []
+        total_target_market_ticker_df = pickle.loads(_total_ticker_data)
         total_target_market_df = total_target_market_ticker_df[total_target_market_ticker_df['symbol'].isin(target_market_symbols)]
         final_symbol_list = total_target_market_df.sort_values('atp24h', ascending=False)['symbol'].to_list()
 
@@ -445,7 +457,10 @@ class MarketRuntime:
             target_quote_asset = "USDT"
         if origin_quote_asset == target_quote_asset:
             return 1
-        origin_market_spot_info_df = pickle.loads(self.local_redis.get_data(f"{origin_market.lower().split('_')[0]}_spot_ticker_df"))
+        _spot_data = self.local_redis.get_data(f"{origin_market.lower().split('_')[0]}_spot_ticker_df")
+        if _spot_data is None:
+            return None
+        origin_market_spot_info_df = pickle.loads(_spot_data)
         # First try to find the rate from the origin_market_spot_info_df
 
         def convert_between_coins(origin_market_spot_info_df, origin_quote_asset, target_quote_asset):

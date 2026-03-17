@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from django.utils.html import strip_tags
 from rest_framework import exceptions, serializers
 
 from lib.datetime import DATE_TIME_TZ_FORMAT, TZ_ASIA_SEOUL
@@ -24,10 +25,9 @@ class PostImageSerializer(serializers.ModelSerializer):
 
 class PostSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
-        queryset=User.objects.all(),
         source="user",
         slug_field="uuid",
-        write_only=True,
+        read_only=True,
     )
     category = serializers.ChoiceField(choices=Post.Categories)
     image = serializers.ListField(
@@ -43,6 +43,18 @@ class PostSerializer(serializers.ModelSerializer):
     author_profile = serializers.SerializerMethodField()
     user_view = serializers.SerializerMethodField()
     user_reaction = serializers.SerializerMethodField()
+
+    def validate_content(self, value):
+        """Strip HTML tags to prevent XSS attacks."""
+        if value:
+            return strip_tags(value)
+        return value
+
+    def validate_title(self, value):
+        """Strip HTML tags to prevent XSS attacks."""
+        if value:
+            return strip_tags(value)
+        return value
 
     def create(self, validated_data):
         images = validated_data.pop("image")
@@ -63,16 +75,16 @@ class PostSerializer(serializers.ModelSerializer):
         return post
 
     def get_comments(self, obj):
-        return len(obj.comments.all())
+        return obj.comments.count()
 
     def get_likes(self, obj):
-        return len(obj.reactions.filter(reaction=PostReactions.LIKE))
+        return obj.reactions.filter(reaction=PostReactions.LIKE).count()
 
     def get_dislikes(self, obj):
-        return len(obj.reactions.filter(reaction=PostReactions.DISLIKE))
+        return obj.reactions.filter(reaction=PostReactions.DISLIKE).count()
 
     def get_views(self, obj):
-        return len(obj.views.all())
+        return obj.views.count()
 
     def get_images(self, obj):
         return PostImageSerializer(
@@ -86,15 +98,14 @@ class PostSerializer(serializers.ModelSerializer):
             "request" in self.context
             and hasattr(self.context["request"], "user")
             and isinstance(self.context["request"].user, User)
-            and self.context["request"]
-            .user.board_post_reactions.filter(post=obj)
-            .first()
         ):
-            return PostReactionsSerializer(
+            reaction = (
                 self.context["request"]
                 .user.board_post_reactions.filter(post=obj)
                 .first()
-            ).data
+            )
+            if reaction:
+                return PostReactionsSerializer(reaction).data
         return None
 
     def get_user_view(self, obj):
@@ -144,9 +155,8 @@ class PostSerializer(serializers.ModelSerializer):
 
 class PostReactionsSerializer(serializers.ModelSerializer):
     user = serializers.SlugRelatedField(
-        queryset=User.objects.all(),
         slug_field="uuid",
-        write_only=True,
+        read_only=True,
     )
     date_updated = serializers.DateTimeField(read_only=True)
 
@@ -157,9 +167,8 @@ class PostReactionsSerializer(serializers.ModelSerializer):
 
 class PostViewsSerializer(serializers.ModelSerializer):
     user = serializers.SlugRelatedField(
-        queryset=User.objects.all(),
         slug_field="uuid",
-        write_only=True,
+        read_only=True,
     )
     date_viewed = serializers.DateTimeField(read_only=True)
 
@@ -174,7 +183,8 @@ class PostViewsSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, attrs):
-        latest_view = self.get_user_latest_view(user=attrs["user"], post=attrs["post"])
+        user = self.context["request"].user
+        latest_view = self.get_user_latest_view(user=user, post=attrs["post"])
 
         today = datetime.now(tz=TZ_ASIA_SEOUL)
         today_start = today.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -197,15 +207,20 @@ class PostViewsSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
-        queryset=User.objects.all(),
         source="user",
         slug_field="uuid",
-        write_only=True,
+        read_only=True,
     )
     likes = serializers.SerializerMethodField()
     dislikes = serializers.SerializerMethodField()
     author_profile = serializers.SerializerMethodField()
     user_reaction = serializers.SerializerMethodField()
+
+    def validate_content(self, value):
+        """Strip HTML tags to prevent XSS attacks."""
+        if value:
+            return strip_tags(value)
+        return value
 
     def get_fields(self):
         fields = super(CommentSerializer, self).get_fields()
@@ -213,25 +228,24 @@ class CommentSerializer(serializers.ModelSerializer):
         return fields
 
     def get_likes(self, obj):
-        return len(obj.reactions.filter(reaction=CommentReactions.LIKE))
+        return obj.reactions.filter(reaction=CommentReactions.LIKE).count()
 
     def get_dislikes(self, obj):
-        return len(obj.reactions.filter(reaction=CommentReactions.DISLIKE))
+        return obj.reactions.filter(reaction=CommentReactions.DISLIKE).count()
 
     def get_user_reaction(self, obj):
         if (
             "request" in self.context
             and hasattr(self.context["request"], "user")
             and isinstance(self.context["request"].user, User)
-            and self.context["request"]
-            .user.board_comment_reactions.filter(comment=obj)
-            .first()
         ):
-            return CommentReactionsSerializer(
+            reaction = (
                 self.context["request"]
                 .user.board_comment_reactions.filter(comment=obj)
                 .first()
-            ).data
+            )
+            if reaction:
+                return CommentReactionsSerializer(reaction).data
         return None
 
     def get_author_profile(self, obj):
@@ -256,9 +270,8 @@ class CommentSerializer(serializers.ModelSerializer):
 
 class CommentReactionsSerializer(serializers.ModelSerializer):
     user = serializers.SlugRelatedField(
-        queryset=User.objects.all(),
         slug_field="uuid",
-        write_only=True,
+        read_only=True,
     )
     date_updated = serializers.DateTimeField(read_only=True)
 

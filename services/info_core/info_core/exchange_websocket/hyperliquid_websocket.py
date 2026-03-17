@@ -414,7 +414,7 @@ class HyperliquidWebsocket:
         self.websocket_logger.info(f"[HYPERLIQUID {self.market_type}] Sliced into {len(self.sliced_symbols_list)} groups")
 
         self.stop_restart_websocket = False
-        self.price_proc_event_list = []
+        self.price_proc_event_list = {}
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
         self.partial_stale_strikes = {}
@@ -477,7 +477,7 @@ class HyperliquidWebsocket:
 
                         if ticker_start_proc:
                             error_event = Event()
-                            self.price_proc_event_list.append(error_event)
+                            self.price_proc_event_list[ticker_proc_name] = error_event
                             # Ticker process gets all symbols (filters internally)
                             all_symbols = self.get_symbol_list()
                             self.websocket_symbol_dict["1th_ticker_symbol"] = all_symbols
@@ -524,7 +524,7 @@ class HyperliquidWebsocket:
 
                             if orderbook_start_proc:
                                 error_event = Event()
-                                self.price_proc_event_list.append(error_event)
+                                self.price_proc_event_list[orderbook_proc_name] = error_event
                                 self.websocket_symbol_dict[f"{index}th_orderbook_symbol"] = self.sliced_symbols_list[i]
                                 orderbook_proc = Process(
                                     target=hyperliquid_orderbook_websocket,

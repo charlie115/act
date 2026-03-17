@@ -1,5 +1,5 @@
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from decimal import Decimal
 from django.core.exceptions import ValidationError
@@ -177,17 +177,19 @@ class CommissionHistory(models.Model):
         return f"Commission of {self.change} from trade {self.trade_uuid} by {self.affiliate.user.username}"
     
     def save(self, *args, **kwargs):
-        # This assumes you have a CommissionBalance model with:
-        # user = OneToOneField(...) and balance = DecimalField(...)
-        commission_balance, created = CommissionBalance.objects.get_or_create(
-            affiliate=self.affiliate, defaults={'balance': Decimal('0.00')}
-        )
-        
-        self.balance = commission_balance.balance + self.change
-        super(CommissionHistory, self).save(*args, **kwargs)
-        
-        commission_balance.balance = self.balance
-        commission_balance.save()
+        with transaction.atomic():
+            commission_balance, created = CommissionBalance.objects.get_or_create(
+                affiliate=self.affiliate, defaults={'balance': Decimal('0.00')}
+            )
+            commission_balance = CommissionBalance.objects.select_for_update().get(
+                pk=commission_balance.pk
+            )
+
+            self.balance = commission_balance.balance + self.change
+            super(CommissionHistory, self).save(*args, **kwargs)
+
+            commission_balance.balance = self.balance
+            commission_balance.save()
 
     class Meta:
         verbose_name = "Commission History"

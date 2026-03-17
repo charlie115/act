@@ -196,7 +196,7 @@ class BinanceWebsocket:
         self.sliced_symbol_list = list_slice(self.get_symbol_list(), self.proc_n)
         self.logger.info(f"[BINANCE {self.market_type}] Sliced symbol list: {self.sliced_symbol_list}")
         self.stop_restart_websocket = False
-        self.price_proc_event_list = []
+        self.price_proc_event_list = {}
         self.partial_stale_strikes = {}
         manager = Manager()
         self.liquidation_list = manager.list()
@@ -258,7 +258,7 @@ class BinanceWebsocket:
 
                             if start_proc:
                                 error_event = Event()
-                                self.price_proc_event_list.append(error_event)
+                                self.price_proc_event_list[bookticker_proc_name] = error_event
                                 symbol_list = self.sliced_symbol_list[i]
                                 self.logger.info(f"[BINANCE {self.market_type}] {index}th_bookticker_proc symbol list: {symbol_list}")
                                 bookticker_data = {
@@ -311,7 +311,7 @@ class BinanceWebsocket:
 
                         if start_proc:
                             error_event = Event()
-                            self.price_proc_event_list.append(error_event)
+                            self.price_proc_event_list[ticker_proc_name] = error_event
                             symbol_list = self.before_symbol_list
                             self.logger.info(f"[BINANCE {self.market_type}] {ticker_proc_name} symbol list: {symbol_list}")
                             ticker_data = {

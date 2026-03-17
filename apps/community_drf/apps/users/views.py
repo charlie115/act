@@ -305,7 +305,7 @@ class DepositHistoryViewSet(UserOwnedViewSet):
         "registered_datetime",
     ]
     ordering = ["id"]
-    http_method_names = ["get", "post", "put", "patch", "delete"]
+    http_method_names = ["get"]
 
     def get_authenticators(self):
         authentication_classes = self.authentication_classes + [NodeIPAuthentication]
@@ -321,7 +321,7 @@ class DepositHistoryViewSet(UserOwnedViewSet):
             permission_classes = []
 
         return [permission() for permission in permission_classes]
-    
+
 @extend_schema(tags=["WithdrawalRequest"])
 @extend_schema_view(
     list=extend_schema(

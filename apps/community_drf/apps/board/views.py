@@ -92,6 +92,9 @@ class CommentViewSet(BaseViewSet):
 
         return [permission() for permission in permission_classes]
 
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 
 @extend_schema(tags=["Post"])
 @extend_schema_view(
@@ -153,6 +156,9 @@ class PostViewSet(BaseViewSet):
 
         return [permission() for permission in permission_classes]
 
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 
 @extend_schema(tags=["PostReactions"])
 @extend_schema_view(
@@ -177,6 +183,9 @@ class PostReactionsViewSet(BaseViewSet):
         "date_updated",
     ]
     http_method_names = ["post", "put", "patch", "delete"]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 @extend_schema(tags=["PostViews"])
@@ -204,6 +213,9 @@ class PostViewsViewSet(BaseViewSet):
     ]
     http_method_names = ["post"]
 
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 
 @extend_schema(tags=["CommentReactions"])
 @extend_schema_view(
@@ -228,3 +240,6 @@ class CommentReactionsViewSet(BaseViewSet):
         "date_updated",
     ]
     http_method_names = ["post", "put", "patch", "delete"]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

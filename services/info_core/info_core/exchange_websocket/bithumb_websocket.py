@@ -139,7 +139,7 @@ class BithumbWebsocket:
         self.before_symbols_list = self.get_symbol_list()
         self.sliced_symbols_list = list_slice(self.get_symbol_list(), self.proc_n)
         self.stop_restart_websocket = False
-        self.price_proc_event_list = []
+        self.price_proc_event_list = {}
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
         self.partial_stale_strikes = {}
@@ -184,7 +184,7 @@ class BithumbWebsocket:
                                 self.logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_ticker_proc started.")
                             if ticker_start_proc is True:
                                 error_event = Event()
-                                self.price_proc_event_list.append(error_event)
+                                self.price_proc_event_list[f"{i+1}th_ticker_proc"] = error_event
                                 self.websocket_symbol_dict[f"{i+1}th_ticker_symbol"] = self.sliced_symbols_list[i]
                                 ticker_data = {"type": "ticker", "symbols": self.sliced_symbols_list[i], "tickTypes": ["24H"]}
                                 ticker_proc = Process(
@@ -223,7 +223,7 @@ class BithumbWebsocket:
                                 self.logger.info(f"bithumb_orderbook_ticker_websocket|{i+1}th bithumb_orderbook_proc started.")
                             if orderbook_start_proc is True:
                                 error_event = Event()
-                                self.price_proc_event_list.append(error_event)
+                                self.price_proc_event_list[f"{i+1}th_orderbook_proc"] = error_event
                                 self.websocket_symbol_dict[f"{i+1}th_orderbook_symbol"] = self.sliced_symbols_list[i]
                                 orderbook_data = {"type": "orderbooksnapshot", "symbols": self.sliced_symbols_list[i]}
                                 orderbook_proc = Process(

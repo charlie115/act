@@ -21,6 +21,10 @@ from etc.utils import get_trade_df
 from api.utils import decrypt_data, MyException
 from etc.redis_connector.redis_helper import RedisHelper
 
+# P2-10: Externalize Binance trading fee rate to env var instead of hardcoding.
+# Default 0.0005 (0.05%) matches Binance USD-M futures taker fee.
+BINANCE_USD_M_FEE_RATE = float(os.getenv('BINANCE_USD_M_FEE_RATE', '0.0005'))
+
 class InitBinanceAdaptor:
     def __init__(self, my_binance_access_key=None, my_binance_secret_key=None, recvWindow=45000, logging_dir=None):
         self.my_client = Client(my_binance_access_key, my_binance_secret_key)
@@ -471,7 +475,10 @@ class UserBinanceAdaptor:
             # Not available yet. raise error
             raise Exception(f"market_type: {market_type} is not supported yet.")
         elif market_type == "USD_M":
-            info_df = pickle.loads(self.local_redis_client.get_data('TRADE_CORE|binance_usd_m_info_df'))
+            _info_data = self.local_redis_client.get_data('TRADE_CORE|binance_usd_m_info_df')
+            if _info_data is None:
+                raise ValueError("No Binance USD_M info data available in Redis")
+            info_df = pickle.loads(_info_data)
             market_maxqty = info_df[info_df['symbol']==symbol]['MarketMaxQty'].values[0]
             return market_maxqty
         elif market_type == "COIN_M":
@@ -547,7 +554,7 @@ class UserBinanceAdaptor:
                 side = res['side']
                 order_type = res['type']
                 symbol = res['symbol']
-                fee = executed_price * executed_qty * 0.0005 # TEMP
+                fee = executed_price * executed_qty * BINANCE_USD_M_FEE_RATE
                 sql = """INSERT INTO order_history(order_id, trade_config_uuid, trade_uuid, registered_datetime, order_type, market_code, symbol, quote_asset, side, price, qty, fee, remark)
                         VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
                 val = (order_id, trade_config_uuid, trade_uuid, datetime.datetime.utcnow(), order_type, self.market_code, symbol, self.quote_asset, side, executed_price, executed_qty, fee, None)

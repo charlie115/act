@@ -285,9 +285,10 @@ class DepositHistory(models.Model):
     def save(self, *args, **kwargs):
         with transaction.atomic():
             try:
-                deposit_balance = self.user.deposit_balance
-            except User.deposit_balance.RelatedObjectDoesNotExist:
-                deposit_balance = DepositBalance(user=self.user)
+                deposit_balance = DepositBalance.objects.select_for_update().get(user=self.user)
+            except DepositBalance.DoesNotExist:
+                deposit_balance = DepositBalance.objects.create(user=self.user)
+                deposit_balance = DepositBalance.objects.select_for_update().get(user=self.user)
 
             self.balance = deposit_balance.balance + self.change
             super(DepositHistory, self).save(*args, **kwargs)

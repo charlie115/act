@@ -1,5 +1,6 @@
 import os
 import sys
+import hmac
 from fastapi import FastAPI, Depends, Header, HTTPException, Body
 from hdwallet import HDWallet
 from hdwallet.entropies import BIP39Entropy, BIP39_ENTROPY_STRENGTHS
@@ -25,7 +26,10 @@ from collections import defaultdict
 
 app = FastAPI()
 
-# Per-user locks to prevent TOCTOU race conditions on balance check-then-transfer
+# Per-user locks to prevent TOCTOU race conditions on balance check-then-transfer.
+# WARNING: asyncio.Lock only works within a single process. This service MUST be
+# deployed with a single worker (e.g., uvicorn --workers 1). If multi-worker
+# deployment is needed, replace with a Redis distributed lock (redis.lock.Lock).
 _user_locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
 
 # Load secrets
@@ -114,16 +118,19 @@ async def get_address_from_user_id(user_id: int):
 async def get_user_trx_balance(user_id: int):
     address = await get_address_from_user_id(user_id)
     try:
-        balance = tron.get_account_balance(address)
+        balance = await asyncio.to_thread(tron.get_account_balance, address)
         return balance
     except AddressNotFound:
         return 0
 
 async def get_user_usdt_balance(user_id: int):
     address = await get_address_from_user_id(user_id)
-    usdt_contract = tron.get_contract(USDT_CONTRACT_ADDRESS)
-    usdt_balance = usdt_contract.functions.balanceOf(address)/tronpy.TRX
-    usdt_balance = float(usdt_balance)
+
+    def _fetch_usdt_balance():
+        usdt_contract = tron.get_contract(USDT_CONTRACT_ADDRESS)
+        return float(usdt_contract.functions.balanceOf(address) / tronpy.TRX)
+
+    usdt_balance = await asyncio.to_thread(_fetch_usdt_balance)
     return usdt_balance
 
 async def transact_tron_network(user_id: int, asset: str, amount: float, to_address: str):
@@ -162,29 +169,31 @@ async def _execute_transfer(user_id: int, asset: str, amount: float, to_address:
     amount_decimal = Decimal(str(amount))
     amount_sun = int(amount_decimal * Decimal('1000000'))
 
-    if asset == "TRX":
-        txn = (
-            tron.trx.transfer(
-            user_address,
-            to_address,
-            amount_sun
-        ).build()
-        .sign(private_key)
-        )
-    else:
-        usdt_contract = tron.get_contract(USDT_CONTRACT_ADDRESS)
-        txn = (
-            usdt_contract.functions.transfer(
-            to_address,
-            amount_sun
-        ).with_owner(user_address)
-        .fee_limit(50_000_000)
-        .build()
-        .sign(private_key)
-        )
-        
+    def _build_and_broadcast():
+        if asset == "TRX":
+            txn = (
+                tron.trx.transfer(
+                user_address,
+                to_address,
+                amount_sun
+            ).build()
+            .sign(private_key)
+            )
+        else:
+            usdt_contract = tron.get_contract(USDT_CONTRACT_ADDRESS)
+            txn = (
+                usdt_contract.functions.transfer(
+                to_address,
+                amount_sun
+            ).with_owner(user_address)
+            .fee_limit(50_000_000)
+            .build()
+            .sign(private_key)
+            )
+        return tron.broadcast(txn)
+
     try:
-        response = tron.broadcast(txn)
+        response = await asyncio.to_thread(_build_and_broadcast)
         if response["result"]:
             response["user_address"] = user_address
             response["to_address"] = to_address
@@ -205,8 +214,9 @@ async def fetch_parse_trx_data(address, deposit_only=False):
     }
 
     # Use httpx for asynchronous HTTP requests
+    trongrid_headers = {"TRON-PRO-API-KEY": TRON_GRID_API_KEY} if TRON_GRID_API_KEY else {}
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"https://api.trongrid.io/v1/accounts/{address}/transactions", params=params)
+        response = await client.get(f"https://api.trongrid.io/v1/accounts/{address}/transactions", params=params, headers=trongrid_headers)
         response.raise_for_status()  # Raise an exception for HTTP errors
         data = response.json()
 
@@ -262,8 +272,9 @@ async def fetch_parse_usdt_data(address, deposit_only=False):
     }
 
     # Use httpx for asynchronous HTTP requests
+    trongrid_headers = {"TRON-PRO-API-KEY": TRON_GRID_API_KEY} if TRON_GRID_API_KEY else {}
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"https://api.trongrid.io/v1/accounts/{address}/transactions/trc20", params=params)
+        response = await client.get(f"https://api.trongrid.io/v1/accounts/{address}/transactions/trc20", params=params, headers=trongrid_headers)
         response.raise_for_status()  # Raise an exception for HTTP errors
         data = response.json()
 
@@ -299,7 +310,7 @@ async def fetch_parse_usdt_data(address, deposit_only=False):
 
 # Authentication dependency
 async def verify_api_key(x_api_key: str = Header(...)):
-    if x_api_key != WALLET_API_KEY:
+    if not hmac.compare_digest(x_api_key, WALLET_API_KEY):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 @app.get("/health")

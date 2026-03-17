@@ -4,10 +4,29 @@ import time
 def terminate_process_group(owner, logger, message):
     owner.stop_restart_websocket = True
     time.sleep(0.5)
-    for event in owner.price_proc_event_list:
-        event.set()
+    # Support both dict (new) and list (legacy) for price_proc_event_list
+    event_collection = owner.price_proc_event_list
+    if isinstance(event_collection, dict):
+        for event in event_collection.values():
+            event.set()
+    else:
+        for event in event_collection:
+            event.set()
     logger.info(message)
-    owner.price_proc_event_list = []
+
+    # Give processes time to exit gracefully, then force-terminate any still alive
+    time.sleep(5)
+    proc_dict = getattr(owner, 'websocket_proc_dict', {})
+    for proc_name, proc in list(proc_dict.items()):
+        if proc.is_alive():
+            logger.warning(f"Process {proc_name} still alive after event.set(), terminating...")
+            proc.terminate()
+            proc.join(timeout=5)
+
+    if isinstance(owner.price_proc_event_list, dict):
+        owner.price_proc_event_list = {}
+    else:
+        owner.price_proc_event_list = []
 
 
 def restart_process_group(owner, logger, message):

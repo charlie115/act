@@ -92,9 +92,10 @@ def get_binance_price_df(redis_client, market_type):
     binance_merged_df[["scr", "tp", "atp24h", "ap", "bp"]] = binance_merged_df[
         ["scr", "tp", "atp24h", "ap", "bp"]
     ].astype(float)
-    binance_info_df = pickle.loads(
-        redis_client.get_data(f"binance_{market_type.lower()}_info_df")
-    )[["symbol", "base_asset", "quote_asset"]]
+    binance_info_data = redis_client.get_data(f"binance_{market_type.lower()}_info_df")
+    if binance_info_data is None:
+        raise ValueError(f"No Binance {market_type} info data available in Redis")
+    binance_info_df = pickle.loads(binance_info_data)[["symbol", "base_asset", "quote_asset"]]
     binance_merged_df = binance_merged_df.merge(
         binance_info_df, left_on="s", right_on="symbol", how="inner"
     )
@@ -161,7 +162,10 @@ def get_bybit_price_df(redis_client, market_type):
         redis_client.get_all_exchange_stream_data("orderbook", f"BYBIT_{market_type}")
     ).T.reset_index()
     merged_df = ticker_df.merge(orderbook_df, left_on="symbol", right_on="s", how="inner")
-    bybit_info_df = pickle.loads(redis_client.get_data(f"bybit_{market_type.lower()}_info_df"))[
+    bybit_info_data = redis_client.get_data(f"bybit_{market_type.lower()}_info_df")
+    if bybit_info_data is None:
+        raise ValueError(f"No Bybit {market_type} info data available in Redis")
+    bybit_info_df = pickle.loads(bybit_info_data)[
         ["symbol", "base_asset", "quote_asset"]
     ]
     merged_df = merged_df.merge(bybit_info_df, on="symbol", how="inner")
@@ -322,7 +326,10 @@ def get_gate_price_df(redis_client, market_type):
     merged_df[["tp", "scr", "atp24h", "bp", "ap"]] = merged_df[
         ["tp", "scr", "atp24h", "bp", "ap"]
     ].astype(float)
-    gate_info_df = pickle.loads(redis_client.get_data(f"gate_{market_type.lower()}_info_df"))[
+    gate_info_data = redis_client.get_data(f"gate_{market_type.lower()}_info_df")
+    if gate_info_data is None:
+        raise ValueError(f"No Gate {market_type} info data available in Redis")
+    gate_info_df = pickle.loads(gate_info_data)[
         ["symbol", "base_asset", "quote_asset"]
     ]
     merged_df = merged_df.merge(gate_info_df, left_on="s", right_on="symbol", how="inner")

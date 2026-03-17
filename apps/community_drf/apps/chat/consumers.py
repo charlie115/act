@@ -20,6 +20,12 @@ MONGODB_CLI = get_chat_mongo_client(appname="django-chat-ws")
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        user = self.scope.get("user")
+        if not user or not user.is_authenticated:
+            await self.close()
+            return
+
+        self.user = user
         self.mongodb = MONGODB_CLI.get_database(settings.MONGO_CHAT_DB)
         self.headers = {
             header[0].decode(): header[1].decode() for header in self.scope["headers"]
@@ -40,13 +46,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
 
-        if "username" in data and "message" in data:
+        if "message" in data:
             now = datetime.now(TZ_UTC)
 
             chat = {
                 "type": "chatbox_message",
-                "email": data.get("email", None),
-                "username": data.get("username"),
+                "email": self.user.email,
+                "username": self.user.username,
                 "message": data.get("message"),
                 "ip": self.ip,
                 "datetime": now,
@@ -56,7 +62,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.get_blocklist()
 
             if (
-                data.get("username", None) in self.username_blocklist
+                self.user.username in self.username_blocklist
                 and self.ip in self.ip_blocklist
             ):
                 chat["status"] = "BLOCKED"
@@ -82,7 +88,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
         )
 
-    async def save_chat(self, chat, collection):
+    @database_sync_to_async
+    def save_chat(self, chat, collection):
         # To avoid overwriting the same chat variable sent to websocket
         # TypeError: can not serialize 'ObjectId' object
         _chat = chat.copy()
@@ -95,17 +102,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_blocklist(self):
-        blocklist = cache.get("acw:user:blocklist")
+        blocklist = cache.get(settings.REDIS_CHAT_BLOCKLIST_KEY)
         if blocklist is None:
             blocklist = UserBlocklist.objects.all()
+            username_list = list(blocklist.values_list("target_username", flat=True))
+            ip_list = list(blocklist.values_list("target_ip", flat=True))
             cache.set(
                 settings.REDIS_CHAT_BLOCKLIST_KEY,
-                blocklist,
+                {"usernames": username_list, "ips": ip_list},
                 timeout=None,
             )
+        else:
+            username_list = blocklist.get("usernames", [])
+            ip_list = blocklist.get("ips", [])
         self.username_blocklist = [
-            username
-            for username in blocklist.values_list("target_username", flat=True)
-            if bool(username)
+            username for username in username_list if bool(username)
         ]
-        self.ip_blocklist = list(blocklist.values_list("target_ip", flat=True))
+        self.ip_blocklist = ip_list

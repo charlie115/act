@@ -165,9 +165,12 @@ class InitBybitAdaptor:
         funding_df = ticker_df.loc[:, columns_to_select].copy()
         funding_df['perpetual'] = funding_df.loc[:, 'fundingRate'].apply(lambda x: True if x != '' else False)
         funding_df.loc[:, ['fundingRate', 'nextFundingTime']] = funding_df.loc[:, ['fundingRate', 'nextFundingTime']].apply(pd.to_numeric, errors='coerce')
-        funding_df.loc[:, 'nextFundingTime'] = funding_df.loc[:, 'nextFundingTime'].apply(lambda x: datetime.datetime.fromtimestamp(x/1000, tz=datetime.timezone.utc))
+        # Only apply fromtimestamp to non-NaN rows (perpetual contracts have no expiry → NaN)
+        valid_mask = funding_df['nextFundingTime'].notna()
+        funding_df.loc[valid_mask, 'nextFundingTime'] = funding_df.loc[valid_mask, 'nextFundingTime'].apply(lambda x: datetime.datetime.fromtimestamp(x/1000, tz=datetime.timezone.utc))
+        funding_df.loc[~valid_mask, 'nextFundingTime'] = pd.NaT
         # Convert 'nextFundingTime' to datetime
-        funding_df.loc[:, 'nextFundingTime'] = pd.to_datetime(funding_df['nextFundingTime']).dt.tz_convert('UTC').dt.tz_localize(None)
+        funding_df.loc[:, 'nextFundingTime'] = pd.to_datetime(funding_df['nextFundingTime'], utc=True).dt.tz_convert('UTC').dt.tz_localize(None)
         funding_df = funding_df.rename(columns={'fundingRate': "funding_rate", "nextFundingTime": "funding_time"})
 
         # Add funding_interval_hours

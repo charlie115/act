@@ -388,7 +388,7 @@ class GateWebsocket:
         self.sliced_symbols_list = list_slice(self.get_symbol_list(), self.proc_n)
         self.websocket_logger.info(f"[GATE {self.market_type}] Sliced into {len(self.sliced_symbols_list)} groups")
         self.stop_restart_websocket = False
-        self.price_proc_event_list = []
+        self.price_proc_event_list = {}
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
         self.partial_stale_strikes = {}
@@ -449,7 +449,7 @@ class GateWebsocket:
 
                             if ticker_start_proc:
                                 error_event = Event()
-                                self.price_proc_event_list.append(error_event)
+                                self.price_proc_event_list[ticker_proc_name] = error_event
                                 self.websocket_symbol_dict[f"{index}th_ticker_symbol"] = self.sliced_symbols_list[i]
                                 ticker_proc = Process(
                                     target=gate_ticker_websocket,
@@ -491,7 +491,7 @@ class GateWebsocket:
 
                             if orderbook_start_proc:
                                 error_event = Event()
-                                self.price_proc_event_list.append(error_event)
+                                self.price_proc_event_list[orderbook_proc_name] = error_event
                                 self.websocket_symbol_dict[f"{index}th_orderbook_symbol"] = self.sliced_symbols_list[i]
                                 orderbook_proc = Process(
                                     target=gate_orderbook_websocket,

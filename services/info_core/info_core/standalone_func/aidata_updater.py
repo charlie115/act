@@ -95,11 +95,17 @@ def get_funding_data(market_code, mongodb_client):
 
     return funding_data_df
 
-def get_kline_now_data(market_code_combination, local_redis):
+def get_kline_now_data(market_code_combination, local_redis, timeout_secs=60):
+    import logging
+    logger = logging.getLogger(__name__)
+    start_time = time.time()
     while True:
         kline_data = local_redis.get_data(f'INFO_CORE|{market_code_combination}_1T_now')
         if kline_data is not None:
             break
+        if time.time() - start_time > timeout_secs:
+            logger.warning(f"get_kline_now_data|Timeout after {timeout_secs}s waiting for {market_code_combination} kline data")
+            return None
         time.sleep(1)
     kline_1T_df = pickle.loads(kline_data)[['base_asset','tp','LS_close','SL_close','atp24h']]
     kline_1T_df['spread'] = kline_1T_df['SL_close'] - kline_1T_df['LS_close']
@@ -115,7 +121,9 @@ def get_merged_data(market_code_combination, local_redis, mongodb_client):
         volatility_data = get_volatility_data(market_code_combination, mongodb_client)
         funding_data = get_funding_data(market_code_combination.split(':')[1], mongodb_client)
         kline_now_data = get_kline_now_data(market_code_combination, local_redis)
-        
+        if kline_now_data is None:
+            raise TimeoutError(f"Timed out waiting for kline data for {market_code_combination}")
+
         # Merge volatility data into kline_now_data
         kline_now_data = pd.merge(kline_now_data, volatility_data, on='base_asset', how='left')
         

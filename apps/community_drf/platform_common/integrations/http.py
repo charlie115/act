@@ -29,5 +29,6 @@ class JsonApiClient:
             params=query_params,
             data=request_data,
             headers=request_headers,
+            timeout=30,
         )
 

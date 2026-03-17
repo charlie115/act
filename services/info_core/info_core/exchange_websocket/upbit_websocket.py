@@ -138,7 +138,7 @@ class UpbitWebsocket:
         self.before_upbit_symbols_list = self.get_upbit_symbol_list()
         self.sliced_upbit_symbols_list = list_slice(self.get_upbit_symbol_list(), self.proc_n)
         self.stop_restart_websocket = False
-        self.price_proc_event_list = []
+        self.price_proc_event_list = {}
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
         self.partial_stale_strikes = {}
@@ -203,7 +203,7 @@ class UpbitWebsocket:
 
                             if ticker_start_proc:
                                 error_event = Event()
-                                self.price_proc_event_list.append(error_event)
+                                self.price_proc_event_list[ticker_proc_name] = error_event
                                 self.websocket_symbol_dict[f"{index}th_ticker_symbol"] = self.sliced_upbit_symbols_list[i]
                                 upbit_ticker_data = [
                                     {"ticket": "kp_info_loader"},
@@ -267,7 +267,7 @@ class UpbitWebsocket:
 
                             if orderbook_start_proc:
                                 error_event = Event()
-                                self.price_proc_event_list.append(error_event)
+                                self.price_proc_event_list[orderbook_proc_name] = error_event
                                 self.websocket_symbol_dict[f"{index}th_orderbook_symbol"] = self.sliced_upbit_symbols_list[i]
                                 upbit_orderbook_data = [
                                     {"ticket": "kp_info_loader"},

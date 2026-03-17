@@ -2,8 +2,8 @@ import asyncio
 import json
 import math
 import pickle
-import threading
 from datetime import date, datetime
+from functools import partial
 from zoneinfo import ZoneInfo
 
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -74,7 +74,7 @@ class KlineConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._thread = None
+        self._publish_task = None
         self._stop = False
         self._channel_name = None
         self._initialized = False
@@ -82,10 +82,12 @@ class KlineConsumer(AsyncWebsocketConsumer):
         self._record_columns = None
 
     async def connect(self):
-        # # Authentication
-        # if type(self.scope["user"]) != User:
-        #     await self.close()
-        
+        # Authentication
+        user = self.scope.get("user")
+        if not user or not user.is_authenticated:
+            await self.close()
+            return
+
         query_params = dict(parse_qsl(self.scope["query_string"].decode()))
         target_market_code = query_params.get("target_market_code", None)
         origin_market_code = query_params.get("origin_market_code", None)
@@ -109,8 +111,7 @@ class KlineConsumer(AsyncWebsocketConsumer):
                 f"INFO_CORE|{target_market_code}:{origin_market_code}_{interval}_now"
             )
 
-            self._thread = threading.Thread(target=asyncio.run, args=(self.publish(),))
-            self._thread.start()
+            self._publish_task = asyncio.ensure_future(self.publish())
 
     def _build_publish_payload(self, entry_data):
         data = {
@@ -183,8 +184,11 @@ class KlineConsumer(AsyncWebsocketConsumer):
             return data
 
     async def publish(self):
+        loop = asyncio.get_event_loop()
         last_entry_id = "0-0"
-        latest_entries = REDIS_CLI.xrevrange(self._channel_name, count=1)
+        latest_entries = await loop.run_in_executor(
+            None, partial(REDIS_CLI.xrevrange, self._channel_name, count=1)
+        )
         if latest_entries:
             latest_entry_id, latest_entry_data = latest_entries[0]
             last_entry_id = _normalize_stream_id(latest_entry_id)
@@ -193,10 +197,14 @@ class KlineConsumer(AsyncWebsocketConsumer):
                 await self.send(json.dumps(latest_payload))
 
         while not self._stop:
-            stream = REDIS_CLI.xread(
-                streams={self._channel_name: last_entry_id},
-                count=10,
-                block=1000,
+            stream = await loop.run_in_executor(
+                None,
+                partial(
+                    REDIS_CLI.xread,
+                    streams={self._channel_name: last_entry_id},
+                    count=10,
+                    block=1000,
+                ),
             )
             if stream:
                 stream_key, stream_data = stream[0]
@@ -209,8 +217,12 @@ class KlineConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, code):
         self._stop = True
 
-        if self._thread:
-            self._thread.join(timeout=5)
-            self._thread = None
+        if self._publish_task:
+            self._publish_task.cancel()
+            try:
+                await self._publish_task
+            except asyncio.CancelledError:
+                pass
+            self._publish_task = None
 
         await super().disconnect(code)

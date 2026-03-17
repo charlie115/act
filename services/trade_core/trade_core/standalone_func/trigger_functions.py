@@ -41,7 +41,9 @@ def fetch_users_with_negative_balance_loop(admin_id,
             negative_balance_users = fetch_users_with_negative_balance(acw_api)
             local_redis.set_data(redis_key_name, json.dumps(negative_balance_users), ex=ex)
         except Exception as e:
-            local_redis.set_data(redis_key_name, json.dumps([]), ex=ex)
+            # P2-9: Do NOT overwrite cache with empty list on error.
+            # Preserve existing cached negative-balance data to avoid
+            # allowing negative-balance users to trade during transient failures.
             title = f"Error in fetch_users_with_negative_balance"
             full_content = f"{title}:\n{traceback.format_exc()}"
             logger.error(full_content)
@@ -319,7 +321,7 @@ def start_trigger_loop(
                 conn.commit()
                 if curr.rowcount == 0:
                     logger.error(f"No row has been updated for high_break_trade_df even though there are {len(high_break_trade_df)} rows")
-                high_break(high_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures, logger)
+                high_break(high_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures, logger, postgres_db_dict, table_name)
 
             if not low_break_trade_df.empty:
                 low_break_trigger_uuid_list = low_break_trade_df['uuid'].to_list()
@@ -353,7 +355,7 @@ def start_trigger_loop(
                 conn.commit()
                 if curr.rowcount == 0:
                     logger.error(f"No row has been updated for low_break_trade_df even though there are {len(low_break_trade_df)} rows")
-                low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures, logger)
+                low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures, logger, postgres_db_dict, table_name)
             # Reload convert_rate_dict
             fetched_convert_rate_dict = {key.decode('utf-8'): float(value) for key, value in local_redis.hgetall_dict('convert_rate_dict').items()}
             time.sleep(loop_interval_secs)
@@ -368,20 +370,49 @@ def start_trigger_loop(
             curr = conn.cursor(cursor_factory=extras.RealDictCursor)
             acw_api.create_message_thread(admin_id, title, full_content)
             time.sleep(10)
-            
-def high_break(high_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures=False, logger=None):
+
+def _rollback_trade_switch(trade_uuid, error_state, postgres_db_dict, table_name, logger):
+    """P1-5: Rollback trade_switch from 3 to an error state when trade execution fails.
+    Uses a dedicated connection to ensure the rollback is independent of the main loop's transaction.
+    error_state: -2 (entry error) or 2 (exit error)
+    """
+    rollback_conn = None
+    try:
+        rollback_client = InitPostgresDBClient(**{**postgres_db_dict, 'database': 'trade_core'})
+        rollback_conn = rollback_client.pool.getconn()
+        rollback_curr = rollback_conn.cursor()
+        rollback_curr.execute(
+            f"UPDATE {table_name} SET trade_switch = %s WHERE uuid = %s AND trade_switch = 3",
+            (error_state, trade_uuid)
+        )
+        rollback_conn.commit()
+        if logger:
+            logger.info(f"_rollback_trade_switch|uuid:{trade_uuid}|trade_switch rolled back from 3 to {error_state}")
+        rollback_client.pool.putconn(rollback_conn)
+    except Exception as rollback_e:
+        if logger:
+            logger.error(f"_rollback_trade_switch|uuid:{trade_uuid}|Failed to rollback trade_switch: {rollback_e}\n{traceback.format_exc()}")
+        if rollback_conn is not None:
+            try:
+                rollback_client.pool.putconn(rollback_conn, close=True)
+            except Exception:
+                pass
+
+def high_break(high_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures=False, logger=None, postgres_db_dict=None, table_name='trade'):
     high_str = '상방' if between_futures else '탈출'
     for row_tup in high_break_trade_df.iterrows():
         def row_thread(row_tup):
             try:
                 row = row_tup[1]
-                # ls_premium = row['LS_premium']
-                # ls_premium_value = row['LS_premium_value']
-                # sl_premium = row['SL_premium']
-                # sl_premium_value = row['SL_premium_value']
-                
+
                 if trade_support: # trade triggers only
-                    user_exchange_adaptor.short_long_trade(row)
+                    try:
+                        user_exchange_adaptor.short_long_trade(row)
+                    except Exception as trade_e:
+                        # P1-5: Trade execution failed — rollback trade_switch from 3
+                        # to error state (2 = exit error) to prevent permanent stuck state
+                        _rollback_trade_switch(row['uuid'], 2, postgres_db_dict, table_name, logger)
+                        raise trade_e
 
                 msg_title = f"거래ID: {trade_uuid_to_display_id(local_redis, market_code_combination, row['uuid'], logger)}({row['base_asset']}/{row['quote_asset']}) 프리미엄 상향돌파"
                 msg_content = f"{row['target_market_code']}:{row['origin_market_code']}\n"
@@ -401,22 +432,22 @@ def high_break(high_break_trade_df, user_exchange_adaptor, market_code_combinati
         row_thread = Thread(target=row_thread, args=(row_tup,), daemon=True)
         row_thread.start()
         
-def low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures=False, logger=None):
+def low_break(low_break_trade_df, user_exchange_adaptor, market_code_combination, trade_support, admin_id, acw_api, between_futures=False, logger=None, postgres_db_dict=None, table_name='trade'):
     low_str = '하방' if between_futures else '진입'
     for row_tup in low_break_trade_df.iterrows():
         def row_thread(row_tup):
             try:
                 row = row_tup[1]
-                # base_asset = row['base_asset']
-                # quote_asset = row['quote_asset']
 
-                # ls_premium = row['LS_premium']
-                # ls_premium_value = row['LS_premium_value']
-                # sl_premium = row['SL_premium']
-                # sl_premium_value = row['SL_premium_value']
                 if trade_support: # trade triggers only
-                    user_exchange_adaptor.long_short_trade(row)
-                
+                    try:
+                        user_exchange_adaptor.long_short_trade(row)
+                    except Exception as trade_e:
+                        # P1-5: Trade execution failed — rollback trade_switch from 3
+                        # to error state (-2 = entry error) to prevent permanent stuck state
+                        _rollback_trade_switch(row['uuid'], -2, postgres_db_dict, table_name, logger)
+                        raise trade_e
+
                 msg_title = f"거래ID: {trade_uuid_to_display_id(local_redis, market_code_combination, row['uuid'], logger)}({row['base_asset']}/{row['quote_asset']}) 프리미엄 하향돌파"
                 msg_content = f"{row['target_market_code']}:{row['origin_market_code']}\n"
                 msg_content += f"현재 LS:{round(row['LS_premium_value'], 3)}, 설정된 {low_str}값: {row['low']}\n"

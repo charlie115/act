@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import Count
 from rest_framework import serializers
 
@@ -184,13 +185,18 @@ class WithdrawalRequestSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         withdrawable = get_user_withdrawable_balance(user)
         if attrs['amount'] > withdrawable:
-            raise serializers.ValidationError("Requested amount exceeds your withdrawable balance.")        
+            raise serializers.ValidationError("Requested amount exceeds your withdrawable balance.")
 
         return attrs
 
     def create(self, validated_data):
         user = self.context['request'].user
-        return WithdrawalRequest.objects.create(user=user, **validated_data)
+        with transaction.atomic():
+            DepositBalance.objects.select_for_update().get(user=user)
+            withdrawable = get_user_withdrawable_balance(user)
+            if validated_data['amount'] > withdrawable:
+                raise serializers.ValidationError("Requested amount exceeds your withdrawable balance.")
+            return WithdrawalRequest.objects.create(user=user, **validated_data)
     
     def update(self, instance, validated_data):
         # For updates, also set authorized_by to the request user

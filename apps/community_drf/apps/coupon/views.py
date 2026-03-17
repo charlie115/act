@@ -1,3 +1,4 @@
+from django.db import IntegrityError, transaction
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -75,16 +76,26 @@ class CouponRedemptionViewSet(viewsets.ReadOnlyModelViewSet):
 
         coupon = serializer.validated_data['coupon']
         user = request.user
-        # Create a redemption record
-        CouponRedemption.objects.create(user=request.user, coupon=coupon)
-        
-        # Here we record a deposit indicating the user received credit from the coupon.
-        DepositHistory.objects.create(
-            user=user,
-            change=coupon.amount,  # credit the user's account by coupon amount
-            type=DepositHistory.COUPON,
-            coupon=coupon,
-        )
+
+        try:
+            with transaction.atomic():
+                # Lock the coupon row to prevent concurrent redemptions
+                coupon = Coupon.objects.select_for_update().get(pk=coupon.pk)
+                # Create a redemption record (unique_together constraint prevents duplicates)
+                CouponRedemption.objects.create(user=user, coupon=coupon)
+
+                # Here we record a deposit indicating the user received credit from the coupon.
+                DepositHistory.objects.create(
+                    user=user,
+                    change=coupon.amount,
+                    type=DepositHistory.COUPON,
+                    coupon=coupon,
+                )
+        except IntegrityError:
+            return Response({
+                "error": "COUPON_ALREADY_REDEEMED",
+                "message": "You have already redeemed this coupon.",
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({
             "message": "Coupon redeemed successfully.",

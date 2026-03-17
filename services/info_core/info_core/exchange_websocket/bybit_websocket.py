@@ -251,7 +251,7 @@ class BybitWebsocket:
         self.before_symbols_list = self.get_symbol_list()
         self.sliced_symbols_list = list_slice(self.get_symbol_list(), self.proc_n)
         self.stop_restart_websocket = False
-        self.price_proc_event_list = []
+        self.price_proc_event_list = {}
         self.websocket_proc_dict = {}
         self.websocket_symbol_dict = {}
         self.partial_stale_strikes = {}
@@ -299,7 +299,7 @@ class BybitWebsocket:
                                 self.websocket_logger.info(f"bybit_ticker_websocket|{i+1}th bybit_ticker_proc started.")
                             if ticker_start_proc is True:
                                 error_event = Event()
-                                self.price_proc_event_list.append(error_event)
+                                self.price_proc_event_list[f"{i+1}th_ticker_proc"] = error_event
                                 self.websocket_symbol_dict[f"{i+1}th_ticker_symbol"] = self.sliced_symbols_list[i]
                                 ticker_proc = Process(
                                     target=init_ticker_websocket,
@@ -336,7 +336,7 @@ class BybitWebsocket:
                                 self.websocket_logger.info(f"bybit_orderbook_websocket|{i+1}th bybit_orderbook_proc started.")
                             if orderbook_start_proc is True:
                                 error_event = Event()
-                                self.price_proc_event_list.append(error_event)
+                                self.price_proc_event_list[f"{i+1}th_orderbook_proc"] = error_event
                                 self.websocket_symbol_dict[f"{i+1}th_orderbook_symbol"] = self.sliced_symbols_list[i]
                                 orderbook_proc = Process(
                                     target=init_orderbook_websocket,

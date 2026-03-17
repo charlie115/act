@@ -15,8 +15,9 @@ class CoinMarketCapClient:
             url=self.crypto_info_url,
             headers=self.headers,
             params={"symbol": symbol},
+            timeout=10,
         )
 
     def fetch_logo(self, logo_url):
-        return requests.get(logo_url, stream=True)
+        return requests.get(logo_url, stream=True, timeout=10)
 
