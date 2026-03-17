@@ -46,10 +46,8 @@ class Bithumb:
             network_df = pd.concat([network_df, df])
             time.sleep(0.025)
         network_df = network_df.rename(columns={'currency': 'asset', 'net_type':'network_type', 'deposit_status': 'deposit', 'withdrawal_status': 'withdraw'})
-        network_df['deposit'] = network_df['deposit'].astype(bool)
-        network_df['withdraw'] = network_df['withdraw'].astype(bool)
-        network_df.loc[:, 'deposit'] = network_df['deposit'].apply(lambda x: True if x == 1 else False)
-        network_df.loc[:, 'withdraw'] = network_df['withdraw'].apply(lambda x: True if x == 1 else False)
+        network_df.loc[:, 'deposit'] = network_df['deposit'].apply(lambda x: str(x) == '1')
+        network_df.loc[:, 'withdraw'] = network_df['withdraw'].apply(lambda x: str(x) == '1')
         network_df.loc[:, 'network_type'] = network_df['network_type'].apply(lambda x: x.split('_')[0])
 
         return network_df

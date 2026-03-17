@@ -429,7 +429,7 @@ class UserExchangeAdaptor:
                 else:
                     last_trade_history_uuid = merged_row['last_trade_history_uuid']
                     if last_trade_history_uuid is None:
-                        raise Exception("trade_uuid: {merged_row['uuid']}, last_trade_history_uuid is None. It's impossible to do long_short_trade.")
+                        raise Exception(f"trade_uuid: {merged_row['uuid']}, last_trade_history_uuid is None. It's impossible to do long_short_trade.")
                     # Check whether the trade_side of last_trade_history is "ENTER"
                     last_trade_history_series = self.trade_history_df[self.trade_history_df['uuid']==last_trade_history_uuid]
                     if len(last_trade_history_series) == 0:
@@ -896,7 +896,7 @@ class UserExchangeAdaptor:
                 else:
                     last_trade_history_uuid = merged_row['last_trade_history_uuid']
                     if last_trade_history_uuid is None:
-                        raise Exception("trade_uuid: {merged_row['uuid']}, last_trade_history_uuid is None. It's impossible to do long_short_trade.")
+                        raise Exception(f"trade_uuid: {merged_row['uuid']}, last_trade_history_uuid is None. It's impossible to do long_short_trade.")
                     # Check whether the trade_side of last_trade_history is "ENTER"
                     last_trade_history_series = self.trade_history_df[self.trade_history_df['uuid']==last_trade_history_uuid]
                     if len(last_trade_history_series) == 0:
@@ -1209,7 +1209,8 @@ class UserExchangeAdaptor:
                     self.target_exchange_adaptor.order_info_dict_queue.put(target_order_info_dict)
                 except Exception as e:
                     target_trade_error = True
-                    origin_trade_thread.join()
+                    if liquidation_call is False:
+                        origin_trade_thread.join()
                     title = f"{self.target_exchange_name_kr} 매도 실패"
                     body = f"거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}({merged_row['uuid']})의 {self.target_exchange_name_kr} {target_symbol} 매도거래({float(target_qty)}개, {round(merged_row['trade_capital'])}원)가 실패하였습니다. {e}"
                     self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'ERROR', send_times=merged_row['send_times'], send_term=merged_row['send_term'])
@@ -1361,7 +1362,7 @@ class UserExchangeAdaptor:
                 time.sleep(1)
 
             if target_order_history is None or origin_order_history is None:
-                raise Exception(f"Order history retrieval timed out after 5 seconds, target order history id: {trade_info_dict['target_order_id']}, origin order history id: {trade_info_dict['origin_order_id']}")
+                raise Exception(f"Order history retrieval timed out after {timeout_seconds} seconds, target order history id: {trade_info_dict['target_order_id']}, origin order history id: {trade_info_dict['origin_order_id']}")
 
             # Now both are not None
             # id SERIAL PRIMARY KEY,

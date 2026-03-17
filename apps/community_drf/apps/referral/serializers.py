@@ -168,6 +168,8 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # The authenticated user is retrieved from the request context
         request_user = self.context['request'].user
+        if not hasattr(request_user, 'affiliate'):
+            raise serializers.ValidationError({"affiliate": "User is not an affiliate."})
         validated_data['affiliate'] = request_user.affiliate
         return super().create(validated_data)
     

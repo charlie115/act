@@ -45,7 +45,7 @@ class DBRouter:
         if app_label in self.app_routes:
             if (
                 db == self.app_routes[app_label]["db"]
-                and self.app_routes[db]["allow_migrate"]
+                and self.app_routes[app_label]["allow_migrate"]
             ):
                 return True
             else:

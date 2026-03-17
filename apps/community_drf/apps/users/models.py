@@ -1,6 +1,7 @@
 import random
 import uuid
 
+from decimal import Decimal
 from datetime import datetime
 from django.conf import settings
 from django.db import models, transaction
@@ -249,12 +250,14 @@ class DepositBalance(models.Model):
 class DepositHistory(models.Model):
     WITHDRAW = "WITHDRAW"
     DEPOSIT = "DEPOSIT"
+    COMMISSION = "COMMISSION"
     FEE = "FEE"
     TRANSFER = "TRANSFER"
     COUPON = "COUPON"
     DepositTypes = (
         (WITHDRAW, WITHDRAW),
         (DEPOSIT, DEPOSIT),
+        (COMMISSION, COMMISSION),
         (FEE, FEE),
         (TRANSFER, TRANSFER),
         (COUPON, COUPON),
@@ -338,7 +341,7 @@ class WithdrawalRequest(models.Model):
         blank=True,
         null=True
     )
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
     address = models.CharField(max_length=255)  # USDT TRC20 Address
     type = models.CharField(choices=TYPES, max_length=20)
     status = models.CharField(choices=STATUSES, default=PENDING, max_length=20)

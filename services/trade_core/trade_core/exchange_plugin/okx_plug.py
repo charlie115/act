@@ -183,9 +183,9 @@ class InitOkxAdaptor:
         okx_client = self.load_user_client(user_okx_access_key, user_okx_secret_key, passphrase)
         funding_balance = pd.DataFrame(okx_client.FundingAPI.get_balances()['data'])
         if len(funding_balance) != 0:
-            funding_balance[:, 'availBal'] = funding_balance[:, 'availBal'].astype(float)
-            funding_balance[:, 'bal'] = funding_balance[:, 'bal'].astype(float)
-            funding_balance[:, 'frozenBal'] = funding_balance[:, 'frozenBal'].astype(float)
+            funding_balance.loc[:, 'availBal'] = funding_balance['availBal'].astype(float)
+            funding_balance.loc[:, 'bal'] = funding_balance['bal'].astype(float)
+            funding_balance.loc[:, 'frozenBal'] = funding_balance['frozenBal'].astype(float)
         else:
             # Make a dummy dataframe having the same columns as funding_balance
             funding_balance = pd.DataFrame(columns=['availBal', 'bal', 'ccy', 'frozenBal'])

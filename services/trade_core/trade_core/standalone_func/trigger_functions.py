@@ -966,6 +966,10 @@ def start_trigger_scanner_loop(
             title = f"Error in start_trigger_scanner_loop"
             full_content = f"Error in start_trigger_scanner_loop: {e}\n{traceback.format_exc()}"
             logger.error(f"Error in start_trigger_scanner_loop: {e}\n{traceback.format_exc()}")
+            # Reinitialize the connection and cursor (matches start_trigger_loop recovery pattern)
+            postgres_client.pool.putconn(conn, close=True)
+            conn = postgres_client.pool.getconn()
+            curr = conn.cursor(cursor_factory=extras.RealDictCursor)
             acw_api.create_message_thread(admin_id, title, full_content, 'ERROR')
             time.sleep(10)
 

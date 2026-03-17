@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import transaction
 from django.db.models import Count
 from rest_framework import serializers
@@ -176,6 +177,7 @@ class DepositHistorySerializer(UserUUIDSerializerMixin, serializers.ModelSeriali
 
 class WithdrawalRequestSerializer(serializers.ModelSerializer):
     type = serializers.ChoiceField(choices=WithdrawalRequest.TYPES)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal('0.01'))
     class Meta:
         model = WithdrawalRequest
         fields = ['id', 'user', 'amount', 'address', 'type', 'status', 'requested_datetime', 'approved_datetime', 'completed_datetime', 'txid', 'remark']
@@ -183,7 +185,10 @@ class WithdrawalRequestSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         user = self.context['request'].user
-        withdrawable = get_user_withdrawable_balance(user)
+        if attrs['type'] == WithdrawalRequest.COMMISSION:
+            withdrawable = get_user_withdrawable_commission(user)
+        else:
+            withdrawable = get_user_withdrawable_balance(user)
         if attrs['amount'] > withdrawable:
             raise serializers.ValidationError("Requested amount exceeds your withdrawable balance.")
 
@@ -193,7 +198,10 @@ class WithdrawalRequestSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         with transaction.atomic():
             DepositBalance.objects.select_for_update().get(user=user)
-            withdrawable = get_user_withdrawable_balance(user)
+            if validated_data['type'] == WithdrawalRequest.COMMISSION:
+                withdrawable = get_user_withdrawable_commission(user)
+            else:
+                withdrawable = get_user_withdrawable_balance(user)
             if validated_data['amount'] > withdrawable:
                 raise serializers.ValidationError("Requested amount exceeds your withdrawable balance.")
             return WithdrawalRequest.objects.create(user=user, **validated_data)

@@ -63,7 +63,7 @@ class TradeCoreMixin(object):
                     {"trade_config_uuid": "Trade config not found."}
                 )
         except Exception as err:
-            raise exceptions.ParseError({"detail": err.messages})
+            raise exceptions.ParseError({"detail": str(err)})
 
         return trade_config_allocation
 

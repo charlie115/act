@@ -44,6 +44,8 @@ class CharacterSeparatedField(serializers.ListField):
 
 class FloatOrNoneField(serializers.FloatField):
     def to_representation(self, value):
+        if value is None:
+            return None
         return None if math.isnan(value) else float(value)
 
 

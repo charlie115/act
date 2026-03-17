@@ -446,6 +446,7 @@ class BinanceWebsocket:
                         self.sliced_symbol_list = list_slice(self.get_symbol_list(), self.proc_n)
                         # restart websockets
                         self.restart_websocket()
+                        monitor_shared_symbol_change_count = 0
                         for each_symbol in deleted_symbols:
                             # remove deleted symbol from redis ticker hash and redis orderbook hash
                             try:

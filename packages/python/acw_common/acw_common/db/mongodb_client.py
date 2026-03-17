@@ -1,6 +1,7 @@
 import logging
 import os
 import threading
+from urllib.parse import quote_plus
 
 import pymongo
 
@@ -30,7 +31,7 @@ class InitDBClient:
         self.port = port
         self.username = user
         self.password = passwd
-        self.uri = f"mongodb://{user}:{passwd}@{host}:{port}/"
+        self.uri = f"mongodb://{quote_plus(str(user))}:{quote_plus(str(passwd))}@{host}:{port}/"
         self.logger = logger
 
     def get_conn(self):

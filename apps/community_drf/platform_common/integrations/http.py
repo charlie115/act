@@ -12,7 +12,7 @@ class JsonApiClient:
 
     def build_api_url(self, endpoint, path_param=None):
         api_url = urljoin(self.base_url, endpoint)
-        if path_param:
+        if path_param is not None:
             api_url = urljoin(api_url, str(path_param))
         return api_url
 

@@ -767,7 +767,11 @@ class TriggerScannerQueryParamsSerializer(TradeCoreMixin, serializers.Serializer
     trade_config_uuid = serializers.UUIDField()
 
     def validate(self, attrs):
-        self.get_trade_config_allocation(attrs.get("trade_config_uuid"))
+        trade_config_allocation = self.get_trade_config_allocation(attrs.get("trade_config_uuid"))
+        self.context["view"].check_object_permissions(
+            request=self.context["request"],
+            obj=trade_config_allocation,
+        )
         return attrs
 
 

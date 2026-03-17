@@ -1,6 +1,8 @@
 import pandas as pd
 
 def get_ticker_ratio(price_krw):
+    if price_krw == 0:
+        return 0
     if price_krw < 0.1:
         ticker_size = 0.0001
     elif price_krw < 1:

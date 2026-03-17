@@ -316,12 +316,11 @@ class AuthUserRegisterView(UserDetailsView):
     http_method_names = ["patch"]
 
     def perform_update(self, serializer):
-        current_username = serializer.instance.username
-        new_username = serializer.validated_data["username"]
+        new_username = serializer.validated_data.get("username")
 
         if (
-            "username" in serializer.validated_data
-            and current_username != new_username
+            new_username is not None
+            and serializer.instance.username != new_username
             and not new_username.startswith("@")
             and new_username[0].isalpha()
         ):

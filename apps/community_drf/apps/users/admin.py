@@ -450,10 +450,12 @@ class WithdrawalRequestAdmin(ModelAdmin):
                     wr.save()
 
                     # Update deposit history to reflect the withdrawal
+                    # Use COMMISSION type for commission withdrawals, WITHDRAW for deposit withdrawals
+                    history_type = DepositHistory.COMMISSION if wr.type == WithdrawalRequest.COMMISSION else DepositHistory.WITHDRAW
                     DepositHistory.objects.create(
                         user=wr.user,
                         change=-wr.amount,
-                        type=DepositHistory.WITHDRAW,
+                        type=history_type,
                         txid=txid,
                         description=f"Withdrawal executed to {wr.address}"
                     )

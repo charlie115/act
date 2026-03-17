@@ -709,11 +709,13 @@ class UserBinanceAdaptor:
             # Convert columns to numeric, coercing errors to NaN
             position_df[columns_to_convert] = position_df[columns_to_convert].apply(pd.to_numeric, errors='coerce')
 
+            # Filter out zero positions first to avoid division by zero in leverage calculation
+            position_df = position_df[position_df['positionAmt']!=0].reset_index(drop=True)
+
             # Perform the leverage calculation
             position_df['leverage'] = (
                 abs(position_df['notional'] / position_df['positionInitialMargin'])
             ).round(0).astype(int)
-            position_df = position_df[position_df['positionAmt']!=0].reset_index(drop=True)
             
             # Add marginType info
             position_df['marginType'] = position_df['isolatedMargin'].apply(lambda x: 'crossed' if x == 0 else 'isolated')
