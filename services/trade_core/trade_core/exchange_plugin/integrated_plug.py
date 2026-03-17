@@ -260,7 +260,7 @@ class UserExchangeAdaptor:
             if len(position_df) == 0:
                 position_df["ROI"] = None
             else:
-                position_df["ROI"] = position_df.apply(lambda x: (x['entry_price']-x['markPrice'])/x['markPrice']*x['leverage']*100 if x['qty']<0 else 
+                position_df["ROI"] = position_df.apply(lambda x: (x['entry_price']-x['markPrice'])/x['entry_price']*x['leverage']*100 if x['qty']<0 else
                                                    (x['markPrice']-x['entry_price'])/x['entry_price']*x['leverage']*100, axis=1)
         elif exchange == 'BYBIT':
             position_df = exchange_adaptor.all_position_information(access_key, secret_key, market_type)
@@ -270,7 +270,7 @@ class UserExchangeAdaptor:
             if len(position_df) == 0:
                 position_df["ROI"] = None
             else:
-                position_df["ROI"] = position_df.apply(lambda x: (x['avgPrice']-x['markPrice'])/x['markPrice']*x['leverage']*100 if x['side'] == 'SHORT' else 
+                position_df["ROI"] = position_df.apply(lambda x: (x['avgPrice']-x['markPrice'])/x['avgPrice']*x['leverage']*100 if x['side'] == 'SHORT' else
                                         (x['markPrice']-x['avgPrice'])/x['avgPrice']*x['leverage']*100, axis=1)
                 position_df = position_df.rename(columns={"avgPrice":"entry_price", "marginType":"margin_type", "size":"qty", 'liqPrice':'liquidation_price'})
                 position_df.loc[:, 'qty'] = position_df.apply(lambda row: -row['qty'] if row['side'] == 'SHORT' else row['qty'], axis=1)
@@ -1107,7 +1107,7 @@ class UserExchangeAdaptor:
                     elif target_trade_error:
                         # Check whether the trade_config's safe_reverse is set to True, if True, do the reverse trade for the origin market
                         if merged_row['safe_reverse']:
-                            title = f"{self.target_exchange_name_kr} SHORT 실패로 인한 {self.origin_exchange_name_kr} 역매매(LONG) 거래"
+                            title = f"{self.target_exchange_name_kr} SHORT 실패로 인한 {self.origin_exchange_name_kr} 역매매(SHORT) 거래"
                             body = f"""거래ID: {trade_uuid_to_display_id(self.redis_client, self.market_code_combination, merged_row['uuid'], self.logger)}의 {self.target_exchange_name_kr} {target_symbol} SHORT 거래가 실패하여 {self.origin_exchange_name_kr} {origin_symbol} 역매매(SHORT, {float(origin_qty)}개) 거래를 진행합니다."""
                             self.acw_api.create_message_thread(merged_row['telegram_id'], title, body, 'INFO')
                             try:
@@ -1322,6 +1322,23 @@ class UserExchangeAdaptor:
                     # put trade info to the queue
                     self.trade_info_dict_queue.put(trade_info_dict)
                     return trade_info_dict
+                else:
+                    # Liquidation success: update trade_switch to completed (1) and generate trade_info_dict
+                    conn = self.postgres_client.pool.getconn()
+                    curr = conn.cursor()
+                    sql = f"""UPDATE trade SET trade_switch = %s WHERE uuid = %s"""
+                    val = (1, merged_row['uuid'])
+                    curr.execute(sql, val)
+                    conn.commit()
+                    self.postgres_client.pool.putconn(conn)
+                    # Generate trade_info_dict for liquidation (origin was liquidated, so use existing origin_order_id)
+                    trade_info_dict = {"user": merged_row['user'], "trade_config_uuid": merged_row['trade_config_uuid'], "trade_uuid": merged_row['uuid'], "base_asset": merged_row['base_asset'],
+                                    "target_order_id": target_order_id, "origin_order_id": origin_order_id, "target_premium_value": merged_row['high'], "dollar": merged_row['dollar'], "trade_side": trade_side,
+                                    "modified_input_usd": None, "modified_input_krw": None, "last_trade_history_uuid": merged_row['last_trade_history_uuid'],
+                                    "telegram_id": merged_row['telegram_id'], "send_times": merged_row['send_times'], "send_term": merged_row['send_term'], "usdt_conversion": merged_row['usdt_conversion'],
+                                    "trade_capital": merged_row['trade_capital'], "trade_execution": "short_long_trade"}
+                    self.trade_info_dict_queue.put(trade_info_dict)
+                    return trade_info_dict
 
             else:
                 raise Exception(f'market_code_combination {self.market_code_combination} not supported yet.')
@@ -1521,17 +1538,17 @@ class UserExchangeAdaptor:
                 body += f"\n탈출프리미엄: {round(trade_info_dict['target_premium_value'],2)}{premium_unit}\n실제탈출프리미엄: {round(trade_info_dict['executed_premium_value'],2)}{premium_unit}\n{slippage_str}"
                 full_body = title + '\n' + body
             self.acw_api.create_message_thread(trade_info_dict['telegram_id'], title, full_body, 'INFO', send_times=trade_info_dict['send_times'], send_term=trade_info_dict['send_term'])
-            self.postgres_client.pool.putconn(conn)
-            
+
             # Generate PnL hisrory if it's exit trade
             if trade_info_dict['trade_side'] == 'EXIT':
                 self.generate_pnl_history(trade_info_dict)
         except Exception as e:
-            self.postgres_client.pool.putconn(conn)
             if not isinstance(e, queue.Empty):
                 self.logger.error(f"handle_trade_info|{e}")
                 self.logger.error(traceback.format_exc())
             raise e
+        finally:
+            self.postgres_client.pool.putconn(conn)
 
     def handle_trade_info_queue_loop(self):
         self.logger.info(f"handle_trade_info_queue_loop started.")

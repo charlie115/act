@@ -482,6 +482,7 @@ def load_merged_repeat_df(postgres_client,
                           acw_api,
                           logger,
                           table_name='repeat_trade'):
+    conn = None
     try:
         conn = postgres_client.pool.getconn()
         curr = conn.cursor(cursor_factory=extras.RealDictCursor)
@@ -515,7 +516,8 @@ def load_merged_repeat_df(postgres_client,
         full_content = f"Error in load_repeat_df: {e}\n{traceback.format_exc()}"
         logger.error(full_content)
         # put the connection back to the pool
-        postgres_client.pool.putconn(conn, close=True)
+        if conn is not None:
+            postgres_client.pool.putconn(conn, close=True)
         acw_api.create_message_thread(admin_id, title, full_content)
         return pd.DataFrame()
 
@@ -931,9 +933,9 @@ def start_trigger_scanner_loop(
                     result_df = pd.DataFrame(columns=filtered_df.columns) # 빈 DataFrame 처리
                     
                 if not result_df.empty:
-                    # Update last_updated_datetime and curr_repeat_num for multiple rows
+                    # Update last_updated_datetime for multiple rows (but NOT curr_repeat_num yet)
                     uuid_list = result_df['uuid'].tolist()
-                    sql = "UPDATE trigger_scanner SET last_updated_datetime = %s, curr_repeat_num = curr_repeat_num + 1 WHERE uuid IN %s"
+                    sql = "UPDATE trigger_scanner SET last_updated_datetime = %s WHERE uuid IN %s"
                     val = (datetime.datetime.utcnow(), tuple(uuid_list))
                     curr.execute(sql, val)
                     conn.commit()
@@ -944,15 +946,22 @@ def start_trigger_scanner_loop(
                         for _, row in result_df.iterrows():
                             task = asyncio.create_task(async_create_trade(row, admin_id, acw_api, logger))
                             tasks.append(task)
-                        
+
                         # Wait for all API calls to complete
                         results = await asyncio.gather(*tasks, return_exceptions=True)
                         return results
-                    
+
                     # Run the async function in a synchronous context
                     try:
                         trade_results = asyncio.run(process_trades())
-                        logger.info(f"Created {len([r for r in trade_results if r is not None])} trades from trigger scanner")
+                        # Only increment curr_repeat_num for successfully created trades
+                        successful_uuids = [uuid for uuid, result in zip(uuid_list, trade_results) if result is not None and not isinstance(result, Exception)]
+                        if successful_uuids:
+                            sql = "UPDATE trigger_scanner SET curr_repeat_num = curr_repeat_num + 1 WHERE uuid IN %s"
+                            val = (tuple(successful_uuids),)
+                            curr.execute(sql, val)
+                            conn.commit()
+                        logger.info(f"Created {len(successful_uuids)} trades from trigger scanner")
                     except Exception as e:
                         logger.error(f"Error processing trades: {e}\n{traceback.format_exc()}")
                     

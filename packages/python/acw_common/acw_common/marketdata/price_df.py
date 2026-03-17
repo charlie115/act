@@ -111,7 +111,10 @@ def get_bithumb_price_df(redis_client):
         redis_client.get_all_exchange_stream_data("ticker", "BITHUMB_SPOT")
     ).T.reset_index()
 
-    orderbook_df = orderbook_df[orderbook_df["bids"].apply(lambda x: len(x) > 0)]
+    orderbook_df = orderbook_df[
+        orderbook_df["bids"].apply(lambda x: len(x) > 0) &
+        orderbook_df["asks"].apply(lambda x: len(x) > 0)
+    ]
     if orderbook_df.empty:
         return pd.DataFrame(
             columns=[

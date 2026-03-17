@@ -480,7 +480,10 @@ class MarketRuntime:
             elif target_quote_asset == "USDT" and origin_quote_asset == "KRW":
                 convert_rate = 1 / get_dollar_dict(self.local_redis)['price']
             elif target_quote_asset == "KRW":
-                convert_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, "USDT") * get_dollar_dict(self.local_redis)['price']
+                intermediate_rate = convert_between_coins(origin_market_spot_info_df, origin_quote_asset, "USDT")
+                if intermediate_rate is None:
+                    raise Exception(f"Cannot find intermediate convert rate from {origin_quote_asset} to USDT for target_market: {target_market}, origin_market: {origin_market}")
+                convert_rate = intermediate_rate * get_dollar_dict(self.local_redis)['price']
             elif origin_quote_asset == "KRW":
                 temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset)
                 if temp_convert_rate is not None:

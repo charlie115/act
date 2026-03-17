@@ -1001,11 +1001,11 @@ class UserBinanceAdaptor:
                         self.usd_m_liquidation_callback(res, trade_config_uuid, margin_call_mode, telegram_id)
                 except Exception as e:
                     title = "user_usd_m_socket 에서 에러 발생!"
-                    body = f"{title}]n"
+                    body = f"{title}\n"
                     body += f"error: {e}"
                     msg_full = f"{title}\n{body}"
                     self.acw_api.create_message_thread(self.admin_id, title, msg_full, 'ERROR', send_times=1, send_term=1)
-                time.sleep(0.3)
+                await asyncio.sleep(0.3)
 
     def user_usd_m_socket_async(self, access_key, secret_key, trade_config_uuid, margin_call_mode, telegram_id):
         asyncio.run(self.user_usd_m_socket(access_key, secret_key, trade_config_uuid, margin_call_mode, telegram_id))

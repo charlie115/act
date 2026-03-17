@@ -218,21 +218,24 @@ def store_average_funding_rate(mongo_db_client, total_enabled_market_klines, log
             new_averaged_df = total_df.groupby(['symbol','base_asset','quote_asset','market_code']).head(i)[['symbol','base_asset','quote_asset','market_code','funding_rate']].groupby(['symbol','base_asset','quote_asset','market_code']).mean().reset_index()
             # Check whether new_averaged_df is same as average_df
             if average_df is not None:
-                if new_averaged_df.equals(average_df):
+                if new_averaged_df[['symbol','base_asset','quote_asset','market_code','funding_rate']].equals(
+                    average_df[['symbol','base_asset','quote_asset','market_code','funding_rate']]
+                ):
                     logger.info(f"recent_{i}_fundingrate_mean is the same as recent_{i-1}_fundingrate_mean.") # TEST
                     break
                 else:
                     average_df = new_averaged_df
             else:
                 average_df = new_averaged_df
-            average_df['last_update'] = datetime.datetime.utcnow()
+            write_df = average_df.copy()
+            write_df['last_update'] = datetime.datetime.utcnow()
 
             arbitrage_collection_name = f"recent_{i}_fundingrate_mean"
             temp_arbitrage_collection_name = f"temp_{i}_fundingrate_mean"
             arbitrage_fundingrate_db = mongo_db_conn['arbitrage_fundingrate']
             temp_arbitrage_fundingrate_collection = arbitrage_fundingrate_db[temp_arbitrage_collection_name]
             temp_arbitrage_fundingrate_collection.delete_many({})
-            temp_arbitrage_fundingrate_collection.insert_many(average_df.sort_values('funding_rate', ascending=False).to_dict('records'))
+            temp_arbitrage_fundingrate_collection.insert_many(write_df.sort_values('funding_rate', ascending=False).to_dict('records'))
             temp_arbitrage_fundingrate_collection.rename(arbitrage_collection_name, dropTarget=True)
             last_written_depth = i
 

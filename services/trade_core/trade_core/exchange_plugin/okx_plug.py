@@ -403,6 +403,7 @@ class InitOkxAdaptor:
             if symbol is not None:
                 position_df = position_df[position_df['instId']==symbol]
             position_df.loc[:, 'pos'] = position_df['pos'].astype(float)
+            position_df.loc[:, 'upl'] = pd.to_numeric(position_df['upl'], errors='coerce').fillna(0)
             merged_position_df = position_df.merge(self.instrument_info[['instId','ctVal']], left_on='instId', right_on='instId')
             merged_position_df.loc[:, 'ctVal'] = merged_position_df['ctVal'].astype(float)
             merged_position_df['qty'] = merged_position_df['pos'] * merged_position_df['ctVal']
@@ -480,8 +481,8 @@ class InitOkxAdaptor:
         funding_df = pd.DataFrame(funding_data_list)
         funding_df[["fundingRate", "fundingTime", "nextFundingRate", "nextFundingTime"]] = funding_df[["fundingRate", "fundingTime", "nextFundingRate", "nextFundingTime"]].astype(float)
         funding_df[["fundingTime", "nextFundingTime"]] = funding_df.loc[:, ["fundingTime", "nextFundingTime"]].applymap(lambda x: pd.to_datetime(x, unit='ms', utc=True))
-        funding_df.loc[:, "fundingTime"] = funding_df["fundingTime"].dt.tz_localize(None)
-        funding_df.loc[:, "nextFundingTime"] = funding_df["nextFundingTime"].dt.tz_localize(None)
+        funding_df.loc[:, "fundingTime"] = funding_df["fundingTime"].dt.tz_convert(None)
+        funding_df.loc[:, "nextFundingTime"] = funding_df["nextFundingTime"].dt.tz_convert(None)
         funding_df['symbol'] = funding_df['instId']
         funding_df['base_asset'] = funding_df['instId'].apply(lambda x: x.split("-")[0])
         funding_df['quote_asset'] = funding_df['instId'].apply(lambda x: x.split("-")[1])

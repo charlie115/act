@@ -421,6 +421,7 @@ class InitOkxAdaptor:
             merged_position_df = position_df.merge(self.instrument_info[['instId','ctVal']], left_on='instId', right_on='instId')
             merged_position_df.loc[:, 'ctVal'] = merged_position_df['ctVal'].astype(float)
             merged_position_df['qty'] = merged_position_df['pos'] * merged_position_df['ctVal']
+            merged_position_df.loc[:, 'upl'] = pd.to_numeric(merged_position_df['upl'], errors='coerce').fillna(0)
             aggregated_df = merged_position_df.groupby('instId').sum().reset_index()[['instId','upl','qty']]
             aggregated_df['mgnMode'] = 'total'
             merged_position_df = pd.concat([merged_position_df, aggregated_df], axis=0)

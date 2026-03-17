@@ -56,7 +56,7 @@ class InitDBClient:
     def check_table_exist(self, table_name):
         query = f"""
         SELECT EXISTS (
-           SELECT FROM information_schema.tables 
+           SELECT FROM information_schema.tables
            WHERE  table_schema = 'public'
            AND table_name   = '{table_name}'
         );
@@ -65,6 +65,7 @@ class InitDBClient:
         curr = conn.cursor()
         curr.execute(query)
         exist_flag = curr.fetchone()[0]
+        conn.close()
         return exist_flag
     
     def is_table_empty(self, table_name):
