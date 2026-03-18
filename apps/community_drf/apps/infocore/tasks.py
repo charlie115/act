@@ -35,6 +35,13 @@ def backfill_missing_asset_icons(self):
     mixin = AssetMixin()
     missing_list = []
 
+    # Get actual files in storage (listdir works reliably with MinIO, exists() does not)
+    try:
+        _, existing_files = default_storage.listdir("assets/icons/")
+        existing_files_set = set(existing_files)
+    except Exception:
+        existing_files_set = set()
+
     for asset in Asset.objects.all():
         # Skip assets that have exceeded max fetch failures
         if asset.icon_fetch_failures >= MAX_FETCH_FAILURES:
@@ -43,10 +50,9 @@ def backfill_missing_asset_icons(self):
         if not asset.icon:
             missing_list.append(asset)
         else:
-            try:
-                if not default_storage.exists(asset.icon.name):
-                    missing_list.append(asset)
-            except Exception:
+            # Check if file actually exists in storage
+            filename = asset.icon.name.split("/")[-1]  # e.g. "BTC.PNG"
+            if filename not in existing_files_set:
                 missing_list.append(asset)
 
     total = len(missing_list)
