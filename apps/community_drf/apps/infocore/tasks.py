@@ -1,4 +1,5 @@
 import logging
+import time
 
 from config.celery import celery
 from domains.marketdata import (
@@ -7,6 +8,9 @@ from domains.marketdata import (
 )
 
 logger = logging.getLogger(__name__)
+
+MAX_FETCH_FAILURES = 5  # Stop retrying after this many consecutive failures
+RATE_LIMIT_DELAY = 0.2  # 0.2s between requests = max 5 req/s
 
 
 @celery.task(bind=True, autoretry_for=(Exception,), retry_backoff=30, max_retries=3, retry_jitter=True)
@@ -23,6 +27,7 @@ def cleanup_old_notification_history(self, days_to_keep=7):
 def backfill_missing_asset_icons(self):
     """Fetch icons from CoinMarketCap for assets that have no icon or whose icon file is missing from storage."""
     from django.core.files.storage import default_storage
+    from django.utils import timezone
     from infocore.models import Asset
     from infocore.mixins import AssetMixin
 
@@ -30,6 +35,10 @@ def backfill_missing_asset_icons(self):
     missing_list = []
 
     for asset in Asset.objects.all():
+        # Skip assets that have exceeded max fetch failures
+        if asset.icon_fetch_failures >= MAX_FETCH_FAILURES:
+            continue
+
         if not asset.icon:
             missing_list.append(asset)
         else:
@@ -41,16 +50,37 @@ def backfill_missing_asset_icons(self):
 
     total = len(missing_list)
     filled = 0
+    failed = 0
 
     for asset in missing_list:
         try:
+            time.sleep(RATE_LIMIT_DELAY)  # Rate limit: max 5 req/s
             info = mixin.pull_asset_info(asset.symbol)
+
+            time.sleep(RATE_LIMIT_DELAY)  # Rate limit for logo fetch
             icon = mixin.get_icon_image(info)
+
             if icon:
                 asset.icon = icon
-                asset.save(update_fields=["icon"])
+                asset.icon_fetch_failures = 0
+                asset.icon_fetch_last_error = ""
+                asset.icon_fetch_last_attempt_at = timezone.now()
+                asset.save(update_fields=["icon", "icon_fetch_failures", "icon_fetch_last_error", "icon_fetch_last_attempt_at"])
                 filled += 1
-        except Exception:
-            logger.warning("backfill_missing_asset_icons|Failed for %s", asset.symbol, exc_info=True)
+            else:
+                asset.icon_fetch_failures += 1
+                asset.icon_fetch_last_error = "get_icon_image returned None"
+                asset.icon_fetch_last_attempt_at = timezone.now()
+                asset.save(update_fields=["icon_fetch_failures", "icon_fetch_last_error", "icon_fetch_last_attempt_at"])
+                failed += 1
 
-    logger.info("backfill_missing_asset_icons|Filled %d/%d missing icons", filled, total)
+        except Exception as e:
+            asset.icon_fetch_failures += 1
+            asset.icon_fetch_last_error = str(e)[:500]
+            asset.icon_fetch_last_attempt_at = timezone.now()
+            asset.save(update_fields=["icon_fetch_failures", "icon_fetch_last_error", "icon_fetch_last_attempt_at"])
+            failed += 1
+            logger.warning("backfill_missing_asset_icons|Failed for %s (attempt %d): %s", asset.symbol, asset.icon_fetch_failures, e)
+
+    logger.info("backfill_missing_asset_icons|Filled %d/%d, failed %d, skipped(max_failures) %d",
+                filled, total, failed, Asset.objects.filter(icon_fetch_failures__gte=MAX_FETCH_FAILURES).count())
