@@ -10,7 +10,8 @@ from domains.marketdata import (
 logger = logging.getLogger(__name__)
 
 MAX_FETCH_FAILURES = 5  # Stop retrying after this many consecutive failures
-RATE_LIMIT_DELAY = 0.2  # 0.2s between requests = max 5 req/s
+RATE_LIMIT_DELAY = 2.5  # 2.5s between requests = ~24 req/min (CoinMarketCap free: 30/min)
+MAX_ICONS_PER_RUN = 10  # Process max 10 assets per task run to stay within rate limits
 
 
 @celery.task(bind=True, autoretry_for=(Exception,), retry_backoff=30, max_retries=3, retry_jitter=True)
@@ -49,10 +50,11 @@ def backfill_missing_asset_icons(self):
                 missing_list.append(asset)
 
     total = len(missing_list)
+    batch = missing_list[:MAX_ICONS_PER_RUN]  # Process only a batch per run
     filled = 0
     failed = 0
 
-    for asset in missing_list:
+    for asset in batch:
         try:
             time.sleep(RATE_LIMIT_DELAY)  # Rate limit: max 5 req/s
             info = mixin.pull_asset_info(asset.symbol)
@@ -82,5 +84,5 @@ def backfill_missing_asset_icons(self):
             failed += 1
             logger.warning("backfill_missing_asset_icons|Failed for %s (attempt %d): %s", asset.symbol, asset.icon_fetch_failures, e)
 
-    logger.info("backfill_missing_asset_icons|Filled %d/%d, failed %d, skipped(max_failures) %d",
-                filled, total, failed, Asset.objects.filter(icon_fetch_failures__gte=MAX_FETCH_FAILURES).count())
+    logger.info("backfill_missing_asset_icons|Filled %d/%d (batch %d), failed %d, skipped(max_failures) %d",
+                filled, total, len(batch), failed, Asset.objects.filter(icon_fetch_failures__gte=MAX_FETCH_FAILURES).count())
