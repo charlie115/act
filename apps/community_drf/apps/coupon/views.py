@@ -8,6 +8,7 @@ from drf_spectacular.utils import (
     OpenApiTypes,
     OpenApiExample
 )
+from lib.permissions import IsAdmin, IsInternal, IsManager, IsAffiliate, IsUser
 from lib.views import BaseViewSet
 from users.models import DepositHistory
 
@@ -63,6 +64,7 @@ class CouponRedemptionViewSet(viewsets.ReadOnlyModelViewSet):
     """
     A viewset for users to redeem a coupon.
     """
+    permission_classes = [IsAdmin | IsInternal | IsManager | IsAffiliate | IsUser]
     queryset = CouponRedemption.objects.all()
     serializer_class = CouponRedemptionSerializer
     

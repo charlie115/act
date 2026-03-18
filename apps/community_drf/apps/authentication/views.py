@@ -137,7 +137,7 @@ class AuthTelegramLoginView(LoginView):
                 {"auth_date": ["Must be a valid integer timestamp."]}
             )
 
-        if hash != expected_hash or time.time() - auth_date > 30:
+        if not hmac.compare_digest(hash, expected_hash) or time.time() - auth_date > 30:
             raise exceptions.ValidationError({"detail": "Telegram data is not valid."})
 
         # allauth/socialaccount/providers/base/provider.py: sociallogin_from_response
