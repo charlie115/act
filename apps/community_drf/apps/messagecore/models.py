@@ -43,3 +43,8 @@ class Message(models.Model):
 
     def __str__(self):
         return self.title
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["telegram_bot_username", "sent"], name="idx_msg_bot_sent"),
+        ]

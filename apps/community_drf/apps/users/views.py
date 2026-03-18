@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from lib.authentication import NodeIPAuthentication
+from lib.permissions import IsAdmin, IsInternal, IsManager
 from lib.views import BaseViewSet, UserOwnedViewSet
 from users.filters import (
     UserFavoriteAssetsFilter,
@@ -210,6 +211,7 @@ class UserProfileViewSet(UserOwnedViewSet):
 class UserBlocklistViewSet(BaseViewSet):
     queryset = UserBlocklist.objects.all()
     serializer_class = UserBlocklistSerializer
+    permission_classes = [IsAdmin | IsInternal | IsManager]
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     ordering_fields = [
         "id",

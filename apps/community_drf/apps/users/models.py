@@ -272,7 +272,7 @@ class DepositHistory(models.Model):
     referral_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0) # For Fee discount from referral system
     balance = models.DecimalField(max_digits=10, decimal_places=2)
     trade_uuid = models.UUIDField(blank=True, null=True)
-    txid = models.TextField(blank=True, null=True)
+    txid = models.TextField(blank=True, null=True, db_index=True)
     type = models.CharField(choices=DepositTypes)
     coupon = models.ForeignKey(
         "coupon.Coupon",

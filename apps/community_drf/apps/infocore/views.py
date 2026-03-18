@@ -42,6 +42,7 @@ from infocore.serializers import (
     VolatilityNotificationConfigSerializer,
 )
 from lib.filters import CharArrayFilter
+from lib.permissions import IsAdmin, IsInternal
 from lib.views import BaseViewSet
 
 REDIS_CLI = get_infocore_redis_connection()
@@ -108,6 +109,11 @@ class AssetViewSet(BaseViewSet):
     serializer_class = AssetSerializer
     filterset_class = AssetFilter
     filter_backends = [DjangoFilterBackend]
+
+    def get_permissions(self):
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [(IsAdmin | IsInternal)()]
+        return []
 
 
 @extend_schema_view(
