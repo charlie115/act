@@ -103,8 +103,7 @@ export default function CommunityMessages({ visible, onNewCount }) {
   useEffect(() => {
     const wsUrl = process.env.NEXT_PUBLIC_DRF_WS_URL || process.env.REACT_APP_DRF_WS_URL;
 
-    if (!wsUrl) {
-      console.warn("[Chat] No WS URL configured, real-time disabled");
+    if (!wsUrl || !loggedIn) {
       return;
     }
 
@@ -186,7 +185,7 @@ export default function CommunityMessages({ visible, onNewCount }) {
         ws.close();
       }
     };
-  }, [username]);
+  }, [username, loggedIn]);
 
   // Report badge count
   useEffect(() => {
