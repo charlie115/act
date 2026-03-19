@@ -230,7 +230,7 @@ export default function MarketCombinationPicker({
     <div className="relative" ref={rootRef}>
       {/* Compact pill trigger */}
       <button
-        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
+        className={`inline-flex items-center gap-1 sm:gap-1.5 whitespace-nowrap rounded-lg border px-1.5 sm:px-2 py-1 sm:py-1.5 text-[0.68rem] sm:text-sm font-semibold transition-colors ${
           open
             ? "border-accent/40 bg-accent/10 text-ink"
             : "border-border bg-background/70 text-ink hover:border-border/80 hover:bg-surface-elevated/40"
@@ -250,19 +250,19 @@ export default function MarketCombinationPicker({
         {selectedTarget.code ? (
           <>
             <ExchangeBadge exchange={selectedTarget.exchange} />
-            <span className="text-ink">{selectedTarget.exchangeLabel}</span>
-            <ArrowRightLeft className="text-ink-muted" size={14} strokeWidth={2} />
+            <span className="text-ink hidden sm:inline">{selectedTarget.exchangeLabel}</span>
+            <ArrowRightLeft className="text-ink-muted" size={12} strokeWidth={2} />
             <ExchangeBadge exchange={selectedOrigin.exchange} />
             <span className="text-ink">
-              {selectedOrigin.exchangeLabel} {selectedOrigin.productLabel}/{selectedOrigin.quoteAsset}
+              <span className="hidden sm:inline">{selectedOrigin.exchangeLabel} </span>{selectedOrigin.productLabel}/{selectedOrigin.quoteAsset}
             </span>
           </>
         ) : (
           <span className="text-ink-muted">시장 조합 선택</span>
         )}
         <ChevronDown
-          className={`ml-1 text-ink-muted transition-transform ${open ? "rotate-180" : ""}`}
-          size={14}
+          className={`ml-0.5 text-ink-muted transition-transform ${open ? "rotate-180" : ""}`}
+          size={12}
           strokeWidth={2}
         />
       </button>
@@ -310,45 +310,45 @@ export default function MarketCombinationPicker({
           {/* Two-column grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-border">
             <div className="flex flex-col">
-              <div className="flex items-center justify-between px-3 py-2 text-[0.62rem] font-bold uppercase tracking-wider text-ink-muted">
-                <span>타겟 시장</span>
+              <div className="flex items-center justify-between px-3 py-2.5 text-[0.64rem] font-bold tracking-wide text-accent/70">
+                <span>기준거래소</span>
                 <span className="tabular-nums">{filteredTargets.length}</span>
               </div>
               <div className="max-h-[280px] overflow-y-auto">
                 {filteredTargets.map((option) => (
                   <button
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
+                    className={`flex w-full items-center gap-2.5 border-l-2 px-3 py-2.5 text-left text-xs transition-all ${
                       activeDraftTarget === option.code
-                        ? "bg-accent/10 text-ink"
-                        : "text-ink-muted hover:bg-surface-elevated/40 hover:text-ink"
+                        ? "border-l-accent bg-accent/10 text-ink"
+                        : "border-l-transparent text-ink-muted hover:bg-surface-elevated/30 hover:text-ink"
                     }`}
                     key={option.code}
                     onClick={() => setDraftTarget(option.code)}
                     type="button"
                   >
                     <ExchangeBadge exchange={option.exchange} />
-                    <div>
-                      <div className="font-semibold">{option.exchangeLabel}</div>
-                      <div className="text-[0.6rem] text-ink-muted">{option.productLabel}/{option.quoteAsset}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold truncate">{option.exchangeLabel}</div>
+                      <div className="text-[0.6rem] text-ink-muted/60">{option.productLabel}/{option.quoteAsset}</div>
                     </div>
-                    <span className="ml-auto text-[0.58rem] tabular-nums text-ink-muted/60">{option.origins.length}</span>
+                    <ArrowRightLeft size={12} className="text-ink-muted/30 flex-shrink-0" />
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="flex flex-col">
-              <div className="flex items-center justify-between px-3 py-2 text-[0.62rem] font-bold uppercase tracking-wider text-ink-muted">
-                <span>오리진 시장</span>
+              <div className="flex items-center justify-between px-3 py-2.5 text-[0.64rem] font-bold tracking-wide text-accent/70">
+                <span>비교거래소</span>
                 <span className="tabular-nums">{draftOriginOptions.length}</span>
               </div>
               <div className="max-h-[280px] overflow-y-auto">
                 {draftOriginOptions.map((option) => (
                   <button
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
+                    className={`flex w-full items-center gap-2.5 border-l-2 px-3 py-2.5 text-left text-xs transition-all ${
                       originMarketCode === option.code
-                        ? "bg-accent/10 text-ink"
-                        : "text-ink-muted hover:bg-surface-elevated/40 hover:text-ink"
+                        ? "border-l-accent bg-accent/10 text-ink"
+                        : "border-l-transparent text-ink-muted hover:bg-surface-elevated/30 hover:text-ink"
                     }`}
                     key={option.code}
                     onClick={() => {
@@ -359,10 +359,11 @@ export default function MarketCombinationPicker({
                     type="button"
                   >
                     <ExchangeBadge exchange={option.exchange} />
-                    <div>
-                      <div className="font-semibold">{option.exchangeLabel}</div>
-                      <div className="text-[0.6rem] text-ink-muted">{option.productLabel}/{option.quoteAsset}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold truncate">{option.exchangeLabel}</div>
+                      <div className="text-[0.6rem] text-ink-muted/60">{option.productLabel}/{option.quoteAsset}</div>
                     </div>
+                    {originMarketCode === option.code && <span className="text-accent text-[0.7rem]">✓</span>}
                   </button>
                 ))}
               </div>

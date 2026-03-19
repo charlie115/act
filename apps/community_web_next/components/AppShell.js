@@ -153,7 +153,7 @@ export default function AppShell({ children }) {
           </div>
         </div>
       </header>
-      <div className="mx-auto w-full max-h-[46px] overflow-hidden border-b border-border bg-background/94 backdrop-blur-lg md:w-[min(1280px,calc(100vw-20px))] md:rounded-b-xl md:border md:border-t-0" style={{ minHeight: 44 }}>
+      <div className="mx-auto w-full max-h-[72px] sm:max-h-[46px] overflow-hidden border-b border-border bg-background/94 backdrop-blur-lg md:w-[min(1280px,calc(100vw-20px))] md:rounded-b-xl md:border md:border-t-0" style={{ minHeight: 44 }}>
         <TVTickerWidget />
       </div>
       </div>

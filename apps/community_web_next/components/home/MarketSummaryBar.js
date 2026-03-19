@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 
 function pc(v) {
   const n = Number(v || 0);
@@ -15,19 +15,18 @@ function fmtPct(v) {
   return `${n > 0 ? "+" : ""}${n.toFixed(2)}%`;
 }
 
-function Pill({ label, value, colorClass, sub }) {
+function Stat({ label, value, colorClass }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-lg bg-surface-elevated/40 px-2.5 py-1">
-      <span className="text-[0.64rem] text-ink-muted/60">{label}</span>
-      <strong className={`text-xs tabular-nums font-bold ${colorClass}`}>{value}</strong>
-      {sub && <span className="text-[0.56rem] text-ink-muted/40">{sub}</span>}
+    <div className="flex items-center gap-1 sm:gap-1.5">
+      <span className="text-[0.48rem] sm:text-[0.64rem] font-medium text-ink-muted/50">{label}</span>
+      <span className={`text-[0.56rem] sm:text-xs tabular-nums font-bold ${colorClass}`}>{value}</span>
     </div>
   );
 }
 
 const TIME_FMT = new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-export default function MarketSummaryBar({ liveRows, connected, lastReceivedAt, volatilityMap = {} }) {
+const MarketSummaryBar = memo(function MarketSummaryBar({ liveRows, connected, lastReceivedAt, volatilityMap = {} }) {
   const { btc, eth, avg } = useMemo(() => {
     const b = liveRows.find((r) => r.base_asset === "BTC");
     const e = liveRows.find((r) => r.base_asset === "ETH");
@@ -40,40 +39,40 @@ export default function MarketSummaryBar({ liveRows, connected, lastReceivedAt, 
     return { btc: b, eth: e, avg: totalVol > 0 ? weightedSum / totalVol : null };
   }, [liveRows]);
 
-  const { highVol, lowVol } = useMemo(() => {
+  const highVol = useMemo(() => {
     let high = null;
-    let low = null;
     for (const [symbol, data] of Object.entries(volatilityMap)) {
       const md = Number(data?.mean_diff);
       if (!Number.isFinite(md)) continue;
       if (!high || md > Number(high.val)) high = { symbol, val: md };
-      if (!low || md < Number(low.val)) low = { symbol, val: md };
     }
-    return { highVol: high, lowVol: low };
+    return high;
   }, [volatilityMap]);
 
   const timeLabel = lastReceivedAt ? TIME_FMT.format(new Date(lastReceivedAt)) : null;
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <Pill label="BTC" value={btc ? fmtPct(btc.LS_close) : "-"} colorClass={pc(btc?.LS_close)} />
-      <Pill label="ETH" value={eth ? fmtPct(eth.LS_close) : "-"} colorClass={pc(eth?.LS_close)} />
-      <Pill label="평균" value={avg !== null ? fmtPct(avg) : "-"} colorClass={pc(avg)} />
-      {highVol && (
-        <div className="hidden sm:flex">
-          <Pill label="변동↑" value={`${highVol.symbol} ${Number(highVol.val).toFixed(2)}`} colorClass="text-positive" />
-        </div>
-      )}
-      {lowVol && (
-        <div className="hidden sm:flex">
-          <Pill label="변동↓" value={`${lowVol.symbol} ${Number(lowVol.val).toFixed(2)}`} colorClass="text-negative" />
-        </div>
-      )}
-      <div className="ml-auto flex items-center gap-1 sm:gap-2 text-[0.58rem] sm:text-[0.68rem] text-ink-muted/50">
+    <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto scrollbar-hide rounded-lg border border-border/40 bg-surface-elevated/20 px-2 sm:px-3 py-1 sm:py-2 whitespace-nowrap">
+      <Stat label="BTC" value={btc ? fmtPct(btc.LS_close) : "-"} colorClass={pc(btc?.LS_close)} />
+      <div className="h-3 w-px bg-border/40" />
+      <Stat label="ETH" value={eth ? fmtPct(eth.LS_close) : "-"} colorClass={pc(eth?.LS_close)} />
+      <div className="h-3 w-px bg-border/40" />
+      <Stat label="평균" value={avg !== null ? fmtPct(avg) : "-"} colorClass={pc(avg)} />
+      {highVol ? (
+        <>
+          <div className="h-3 w-px bg-border/40" />
+          <div className="flex">
+            <Stat label="변동↑" value={`${highVol.symbol} ${Number(highVol.val).toFixed(2)}`} colorClass="text-positive" />
+          </div>
+        </>
+      ) : null}
+      <div className="ml-auto flex items-center gap-1.5 whitespace-nowrap">
         <span className={`inline-block h-1.5 w-1.5 rounded-full ${connected ? "bg-positive" : "bg-negative animate-pulse"}`} />
-        <span>{connected ? "연결됨" : "재연결 중"}</span>
-        {timeLabel && <span className="tabular-nums">{timeLabel}</span>}
+        <span className="text-[0.46rem] sm:text-[0.64rem] text-ink-muted/40">{connected ? "연결" : "재연결"}</span>
+        {timeLabel ? <span className="text-[0.44rem] sm:text-[0.6rem] tabular-nums text-ink-muted/30">{timeLabel}</span> : null}
       </div>
     </div>
   );
-}
+});
+
+export default MarketSummaryBar;

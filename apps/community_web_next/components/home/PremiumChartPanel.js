@@ -334,7 +334,7 @@ function FundingCountdownText({ fundingTime }) {
 function Badge({ active, children }) {
   return (
     <span
-      className={`inline-flex items-center rounded-md px-2 py-1 text-[0.68rem] font-semibold ${
+      className={`inline-flex items-center rounded-md px-1 sm:px-2 py-0.5 sm:py-1 text-[0.54rem] sm:text-[0.68rem] font-semibold ${
         active ? "bg-positive/20 text-positive" : "bg-surface-elevated text-ink-muted"
       }`}
     >
@@ -347,10 +347,10 @@ function WalletNetworkRow({ leftLabel, leftIcon, leftDirection, leftNetworks, ac
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="flex items-center gap-2">
-        <ExchangeIcon exchange={leftIcon} size={18} />
-        <span className="text-sm font-bold text-ink">
+        <ExchangeIcon exchange={leftIcon} size={14} />
+        <span className="text-[0.68rem] sm:text-sm font-bold text-ink">
           {leftLabel}
-          <span className="ml-1 text-[0.78rem] font-medium text-ink-muted">({leftDirection})</span>
+          <span className="ml-0.5 text-[0.6rem] sm:text-[0.78rem] font-medium text-ink-muted">({leftDirection})</span>
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-1">
@@ -360,12 +360,12 @@ function WalletNetworkRow({ leftLabel, leftIcon, leftDirection, leftNetworks, ac
           </Badge>
         )) : <Badge active={false}>-</Badge>}
       </div>
-      <span className="mx-1 text-lg font-bold text-positive">{arrow}</span>
+      <span className="mx-0.5 sm:mx-1 text-sm sm:text-lg font-bold text-positive">{arrow}</span>
       <div className="flex items-center gap-2">
-        <ExchangeIcon exchange={rightIcon} size={18} />
-        <span className="text-sm font-bold text-ink">
+        <ExchangeIcon exchange={rightIcon} size={14} />
+        <span className="text-[0.68rem] sm:text-sm font-bold text-ink">
           {rightLabel}
-          <span className="ml-1 text-[0.78rem] font-medium text-ink-muted">({rightDirection})</span>
+          <span className="ml-0.5 text-[0.6rem] sm:text-[0.78rem] font-medium text-ink-muted">({rightDirection})</span>
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-1">
@@ -714,10 +714,15 @@ export default function PremiumChartPanel({
       data: insertWhitespace(makeTimeSeries(cached, "tp"), interval),
     };
 
-    const isExit = dataMode === "exit";
-    const prefix = isExit ? "SL" : "LS";
-    const color = isExit ? "#4fd3a7" : "#16c784";
-    const label = isExit ? "탈출김프" : "진입김프";
+    let prefix, color, label;
+    if (dataMode === "exit") {
+      prefix = "SL"; color = "#4fd3a7"; label = "탈출김프";
+    } else if (dataMode === "entry") {
+      prefix = "LS"; color = "#16c784"; label = "진입김프";
+    } else {
+      // "premium" — true premium based on last price (tp_*)
+      prefix = "tp"; color = "#f0b90b"; label = "김프";
+    }
 
     return {
       priceLine,
@@ -746,7 +751,7 @@ export default function PremiumChartPanel({
       return null;
     }
 
-    const prefix = dataMode === "exit" ? "SL" : "LS";
+    const prefix = dataMode === "exit" ? "SL" : dataMode === "entry" ? "LS" : "tp";
     const open = Number(liveRow?.[`${prefix}_open`]);
     const high = Number(liveRow?.[`${prefix}_high`]);
     const low = Number(liveRow?.[`${prefix}_low`]);
@@ -1087,10 +1092,10 @@ export default function PremiumChartPanel({
       style={{ animation: "riseIn 350ms cubic-bezier(0.4, 0, 0.15, 1) both" }}
     >
       {/* Binance-style toolbar */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border/50 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-4 gap-y-1 border-b border-border/50 px-2 sm:px-3 py-1.5 sm:py-2">
         {/* Asset + key stats */}
-        <h3 className="text-sm font-bold text-ink">{asset}</h3>
-        <div className="flex items-center gap-3 text-[0.7rem] text-ink-muted">
+        <h3 className="text-xs sm:text-sm font-bold text-ink">{asset}</h3>
+        <div className="flex items-center gap-1.5 sm:gap-3 text-[0.58rem] sm:text-[0.7rem] text-ink-muted">
           <span>현재가 <strong className="text-ink">{formatNumber(row?.tp, 1)}</strong></span>
           <span>스프레드 <strong className={spread > 0 ? "text-positive" : spread < 0 ? "text-negative" : "text-ink"}>{formatNumber(spread, 3)}%p</strong></span>
           <span>
@@ -1119,7 +1124,7 @@ export default function PremiumChartPanel({
         <div className="flex-1" />
 
         {/* Legend dots */}
-        <div className="flex items-center gap-2.5 text-[0.66rem] text-ink-muted">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 text-[0.54rem] sm:text-[0.66rem] text-ink-muted">
           {chartPayload.legend.map((item) => (
             <span key={item.label} className="flex items-center gap-1">
               <span className="inline-block h-2 w-2 rounded-full" style={{ background: item.color }} />
@@ -1129,9 +1134,9 @@ export default function PremiumChartPanel({
         </div>
       </div>
 
-      <div className="grid gap-2 border-b border-border/50 bg-surface-elevated/10 px-3 py-3">
+      <div className="grid gap-1 sm:gap-2 border-b border-border/50 bg-surface-elevated/10 px-2 sm:px-3 py-2 sm:py-3">
         {(hasTargetFundingTime || hasOriginFundingTime) ? (
-          <div className="flex flex-wrap items-center gap-3 text-[0.72rem] italic text-ink-muted">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[0.58rem] sm:text-[0.72rem] italic text-ink-muted">
             {hasTargetFundingTime ? (
               <span>{targetLabel} 펀딩까지 <FundingCountdownText fundingTime={targetFunding.funding_time} /></span>
             ) : null}
@@ -1167,13 +1172,13 @@ export default function PremiumChartPanel({
       </div>
 
       {/* Interval bar + data mode + chart type — inside the chart area */}
-      <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 bg-surface-elevated/20">
+      <div className="flex flex-wrap items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-surface-elevated/20">
         {/* Intervals */}
         <div className="flex items-center gap-0.5">
           {INTERVALS.map((opt) => (
             <button
               key={opt.value}
-              className={`rounded px-2 py-0.5 text-[0.68rem] font-bold transition-colors ${
+              className={`rounded px-1.5 sm:px-2 py-px sm:py-0.5 text-[0.56rem] sm:text-[0.68rem] font-bold transition-colors ${
                 interval === opt.value
                   ? "bg-accent/15 text-accent"
                   : "text-ink-muted hover:text-ink hover:bg-surface-elevated/60"
@@ -1194,7 +1199,7 @@ export default function PremiumChartPanel({
           {DATA_MODES.map((opt) => (
             <button
               key={opt.value}
-              className={`rounded px-2 py-0.5 text-[0.68rem] font-bold transition-colors ${
+              className={`rounded px-1.5 sm:px-2 py-px sm:py-0.5 text-[0.56rem] sm:text-[0.68rem] font-bold transition-colors ${
                 dataMode === opt.value
                   ? "bg-accent/15 text-accent"
                   : "text-ink-muted hover:text-ink hover:bg-surface-elevated/60"
@@ -1253,7 +1258,7 @@ export default function PremiumChartPanel({
             {error}
           </div>
         ) : null}
-        <div className="relative h-[340px]">
+        <div className="relative h-[260px] sm:h-[340px]">
           {/* Axis labels */}
           <div className="pointer-events-none absolute top-1 left-1 z-10 rounded bg-background/80 px-1.5 py-0.5 text-[0.6rem] font-bold text-[#4a83ff]">
             가격

@@ -7,6 +7,12 @@ import { formatDate, stripHtml } from "../../lib/api";
 import { fetchCachedJson } from "../../lib/clientCache";
 import SurfaceNotice from "../ui/SurfaceNotice";
 
+function sourceColor(name) {
+  let h = 0;
+  for (let i = 0; i < (name || "").length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return `hsl(${Math.abs(h) % 360}, 50%, 45%)`;
+}
+
 const TABS = [
   { key: "news", label: "전체 뉴스" },
   { key: "social", label: "소셜" },
@@ -45,7 +51,7 @@ function NewsCard({ item, secondary }) {
   return (
     <article className="rounded-lg border border-border bg-background/70 p-4 transition-colors hover:bg-surface-elevated/30">
       <div className="mb-1.5 flex items-center gap-2 text-[0.68rem] text-ink-muted">
-        <span className="rounded bg-accent/10 px-1.5 py-0.5 font-bold text-accent">{secondary}</span>
+        <span className="rounded border px-1.5 py-0.5 font-bold" style={{ color: sourceColor(secondary), borderColor: sourceColor(secondary) + '40' }}>{secondary}</span>
         <span>{formatDate(item.datetime)}</span>
       </div>
       <h2 className="text-sm font-semibold text-ink">{item.title || item.username || item.name}</h2>
@@ -55,12 +61,13 @@ function NewsCard({ item, secondary }) {
       {item.url ? (
         <div className="mt-2">
           <a
-            className="text-xs font-semibold text-accent hover:text-accent/80"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent/80"
             href={item.url}
             rel="noreferrer"
             target="_blank"
           >
             원문 열기
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
         </div>
       ) : null}

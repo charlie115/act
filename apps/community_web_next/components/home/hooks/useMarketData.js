@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { toast } from "sonner";
 import { fetchCachedJson } from "../../../lib/clientCache";
 
 export default function useMarketData({
@@ -229,6 +230,7 @@ export default function useMarketData({
       )}&market_codes=${encodeURIComponent(originMarketCode)}`
     );
     setFavoriteAssets(payload);
+    toast(favoriteId ? `${symbol} 즐겨찾기 해제` : `⭐ ${symbol} 즐겨찾기 추가`);
   }
 
   return {

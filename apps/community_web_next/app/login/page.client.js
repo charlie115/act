@@ -42,7 +42,7 @@ export default function LoginClientPage({ nextPath = "/" }) {
       <p className="auth-card__hint">
         신규 방문자는 로그인 후 자동으로 회원가입 단계로 이동합니다.
       </p>
-      <Link className="ghost-button auth-inline-button" href="/">
+      <Link className="inline-flex justify-center text-sm text-ink-muted hover:text-ink transition-colors" href="/">
         홈으로 돌아가기
       </Link>
     </AuthCard>

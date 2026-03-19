@@ -11,7 +11,7 @@ export default function AuthCard({
   highlights = [],
 }) {
   return (
-    <section className="grid min-h-[min(78vh,840px)] place-items-center px-4 py-12">
+    <section className="grid min-h-[min(78vh,840px)] place-items-center px-4 pt-6 pb-12">
       <div className="relative w-full max-w-[480px] overflow-hidden rounded-2xl border border-border bg-background/95 shadow-2xl backdrop-blur-sm">
         {/* Decorative gradient orb */}
         <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-accent/10 blur-3xl" />

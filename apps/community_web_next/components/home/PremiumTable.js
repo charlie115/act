@@ -20,7 +20,7 @@ function AssetIcon({ symbol, size = 14 }) {
   );
 }
 
-function AssetBadge({ symbol, size = 14 }) {
+function AssetBadge({ symbol, size = 12 }) {
   const bg = `hsl(${[...symbol].reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 55%, 42%)`;
   return (
     <span className="inline-flex flex-shrink-0">
@@ -47,6 +47,22 @@ function fmt(v, d = 2, m = 0) { if (v == null || v === "") return "-"; return ne
 function fmtVol(v) { const n = Number(v || 0); if (!Number.isFinite(n)) return "-"; if (Math.abs(n) >= 1e8) return `${(n/1e8).toFixed(1)}억`; if (Math.abs(n) >= 1e4) return `${(n/1e4).toFixed(0)}만`; return fmt(n, 0); }
 function pc(v) { const n = Number(v || 0); return n > 0 ? "text-positive" : n < 0 ? "text-negative" : "text-ink-muted"; }
 
+function premiumTextColor(value, maxAbs = 4) {
+  const n = Number(value || 0);
+  if (n === 0) return { color: "var(--color-ink-muted)" };
+  const t = Math.min(1, Math.abs(n) / maxAbs);
+  if (n > 0) {
+    // Green: from white (0) to full green (maxAbs)
+    const chroma = t * 0.18;
+    const lightness = 0.95 - t * 0.19;
+    return { color: `oklch(${lightness.toFixed(2)} ${chroma.toFixed(3)} 155)` };
+  }
+  // Red: from white (0) to full red (maxAbs)
+  const chroma = t * 0.20;
+  const lightness = 0.95 - t * 0.27;
+  return { color: `oklch(${lightness.toFixed(2)} ${chroma.toFixed(3)} 25)` };
+}
+
 const ACCESSORS = { asset: r => r.base_asset||"", price: r => Number(r.tp||0), enter: r => Number(r.LS_close||0), exit: r => Number(r.SL_close||0), spread: r => Number(r.SL_close||0)-Number(r.LS_close||0), volume: r => Number(r.atp24h||0) };
 function doSort(rows, key, dir, favSet) {
   if (!key || !ACCESSORS[key]) return rows;
@@ -59,7 +75,7 @@ function doSort(rows, key, dir, favSet) {
   });
 }
 
-const TD = "px-0.5 py-1 sm:px-2 sm:py-1.5 lg:px-3";
+const TD = "px-0.5 py-0.5 sm:px-2 sm:py-1.5 lg:px-3 whitespace-nowrap";
 const TDM = `${TD} tabular-nums`;
 const IBADGE = { 1: "bg-green-500", 2: "bg-blue-500", 4: "bg-amber-500", 8: "bg-purple-500" };
 
@@ -74,20 +90,20 @@ function FundingCountdown({ fundingTime }) {
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   const s = Math.floor((diff % 60000) / 1000);
-  return <div className="text-[0.46rem] sm:text-[0.55rem] text-ink-muted/50 italic tabular-nums whitespace-nowrap">{h}시간 {String(m).padStart(2,"0")}분 {String(s).padStart(2,"0")}초 남음</div>;
+  return <div className="text-[0.48rem] sm:text-[0.55rem] text-ink-muted/50 italic tabular-nums whitespace-nowrap">{h}:{String(m).padStart(2,"0")}:{String(s).padStart(2,"0")}<span className="hidden sm:inline"> 남음</span></div>;
 }
 
 function FundingCell({ fi }) {
-  if (!fi) return <td className={`${TDM} text-right text-[0.56rem] sm:text-xs text-ink-muted/40 table-cell`}>-</td>;
+  if (!fi) return <td className={`${TDM} text-right text-[0.5rem] sm:text-xs text-ink-muted/40`}>-</td>;
   const rate = Number(fi.funding_rate || 0);
   const pct = (rate * 100).toFixed(3);
   const intH = fi.funding_interval_hours;
   const badge = IBADGE[intH] || "bg-blue-500";
   return (
-    <td className={`${TDM} text-right text-[0.56rem] sm:text-xs table-cell`}>
+    <td className={`${TDM} text-right text-[0.5rem] sm:text-xs`}>
       <div className="flex items-center justify-end gap-1">
         <span className={pc(rate)}>{pct}</span>
-        {intH != null && <span className={`rounded px-1 py-px text-[0.42rem] sm:text-[0.5rem] font-bold text-white leading-none ${badge}`}>{intH}h</span>}
+        {intH != null && <span className={`rounded px-1 py-px text-[0.38rem] sm:text-[0.5rem] font-bold text-white leading-none ${badge}`}>{intH}h</span>}
       </div>
       {fi.funding_time && <FundingCountdown fundingTime={fi.funding_time} />}
     </td>
@@ -96,7 +112,7 @@ function FundingCell({ fi }) {
 
 function WalletCell({ walletData, targetMarketCode, originMarketCode }) {
   if (!walletData || !targetMarketCode || !originMarketCode) {
-    return <td className={`${TD} text-center text-ink-muted/25 table-cell`}>-</td>;
+    return <td className={`${TD} text-center text-ink-muted/25 hidden sm:table-cell`}>-</td>;
   }
   const bothSpot = targetMarketCode.includes("SPOT") && originMarketCode.includes("SPOT");
   const tEx = targetMarketCode.split("_")[0];
@@ -119,10 +135,10 @@ function WalletCell({ walletData, targetMarketCode, originMarketCode }) {
   }
 
   return (
-    <td className={`${TD} text-center table-cell`}>
+    <td className={`${TD} text-center hidden sm:table-cell`}>
       <div className="flex flex-col items-center leading-none">
-        <span className={`text-[0.7rem] ${canRight ? "text-positive" : "text-negative/40"}`}>→</span>
-        <span className={`text-[0.7rem] ${canLeft ? "text-positive" : "text-negative/40"}`}>←</span>
+        <span className={`text-[0.55rem] sm:text-[0.7rem] ${canRight ? "text-positive" : "text-negative/40"}`}>→</span>
+        <span className={`text-[0.55rem] sm:text-[0.7rem] ${canLeft ? "text-positive" : "text-negative/40"}`}>←</span>
       </div>
     </td>
   );
@@ -131,29 +147,31 @@ function WalletCell({ walletData, targetMarketCode, originMarketCode }) {
 const Row = memo(function Row({ asset, row, expanded, favActive, loggedIn, onSelect, onFav, targetFI, originFI, volDiff, targetIsSpot, originIsSpot, walletData, targetMC, originMC }) {
   const ls = Number(row.LS_close || 0), sl = Number(row.SL_close || 0), spread = sl - ls;
   return (
-    <tr className={`cursor-pointer transition-colors hover:bg-surface-elevated/40 ${expanded ? "bg-surface-elevated/20" : ""}`} onClick={() => onSelect(asset)}>
-      <td className={`${TD} hidden sm:table-cell w-7`}>
-        <button className={`text-xs ${favActive ? "text-opportunity" : "text-ink-muted/30 hover:text-ink-muted/60"} disabled:opacity-30`} disabled={!loggedIn} onClick={e => { e.stopPropagation(); onFav(asset); }} type="button">★</button>
+    <tr className={`cursor-pointer transition-colors hover:bg-surface-elevated/60 ${expanded ? "bg-surface-elevated/20" : ""}`} onClick={() => onSelect(asset)}>
+      <td className={`${TD} hidden sm:table-cell w-4`}>
+        <button className={`group/star transition-all duration-200 ${favActive ? "scale-110" : "hover:scale-125 active:scale-95"} disabled:opacity-40`} disabled={!loggedIn} onClick={e => { e.stopPropagation(); onFav(asset); }} type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" className={`transition-all duration-200 ${favActive ? "fill-opportunity text-opportunity drop-shadow-[0_0_4px_rgba(240,185,11,0.6)]" : "fill-none text-ink-muted/30 stroke-current group-hover/star:text-opportunity/50 group-hover/star:fill-opportunity/10"}`} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </button>
       </td>
       <td className={TD}>
         <div className="flex items-center gap-1.5">
-          <AssetBadge symbol={asset} size={16} />
-          <strong className="text-[0.6rem] sm:text-xs text-ink">{asset}</strong>
+          <AssetBadge symbol={asset} size={12} />
+          <strong className="text-[0.56rem] sm:text-xs text-ink">{asset}</strong>
           <ChevronRight size={8} strokeWidth={2.5} className={`flex-shrink-0 text-ink-muted/40 transition-transform hidden sm:inline-block ${expanded ? "rotate-90 text-accent" : ""}`} />
         </div>
       </td>
       <WalletCell walletData={walletData} targetMarketCode={targetMC} originMarketCode={originMC} />
       <td className={`${TDM} text-right whitespace-nowrap`}>
-        <div className="flex items-baseline justify-end gap-1"><span className="text-[0.58rem] sm:text-xs font-semibold text-ink">{fmt(row.tp, row.tp >= 10000 ? 0 : 1)}</span><span className={`rounded px-1 py-px text-[0.5rem] sm:text-[0.56rem] font-semibold leading-none ${Number(row.scr) >= 0 ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative"}`}>{row.scr > 0 ? "+" : ""}{fmt(row.scr, 2, 2)}%</span></div>
-        {row.converted_tp ? <div className="text-[0.5rem] sm:text-[0.58rem] text-ink-muted/40 tabular-nums">{fmt(row.converted_tp, row.converted_tp >= 10000 ? 1 : 2)}</div> : null}
+        <div className="flex items-baseline justify-end gap-1"><span className="text-[0.56rem] sm:text-xs font-semibold text-ink">{fmt(row.tp, row.tp >= 10000 ? 0 : 1)}</span><span className={`rounded px-1 py-px text-[0.45rem] sm:text-[0.56rem] font-semibold leading-none ${Number(row.scr) >= 0 ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative"}`}>{row.scr > 0 ? "+" : ""}{fmt(row.scr, 2, 2)}%</span></div>
+        {row.converted_tp ? <div className="text-[0.55rem] sm:text-[0.58rem] text-ink-muted/40 tabular-nums">{fmt(row.converted_tp, row.converted_tp >= 10000 ? 1 : 2)}</div> : null}
       </td>
-      <td className={`${TDM} text-right text-[0.56rem] sm:text-xs font-bold ${pc(ls)}`} style={{ backgroundColor: premiumHeatmap(ls) }}>{fmt(ls, 3, 3)}</td>
-      <td className={`${TDM} text-right text-[0.56rem] sm:text-xs font-bold ${pc(sl)} table-cell`} style={{ backgroundColor: premiumHeatmap(sl) }}>{fmt(sl, 3, 3)}</td>
-      <td className={`${TDM} text-right text-[0.56rem] sm:text-xs ${pc(spread)}`} style={{ backgroundColor: spreadHeatmap(spread) }}>{fmt(spread, 2, 2)} %p</td>
-      <td className={`${TDM} text-right text-[0.56rem] sm:text-xs ${pc(volDiff)} table-cell`}>{volDiff != null ? Number(volDiff).toFixed(2) : "-"}</td>
+      <td className={`${TDM} text-right text-[0.54rem] sm:text-xs font-bold`} style={{ backgroundColor: premiumHeatmap(ls), ...premiumTextColor(ls) }}>{fmt(ls, 3, 3)}</td>
+      <td className={`${TDM} text-right text-[0.54rem] sm:text-xs font-bold hidden sm:table-cell`} style={{ backgroundColor: premiumHeatmap(sl), ...premiumTextColor(sl) }}>{fmt(sl, 3, 3)}</td>
+      <td className={`${TDM} text-right text-[0.54rem] sm:text-xs ${pc(spread)}`} style={{ backgroundColor: spreadHeatmap(spread) }}>{fmt(spread, 2, 2)} %p</td>
+      <td className={`${TDM} text-right text-[0.54rem] sm:text-xs ${pc(volDiff)}`}>{volDiff != null ? Number(volDiff).toFixed(2) : "-"}</td>
       {targetIsSpot ? null : <FundingCell fi={targetFI} />}
       {originIsSpot ? null : <FundingCell fi={originFI} />}
-      <td className={`${TDM} text-right text-[0.56rem] sm:text-xs text-ink-muted`}>{fmtVol(row.atp24h)}</td>
+      <td className={`${TDM} text-right text-[0.54rem] sm:text-xs text-ink-muted`}>{fmtVol(row.atp24h)}</td>
     </tr>
   );
 }, (p, n) => p.row === n.row && p.expanded === n.expanded && p.favActive === n.favActive && p.loggedIn === n.loggedIn && p.targetFI === n.targetFI && p.originFI === n.originFI && p.volDiff === n.volDiff && p.targetIsSpot === n.targetIsSpot && p.originIsSpot === n.originIsSpot && p.walletData === n.walletData);
@@ -161,7 +179,7 @@ const Row = memo(function Row({ asset, row, expanded, favActive, loggedIn, onSel
 function SortBtn({ children, sortKey, current, dir, onSort, className = "", vis = "" }) {
   const active = current === sortKey;
   return (
-    <th className={`sticky top-0 z-[1] px-0.5 py-2.5 sm:px-2 lg:px-3 text-[0.46rem] sm:text-[0.6rem] font-bold uppercase tracking-wider text-ink-muted/60 bg-background whitespace-nowrap ${vis} ${className}`}>
+    <th className={`sticky top-0 z-[1] px-0.5 py-1.5 sm:px-2 lg:px-3 text-[0.48rem] sm:text-[0.6rem] font-bold uppercase tracking-wider text-ink-muted bg-background whitespace-nowrap ${vis} ${className}`}>
       {sortKey ? (
         <button className="inline-flex items-center gap-0.5 hover:text-ink" onClick={() => onSort(sortKey)} type="button">
           {children}
@@ -210,20 +228,20 @@ export default function PremiumTable({ displayRows, expandedAsset, onSelectAsset
   return (
     <div>
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full table-auto">
           <thead>
             <tr className="border-b-2 border-border/60">
-              <SortBtn vis="table-cell" className="w-[30px]" />
-              <SortBtn className="text-left w-[90px]" sortKey="asset" current={sortKey} dir={sortDir} onSort={handleSort}>자산</SortBtn>
-              <SortBtn vis="table-cell" className="text-center w-[40px]">전송</SortBtn>
-              <SortBtn className="text-right w-[100px]" sortKey="price" current={sortKey} dir={sortDir} onSort={handleSort}>현재가</SortBtn>
+              <SortBtn vis="hidden sm:table-cell" className="w-4" />
+              <SortBtn className="text-left" sortKey="asset" current={sortKey} dir={sortDir} onSort={handleSort}>자산</SortBtn>
+              <SortBtn vis="hidden sm:table-cell" className="text-center w-4"><span className="sr-only">전송</span>⇄</SortBtn>
+              <SortBtn className="text-right" sortKey="price" current={sortKey} dir={sortDir} onSort={handleSort}>현재가</SortBtn>
               <SortBtn className="text-right" sortKey="enter" current={sortKey} dir={sortDir} onSort={handleSort}>진입김프</SortBtn>
-              <SortBtn vis="table-cell" className="text-right" sortKey="exit" current={sortKey} dir={sortDir} onSort={handleSort}>탈출김프</SortBtn>
+              <SortBtn vis="hidden sm:table-cell" className="text-right" sortKey="exit" current={sortKey} dir={sortDir} onSort={handleSort}>탈출김프</SortBtn>
               <SortBtn className="text-right" sortKey="spread" current={sortKey} dir={sortDir} onSort={handleSort}>스프레드</SortBtn>
-              <SortBtn vis="table-cell" className="text-right">변동성</SortBtn>
-              {!targetIsSpot && <SortBtn vis="table-cell" className="text-right"><span className="inline-flex items-center gap-1">펀딩률 <ExIcon exchange={targetEx} size={12} /></span></SortBtn>}
-              {!originIsSpot && <SortBtn vis="table-cell" className="text-right"><span className="inline-flex items-center gap-1">펀딩률 <ExIcon exchange={originEx} size={12} /></span></SortBtn>}
-              <SortBtn className="text-right w-[80px]" sortKey="volume" current={sortKey} dir={sortDir} onSort={handleSort}>거래액(일)</SortBtn>
+              <SortBtn className="text-right">변동성</SortBtn>
+              {!targetIsSpot && <SortBtn className="text-right"><span className="inline-flex items-center gap-1">펀딩률 <ExIcon exchange={targetEx} size={12} /></span></SortBtn>}
+              {!originIsSpot && <SortBtn className="text-right"><span className="inline-flex items-center gap-1">펀딩률 <ExIcon exchange={originEx} size={12} /></span></SortBtn>}
+              <SortBtn className="text-right" sortKey="volume" current={sortKey} dir={sortDir} onSort={handleSort}>거래액(일)</SortBtn>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/20">

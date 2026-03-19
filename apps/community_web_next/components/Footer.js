@@ -18,7 +18,8 @@ const LEGAL_LINKS = [
 
 const Footer = memo(function Footer() {
   return (
-    <footer className="mt-12 border-t border-border bg-background/98">
+    <footer className="mt-12 border-t-0 bg-background/98">
+      <div className="h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
       <div className="mx-auto w-[min(1280px,calc(100vw-24px))] py-8">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}

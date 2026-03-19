@@ -1,51 +1,43 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
-
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import SyncAltIcon from "@mui/icons-material/SyncAlt";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
-import Dialog from "@mui/material/Dialog";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import ListItemButton from "@mui/material/ListItemButton";
-import Stack from "@mui/material/Stack";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { ArrowLeftRight, ChevronDown, X } from "lucide-react";
 
 function OptionRow({ item, selected, onSelect, tradeSupportRequired }) {
   const disabled =
     item.disabled || (tradeSupportRequired && item.value !== "ALL" && !item.tradeSupport);
 
   return (
-    <ListItemButton
+    <button
+      className={`flex w-full items-center justify-between gap-2 border-l-2 px-4 py-3 text-left text-sm transition-all ${
+        disabled
+          ? "pointer-events-none opacity-40 border-l-transparent"
+          : selected
+            ? "border-l-accent bg-accent/10 text-ink"
+            : "border-l-transparent text-ink-muted hover:bg-surface-elevated/40 hover:text-ink"
+      }`}
       disabled={disabled}
       onClick={() => onSelect(item)}
-      selected={selected}
-      sx={{
-        alignItems: "center",
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 2,
-      }}
+      type="button"
     >
       {item.target && item.origin ? (
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+        <span className="flex items-center gap-2 flex-wrap">
           <span>{item.target.getLabel()}</span>
-          <SyncAltIcon color="primary" fontSize="small" />
+          <ArrowLeftRight size={14} className="text-accent/60" />
           <span>{item.origin.getLabel()}</span>
-        </Stack>
+        </span>
       ) : (
         <span>{item.getLabel?.() || item.label || item.value}</span>
       )}
 
-      <Stack direction="row" spacing={1}>
+      <span className="flex items-center gap-2 flex-shrink-0">
         {item.value !== "ALL" && item.tradeSupport ? (
-          <Chip color="success" label="Trade Support" size="small" />
+          <span className="rounded-full bg-positive/15 px-2 py-0.5 text-[0.62rem] font-bold text-positive">Trade</span>
         ) : null}
+        {selected && <span className="text-accent">✓</span>}
         {item.secondaryIcon || null}
-      </Stack>
-    </ListItemButton>
+      </span>
+    </button>
   );
 }
 
@@ -61,18 +53,36 @@ const BotMarketCodeCombinationSelector = forwardRef(function BotMarketCodeCombin
   ref
 ) {
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
     open: () => setOpen(true),
     toggle: () => setOpen((current) => !current),
   }));
 
+  // Close on click outside
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e) {
+      if (dialogRef.current && !dialogRef.current.contains(e.target)) setOpen(false);
+    }
+    function handleKey(e) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
   const buttonLabel = useMemo(() => {
     if (value?.target && value?.origin) {
       return `${value.target.getLabel()} ↔ ${value.origin.getLabel()}`;
     }
 
-    return value?.getLabel?.() || value?.label || "Select market code combination";
+    return value?.getLabel?.() || value?.label || "마켓 조합 선택";
   }, [value]);
 
   function handleSelect(item) {
@@ -88,39 +98,48 @@ const BotMarketCodeCombinationSelector = forwardRef(function BotMarketCodeCombin
   }
 
   return (
-    <Box sx={{ px: { xs: 0, md: 2 } }}>
-      <Button
-        endIcon={<ArrowDropDownIcon fontSize="small" />}
+    <div>
+      <button
+        className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background/80 px-3 py-2 text-[0.72rem] sm:text-sm text-ink transition-colors hover:border-accent/30"
         onClick={() => setOpen(true)}
-        sx={{
-          fontSize: { xs: "0.72rem", md: "0.82rem" },
-          justifyContent: "space-between",
-          minWidth: 0,
-          width: "100%",
-          textTransform: "none",
-          ...buttonStyle,
-        }}
-        variant="outlined"
+        style={buttonStyle}
+        type="button"
       >
-        {buttonLabel}
-      </Button>
-      <Dialog maxWidth="sm" onClose={() => setOpen(false)} open={open}>
-        <DialogTitle sx={{ fontWeight: 700 }}>
-          Select a market code combination
-        </DialogTitle>
-        <DialogContent sx={{ p: 0 }}>
-          {options.map((item) => (
-            <OptionRow
-              item={item}
-              key={item.value}
-              onSelect={handleSelect}
-              selected={item.value === value?.value}
-              tradeSupportRequired={tradeSupportRequired}
-            />
-          ))}
-        </DialogContent>
-      </Dialog>
-    </Box>
+        <span className="truncate">{buttonLabel}</span>
+        <ChevronDown size={14} className="text-ink-muted flex-shrink-0" />
+      </button>
+
+      {open ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4">
+          <div
+            ref={dialogRef}
+            className="w-full max-w-md rounded-xl border border-border bg-background shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <h3 className="text-sm font-bold text-ink">마켓 조합 선택</h3>
+              <button
+                className="rounded-lg p-1 text-ink-muted hover:bg-surface-elevated hover:text-ink"
+                onClick={() => setOpen(false)}
+                type="button"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto divide-y divide-border/30">
+              {options.map((item) => (
+                <OptionRow
+                  item={item}
+                  key={item.value}
+                  onSelect={handleSelect}
+                  selected={item.value === value?.value}
+                  tradeSupportRequired={tradeSupportRequired}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 });
 

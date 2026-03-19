@@ -11,13 +11,13 @@
   --color-positive: #16c784;
   --color-negative: #ea3943;
   --color-opportunity: #f0b90b;
-  --font-sans: "Space Grotesk", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "Inter", monospace;
 }
 
 :root {
-  --font-sans: "Space Grotesk", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "Inter", monospace;
   --background: #080c16;
   --surface: rgba(12, 18, 31, 0.94);
   --surface-strong: #121a2c;
@@ -49,6 +49,9 @@ body {
   margin: 0;
   font-family: var(--font-sans);
   color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
   background:
     radial-gradient(circle at top left, rgba(43, 115, 255, 0.2), transparent 22%),
     radial-gradient(circle at top right, rgba(98, 42, 168, 0.16), transparent 28%),
@@ -1606,3 +1609,11 @@ img {
   background: #121a2c;
 }
 
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

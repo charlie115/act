@@ -48,7 +48,7 @@ function ColumnCard({ title, items, renderItem }) {
 
 export default function NewsDigest({ news = [], announcements = [], socialPosts = [] }) {
   return (
-    <section className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+    <section className={`grid grid-cols-1 gap-5 ${socialPosts.length > 0 ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
       <ColumnCard
         title="최신 기사"
         items={news}
@@ -67,17 +67,19 @@ export default function NewsDigest({ news = [], announcements = [], socialPosts 
           />
         )}
       />
-      <ColumnCard
-        title="소셜 피드"
-        items={socialPosts}
-        renderItem={(item) => (
-          <Item
-            key={`social-${item.id}`}
-            item={{ ...item, title: item.username || item.name }}
-            type={item.social_media || "소셜"}
-          />
-        )}
-      />
+      {socialPosts.length > 0 && (
+        <ColumnCard
+          title="소셜 피드"
+          items={socialPosts}
+          renderItem={(item) => (
+            <Item
+              key={`social-${item.id}`}
+              item={{ ...item, title: item.username || item.name }}
+              type={item.social_media || "소셜"}
+            />
+          )}
+        />
+      )}
     </section>
   );
 }

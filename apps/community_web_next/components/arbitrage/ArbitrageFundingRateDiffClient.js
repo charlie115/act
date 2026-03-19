@@ -45,8 +45,10 @@ function pc(value) {
 
 function diffBg(value) {
   const n = Math.abs(Number(value || 0));
-  if (n >= 0.001) return "bg-opportunity/10";
-  if (n >= 0.0005) return "bg-opportunity/5";
+  if (n >= 0.005) return "bg-opportunity/20";
+  if (n >= 0.002) return "bg-opportunity/12";
+  if (n >= 0.001) return "bg-opportunity/8";
+  if (n >= 0.0005) return "bg-opportunity/4";
   return "";
 }
 
@@ -129,13 +131,18 @@ export default function ArbitrageFundingRateDiffClient() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-background/70 px-2.5 py-1.5 text-[0.7rem] text-ink-muted transition-colors hover:border-accent/30">
-              <input
-                checked={sameExchangeOnly}
-                className="accent-accent"
-                onChange={(e) => setSameExchangeOnly(e.target.checked)}
-                type="checkbox"
-              />
+            <label className="inline-flex cursor-pointer items-center gap-1.5 text-[0.7rem] text-ink-muted">
+              <button
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  sameExchangeOnly ? "bg-accent" : "bg-border"
+                }`}
+                onClick={() => setSameExchangeOnly(!sameExchangeOnly)}
+                type="button"
+              >
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                  sameExchangeOnly ? "translate-x-4" : "translate-x-0.5"
+                }`} />
+              </button>
               같은 거래소끼리만
             </label>
             <div className="relative">

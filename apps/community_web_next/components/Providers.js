@@ -1,23 +1,29 @@
 "use client";
 
-import { CssBaseline, ThemeProvider } from "@mui/material";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import { LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterLuxon } from "@mui/x-date-pickers/AdapterLuxon";
+import { Toaster } from "sonner";
 
-import theme from "../lib/theme";
 import AuthProvider from "./auth/AuthProvider";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
 export default function Providers({ children }) {
   const content = (
-    <LocalizationProvider dateAdapter={AdapterLuxon}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <AuthProvider>{children}</AuthProvider>
-      </ThemeProvider>
-    </LocalizationProvider>
+    <>
+      <AuthProvider>{children}</AuthProvider>
+      <Toaster
+        theme="dark"
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: "#121a2c",
+            border: "1px solid rgba(115, 136, 181, 0.2)",
+            color: "#eef2ff",
+            fontSize: "0.84rem",
+          },
+        }}
+      />
+    </>
   );
 
   if (!googleClientId) {

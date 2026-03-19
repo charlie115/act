@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "sonner";
+
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const AuthContext = createContext({
@@ -47,6 +49,7 @@ export default function AuthProvider({ children }) {
     setToken(null);
     setUser(null);
     localStorage.removeItem("acw_auth");
+    toast("로그아웃 되었습니다");
   }, []);
 
   const authorizedRequest = useCallback(
@@ -91,7 +94,7 @@ export default function AuthProvider({ children }) {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/auth/google/", {
+        const res = await fetch("/api/auth/login/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ access_token: googleAccessToken }),
@@ -102,6 +105,7 @@ export default function AuthProvider({ children }) {
         }
         const authData = await res.json();
         login(authData);
+        toast.success("로그인 성공");
       } catch (err) {
         setError(err.message);
         throw err;

@@ -17,10 +17,6 @@ import {
   Wallet,
 } from "lucide-react";
 
-import Box from "@mui/material/Box";
-import CheckBoxIcon from "@mui/icons-material/CheckBox";
-import IconButton from "@mui/material/IconButton";
-import AddIcon from "@mui/icons-material/Add";
 
 import sortBy from "lodash/sortBy";
 import uniqBy from "lodash/uniqBy";
@@ -132,7 +128,7 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
     return [
       {
         getLabel: () => "All",
-        icon: <CheckBoxIcon sx={{ verticalAlign: "middle" }} />,
+        icon: <span className="text-accent">✓</span>,
         value: "ALL",
       },
       ...sortBy(
@@ -156,16 +152,13 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
               isSpot: originMarket.includes("SPOT"),
             },
             secondaryIcon: !tradeConfigAllocation?.trade_config_uuid ? (
-              <IconButton
-                color="success"
-                edge="end"
-                onClick={(event) => {
-                  event.stopPropagation();
-                }}
-                sx={{ p: 0 }}
+              <button
+                className="text-positive hover:text-positive/80"
+                onClick={(event) => { event.stopPropagation(); }}
+                type="button"
               >
-                <AddIcon sx={{ fontSize: 20 }} />
-              </IconButton>
+                +
+              </button>
             ) : null,
             target: {
               ...target,

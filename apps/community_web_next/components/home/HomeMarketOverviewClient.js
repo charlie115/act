@@ -113,12 +113,12 @@ export default function HomeMarketOverviewClient() {
   );
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-3">
       {/* Ticker bar */}
       <MarketSummaryBar liveRows={liveRows} connected={connected} lastReceivedAt={lastReceivedAt} volatilityMap={volatilityMap} />
 
       {/* Market picker + search — single row */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-2">
         <MarketCombinationPicker
           marketCodes={marketCodes}
           onOriginChange={setOriginMarketCode}
@@ -126,11 +126,11 @@ export default function HomeMarketOverviewClient() {
           originMarketCode={effectiveOriginMarketCode}
           targetMarketCode={targetMarketCode}
         />
-        <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2">
-          <div className="relative w-full sm:w-auto">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted/60" size={14} />
+        <div className="ml-auto flex items-center">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-ink-muted/60" size={12} />
             <input
-              className="w-full sm:w-[180px] rounded-lg border border-border bg-background/80 py-1.5 pl-8 pr-3 text-sm text-ink placeholder:text-ink-muted/50 outline-none transition-colors focus:border-accent/40"
+              className="w-[100px] sm:w-[160px] rounded-md border border-border bg-background/80 py-1 pl-7 pr-2 text-xs text-ink placeholder:text-ink-muted/50 outline-none transition-colors focus:border-accent/40 focus:w-[160px] sm:focus:w-[200px]"
               onChange={(e) => setSearch(e.target.value)}
               placeholder="검색"
               value={search}
