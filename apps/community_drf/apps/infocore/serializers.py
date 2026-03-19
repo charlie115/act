@@ -45,6 +45,7 @@ class KlineDataQueryParamsSerializer(serializers.Serializer):
         required=False,
         input_formats=[DATE_TIME_FORMAT],
     )
+    limit = serializers.IntegerField(required=False, min_value=1, max_value=1000)
     tz = TimezoneField(default=UTC)
 
 
