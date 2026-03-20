@@ -4,7 +4,7 @@ import uuid
 from decimal import Decimal
 from datetime import datetime
 from django.conf import settings
-from django.db import models, transaction
+from django.db import models, transaction, IntegrityError
 from django.contrib.auth.models import AbstractUser
 from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MinValueValidator, MaxValueValidator
@@ -100,7 +100,22 @@ class User(AbstractUser):
         if self._state.adding and not self.chat_nickname:
             self.chat_nickname = generate_chat_nickname()
 
-        super(User, self).save(*args, **kwargs)
+        try:
+            super(User, self).save(*args, **kwargs)
+        except IntegrityError as e:
+            if "chat_nickname" in str(e):
+                for _ in range(3):
+                    self.chat_nickname = generate_chat_nickname()
+                    try:
+                        super(User, self).save(*args, **kwargs)
+                        break
+                    except IntegrityError as retry_e:
+                        if "chat_nickname" not in str(retry_e):
+                            raise
+                else:
+                    raise
+            else:
+                raise
 
         if pk is None:
             DepositBalance.objects.create(user=self)

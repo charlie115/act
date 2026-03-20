@@ -47,7 +47,7 @@ export default function ChatInput({ onSend, disabled, nickname }) {
           ref={inputRef}
           className="flex-1 resize-none rounded-lg border border-border bg-surface-elevated px-3 py-2 text-base text-ink placeholder:text-ink-muted/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
           disabled={disabled}
-          maxLength={500}
+          maxLength={2000}
           onChange={(event) => {
             if (justSentRef.current) return;
             const val = event.target.value;

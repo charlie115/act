@@ -26,3 +26,4 @@ class PastChatMessagesSerializer(serializers.Serializer):
         default_timezone=TZ_UTC,
     )
     is_anon = serializers.BooleanField(required=False, default=False)
+    status = serializers.CharField(required=False, default="OK")

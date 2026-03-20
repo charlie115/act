@@ -11,7 +11,7 @@ function msgKey(m) {
 }
 
 export default function CommunityMessages({ visible, onNewCount }) {
-  const { user, loggedIn } = useAuth();
+  const { user, token, loggedIn } = useAuth();
   const containerRef = useRef(null);
   const wsRef = useRef(null);
   const shouldScrollRef = useRef(true);
@@ -157,7 +157,9 @@ export default function CommunityMessages({ visible, onNewCount }) {
       return;
     }
 
-    const wsEndpoint = `${wsUrl}/chat/`;
+    const wsEndpoint = token
+      ? `${wsUrl}/chat/?token=${encodeURIComponent(token)}`
+      : `${wsUrl}/chat/`;
     let ws;
     let reconnectTimeout;
 
@@ -236,7 +238,7 @@ export default function CommunityMessages({ visible, onNewCount }) {
         ws.close();
       }
     };
-  }, [nickname]);
+  }, [nickname, token]);
 
   // Report badge count
   useEffect(() => {

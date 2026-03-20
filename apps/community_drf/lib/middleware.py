@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import parse_qs
 
 from channels.auth import AuthMiddlewareStack
 from channels.db import database_sync_to_async
@@ -44,12 +45,26 @@ class TokenAuthMiddleware:
         headers = dict(scope["headers"])
 
         scope["user"] = AnonymousUser()
+
+        token_key = None
+
+        # Primary: check Authorization header
         if b"authorization" in headers:
             parts = headers[b"authorization"].decode().split()
-            if len(parts) == 2:
-                token_name, token_key = parts
-                if token_name == "Bearer":
-                    scope["user"] = await get_user_from_jwt(token_key)
+            if len(parts) == 2 and parts[0] == "Bearer":
+                token_key = parts[1]
+
+        # Fallback: check query string (browser WebSocket API cannot send headers)
+        if token_key is None:
+            query_string = scope.get("query_string", b"").decode()
+            if query_string:
+                qs = parse_qs(query_string)
+                token_list = qs.get("token", [])
+                if token_list:
+                    token_key = token_list[0]
+
+        if token_key:
+            scope["user"] = await get_user_from_jwt(token_key)
 
         return await self.app(scope, receive, send)
 

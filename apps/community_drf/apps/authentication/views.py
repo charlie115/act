@@ -19,6 +19,7 @@ from dj_rest_auth.views import (
 )
 from dj_rest_auth.jwt_auth import get_refresh_view
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from django.db import IntegrityError
 from rest_framework import exceptions, permissions, response
 from rest_framework_simplejwt.views import TokenVerifyView
 
@@ -48,8 +49,13 @@ class AuthGoogleLoginView(SocialLoginView):
 
         # Backfill chat_nickname for existing users who don't have one
         if not self.user.chat_nickname:
-            self.user.chat_nickname = generate_chat_nickname()
-            self.user.save(update_fields=["chat_nickname"])
+            for _ in range(3):
+                self.user.chat_nickname = generate_chat_nickname()
+                try:
+                    self.user.save(update_fields=["chat_nickname"])
+                    break
+                except IntegrityError:
+                    self.user.refresh_from_db()
 
         # Log
         UserAuthLog.objects.create(user=self.user, endpoint="/login/")
@@ -194,8 +200,13 @@ class AuthBasicLoginView(LoginView):
 
         # Backfill chat_nickname for existing users who don't have one
         if not self.user.chat_nickname:
-            self.user.chat_nickname = generate_chat_nickname()
-            self.user.save(update_fields=["chat_nickname"])
+            for _ in range(3):
+                self.user.chat_nickname = generate_chat_nickname()
+                try:
+                    self.user.save(update_fields=["chat_nickname"])
+                    break
+                except IntegrityError:
+                    self.user.refresh_from_db()
 
         # Log
         UserAuthLog.objects.create(user=self.user, endpoint="/login/basic/")
