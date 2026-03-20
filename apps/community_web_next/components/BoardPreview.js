@@ -11,9 +11,9 @@ const CATEGORY_COLORS = POST_CATEGORY_LIST.reduce((acc, cat) => {
 
 export default function BoardPreview({ posts = [] }) {
   return (
-    <section className="rounded-lg border border-border bg-background/92 p-4">
+    <section className="rounded-lg border border-border/60 bg-background/80 backdrop-blur-sm shadow-[0_0_30px_-10px_rgba(43,115,255,0.06)] p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-bold text-ink">최근 게시글</h2>
+        <h2 className="section-title">최근 게시글</h2>
         <Link
           className="text-xs font-semibold text-ink-muted transition-colors hover:text-accent"
           href="/community-board"

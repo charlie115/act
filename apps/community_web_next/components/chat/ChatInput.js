@@ -56,17 +56,21 @@ export default function ChatInput({ onSend, disabled }) {
           }
         }}
         placeholder="메시지 입력..."
-        rows={2}
+        rows={1}
         value={message}
       />
       <button
-        className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-accent/10 disabled:text-ink-muted/40"
+        className={`inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-all duration-150 cursor-pointer active:scale-90 disabled:opacity-30 ${
+          /\S/.test(message)
+            ? "bg-accent text-white shadow-[0_4px_12px_-2px_rgba(43,115,255,0.4)] hover:bg-accent/90"
+            : "text-ink-muted/40"
+        }`}
         disabled={!/\S/.test(message)}
         onClick={handleSubmit}
         title="전송"
         type="button"
       >
-        <Send size={16} strokeWidth={2} />
+        <Send size={15} strokeWidth={2} />
       </button>
     </div>
   );

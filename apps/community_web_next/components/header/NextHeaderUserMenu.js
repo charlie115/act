@@ -32,7 +32,7 @@ export default function NextHeaderUserMenu() {
         <ChevronDown size={12} className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-border bg-surface p-1 shadow-xl">
+        <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-border bg-surface p-1 shadow-xl" style={{ animation: "fadeSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)" }}>
           <Link
             href="/my-page"
             onClick={() => setOpen(false)}

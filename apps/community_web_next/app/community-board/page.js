@@ -3,8 +3,8 @@ import { getBoardPosts } from "../../lib/api";
 import { buildMetadata } from "../../lib/site";
 
 export const metadata = buildMetadata({
-  title: "Community Board",
-  description: "ACW 커뮤니티 게시판을 서버 렌더링으로 제공하는 공개 보드 페이지입니다.",
+  title: "커뮤니티 게시판",
+  description: "암호화폐 차익거래 커뮤니티. 김프 분석, 거래 전략, 시장 토론에 참여하세요.",
   pathname: "/community-board",
 });
 

@@ -77,7 +77,7 @@ export default function GoogleSignInButton() {
 
   return (
     <button
-      className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-white px-4 py-3.5 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md active:scale-[0.99] disabled:opacity-50"
+      className="flex w-full items-center justify-center gap-3 rounded-xl border border-border/60 bg-surface-elevated px-4 py-3.5 text-sm font-semibold text-ink transition-all hover:bg-surface-elevated/80 hover:border-border hover:shadow-[0_4px_16px_-4px_rgba(43,115,255,0.15)] active:scale-[0.97] disabled:opacity-50"
       disabled={isLoading}
       onClick={() => { window.location.href = buildGoogleAuthUrl(); }}
       type="button"

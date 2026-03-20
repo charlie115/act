@@ -27,8 +27,8 @@ export default function MyPageClient() {
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-bold text-ink">마이페이지</h1>
 
-      <div className="rounded-xl border border-border bg-surface p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-ink">계정 정보</h2>
+      <div className="rounded-lg border border-border bg-surface p-6 space-y-4">
+        <h2 className="section-title">계정 정보</h2>
         <div className="grid gap-3 text-sm">
           <div className="flex justify-between border-b border-border/50 pb-2">
             <span className="text-ink-muted">이메일</span>
@@ -44,8 +44,8 @@ export default function MyPageClient() {
       </div>
 
       {!profile.telegram_chat_id && (
-        <div className="rounded-xl border border-border bg-surface p-6 space-y-3">
-          <h2 className="text-lg font-semibold text-ink">텔레그램 연결</h2>
+        <div className="rounded-lg border border-border bg-surface p-6 space-y-3">
+          <h2 className="section-title">텔레그램 연결</h2>
           <p className="text-sm text-ink-muted">텔레그램을 연결하면 실시간 알림을 받을 수 있습니다.</p>
           <TelegramConnectButton botUsername={profile.socialapps?.[0]?.client_id} />
         </div>

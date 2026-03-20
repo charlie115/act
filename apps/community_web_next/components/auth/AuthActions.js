@@ -12,7 +12,7 @@ export default function AuthActions() {
     return (
       <Link
         href="/login"
-        className="w-full text-center block rounded-lg bg-accent px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-accent/80"
+        className="w-full text-center block rounded-lg bg-gradient-to-r from-accent to-[#4da0ff] px-4 py-2 text-sm font-bold text-white shadow-[0_0_16px_-3px_rgba(43,115,255,0.4)] transition-all hover:shadow-[0_0_24px_-3px_rgba(43,115,255,0.6)] hover:brightness-110"
       >
         로그인
       </Link>

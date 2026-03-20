@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 
+import { siteConfig } from "../lib/site";
+
 const LABELS = {
   affiliate: "제휴",
   arbitrage: "아비트리지",
@@ -54,12 +56,43 @@ export default function NextBreadcrumbs() {
     }));
   }, [pathname]);
 
+  const breadcrumbJsonLd = useMemo(() => {
+    if (!crumbs.length) return null;
+
+    const items = [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "홈",
+        item: siteConfig.siteUrl,
+      },
+      ...crumbs.map((crumb, index) => ({
+        "@type": "ListItem",
+        position: index + 2,
+        name: crumb.label,
+        item: `${siteConfig.siteUrl}${crumb.href}`,
+      })),
+    ];
+
+    return {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: items,
+    };
+  }, [crumbs]);
+
   if (!crumbs.length) {
     return null;
   }
 
   return (
     <nav aria-label="Breadcrumb" className="next-breadcrumbs">
+      {breadcrumbJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
+      )}
       <Link className="next-breadcrumbs__link" href="/">
         홈
       </Link>

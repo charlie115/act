@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   Activity,
   ArrowLeftRight,
-  ChevronRight,
   Crosshair,
   History,
   Key,
@@ -303,10 +302,10 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
     <div className="grid gap-4">
       {/* Telegram connect banner */}
       {!user?.telegram_chat_id ? (
-        <div className="flex flex-col gap-3 rounded-lg border border-amber-500/20 bg-amber-950/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-lg border border-warning/20 bg-warning/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="mb-1 flex items-center gap-2">
-              <MessageCircle size={16} strokeWidth={2} className="text-amber-400" />
+              <MessageCircle size={16} strokeWidth={2} className="text-warning" />
               <span className="text-sm font-bold text-ink">텔레그램 연결 필요</span>
             </div>
             <p className="text-[0.78rem] leading-relaxed text-ink-muted">
@@ -332,7 +331,7 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
       ) : null}
 
       {/* Tab bar + Market selector */}
-      <div className="rounded-lg border border-border bg-background/92 overflow-hidden">
+      <div className="rounded-lg border border-border bg-background/90 overflow-hidden">
         {/* Tab navigation */}
         <div className="flex items-center gap-1 overflow-x-auto border-b border-border/50 px-3 py-2">
           {tabs.map((tab) => {
@@ -391,7 +390,7 @@ export default function BotWorkspaceClient({ currentTab, initialConfigUuid }) {
 
       {/* Content area */}
       {user?.telegram_chat_id ? (
-        <div className="rounded-lg border border-border bg-background/92">
+        <div className="rounded-lg border border-border bg-background/90">
           {renderContent()}
         </div>
       ) : null}

@@ -7,9 +7,9 @@ import ChatMessage from "./ChatMessage";
 
 const TYPE_FILTERS = [
   { key: "ALL", label: "전체" },
-  { key: "warning", label: "경고", color: "text-amber-400" },
+  { key: "warning", label: "경고", color: "text-warning" },
   { key: "info", label: "정보", color: "text-accent" },
-  { key: "error", label: "에러", color: "text-red-400" },
+  { key: "error", label: "에러", color: "text-negative" },
 ];
 
 export default function TelegramMessages({ visible, onNewCount }) {

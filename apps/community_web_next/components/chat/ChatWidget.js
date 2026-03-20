@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessageCircle, X } from "lucide-react";
+import { MessageCircle, X, Send } from "lucide-react";
 
 import TelegramMessages from "./TelegramMessages";
 import CommunityMessages from "./CommunityMessages";
@@ -13,26 +13,30 @@ const CHANNELS = [
 
 function ChannelTabs({ channel, onChangeChannel, communityBadge, telegramBadge }) {
   return (
-    <div className="flex border-b border-border">
+    <div className="flex bg-surface-elevated/30">
       {CHANNELS.map((ch) => {
         const badge = ch.key === "community" ? communityBadge : telegramBadge;
+        const active = channel === ch.key;
 
         return (
           <button
             key={ch.key}
-            className={`flex-1 py-2 text-center text-[0.72rem] font-semibold transition-colors ${
-              channel === ch.key
-                ? "border-b-2 border-accent text-accent"
-                : "text-ink-muted hover:text-ink"
+            className={`relative flex-1 py-2.5 text-center text-[0.72rem] font-semibold transition-all duration-200 cursor-pointer ${
+              active
+                ? "text-accent"
+                : "text-ink-muted/60 hover:text-ink-muted"
             }`}
             onClick={() => onChangeChannel(ch.key)}
             type="button"
           >
             {ch.label}
             {badge > 0 ? (
-              <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500/90 px-1 text-[0.52rem] font-bold text-white">
-                {badge}
+              <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-negative px-1 text-[0.5rem] font-bold text-white">
+                {badge > 99 ? "99+" : badge}
               </span>
+            ) : null}
+            {active ? (
+              <span className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full bg-accent" />
             ) : null}
           </button>
         );
@@ -66,11 +70,8 @@ export default function ChatWidget() {
 
   const totalBadge = communityBadge + telegramBadge;
 
-  // Close mobile popup on outside click
   useEffect(() => {
-    if (!open) {
-      return;
-    }
+    if (!open) return;
 
     function handlePointerDown(event) {
       if (panelRef.current && !panelRef.current.contains(event.target)) {
@@ -79,9 +80,7 @@ export default function ChatWidget() {
     }
 
     function handleKeyDown(event) {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
+      if (event.key === "Escape") setOpen(false);
     }
 
     window.addEventListener("pointerdown", handlePointerDown);
@@ -98,23 +97,20 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* ── Desktop: docked sidebar on the right ── */}
-      <aside className="hidden min-[1600px]:flex fixed right-0 top-0 bottom-0 z-30 w-[320px] flex-col border-l border-border bg-background/98 backdrop-blur-sm">
-        {/* Header */}
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2.5" style={{ minHeight: 56 }}>
-          <MessageCircle size={16} strokeWidth={2} className="text-accent" />
-          <span className="text-sm font-bold text-ink">Chat</span>
+      {/* ── Desktop: docked sidebar ── */}
+      <aside className="hidden min-[1440px]:flex fixed right-0 top-0 bottom-0 z-30 w-[320px] flex-col border-l border-border/40 bg-background/95 backdrop-blur-lg">
+        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border/30 bg-gradient-to-r from-accent/10 to-transparent">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/15">
+            <MessageCircle size={14} strokeWidth={2} className="text-accent" />
+          </div>
+          <span className="text-sm font-bold text-ink tracking-tight">채팅</span>
         </div>
-
-        {/* Channel tabs */}
         <ChannelTabs
           channel={channel}
           communityBadge={communityBadge}
           onChangeChannel={setChannel}
           telegramBadge={telegramBadge}
         />
-
-        {/* Messages */}
         <MessagesArea
           channel={channel}
           onCommunityCount={handleCommunityCount}
@@ -123,11 +119,15 @@ export default function ChatWidget() {
       </aside>
 
       {/* ── Mobile/Tablet: FAB + popup ── */}
-      <div className="min-[1600px]:hidden">
-        {/* FAB button */}
+      <div className="min-[1440px]:hidden">
+        {/* FAB */}
         <div className="fixed bottom-4 right-4 z-50">
           <button
-            className="relative inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-3 text-white shadow-lg transition-all hover:shadow-xl hover:bg-accent/90 active:scale-95"
+            className={`group relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-3.5 text-white shadow-lg transition-all duration-200 cursor-pointer ${
+              open
+                ? "bg-ink-muted/80 hover:bg-ink-muted/70 shadow-md"
+                : "bg-accent shadow-[0_8px_24px_-4px_rgba(43,115,255,0.5)] hover:shadow-[0_12px_32px_-4px_rgba(43,115,255,0.65)] hover:scale-105 active:scale-95"
+            }`}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             onClick={(event) => {
@@ -137,40 +137,38 @@ export default function ChatWidget() {
             type="button"
           >
             {open ? <X size={20} strokeWidth={2} /> : <MessageCircle size={20} strokeWidth={2} />}
-            {(hovered || open) ? (
-              <span className="text-[0.78rem] font-bold">Chat</span>
-            ) : null}
             {!open && totalBadge > 0 ? (
-              <span className="absolute -top-1 -left-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[0.6rem] font-bold text-white">
+              <span className="absolute -top-1.5 -right-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-negative px-1 text-[0.58rem] font-bold text-white shadow-sm animate-pulse">
                 {totalBadge > 99 ? "99+" : totalBadge}
               </span>
             ) : null}
           </button>
         </div>
 
-        {/* Popup panel */}
+        {/* Popup */}
         {open ? (
           <div
             ref={panelRef}
-            className="fixed bottom-20 right-4 z-50 flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl"
-            style={{ width: "min(350px, calc(100vw - 32px))", height: "min(500px, calc(100vh - 120px))" }}
+            className="fixed bottom-[72px] right-3 sm:right-4 z-50 flex flex-col overflow-hidden rounded-2xl border border-border/40 bg-background/95 backdrop-blur-lg shadow-[0_16px_48px_-8px_rgba(0,0,0,0.4)]"
+            style={{ width: "min(360px, calc(100vw - 24px))", height: "min(520px, calc(100vh - 100px))", animation: "fadeSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)" }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-border bg-accent px-3 py-2">
-              <div className="flex items-center gap-2">
-                <MessageCircle size={16} strokeWidth={2} className="text-white" />
-                <span className="text-sm font-bold text-white">Chat</span>
+            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-accent/15 to-transparent border-b border-border/30">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/20">
+                  <MessageCircle size={14} strokeWidth={2} className="text-accent" />
+                </div>
+                <span className="text-sm font-bold text-ink tracking-tight">채팅</span>
               </div>
               <button
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-ink-muted/60 transition-colors hover:bg-surface-elevated hover:text-ink cursor-pointer"
                 onClick={() => setOpen(false)}
                 type="button"
               >
-                <X size={16} strokeWidth={2} />
+                <X size={15} strokeWidth={2} />
               </button>
             </div>
 
-            {/* Channel tabs */}
             <ChannelTabs
               channel={channel}
               communityBadge={communityBadge}
@@ -178,7 +176,6 @@ export default function ChatWidget() {
               telegramBadge={telegramBadge}
             />
 
-            {/* Messages */}
             <MessagesArea
               channel={channel}
               onCommunityCount={handleCommunityCount}

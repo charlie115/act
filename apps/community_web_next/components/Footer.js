@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
 const NAV_LINKS = [
@@ -18,15 +19,14 @@ const LEGAL_LINKS = [
 
 const Footer = memo(function Footer() {
   return (
-    <footer className="mt-12 border-t-0 bg-background/98">
-      <div className="h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
+    <footer className="mt-12 border-t-0 bg-background/95">
+      <div className="h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent shadow-[0_0_8px_rgba(43,115,255,0.15)]" />
       <div className="mx-auto w-[min(1280px,calc(100vw-24px))] py-8">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div>
             <div className="mb-3 flex items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt="ArbiCrypto" className="h-6 w-auto" src="/images/logo-no-background.png" />
+              <Image alt="ArbiCrypto" className="h-6 w-auto" src="/images/logo-no-background.png" width={120} height={24} />
             </div>
             <p className="text-[0.78rem] leading-relaxed text-ink-muted">
               실시간 김프·프리미엄 데이터와 아비트리지 분석 플랫폼

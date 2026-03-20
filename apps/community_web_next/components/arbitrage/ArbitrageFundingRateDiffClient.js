@@ -121,11 +121,11 @@ export default function ArbitrageFundingRateDiffClient() {
 
   return (
     <ArbitrageLayout currentTab="diff">
-      <div className="rounded-lg border border-border bg-background/92">
+      <div className="rounded-lg border border-border bg-background/90">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 px-4 py-2.5">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-bold text-ink">거래소 간 펀딩비 차이</h2>
+            <h2 className="section-title">거래소 간 펀딩비 차이</h2>
             <span className="rounded bg-accent/10 px-2 py-0.5 text-[0.66rem] font-bold tabular-nums text-accent">
               {rows.length}건
             </span>

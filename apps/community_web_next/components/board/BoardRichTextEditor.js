@@ -4,17 +4,28 @@ import { forwardRef, useCallback, useEffect, useLayoutEffect, useRef } from "rea
 
 import Box from "@mui/material/Box";
 import { useTheme } from "@mui/material/styles";
-import Quill from "quill";
 
-const Delta = Quill.import("delta");
+let _Quill = null;
+let _Delta = null;
+let _quillReady = null;
 
-class CustomImage extends Quill.import("formats/image") {
-  static sanitize(url) {
-    return super.sanitize(url, ["http", "https", "data", "blob"]) ? url : "//:0";
+function loadQuill() {
+  if (!_quillReady) {
+    _quillReady = import("quill").then((mod) => {
+      _Quill = mod.default;
+      _Delta = _Quill.import("delta");
+
+      class CustomImage extends _Quill.import("formats/image") {
+        static sanitize(url) {
+          return super.sanitize(url, ["http", "https", "data", "blob"]) ? url : "//:0";
+        }
+      }
+      _Quill.register("formats/image", CustomImage);
+      return _Quill;
+    });
   }
+  return _quillReady;
 }
-
-Quill.register("formats/image", CustomImage);
 
 const BoardRichTextEditor = forwardRef(function BoardRichTextEditor(
   { defaultValue, onSelectionChange, onTextChange, readOnly, showToolbar },
@@ -42,10 +53,10 @@ const BoardRichTextEditor = forwardRef(function BoardRichTextEditor(
       const blobUrl = URL.createObjectURL(file);
 
       ref.current?.updateContents(
-        new Delta().retain(range.index).delete(range.length).insert({ image: blobUrl }),
-        Quill.sources.USER
+        new _Delta().retain(range.index).delete(range.length).insert({ image: blobUrl }),
+        _Quill.sources.USER
       );
-      ref.current?.setSelection(range.index + 1, Quill.sources.USER);
+      ref.current?.setSelection(range.index + 1, _Quill.sources.USER);
       input.value = "";
     });
 
@@ -62,40 +73,46 @@ const BoardRichTextEditor = forwardRef(function BoardRichTextEditor(
   }, [imageHandler, readOnly, ref]);
 
   useEffect(() => {
+    let cancelled = false;
     const container = containerRef.current;
-    const editorContainer = container.appendChild(
-      container.ownerDocument.createElement("div")
-    );
-    const toolbar = readOnly
-      ? false
-      : {
-          container: toolbarRef.current,
-          handlers: {
-            image: imageHandler,
-          },
-        };
 
-    const quill = new Quill(editorContainer, {
-      modules: { toolbar },
-      readOnly,
-      theme: "snow",
-    });
+    loadQuill().then((Quill) => {
+      if (cancelled) return;
+      const editorContainer = container.appendChild(
+        container.ownerDocument.createElement("div")
+      );
+      const toolbar = readOnly
+        ? false
+        : {
+            container: toolbarRef.current,
+            handlers: {
+              image: imageHandler,
+            },
+          };
 
-    ref.current = quill;
+      const quill = new Quill(editorContainer, {
+        modules: { toolbar },
+        readOnly,
+        theme: "snow",
+      });
 
-    if (defaultValueRef.current) {
-      quill.setContents(defaultValueRef.current);
-    }
+      ref.current = quill;
 
-    quill.on(Quill.events.TEXT_CHANGE, (...args) => {
-      onTextChangeRef.current?.(...args);
-    });
+      if (defaultValueRef.current) {
+        quill.setContents(defaultValueRef.current);
+      }
 
-    quill.on(Quill.events.SELECTION_CHANGE, (...args) => {
-      onSelectionChangeRef.current?.(...args);
+      quill.on(Quill.events.TEXT_CHANGE, (...args) => {
+        onTextChangeRef.current?.(...args);
+      });
+
+      quill.on(Quill.events.SELECTION_CHANGE, (...args) => {
+        onSelectionChangeRef.current?.(...args);
+      });
     });
 
     return () => {
+      cancelled = true;
       ref.current = null;
       container.innerHTML = "";
     };

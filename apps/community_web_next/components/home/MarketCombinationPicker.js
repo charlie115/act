@@ -269,7 +269,7 @@ export default function MarketCombinationPicker({
 
       {/* Dropdown panel */}
       {open ? (
-        <div className="absolute left-0 top-full z-30 mt-1 w-[min(640px,calc(100vw-32px))] rounded-xl border border-border bg-background shadow-2xl">
+        <div className="absolute left-0 top-full z-50 mt-1 w-[min(640px,calc(100vw-32px))] rounded-xl border border-border bg-background shadow-2xl" style={{ animation: "fadeSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)" }}>
           {/* Search */}
           <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
             <Search className="text-ink-muted" size={14} strokeWidth={2} />
@@ -285,10 +285,10 @@ export default function MarketCombinationPicker({
           <div className="flex flex-wrap gap-1.5 border-b border-border px-3 py-2">
             {quickPairs.map((pair) => (
               <button
-                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[0.68rem] font-semibold transition-colors ${
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[0.68rem] cursor-pointer font-semibold transition-colors ${
                   targetMarketCode === pair.target && originMarketCode === pair.origin
                     ? "border-accent/30 bg-accent/10 text-accent"
-                    : "border-border bg-background/70 text-ink-muted hover:bg-surface-elevated/40 hover:text-ink"
+                    : "border-border bg-background/70 text-ink-muted hover:bg-accent/10 hover:border-accent/30 hover:text-ink transition-all duration-150"
                 }`}
                 key={`${pair.target}-${pair.origin}`}
                 onClick={() => {
@@ -317,10 +317,10 @@ export default function MarketCombinationPicker({
               <div className="max-h-[280px] overflow-y-auto">
                 {filteredTargets.map((option) => (
                   <button
-                    className={`flex w-full items-center gap-2.5 border-l-2 px-3 py-2.5 text-left text-xs transition-all ${
+                    className={`flex w-full items-center gap-2.5 border-l-2 px-3 py-2.5 text-left text-xs transition-all cursor-pointer ${
                       activeDraftTarget === option.code
-                        ? "border-l-accent bg-accent/10 text-ink"
-                        : "border-l-transparent text-ink-muted hover:bg-surface-elevated/30 hover:text-ink"
+                        ? "border-l-accent bg-accent/10 text-ink hover:bg-accent/15"
+                        : "border-l-transparent text-ink-muted hover:bg-accent/8 hover:border-l-accent/40 hover:text-ink"
                     }`}
                     key={option.code}
                     onClick={() => setDraftTarget(option.code)}
@@ -345,10 +345,10 @@ export default function MarketCombinationPicker({
               <div className="max-h-[280px] overflow-y-auto">
                 {draftOriginOptions.map((option) => (
                   <button
-                    className={`flex w-full items-center gap-2.5 border-l-2 px-3 py-2.5 text-left text-xs transition-all ${
+                    className={`flex w-full items-center gap-2.5 border-l-2 px-3 py-2.5 text-left text-xs transition-all cursor-pointer ${
                       originMarketCode === option.code
-                        ? "border-l-accent bg-accent/10 text-ink"
-                        : "border-l-transparent text-ink-muted hover:bg-surface-elevated/30 hover:text-ink"
+                        ? "border-l-accent bg-accent/10 text-ink hover:bg-accent/15"
+                        : "border-l-transparent text-ink-muted hover:bg-accent/8 hover:border-l-accent/40 hover:text-ink"
                     }`}
                     key={option.code}
                     onClick={() => {

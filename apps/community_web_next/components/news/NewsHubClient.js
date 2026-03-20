@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Search } from "lucide-react";
 
 import { formatDate, stripHtml } from "../../lib/api";
@@ -63,7 +63,7 @@ function NewsCard({ item, secondary }) {
           <a
             className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent/80"
             href={item.url}
-            rel="noreferrer"
+            rel="noreferrer nofollow"
             target="_blank"
           >
             원문 열기
@@ -75,24 +75,38 @@ function NewsCard({ item, secondary }) {
   );
 }
 
-export default function NewsHubClient() {
+export default function NewsHubClient({ initialData }) {
   const [activeTab, setActiveTab] = useState("news");
   const [query, setQuery] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [announcementCategories, setAnnouncementCategories] = useState([]);
   const [pageError, setPageError] = useState("");
-  const [news, setNews] = useState([]);
-  const [social, setSocial] = useState([]);
-  const [announcements, setAnnouncements] = useState([]);
+  const [news, setNews] = useState(initialData?.news || []);
+  const [social, setSocial] = useState(initialData?.social || []);
+  const [announcements, setAnnouncements] = useState(initialData?.announcements || []);
   const [loadedTabs, setLoadedTabs] = useState({
-    news: false,
-    social: false,
-    announcements: false,
+    news: !!initialData?.news?.length,
+    social: !!initialData?.social?.length,
+    announcements: !!initialData?.announcements?.length,
+  });
+
+  // Track which tabs were seeded from SSR so we skip the first client fetch
+  const ssrSeededRef = useRef({
+    news: !!initialData?.news?.length,
+    social: !!initialData?.social?.length,
+    announcements: !!initialData?.announcements?.length,
   });
 
   useEffect(() => {
     let active = true;
+
+    // Skip fetch if we have SSR data for this tab and no date filters are applied
+    const hasDateFilter = startDate || endDate;
+    if (!hasDateFilter && ssrSeededRef.current[activeTab]) {
+      ssrSeededRef.current[activeTab] = false; // allow subsequent fetches
+      return;
+    }
 
     async function loadData() {
       setPageError("");

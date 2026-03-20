@@ -18,8 +18,8 @@ function fmtPct(v) {
 function Stat({ label, value, colorClass }) {
   return (
     <div className="flex items-center gap-1 sm:gap-1.5">
-      <span className="text-[0.48rem] sm:text-[0.64rem] font-medium text-ink-muted/50">{label}</span>
-      <span className={`text-[0.56rem] sm:text-xs tabular-nums font-bold ${colorClass}`}>{value}</span>
+      <span className="text-[0.55rem] sm:text-[0.68rem] font-medium text-ink-muted/50">{label}</span>
+      <span className={`text-[0.65rem] sm:text-xs tabular-nums font-bold ${colorClass}`}>{value}</span>
     </div>
   );
 }
@@ -54,13 +54,13 @@ const MarketSummaryBar = memo(function MarketSummaryBar({ liveRows, connected, l
   return (
     <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto scrollbar-hide rounded-lg border border-border/40 bg-surface-elevated/20 px-2 sm:px-3 py-1 sm:py-2 whitespace-nowrap">
       <Stat label="BTC" value={btc ? fmtPct(btc.LS_close) : "-"} colorClass={pc(btc?.LS_close)} />
-      <div className="h-3 w-px bg-border/40" />
+      <div className="h-3 w-px bg-border/30" />
       <Stat label="ETH" value={eth ? fmtPct(eth.LS_close) : "-"} colorClass={pc(eth?.LS_close)} />
-      <div className="h-3 w-px bg-border/40" />
+      <div className="h-3 w-px bg-border/30" />
       <Stat label="평균" value={avg !== null ? fmtPct(avg) : "-"} colorClass={pc(avg)} />
       {highVol ? (
         <>
-          <div className="h-3 w-px bg-border/40" />
+          <div className="h-3 w-px bg-border/30" />
           <div className="flex">
             <Stat label="변동↑" value={`${highVol.symbol} ${Number(highVol.val).toFixed(2)}`} colorClass="text-positive" />
           </div>

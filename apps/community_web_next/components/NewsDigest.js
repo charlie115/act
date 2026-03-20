@@ -17,7 +17,7 @@ function Item({ item, type }) {
         <a
           href={item.url}
           target="_blank"
-          rel="noreferrer"
+          rel="noreferrer nofollow"
           className="mt-1.5 inline-block text-sm font-semibold text-accent hover:underline"
         >
           원문 보기
@@ -29,9 +29,9 @@ function Item({ item, type }) {
 
 function ColumnCard({ title, items, renderItem }) {
   return (
-    <div className="rounded-xl border border-border bg-background/92 p-5 transition-shadow hover:shadow-lg overflow-hidden">
+    <div className="rounded-lg border border-border/60 bg-background/80 backdrop-blur-sm p-5 transition-all duration-300 hover:shadow-[0_8px_30px_-8px_rgba(43,115,255,0.1)] hover:border-accent/10 overflow-hidden">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-bold text-ink">{title}</h2>
+        <h2 className="section-title">{title}</h2>
         <Link
           className="text-xs font-semibold text-ink-muted transition-colors hover:text-accent"
           href="/news"

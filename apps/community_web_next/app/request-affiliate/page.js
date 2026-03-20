@@ -4,7 +4,7 @@ import { buildMetadata } from "../../lib/site";
 
 export const metadata = buildMetadata({
   title: "Request Affiliate",
-  description: "제휴 신청 폼은 차후 Next 앱으로 이전됩니다.",
+  description: "제휴사 신청 페이지입니다.",
   pathname: "/request-affiliate",
 });
 

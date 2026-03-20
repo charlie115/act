@@ -2,8 +2,8 @@ import { buildMetadata } from "../../../../lib/site";
 import ArbitrageFundingRateDiffClient from "../../../../components/arbitrage/ArbitrageFundingRateDiffClient";
 
 export const metadata = buildMetadata({
-  title: "Funding Rate Difference",
-  description: "거래소 간 funding rate 차이를 Next 앱에서 읽기 전용 테이블로 제공합니다.",
+  title: "펀딩비 차이 비교 | 거래소별 실시간",
+  description: "바이낸스, OKX, 바이빗 등 거래소별 펀딩비 차이를 실시간으로 비교 분석합니다.",
   pathname: "/arbitrage/funding-rate/diff",
 });
 

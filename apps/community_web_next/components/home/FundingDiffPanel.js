@@ -29,8 +29,8 @@ function SkeletonRows() {
 
 export default function FundingDiffPanel({ fundingDiff = [], loading = false }) {
   return (
-    <section className="rounded-lg border border-border bg-background/92 p-4">
-      <h2 className="mb-3 text-sm font-bold text-ink">펀딩비 차이</h2>
+    <section className="rounded-lg border border-border/60 bg-background/80 backdrop-blur-sm p-4 shadow-[0_0_30px_-10px_rgba(43,115,255,0.06)]">
+      <h2 className="section-title mb-3">펀딩비 차이</h2>
       <div className="overflow-x-auto rounded-lg border border-border bg-background/90">
         <table className="w-full min-w-[480px] border-collapse">
           <thead>

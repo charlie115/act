@@ -60,6 +60,16 @@ export function safeHtml(html = "") {
       a: ["href", "name", "target", "rel"],
     },
     allowedSchemes: ["http", "https", "data", "mailto"],
+    transformTags: {
+      a: (tagName, attribs) => ({
+        tagName,
+        attribs: {
+          ...attribs,
+          rel: "noreferrer nofollow",
+          target: "_blank",
+        },
+      }),
+    },
   });
 }
 

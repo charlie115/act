@@ -1,7 +1,7 @@
 const siteName = "ArbiCrypto";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 const defaultDescription =
-  "실시간 암호화폐 차익거래 인사이트, 뉴스, 커뮤니티 업데이트를 더 빠르게 확인할 수 있는 ACW 차세대 웹 경험입니다.";
+  "실시간 김프(김치프리미엄) 시세, 거래소 간 프리미엄 차트, 펀딩비 비교, 암호화폐 차익거래에 필요한 모든 데이터를 제공합니다.";
 
 export const siteConfig = {
   siteName,
@@ -39,11 +39,13 @@ export function buildMetadata({
       url,
       siteName,
       locale: "ko_KR",
+      images: [{ url: absoluteUrl("/images/og-default.png"), width: 1200, height: 630, alt: siteName }],
     },
     twitter: {
       card: "summary_large_image",
       title: resolvedTitle,
       description,
+      site: "@arbicrypto",
     },
   };
 }

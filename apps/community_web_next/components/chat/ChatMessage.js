@@ -4,21 +4,14 @@ import { memo, useMemo } from "react";
 
 function stringToColor(str) {
   let hash = 0;
-
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-
-  const hue = Math.abs(hash) % 360;
-
-  return `hsl(${hue}, 65%, 55%)`;
+  return `hsl(${Math.abs(hash) % 360}, 55%, 60%)`;
 }
 
 function formatDatetime(datetimeStr) {
-  if (!datetimeStr) {
-    return "";
-  }
-
+  if (!datetimeStr) return "";
   try {
     return new Date(datetimeStr).toLocaleString("ko-KR", {
       month: "numeric",
@@ -32,98 +25,78 @@ function formatDatetime(datetimeStr) {
 }
 
 function linkifyText(text) {
-  if (!text) {
-    return text;
-  }
-
+  if (!text) return text;
   const urlRegex = /https?:\/\/[^\s]+/g;
   const parts = [];
   let lastIndex = 0;
   let match;
-
   while ((match = urlRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
     parts.push(
-      <a
-        key={match.index}
-        className="text-accent underline-offset-2 hover:underline break-all"
-        href={match[0]}
-        rel="noopener noreferrer"
-        target="_blank"
-      >
-        {match[0]}
-      </a>
+      <a key={match.index} className="text-accent underline-offset-2 hover:underline break-all" href={match[0]} rel="noopener noreferrer" target="_blank">{match[0]}</a>
     );
     lastIndex = urlRegex.lastIndex;
   }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
   return parts.length > 0 ? parts : text;
 }
 
 const MESSAGE_TYPE_COLORS = {
-  warning: "text-amber-400",
-  error: "text-red-400",
+  warning: "text-warning",
+  error: "text-negative",
   info: "",
 };
 
 const ChatMessage = memo(function ChatMessage({
-  id,
-  message,
-  username,
-  datetime,
-  isOwnMessage,
-  isTelegram,
-  messageType,
-  onBlockUser,
+  id, message, username, datetime, isOwnMessage, isTelegram, messageType, onBlockUser,
 }) {
-  const colorDot = useMemo(() => stringToColor(username || ""), [username]);
+  const userColor = useMemo(() => stringToColor(username || ""), [username]);
   const typeColor = isTelegram ? MESSAGE_TYPE_COLORS[messageType] || "" : "";
 
   return (
     <div
       id={`m-${id}`}
-      className={`flex gap-2 mb-2.5 ${isOwnMessage ? "flex-row-reverse" : "flex-row"}`}
+      className={`flex gap-2 mb-2 ${isOwnMessage ? "flex-row-reverse" : "flex-row"}`}
     >
-      <div className={`max-w-[85%] min-w-0 ${isOwnMessage ? "items-end" : "items-start"} flex flex-col`}>
+      {/* Avatar dot */}
+      {!isOwnMessage ? (
+        <div className="flex-shrink-0 mt-1">
+          <div className="h-6 w-6 rounded-full flex items-center justify-center text-[0.5rem] font-bold text-white" style={{ backgroundColor: userColor }}>
+            {(username || "?")[0].toUpperCase()}
+          </div>
+        </div>
+      ) : null}
+
+      <div className={`max-w-[78%] min-w-0 flex flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
         {!isOwnMessage ? (
-          <div className="flex items-center gap-1 mb-0.5">
-            <span style={{ color: colorDot }} className="text-[11px] leading-none">
-              &#9679;
-            </span>
-            <span className="text-[0.68rem] text-ink-muted font-medium">
-              @{username}
+          <div className="flex items-center gap-1.5 mb-0.5 px-1">
+            <span className="text-[0.65rem] font-semibold truncate max-w-[120px]" style={{ color: userColor }}>
+              {username}
             </span>
             {!isTelegram && onBlockUser ? (
               <button
-                className="text-[0.6rem] text-ink-muted/60 hover:text-red-400 transition-colors"
+                className="text-[0.55rem] text-ink-muted/40 hover:text-negative transition-colors cursor-pointer"
                 onClick={() => onBlockUser(username)}
                 title="차단"
                 type="button"
               >
-                &#x26D4;
+                차단
               </button>
             ) : null}
           </div>
         ) : null}
         <div
-          className={`relative rounded-lg px-3 py-2 text-[0.78rem] leading-snug break-words whitespace-pre-wrap ${
+          className={`relative rounded-2xl px-3 py-2 text-[0.8rem] leading-relaxed break-words whitespace-pre-wrap ${
             isOwnMessage
-              ? "bg-accent/20 text-ink rounded-br-sm"
-              : "bg-surface-elevated text-ink rounded-bl-sm"
+              ? "bg-accent/25 text-ink rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl rounded-br-[4px] ring-1 ring-accent/15"
+              : "bg-surface-elevated/90 text-ink rounded-tl-[4px] rounded-tr-2xl rounded-br-2xl rounded-bl-2xl"
           } ${typeColor}`}
         >
           {linkifyText(message)}
-          <span className="block mt-1 text-[0.6rem] text-ink-muted/60 text-right">
-            {formatDatetime(datetime)}
-          </span>
         </div>
+        <span className={`mt-0.5 px-1 text-[0.55rem] text-ink-muted/40 ${isOwnMessage ? "text-right" : "text-left"}`}>
+          {formatDatetime(datetime)}
+        </span>
       </div>
     </div>
   );

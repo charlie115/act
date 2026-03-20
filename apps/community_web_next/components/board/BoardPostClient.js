@@ -6,6 +6,7 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "../auth/AuthProvider";
 import { getPost, getComments } from "../../lib/board";
+import { safeHtml } from "../../lib/api";
 
 export default function BoardPostClient({ postId }) {
   const { user, loggedIn, authorizedRequest } = useAuth();
@@ -52,7 +53,7 @@ export default function BoardPostClient({ postId }) {
       <Link href="/community-board" className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink">
         <ArrowLeft size={14} /> 목록으로
       </Link>
-      <article className="rounded-xl border border-border bg-surface p-6 space-y-4">
+      <article className="rounded-lg border border-border bg-surface p-6 space-y-4">
         <div className="flex items-start justify-between">
           <div className="min-w-0">
             <h1 className="text-xl font-bold text-ink break-words">{post.title}</h1>
@@ -60,15 +61,15 @@ export default function BoardPostClient({ postId }) {
           </div>
           {isAuthor && (
             <div className="flex gap-2">
-              <button onClick={handleDelete} className="text-ink-muted hover:text-negative" type="button"><Trash2 size={16} /></button>
+              <button onClick={handleDelete} className="text-ink-muted hover:text-negative transition-colors cursor-pointer" type="button"><Trash2 size={16} /></button>
             </div>
           )}
         </div>
-        <div className="prose prose-invert max-w-none text-sm text-ink" dangerouslySetInnerHTML={{ __html: post.content }} />
+        <div className="prose prose-invert max-w-none text-sm text-ink" dangerouslySetInnerHTML={{ __html: safeHtml(post.content) }} />
       </article>
 
-      <div className="rounded-xl border border-border bg-surface p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-ink">댓글 ({comments.length})</h2>
+      <div className="rounded-lg border border-border bg-surface p-6 space-y-4">
+        <h2 className="section-title">댓글 ({comments.length})</h2>
         {loggedIn && (
           <form onSubmit={handleComment} className="flex gap-2">
             <input
@@ -77,7 +78,7 @@ export default function BoardPostClient({ postId }) {
               placeholder="댓글을 입력하세요"
               className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-ink placeholder:text-ink-muted/50 focus:border-accent focus:outline-none"
             />
-            <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-bold text-white hover:bg-accent/80">등록</button>
+            <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-bold text-white hover:bg-accent/80 transition-colors cursor-pointer">등록</button>
           </form>
         )}
         <div className="space-y-3">

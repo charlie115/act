@@ -1260,10 +1260,10 @@ export default function PremiumChartPanel({
         ) : null}
         <div className="relative h-[260px] sm:h-[340px]">
           {/* Axis labels */}
-          <div className="pointer-events-none absolute top-1 left-1 z-10 rounded bg-background/80 px-1.5 py-0.5 text-[0.6rem] font-bold text-[#4a83ff]">
+          <div className="pointer-events-none absolute top-1 left-1 z-10 rounded bg-background/80 px-1.5 py-0.5 text-[0.6rem] font-bold text-accent">
             가격
           </div>
-          <div className="pointer-events-none absolute top-1 right-1 z-10 rounded bg-background/80 px-1.5 py-0.5 text-[0.6rem] font-bold text-[#16c784]">
+          <div className="pointer-events-none absolute top-1 right-1 z-10 rounded bg-background/80 px-1.5 py-0.5 text-[0.6rem] font-bold text-positive">
             프리미엄 %
           </div>
           {/* Crosshair tooltip */}

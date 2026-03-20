@@ -2,7 +2,8 @@ import { Inter } from "next/font/google";
 
 import AppShell from "../components/AppShell";
 import Providers from "../components/Providers";
-import { buildMetadata } from "../lib/site";
+import JsonLd from "../components/seo/JsonLd";
+import { buildMetadata, siteConfig } from "../lib/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -11,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata = buildMetadata({
-  title: "ACW Next",
+  title: "ArbiCrypto - 실시간 김프 차익거래 플랫폼",
 });
 
 export const viewport = {
@@ -23,6 +24,28 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">
+      <head>
+        <JsonLd
+          data={[
+            {
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: siteConfig.siteName,
+              url: siteConfig.siteUrl,
+              description: siteConfig.defaultDescription,
+              inLanguage: "ko",
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: siteConfig.siteName,
+              url: siteConfig.siteUrl,
+              logo: `${siteConfig.siteUrl}/images/arbicrypto-logo.png`,
+              sameAs: [siteConfig.socials.x],
+            },
+          ]}
+        />
+      </head>
       <body
         className={`${inter.variable} ${inter.className}`}
         suppressHydrationWarning

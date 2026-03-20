@@ -53,14 +53,14 @@ export default function BoardPostEditorClient({ post = null }) {
           <button
             type="button"
             onClick={() => router.back()}
-            className="rounded-lg border border-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-elevated"
+            className="rounded-lg border border-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-elevated transition-colors cursor-pointer active:scale-[0.97]"
           >
             취소
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-lg bg-accent px-6 py-2 text-sm font-bold text-white hover:bg-accent/80 disabled:opacity-50"
+            className="rounded-lg bg-accent px-6 py-2 text-sm font-bold text-white hover:bg-accent/80 disabled:opacity-50 transition-colors cursor-pointer active:scale-[0.97]"
           >
             {submitting ? "저장 중..." : isEdit ? "수정" : "등록"}
           </button>

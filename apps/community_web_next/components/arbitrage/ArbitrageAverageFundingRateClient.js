@@ -115,10 +115,10 @@ export default function ArbitrageAverageFundingRateClient() {
 
   return (
     <ArbitrageLayout currentTab="avg">
-      <div className="rounded-lg border border-border bg-background/92">
+      <div className="rounded-lg border border-border bg-background/90">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 px-4 py-2.5">
-          <h2 className="text-sm font-bold text-ink">최근 평균 펀딩비</h2>
+          <h2 className="section-title">최근 평균 펀딩비</h2>
           <div className="flex rounded-lg border border-border bg-background/70 p-0.5">
             {LOOKBACK_OPTIONS.map((opt) => (
               <button

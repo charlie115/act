@@ -135,7 +135,7 @@ export default function CommissionHistoryClient() {
     <div className="grid gap-4">
       <div className="rounded-lg border border-border bg-background/92 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-bold text-ink">커미션 정산 내역</h2>
+          <h2 className="section-title">커미션 정산 내역</h2>
           <div className="flex items-center gap-1">
             <button
               className={`rounded-md px-2.5 py-1 text-xs font-bold transition-colors ${
@@ -216,7 +216,7 @@ export default function CommissionHistoryClient() {
       </div>
 
       <div className="rounded-lg border border-border bg-background/92 p-4">
-        <h2 className="mb-2 text-sm font-bold text-ink">정산 합계</h2>
+        <h2 className="section-title mb-2">정산 합계</h2>
         <p className="text-sm text-ink-muted">
           총 정산 커미션: <strong className="text-ink">{formatAmount(totalCommission)}</strong>
         </p>

@@ -2,8 +2,8 @@ import { buildMetadata } from "../../../../lib/site";
 import ArbitrageAverageFundingRateClient from "../../../../components/arbitrage/ArbitrageAverageFundingRateClient";
 
 export const metadata = buildMetadata({
-  title: "Average Funding Rate",
-  description: "최근 funding rate 평균값을 Next 앱에서 읽기 전용 테이블로 제공합니다.",
+  title: "평균 펀딩비 | 거래소별 펀딩비 추이",
+  description: "거래소별 평균 펀딩비 추이와 변동을 한눈에 확인하세요.",
   pathname: "/arbitrage/funding-rate/avg",
 });
 

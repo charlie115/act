@@ -17,8 +17,8 @@ const RISK_LABELS = ["", "매우 낮음", "낮음", "보통", "높음", "매우 
 
 export default function AiRankPanel({ recommendations = [], loading = false }) {
   return (
-    <section className="rounded-lg border border-border bg-background/92 p-4">
-      <h2 className="mb-3 text-sm font-bold text-ink">추천 자산</h2>
+    <section className="rounded-lg border border-border/60 bg-background/80 backdrop-blur-sm p-4 shadow-[0_0_30px_-10px_rgba(43,115,255,0.06)]">
+      <h2 className="section-title mb-3">추천 자산</h2>
       <div className="grid gap-3">
         {loading ? (
           <SkeletonCards />
@@ -48,10 +48,9 @@ export default function AiRankPanel({ recommendations = [], loading = false }) {
             </article>
           ))
         ) : (
-          <div className="grid min-h-[120px] place-items-center rounded-lg bg-surface-elevated/30 text-sm text-ink-muted">
+          <div className="grid min-h-[120px] place-items-center rounded-lg bg-surface-elevated/20 text-sm text-ink-muted">
             <div className="text-center">
-              <div className="mx-auto mb-2 h-5 w-5 animate-spin rounded-full border-2 border-border border-t-accent" />
-              실시간 분석 중...
+              <p>AI 추천 데이터가 없습니다.</p>
             </div>
           </div>
         )}

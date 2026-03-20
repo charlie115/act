@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
 export default function AuthCard({
@@ -20,11 +21,12 @@ export default function AuthCard({
         {/* Header with logo */}
         <div className="relative border-b border-border/60 px-8 pb-6 pt-8">
           <div className="mb-5 flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               alt="ArbiCrypto"
               className="h-7 w-auto"
               src="/images/logo-no-background.png"
+              width={140}
+              height={28}
             />
           </div>
           {eyebrow ? (

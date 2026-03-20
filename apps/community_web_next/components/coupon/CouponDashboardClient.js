@@ -20,7 +20,7 @@ export default function CouponDashboardClient() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <h1 className="text-2xl font-bold text-ink">쿠폰 관리</h1>
-      <div className="rounded-xl border border-border bg-surface p-6">
+      <div className="rounded-lg border border-border bg-surface p-6">
         {loading ? (
           <div className="grid place-items-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-accent" />

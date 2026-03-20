@@ -21,7 +21,7 @@ export default function ArbitrageLayout({ currentTab, children }) {
                 className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-all ${
                   active
                     ? "bg-accent/15 text-accent shadow-sm"
-                    : "text-ink-muted hover:text-ink"
+                    : "text-ink-muted hover:text-ink hover:bg-surface-elevated/30"
                 }`}
                 href={tab.href}
               >

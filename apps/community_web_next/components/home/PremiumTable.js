@@ -14,6 +14,7 @@ function AssetIcon({ symbol, size = 14 }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img alt={symbol} className="rounded-full" height={size} width={size}
+      loading="lazy"
       src={`${ASSET_ICON_PATH}/${symbol}.PNG`}
       onError={(e) => { e.currentTarget.style.display = "none"; if (e.currentTarget.nextSibling) e.currentTarget.nextSibling.style.display = "flex"; }}
       style={{ objectFit: "cover" }} />
@@ -38,6 +39,7 @@ function ExIcon({ exchange, size = 14 }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img alt={exchange} src={`/images/exchanges/${key}.svg`} width={size} height={size}
+      loading="lazy"
       className="inline rounded-sm" onError={(e) => { e.currentTarget.style.display = "none"; }} />
   );
 }
@@ -77,7 +79,7 @@ function doSort(rows, key, dir, favSet) {
 
 const TD = "px-0.5 py-0.5 sm:px-2 sm:py-1.5 lg:px-3 whitespace-nowrap";
 const TDM = `${TD} tabular-nums`;
-const IBADGE = { 1: "bg-green-500", 2: "bg-blue-500", 4: "bg-amber-500", 8: "bg-purple-500" };
+const IBADGE = { 1: "bg-positive/20 text-positive", 2: "bg-accent/20 text-accent", 4: "bg-opportunity/20 text-opportunity", 8: "bg-purple-400/20 text-purple-300" };
 
 function FundingCountdown({ fundingTime }) {
   const [now, setNow] = useState(Date.now);
@@ -98,12 +100,12 @@ function FundingCell({ fi }) {
   const rate = Number(fi.funding_rate || 0);
   const pct = (rate * 100).toFixed(3);
   const intH = fi.funding_interval_hours;
-  const badge = IBADGE[intH] || "bg-blue-500";
+  const badge = IBADGE[intH] || "bg-accent/20 text-accent";
   return (
     <td className={`${TDM} text-right text-[0.5rem] sm:text-xs`}>
       <div className="flex items-center justify-end gap-1">
         <span className={pc(rate)}>{pct}</span>
-        {intH != null && <span className={`rounded px-1 py-px text-[0.38rem] sm:text-[0.5rem] font-bold text-white leading-none ${badge}`}>{intH}h</span>}
+        {intH != null && <span className={`rounded px-1 py-px text-[0.45rem] sm:text-[0.5rem] font-bold leading-none ${badge}`}>{intH}h</span>}
       </div>
       {fi.funding_time && <FundingCountdown fundingTime={fi.funding_time} />}
     </td>
@@ -144,10 +146,14 @@ function WalletCell({ walletData, targetMarketCode, originMarketCode }) {
   );
 }
 
-const Row = memo(function Row({ asset, row, expanded, favActive, loggedIn, onSelect, onFav, targetFI, originFI, volDiff, targetIsSpot, originIsSpot, walletData, targetMC, originMC }) {
+const Row = memo(function Row({ asset, row, expanded, favActive, loggedIn, onSelect, onFav, targetFI, originFI, volDiff, targetIsSpot, originIsSpot, walletData, targetMC, originMC, tetherView }) {
   const ls = Number(row.LS_close || 0), sl = Number(row.SL_close || 0), spread = sl - ls;
+  const dollar = Number(row.dollar || 0);
+  const showTether = tetherView && Number.isFinite(dollar) && dollar > 0;
+  const lsDisplay = showTether ? dollar * (1 + ls * 0.01) : ls;
+  const slDisplay = showTether ? dollar * (1 + sl * 0.01) : sl;
   return (
-    <tr className={`cursor-pointer transition-colors hover:bg-surface-elevated/60 ${expanded ? "bg-surface-elevated/20" : ""}`} onClick={() => onSelect(asset)}>
+    <tr className={`cursor-pointer transition-colors duration-150 hover:bg-surface-elevated/60 ${expanded ? "bg-accent/8" : ""}`} onClick={() => onSelect(asset)}>
       <td className={`${TD} hidden sm:table-cell w-4`}>
         <button className={`group/star transition-all duration-200 ${favActive ? "scale-110" : "hover:scale-125 active:scale-95"} disabled:opacity-40`} disabled={!loggedIn} onClick={e => { e.stopPropagation(); onFav(asset); }} type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" className={`transition-all duration-200 ${favActive ? "fill-opportunity text-opportunity drop-shadow-[0_0_4px_rgba(240,185,11,0.6)]" : "fill-none text-ink-muted/30 stroke-current group-hover/star:text-opportunity/50 group-hover/star:fill-opportunity/10"}`} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
@@ -156,17 +162,26 @@ const Row = memo(function Row({ asset, row, expanded, favActive, loggedIn, onSel
       <td className={TD}>
         <div className="flex items-center gap-1.5">
           <AssetBadge symbol={asset} size={12} />
-          <strong className="text-[0.56rem] sm:text-xs text-ink">{asset}</strong>
+          <strong className="text-[0.62rem] sm:text-sm text-ink">{asset}</strong>
           <ChevronRight size={8} strokeWidth={2.5} className={`flex-shrink-0 text-ink-muted/40 transition-transform hidden sm:inline-block ${expanded ? "rotate-90 text-accent" : ""}`} />
         </div>
       </td>
       <WalletCell walletData={walletData} targetMarketCode={targetMC} originMarketCode={originMC} />
       <td className={`${TDM} text-right whitespace-nowrap`}>
-        <div className="flex items-baseline justify-end gap-1"><span className="text-[0.56rem] sm:text-xs font-semibold text-ink">{fmt(row.tp, row.tp >= 10000 ? 0 : 1)}</span><span className={`rounded px-1 py-px text-[0.45rem] sm:text-[0.56rem] font-semibold leading-none ${Number(row.scr) >= 0 ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative"}`}>{row.scr > 0 ? "+" : ""}{fmt(row.scr, 2, 2)}%</span></div>
+        <div className="flex items-baseline justify-end gap-1"><span className="text-[0.62rem] sm:text-sm font-semibold text-ink">{fmt(row.tp, row.tp >= 10000 ? 0 : 1)}</span><span className={`rounded px-1 py-px text-[0.45rem] sm:text-[0.56rem] font-semibold leading-none ${Number(row.scr) >= 0 ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative"}`}>{row.scr > 0 ? "+" : ""}{fmt(row.scr, 2, 2)}%</span></div>
         {row.converted_tp ? <div className="text-[0.55rem] sm:text-[0.58rem] text-ink-muted/40 tabular-nums">{fmt(row.converted_tp, row.converted_tp >= 10000 ? 1 : 2)}</div> : null}
       </td>
-      <td className={`${TDM} text-right text-[0.54rem] sm:text-xs font-bold`} style={{ backgroundColor: premiumHeatmap(ls), ...premiumTextColor(ls) }}>{fmt(ls, 3, 3)}</td>
-      <td className={`${TDM} text-right text-[0.54rem] sm:text-xs font-bold hidden sm:table-cell`} style={{ backgroundColor: premiumHeatmap(sl), ...premiumTextColor(sl) }}>{fmt(sl, 3, 3)}</td>
+      {showTether ? (
+        <>
+          <td className={`${TDM} text-right text-[0.54rem] sm:text-xs font-bold`} style={{ backgroundColor: premiumHeatmap(ls), ...premiumTextColor(ls) }}>{fmt(lsDisplay, 1)}</td>
+          <td className={`${TDM} text-right text-[0.54rem] sm:text-xs font-bold hidden sm:table-cell`} style={{ backgroundColor: premiumHeatmap(sl), ...premiumTextColor(sl) }}>{fmt(slDisplay, 1)}</td>
+        </>
+      ) : (
+        <>
+          <td className={`${TDM} text-right text-[0.54rem] sm:text-xs font-bold`} style={{ backgroundColor: premiumHeatmap(ls), ...premiumTextColor(ls) }}>{fmt(ls, 3, 3)}</td>
+          <td className={`${TDM} text-right text-[0.54rem] sm:text-xs font-bold hidden sm:table-cell`} style={{ backgroundColor: premiumHeatmap(sl), ...premiumTextColor(sl) }}>{fmt(sl, 3, 3)}</td>
+        </>
+      )}
       <td className={`${TDM} text-right text-[0.54rem] sm:text-xs ${pc(spread)}`} style={{ backgroundColor: spreadHeatmap(spread) }}>{fmt(spread, 2, 2)} %p</td>
       <td className={`${TDM} text-right text-[0.54rem] sm:text-xs ${pc(volDiff)}`}>{volDiff != null ? Number(volDiff).toFixed(2) : "-"}</td>
       {targetIsSpot ? null : <FundingCell fi={targetFI} />}
@@ -174,14 +189,14 @@ const Row = memo(function Row({ asset, row, expanded, favActive, loggedIn, onSel
       <td className={`${TDM} text-right text-[0.54rem] sm:text-xs text-ink-muted`}>{fmtVol(row.atp24h)}</td>
     </tr>
   );
-}, (p, n) => p.row === n.row && p.expanded === n.expanded && p.favActive === n.favActive && p.loggedIn === n.loggedIn && p.targetFI === n.targetFI && p.originFI === n.originFI && p.volDiff === n.volDiff && p.targetIsSpot === n.targetIsSpot && p.originIsSpot === n.originIsSpot && p.walletData === n.walletData);
+}, (p, n) => p.row === n.row && p.expanded === n.expanded && p.favActive === n.favActive && p.loggedIn === n.loggedIn && p.targetFI === n.targetFI && p.originFI === n.originFI && p.volDiff === n.volDiff && p.targetIsSpot === n.targetIsSpot && p.originIsSpot === n.originIsSpot && p.walletData === n.walletData && p.tetherView === n.tetherView);
 
 function SortBtn({ children, sortKey, current, dir, onSort, className = "", vis = "" }) {
   const active = current === sortKey;
   return (
-    <th className={`sticky top-0 z-[1] px-0.5 py-1.5 sm:px-2 lg:px-3 text-[0.48rem] sm:text-[0.6rem] font-bold uppercase tracking-wider text-ink-muted bg-background whitespace-nowrap ${vis} ${className}`}>
+    <th className={`sticky top-0 z-[1] px-0.5 py-1.5 sm:px-2 lg:px-3 text-[0.5rem] sm:text-[0.65rem] font-bold uppercase tracking-wider text-ink-muted bg-[rgba(10,16,28,0.95)] backdrop-blur-sm whitespace-nowrap ${vis} ${className}`}>
       {sortKey ? (
-        <button className="inline-flex items-center gap-0.5 hover:text-ink" onClick={() => onSort(sortKey)} type="button">
+        <button className="inline-flex items-center gap-0.5 transition-colors duration-150 hover:text-ink" onClick={() => onSort(sortKey)} type="button">
           {children}
           {active ? (dir === "asc" ? <ChevronUp size={9} className="text-accent" /> : <ChevronDown size={9} className="text-accent" />) : <ChevronDown size={9} className="opacity-30" />}
         </button>
@@ -191,12 +206,25 @@ function SortBtn({ children, sortKey, current, dir, onSort, className = "", vis 
 }
 
 function SkeletonRows({ colCount }) {
-  return Array.from({ length: 10 }).map((_, i) => (
-    <tr key={i}>{[...Array(colCount)].map((_, j) => <td key={j} className={TD}><div className="h-3.5 animate-pulse rounded bg-border/20" style={{ width: `${40+Math.random()*40}%` }} /></td>)}</tr>
+  const WIDTHS = ["45%", "70%", "55%", "80%", "60%", "40%", "65%", "50%", "75%", "55%"];
+  return Array.from({ length: 8 }).map((_, i) => (
+    <tr key={i} className="border-b border-border/10">
+      {[...Array(colCount)].map((_, j) => (
+        <td key={j} className={TD}>
+          <div className="h-3 rounded-sm" style={{
+            width: WIDTHS[(i * colCount + j) % WIDTHS.length],
+            background: "linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+            backgroundSize: "200% 100%",
+            animation: "shimmer 1.6s linear infinite",
+            animationDelay: `${i * 60}ms`,
+          }} />
+        </td>
+      ))}
+    </tr>
   ));
 }
 
-export default function PremiumTable({ displayRows, expandedAsset, onSelectAsset, favoriteMap, loggedIn, onToggleFavorite, targetFunding, originFunding, volatilityMap, walletStatus, targetMarketCode, originMarketCode, connected, searchQuery = "", aiRecommendations = [] }) {
+export default function PremiumTable({ displayRows, expandedAsset, onSelectAsset, favoriteMap, loggedIn, onToggleFavorite, targetFunding, originFunding, volatilityMap, walletStatus, targetMarketCode, originMarketCode, connected, searchQuery = "", aiRecommendations = [], isTetherPriceView = false }) {
   const [sortKey, setSortKey] = useState("");
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(0);
@@ -226,17 +254,17 @@ export default function PremiumTable({ displayRows, expandedAsset, onSelectAsset
   if (!originIsSpot) colCount++;
 
   return (
-    <div>
+    <div className="rounded-xl border border-border/30 bg-[rgba(10,16,28,0.6)] backdrop-blur-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full table-auto">
           <thead>
-            <tr className="border-b-2 border-border/60">
+            <tr className="border-b border-border/40">
               <SortBtn vis="hidden sm:table-cell" className="w-4" />
               <SortBtn className="text-left" sortKey="asset" current={sortKey} dir={sortDir} onSort={handleSort}>자산</SortBtn>
               <SortBtn vis="hidden sm:table-cell" className="text-center w-4"><span className="sr-only">전송</span>⇄</SortBtn>
               <SortBtn className="text-right" sortKey="price" current={sortKey} dir={sortDir} onSort={handleSort}>현재가</SortBtn>
-              <SortBtn className="text-right" sortKey="enter" current={sortKey} dir={sortDir} onSort={handleSort}>진입김프</SortBtn>
-              <SortBtn vis="hidden sm:table-cell" className="text-right" sortKey="exit" current={sortKey} dir={sortDir} onSort={handleSort}>탈출김프</SortBtn>
+              <SortBtn className="text-right" sortKey="enter" current={sortKey} dir={sortDir} onSort={handleSort}>{isTetherPriceView ? "진입테더" : "진입김프"}</SortBtn>
+              <SortBtn vis="hidden sm:table-cell" className="text-right" sortKey="exit" current={sortKey} dir={sortDir} onSort={handleSort}>{isTetherPriceView ? "탈출테더" : "탈출김프"}</SortBtn>
               <SortBtn className="text-right" sortKey="spread" current={sortKey} dir={sortDir} onSort={handleSort}>스프레드</SortBtn>
               <SortBtn className="text-right">변동성</SortBtn>
               {!targetIsSpot && <SortBtn className="text-right"><span className="inline-flex items-center gap-1">펀딩률 <ExIcon exchange={targetEx} size={12} /></span></SortBtn>}
@@ -252,8 +280,8 @@ export default function PremiumTable({ displayRows, expandedAsset, onSelectAsset
               const vi = volatilityMap?.[asset];
               return (
                 <Fragment key={asset}>
-                  <Row asset={asset} row={row} expanded={expandedAsset === asset} favActive={Boolean(favoriteMap[asset])} loggedIn={loggedIn} onSelect={onSelectAsset} onFav={onToggleFavorite} targetFI={tfi} originFI={ofi} volDiff={vi?.mean_diff} targetIsSpot={targetIsSpot} originIsSpot={originIsSpot} walletData={walletStatus?.[asset]} targetMC={targetMarketCode} originMC={originMarketCode} />
-                  {expandedAsset === asset && <tr><td colSpan="99" className="p-0"><PremiumChartPanel asset={asset} originFunding={ofi} originMarketCode={originMarketCode} row={row} targetFunding={tfi} targetMarketCode={targetMarketCode} walletNetworks={walletStatus?.[asset] ?? EMPTY_OBJ} /></td></tr>}
+                  <Row asset={asset} row={row} expanded={expandedAsset === asset} favActive={Boolean(favoriteMap[asset])} loggedIn={loggedIn} onSelect={onSelectAsset} onFav={onToggleFavorite} targetFI={tfi} originFI={ofi} volDiff={vi?.mean_diff} targetIsSpot={targetIsSpot} originIsSpot={originIsSpot} walletData={walletStatus?.[asset]} targetMC={targetMarketCode} originMC={originMarketCode} tetherView={isTetherPriceView} />
+                  {expandedAsset === asset && <tr><td colSpan="99" className="p-0"><PremiumChartPanel asset={asset} originFunding={ofi} originMarketCode={originMarketCode} row={row} targetFunding={tfi} targetMarketCode={targetMarketCode} walletNetworks={walletStatus?.[asset] ?? EMPTY_OBJ} isTetherPriceView={isTetherPriceView} /></td></tr>}
                 </Fragment>
               );
             }) : connected ? <SkeletonRows colCount={colCount} /> : (
@@ -263,12 +291,12 @@ export default function PremiumTable({ displayRows, expandedAsset, onSelectAsset
         </table>
       </div>
       {totalPages > 1 && (
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-3 flex items-center justify-between px-3 pb-3">
           <span className="text-xs text-ink-muted">{sorted.length}개 중 {sp*PAGE_SIZE+1}–{Math.min((sp+1)*PAGE_SIZE, sorted.length)}</span>
           <div className="flex items-center gap-1">
-            <button className="rounded px-2 py-1 text-xs text-ink-muted hover:bg-surface-elevated disabled:opacity-30" disabled={sp===0} onClick={() => setPage(p => p-1)} type="button">이전</button>
-            {Array.from({length:totalPages}).map((_,i) => <button key={i} className={`rounded px-2 py-1 text-xs ${i===sp?"bg-accent/20 text-accent":"text-ink-muted hover:bg-surface-elevated"}`} onClick={() => setPage(i)} type="button">{i+1}</button>)}
-            <button className="rounded px-2 py-1 text-xs text-ink-muted hover:bg-surface-elevated disabled:opacity-30" disabled={sp>=totalPages-1} onClick={() => setPage(p => p+1)} type="button">다음</button>
+            <button className="cursor-pointer rounded px-2 py-1 text-xs text-ink-muted hover:bg-surface-elevated disabled:opacity-30" disabled={sp===0} onClick={() => setPage(p => p-1)} type="button">이전</button>
+            {Array.from({length:totalPages}).map((_,i) => <button key={i} className={`cursor-pointer rounded px-2 py-1 text-xs ${i===sp?"bg-accent/20 text-accent":"text-ink-muted hover:bg-surface-elevated"}`} onClick={() => setPage(i)} type="button">{i+1}</button>)}
+            <button className="cursor-pointer rounded px-2 py-1 text-xs text-ink-muted hover:bg-surface-elevated disabled:opacity-30" disabled={sp>=totalPages-1} onClick={() => setPage(p => p+1)} type="button">다음</button>
           </div>
         </div>
       )}

@@ -94,10 +94,10 @@ export default function AppShell({ children }) {
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen min-[1440px]:pr-[320px]">
       <div className="sticky top-0 z-20">
-      <header className="mx-auto w-full rounded-none border-b border-border bg-background/94 backdrop-blur-lg md:w-[min(1280px,calc(100vw-20px))] md:rounded-t-xl md:border md:border-b-0">
-        <div className="relative z-1 mx-auto flex items-center justify-between gap-4 px-4 py-2 md:w-[min(1280px,calc(100vw-32px))]" style={{ minHeight: 56 }}>
+      <header className="mx-auto w-full rounded-none border-b border-border bg-background/95 backdrop-blur-lg md:w-[min(1280px,calc(100vw-20px))] min-[1440px]:w-[min(1280px,calc(100vw-340px))] md:rounded-t-xl md:border md:border-b-0">
+        <div className="relative z-1 mx-auto flex items-center justify-between gap-4 px-4 py-2 md:w-[min(1280px,calc(100vw-32px))] min-[1440px]:w-[min(1280px,calc(100vw-352px))]" style={{ minHeight: 56 }}>
           <div className="flex items-center gap-3 min-w-0">
             <Link className="inline-flex items-center" href="/">
               <Image
@@ -144,7 +144,7 @@ export default function AppShell({ children }) {
             {/* Mobile hamburger */}
             <button
               aria-label="메뉴 열기"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-elevated hover:text-ink md:hidden"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-elevated hover:text-ink md:hidden"
               onClick={() => setDrawerOpen(true)}
               type="button"
             >
@@ -153,7 +153,7 @@ export default function AppShell({ children }) {
           </div>
         </div>
       </header>
-      <div className="mx-auto w-full max-h-[72px] sm:max-h-[46px] overflow-hidden border-b border-border bg-background/94 backdrop-blur-lg md:w-[min(1280px,calc(100vw-20px))] md:rounded-b-xl md:border md:border-t-0" style={{ minHeight: 44 }}>
+      <div className="mx-auto w-full max-h-[72px] sm:max-h-[46px] overflow-hidden border-b border-border bg-background/95 backdrop-blur-lg md:w-[min(1280px,calc(100vw-20px))] min-[1440px]:w-[min(1280px,calc(100vw-340px))] md:rounded-b-xl md:border md:border-t-0" style={{ minHeight: 44 }}>
         <TVTickerWidget />
       </div>
       </div>
@@ -214,10 +214,10 @@ export default function AppShell({ children }) {
         </div>
       ) : null}
 
-      <div className="mx-auto w-[min(1280px,calc(100vw-24px))] pt-2.5 pb-6">
+      <div className="mx-auto w-[min(1280px,calc(100vw-24px))] min-[1440px]:w-[min(1280px,calc(100vw-344px))] pt-2.5 pb-6">
         <NextBreadcrumbs />
       </div>
-      <main className="mx-auto w-[min(1280px,calc(100vw-24px))] pb-8">{children}</main>
+      <main className="mx-auto w-[min(1280px,calc(100vw-24px))] min-[1440px]:w-[min(1280px,calc(100vw-344px))] pb-8">{children}</main>
       <Footer />
       <ChatWidget />
       <ScrollToTop />

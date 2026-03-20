@@ -114,11 +114,12 @@ const BotMarketCodeCombinationSelector = forwardRef(function BotMarketCodeCombin
           <div
             ref={dialogRef}
             className="w-full max-w-md rounded-xl border border-border bg-background shadow-2xl"
+            style={{ animation: "fadeSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)" }}
           >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <h3 className="text-sm font-bold text-ink">마켓 조합 선택</h3>
               <button
-                className="rounded-lg p-1 text-ink-muted hover:bg-surface-elevated hover:text-ink"
+                className="rounded-lg p-1 text-ink-muted hover:bg-surface-elevated hover:text-ink cursor-pointer"
                 onClick={() => setOpen(false)}
                 type="button"
               >
