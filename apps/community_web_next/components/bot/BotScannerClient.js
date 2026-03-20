@@ -85,7 +85,7 @@ export default function BotScannerClient({ selectedConfig }) {
     async function poll() {
       try {
         const data = await authorizedRequest(
-          `/tradecore/trigger-scanner/?tradeConfigUuid=${configUuid}`,
+          `/tradecore/trigger-scanner/?trade_config_uuid=${configUuid}`,
         );
         if (active) {
           setScanners(Array.isArray(data) ? data : data?.results || []);

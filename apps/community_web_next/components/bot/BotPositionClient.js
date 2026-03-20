@@ -159,11 +159,11 @@ export default function BotPositionClient({ marketCodeCombination }) {
     async function fetchPositions() {
       try {
         const targetEndpoint = targetIsSpot
-          ? `/tradecore/spot-position/?marketCode=${target.value}&tradeConfigUuid=${tradeConfigUuid}`
-          : `/tradecore/futures-position/?marketCode=${target.value}&tradeConfigUuid=${tradeConfigUuid}`;
+          ? `/tradecore/spot-position/?market_code=${target.value}&trade_config_uuid=${tradeConfigUuid}`
+          : `/tradecore/futures-position/?market_code=${target.value}&trade_config_uuid=${tradeConfigUuid}`;
         const originEndpoint = originIsSpot
-          ? `/tradecore/spot-position/?marketCode=${origin.value}&tradeConfigUuid=${tradeConfigUuid}`
-          : `/tradecore/futures-position/?marketCode=${origin.value}&tradeConfigUuid=${tradeConfigUuid}`;
+          ? `/tradecore/spot-position/?market_code=${origin.value}&trade_config_uuid=${tradeConfigUuid}`
+          : `/tradecore/futures-position/?market_code=${origin.value}&trade_config_uuid=${tradeConfigUuid}`;
 
         const [targetRes, originRes] = await Promise.all([
           authorizedRequest(targetEndpoint),

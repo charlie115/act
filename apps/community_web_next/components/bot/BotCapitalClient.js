@@ -131,6 +131,7 @@ export default function BotCapitalClient({ marketCodeCombination }) {
     totalAfterUsd = tAfterPnl * dollarRate + oAfterPnl;
     totalBeforeUsdt = tBeforePnl * usdtRate + oBeforePnl;
     totalAfterUsdt = tAfterPnl * usdtRate + oAfterPnl;
+    // NOTE: totalBeforeUsd/totalAfterUsd use dollarRate, totalBeforeUsdt/totalAfterUsdt use usdtRate
   }
 
   function renderCell(key, data) {

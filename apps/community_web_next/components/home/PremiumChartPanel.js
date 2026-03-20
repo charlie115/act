@@ -96,20 +96,22 @@ function precomputeTimestamps(points) {
   });
 }
 
-function makeTimeSeries(cached, key) {
+function makeTimeSeries(cached, key, dollarRate = 0) {
   const result = [];
+  const convert = dollarRate > 0;
   for (let i = 0; i < cached.length; i++) {
     const { item, time } = cached[i];
     if (!Number.isFinite(time)) continue;
     const value = Number(item?.[key]);
     if (!Number.isFinite(value)) continue;
-    result.push({ time, value });
+    result.push({ time, value: convert ? dollarRate * (1 + value * 0.01) : value });
   }
   return result;
 }
 
-function makeCandlestickSeries(cached, prefix) {
+function makeCandlestickSeries(cached, prefix, dollarRate = 0) {
   const result = [];
+  const convert = dollarRate > 0;
   for (let i = 0; i < cached.length; i++) {
     const { item, time } = cached[i];
     if (!Number.isFinite(time)) continue;
@@ -118,7 +120,17 @@ function makeCandlestickSeries(cached, prefix) {
     const low = Number(item?.[`${prefix}_low`]);
     const close = Number(item?.[`${prefix}_close`]);
     if (!Number.isFinite(open) || !Number.isFinite(high) || !Number.isFinite(low) || !Number.isFinite(close)) continue;
-    result.push({ time, open, high, low, close });
+    if (convert) {
+      result.push({
+        time,
+        open: dollarRate * (1 + open * 0.01),
+        high: dollarRate * (1 + high * 0.01),
+        low: dollarRate * (1 + low * 0.01),
+        close: dollarRate * (1 + close * 0.01),
+      });
+    } else {
+      result.push({ time, open, high, low, close });
+    }
   }
   return result;
 }
@@ -705,6 +717,8 @@ export default function PremiumChartPanel({
   }, [asset, interval, originMarketCode, targetMarketCode]);
 
 
+  const dollarRate = showTether ? Number(row?.dollar || 0) : 0;
+
   const chartPayload = useMemo(() => {
     // Pre-compute timestamps once — avoids repeated new Date() for each series
     const cached = precomputeTimestamps(history);
@@ -716,17 +730,19 @@ export default function PremiumChartPanel({
 
     let prefix, color, label;
     if (dataMode === "exit") {
-      prefix = "SL"; color = "#4fd3a7"; label = "탈출김프";
+      prefix = "SL"; color = "#4fd3a7"; label = showTether ? "탈출테더" : "탈출김프";
     } else if (dataMode === "entry") {
-      prefix = "LS"; color = "#16c784"; label = "진입김프";
+      prefix = "LS"; color = "#16c784"; label = showTether ? "진입테더" : "진입김프";
     } else {
-      // "premium" — true premium based on last price (tp_*)
-      prefix = "tp"; color = "#f0b90b"; label = "김프";
+      prefix = "tp"; color = "#f0b90b"; label = showTether ? "테더" : "김프";
     }
+
+    // Pass dollarRate to convert % → KRW when tether view is active
+    const dr = dollarRate > 0 ? dollarRate : 0;
 
     return {
       priceLine,
-      candlestickData: insertWhitespace(makeCandlestickSeries(cached, prefix), interval),
+      candlestickData: insertWhitespace(makeCandlestickSeries(cached, prefix, dr), interval),
       legend: [
         { color: "#4a83ff", label: "현재가" },
         { color, label },
@@ -734,12 +750,12 @@ export default function PremiumChartPanel({
       premiumLines: [
         {
           color,
-          data: insertWhitespace(makeTimeSeries(cached, `${prefix}_close`), interval),
+          data: insertWhitespace(makeTimeSeries(cached, `${prefix}_close`, dr), interval),
           label,
         },
       ],
     };
-  }, [dataMode, history, interval]);
+  }, [dataMode, dollarRate, history, interval, showTether]);
 
   const liveChartPoint = useMemo(() => {
     if (!liveRow?.datetime_now) {
