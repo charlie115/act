@@ -26,7 +26,6 @@ from standalone_func.get_dollar_dict import get_dollar_dict
 from standalone_func.premium_data_generator import get_premium_df, store_premium_df
 from standalone_func.store_exchange_status import store_markets_servercheck_loop, fetch_market_servercheck
 import requests
-from io import StringIO
 
 current_file_dir = os.path.realpath(__file__)
 current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
@@ -52,8 +51,6 @@ class MarketRuntime:
         self.node = node
         self.admin_id = admin_id
         self.proc_n = proc_n
-        self.monitor_websocket_switch = True
-        self.exclude_outliers = True
         self.acw_api = acw_api
         self.exchange_api_key_dict = exchange_api_key_dict
         self.enabled_market_code_combinations = self.fetch_enabled_market_code_combinations()
@@ -65,8 +62,6 @@ class MarketRuntime:
         self.redis_dict = redis_dict
         self.postgres_client = InitPostgresDBClient(**{**postgres_db_dict, 'database': 'trade_core'})
         self.postgres_client.create_all_tables()
-        self.upbit_symbols_to_exclude = []
-        self.binance_usd_m_symbols_to_exclude = []
         # For redis connesction for server check information
         self.remote_redis = RedisHelper(**self.redis_dict)
         self.local_redis = RedisHelper()
@@ -284,8 +279,6 @@ class MarketRuntime:
                     self.store_info_dict_to_redis(data_name, self.upbit_adaptor.spot_exchange_info())
                 elif data_name == "upbit_spot_ticker_df":
                     self.store_info_dict_to_redis(data_name, self.upbit_adaptor.spot_all_tickers())
-                elif data_name == "upbit_wallet_status_df":
-                    self.store_info_dict_to_redis(data_name, self.upbit_adaptor.wallet_status())
                 elif data_name == "binance_spot_ticker_df":
                     self.store_info_dict_to_redis(data_name, self.binance_adaptor.spot_all_tickers())
                 elif data_name == "binance_spot_info_df":
@@ -314,8 +307,6 @@ class MarketRuntime:
                     self.store_info_dict_to_redis(data_name, self.bithumb_adaptor.spot_exchange_info())
                 elif data_name == "bithumb_spot_ticker_df":
                     self.store_info_dict_to_redis(data_name, self.bithumb_adaptor.spot_all_tickers())
-                elif data_name == "bithumb_wallet_status_df":
-                    self.store_info_dict_to_redis(data_name, self.bithumb_adaptor.wallet_status())
                 elif data_name == "bybit_spot_info_df":
                     self.store_info_dict_to_redis(data_name, self.bybit_adaptor.spot_exchange_info())
                 elif data_name == "bybit_spot_ticker_df":
@@ -343,16 +334,6 @@ class MarketRuntime:
                     self.acw_api.create_message_thread(self.admin_id, f"update_exchange_info_as_df|name:{data_name} failed.", f"update_exchange_info_as_df|name:{data_name} failed.")
                 time.sleep(loop_time_secs)
     
-    def dollar_update_thread_status(self):
-        dollar_update_alive_flag = self.update_dollar_thread.is_alive()
-        if dollar_update_alive_flag is True:
-            dollar_update_status_str = "dollar_update_thread is alive"
-            integrity_flag = True
-        else:
-            dollar_update_status_str = "dollar_update_thread is dead"
-            integrity_flag = False
-        return integrity_flag, dollar_update_status_str
-
     def get_symbol_list(self, target_market): # E.g) UPBIT_SPOT, BINANCE_SPOT, BINANCE_USD_M, BINANCE_COIN_M
         target_exchange = target_market.split('_')[0]
         target_market_type = '_'.join(target_market.split('_')[1:])
@@ -721,20 +702,5 @@ class MarketRuntime:
                 update_dollar_logger.error(f"fetch_dollar_loop|Exception occured! Error: {e}, traceback: {traceback.format_exc()}")
                 self.acw_api.create_message_thread(self.admin_id, f"fetch_dollar_loop|Exception occured! Error: {e}", f"fetch_dollar_loop|Exception occured! Error: {e}")
             time.sleep(loop_time)
-
-    def add_symbol_to_exclude(self, market, base_asset):
-        if market == "UPBIT_SPOT":
-            self.upbit_symbols_to_exclude.append(base_asset)
-        elif market == "BINANCE_USD_M":
-            self.binance_usd_m_symbols_to_exclude.append(base_asset)
-        else:
-            raise Exception(f"market: {market} is not supported.")
-    def remove_symbol_to_exclude(self, market, base_asset):
-        if market == "UPBIT_SPOT":
-            self.upbit_symbols_to_exclude.remove(base_asset)
-        elif market == "BINANCE_USD_M":
-            self.binance_usd_m_symbols_to_exclude.remove(base_asset)
-        else:
-            raise Exception(f"market: {market} is not supported.")
 
     
