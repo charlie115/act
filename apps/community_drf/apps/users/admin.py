@@ -441,6 +441,8 @@ class WithdrawalRequestAdmin(ModelAdmin):
             try:
                 with transaction.atomic():
                     wr = WithdrawalRequest.objects.select_for_update().get(pk=wr.pk)
+                    if wr.status not in [WithdrawalRequest.PENDING, WithdrawalRequest.APPROVED]:
+                        continue
                     wr.txid = txid
                     # Check whether it wasn't APPROVED state, if so also update the approved_datetime
                     if wr.status != WithdrawalRequest.APPROVED:

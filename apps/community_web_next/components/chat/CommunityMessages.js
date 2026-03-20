@@ -241,7 +241,7 @@ export default function CommunityMessages({ visible, onNewCount }) {
 
   const filtered = useMemo(() =>
     messages.filter(
-      (m) => !blocklist.includes(m.username) && !(m.username !== username && m.status === "blocked")
+      (m) => !blocklist.includes(m.username) && !(m.username !== username && m.status === "BLOCKED")
     ),
     [messages, blocklist, username]
   );

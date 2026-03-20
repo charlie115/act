@@ -122,16 +122,17 @@ class NodeViewSet(BaseViewSet):
         return [auth() for auth in authentication_classes]
 
     def get_permissions(self):
-        permission_classes = self.permission_classes
-
         if (
             hasattr(self.request, "_authenticator")
             and type(self.request._authenticator) is NodeIPAuthentication
         ):
-            permission_classes = []
+            return []
 
-        return [permission() for permission in permission_classes]
-    
+        if self.request.method not in ("GET", "HEAD", "OPTIONS"):
+            return [(IsAdmin | IsInternal)()]
+
+        return [permission() for permission in self.permission_classes]
+
 
 
 ###################
