@@ -428,7 +428,9 @@ class MarketRuntime:
                 except Exception:
                     self.logger.error(f"MarketRuntime|shutdown|{traceback.format_exc()}")
     
-    def convert_asset_rate(self, origin_market, origin_quote_asset, target_market, target_quote_asset):
+    def convert_asset_rate(self, origin_market, origin_quote_asset, target_market, target_quote_asset, _depth=0):
+        if _depth > 3:
+            return None
         if origin_quote_asset == "USD":
             origin_quote_asset = "USDT"
         if target_quote_asset == "USD":
@@ -463,14 +465,14 @@ class MarketRuntime:
                     raise Exception(f"Cannot find intermediate convert rate from {origin_quote_asset} to USDT for target_market: {target_market}, origin_market: {origin_market}")
                 convert_rate = intermediate_rate * get_dollar_dict(self.local_redis)['price']
             elif origin_quote_asset == "KRW":
-                temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset)
+                temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset, _depth + 1)
                 if temp_convert_rate is not None:
                     convert_rate = 1 / temp_convert_rate
                 else:
                     title = f"target_market: {target_market}, target_quote_asset: {target_quote_asset}, origin_market:{origin_market}, origin_quote_asset: {origin_quote_asset}"
                     raise Exception(f"Cannot find the convert rate for {title}")
             else:
-                temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset)
+                temp_convert_rate = self.convert_asset_rate(target_market, target_quote_asset, origin_market, origin_quote_asset, _depth + 1)
                 if temp_convert_rate is not None:
                     convert_rate = 1 / temp_convert_rate
                     return convert_rate
