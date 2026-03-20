@@ -17,6 +17,9 @@ services:
   trade-core:
     image: trade-core:dev
     container_name: dev-trade-core
+    environment:
+      - DEV_MAX_SYMBOLS=5
+      - PROC_N=1
     volumes:
       - ${HOME}/dev-trade-core/logs:/home/trade_core/trade_core/loggers/logs
 

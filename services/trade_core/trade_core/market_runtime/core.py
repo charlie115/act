@@ -424,10 +424,11 @@ class MarketRuntime:
         total_target_market_df = total_target_market_ticker_df[total_target_market_ticker_df['symbol'].isin(target_market_symbols)]
         final_symbol_list = total_target_market_df.sort_values('atp24h', ascending=False)['symbol'].to_list()
 
-        # total_df.drop_duplicates(['symbol'], inplace=True)
-        # total_df.sort_values('atp24h', ascending=False)
-        # total_df.reset_index(drop=True, inplace=True)
-        # return total_df['symbol'].to_list()
+        # DEV_MAX_SYMBOLS: limit symbols in dev to reduce CPU/memory load
+        dev_max = int(os.getenv("DEV_MAX_SYMBOLS", 0))
+        if dev_max > 0:
+            final_symbol_list = final_symbol_list[:dev_max]
+
         return final_symbol_list
     
     def check_status(self, print_result=False, include_text=False):
