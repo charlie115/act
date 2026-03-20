@@ -199,11 +199,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_blocklist(self):
         blocklist = cache.get(settings.REDIS_CHAT_BLOCKLIST_KEY)
-        if blocklist is None:
-            blocklist = UserBlocklist.objects.all()
-            username_list = list(blocklist.values_list("target_username", flat=True))
-            ip_list = list(blocklist.values_list("target_ip", flat=True))
-            # S4-BUG4 fix: use a TTL so blocklist changes take effect within 5 minutes
+        if not isinstance(blocklist, dict):
+            # Cache miss or stale format (e.g., raw QuerySet from old code)
+            qs = UserBlocklist.objects.all()
+            username_list = list(qs.values_list("target_username", flat=True))
+            ip_list = list(qs.values_list("target_ip", flat=True))
             cache.set(
                 settings.REDIS_CHAT_BLOCKLIST_KEY,
                 {"usernames": username_list, "ips": ip_list},
