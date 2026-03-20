@@ -1,8 +1,11 @@
 from django.contrib import admin
+
+from unfold.admin import ModelAdmin
+
 from .models import Coupon, CouponRedemption
 
 @admin.register(Coupon)
-class CouponAdmin(admin.ModelAdmin):
+class CouponAdmin(ModelAdmin):
     list_display = ['code', 'name', 'amount', 'is_active', 'expires_at', 'created_at']
     list_filter = ['is_active', 'expires_at']
     search_fields = ['name', 'code']
@@ -20,7 +23,7 @@ class CouponAdmin(admin.ModelAdmin):
     )
 
 @admin.register(CouponRedemption)
-class CouponRedemptionAdmin(admin.ModelAdmin):
+class CouponRedemptionAdmin(ModelAdmin):
     list_display = ['user', 'coupon', 'redeemed_at']
     search_fields = ['user__username', 'coupon__name', 'coupon__code']
     list_filter = ['redeemed_at']

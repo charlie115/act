@@ -71,15 +71,15 @@ class CommentsInline(TabularInline):
 
     @admin.display(description="Replies")
     def get_replies(self, obj):
-        return len(obj.replies.all())
+        return obj.replies.count()
 
     @admin.display(description="👍")
     def get_likes(self, obj):
-        return len(obj.reactions.filter(reaction=PostReactions.LIKE))
+        return obj.reactions.filter(reaction=PostReactions.LIKE).count()
 
     @admin.display(description="👎")
     def get_dislikes(self, obj):
-        return len(obj.reactions.filter(reaction=PostReactions.DISLIKE))
+        return obj.reactions.filter(reaction=PostReactions.DISLIKE).count()
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
@@ -164,19 +164,19 @@ class PostAdmin(ModelAdmin):
 
     @admin.display(description="Comments")
     def get_comments(self, obj):
-        return len(obj.comments.all())
+        return obj.comments.count()
 
     @admin.display(description="👍")
     def get_likes(self, obj):
-        return len(obj.reactions.filter(reaction=PostReactions.LIKE))
+        return obj.reactions.filter(reaction=PostReactions.LIKE).count()
 
     @admin.display(description="👎")
     def get_dislikes(self, obj):
-        return len(obj.reactions.filter(reaction=PostReactions.DISLIKE))
+        return obj.reactions.filter(reaction=PostReactions.DISLIKE).count()
 
     @admin.display(description="👁️‍🗨️")
     def get_views(self, obj):
-        return len(obj.views.all())
+        return obj.views.count()
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -233,15 +233,15 @@ class CommentAdmin(ModelAdmin):
 
     @admin.display(description="Replies")
     def get_replies(self, obj):
-        return len(obj.replies.all())
+        return obj.replies.count()
 
     @admin.display(description="👍")
     def get_likes(self, obj):
-        return len(obj.reactions.filter(reaction=PostReactions.LIKE))
+        return obj.reactions.filter(reaction=PostReactions.LIKE).count()
 
     @admin.display(description="👎")
     def get_dislikes(self, obj):
-        return len(obj.reactions.filter(reaction=PostReactions.DISLIKE))
+        return obj.reactions.filter(reaction=PostReactions.DISLIKE).count()
 
     def has_add_permission(self, request, obj=None):
         return False

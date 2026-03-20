@@ -164,7 +164,7 @@ class AffiliateRequestAdmin(ModelAdmin):
     reject_requests.short_description = "Reject selected requests"
     
 
-class CommissionHistoryAdmin(admin.ModelAdmin):
+class CommissionHistoryAdmin(ModelAdmin):
     list_display = [
         'id',
         'affiliate',
@@ -193,7 +193,7 @@ class CommissionHistoryAdmin(admin.ModelAdmin):
     ordering = ['-created_at']
     date_hierarchy = 'created_at'
     
-class CommissionBalanceAdmin(admin.ModelAdmin):
+class CommissionBalanceAdmin(ModelAdmin):
     list_display = [
         'affiliate',
         'balance',
@@ -217,7 +217,3 @@ admin.site.register(Referral, ReferralAdmin)
 admin.site.register(AffiliateRequest, AffiliateRequestAdmin)
 admin.site.register(CommissionHistory, CommissionHistoryAdmin)
 admin.site.register(CommissionBalance, CommissionBalanceAdmin)
-
-+24.2575
--0.0375
--2.97

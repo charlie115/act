@@ -1,8 +1,11 @@
 from django.contrib import admin
+
+from unfold.admin import ModelAdmin
+
 from .models import ExchangeServerStatus
 
 @admin.register(ExchangeServerStatus)
-class ExchangeServerStatusAdmin(admin.ModelAdmin):
+class ExchangeServerStatusAdmin(ModelAdmin):
     list_display = ['id', 'market_code', 'start_time', 'end_time', 'message', 'server_check']
     list_filter = ['market_code', 'start_time', 'end_time']
     search_fields = ['market_code__code', 'message']

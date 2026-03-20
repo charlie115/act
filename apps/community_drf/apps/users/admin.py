@@ -80,6 +80,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
         "email",
         "date_joined",
         "username",
+        "chat_nickname",
         "first_name",
         "last_name",
         "is_staff",
@@ -96,6 +97,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     search_fields = [
         "email",
         "username",
+        "chat_nickname",
         "first_name",
         "last_name",
     ]
@@ -136,6 +138,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
                 "classes": ["tab"],
                 "fields": (
                     "username",
+                    "chat_nickname",
                     ("first_name", "last_name"),
                     "telegram_chat_id",
                 ),
@@ -209,10 +212,10 @@ class UserManagementAdmin(ModelAdmin):
         "managed_user__username",
         "managed_user__first_name",
         "managed_user__last_name",
-        "manager___email",
-        "manager___username",
-        "manager___first_name",
-        "manager___last_name",
+        "manager__email",
+        "manager__username",
+        "manager__first_name",
+        "manager__last_name",
     ]
 
     def has_change_permission(self, request, obj=None):
@@ -290,7 +293,6 @@ class UserSocialAppsAdmin(ModelAdmin):
         "socialapp__name",
         "socialapp__provider",
         "socialapp__clientid",
-        "socialapp__secret",
     ]
 
     def has_change_permission(self, request, obj=None):
@@ -304,7 +306,8 @@ class DepositBalanceAdmin(ModelAdmin):
         "last_update",
     ]
     search_fields = [
-        "user",
+        "user__email",
+        "user__username",
     ]
     inlines = [DepositHistoryInline]
 
@@ -487,7 +490,10 @@ class WithdrawalRequestAdmin(ModelAdmin):
         if obj is not None:
             return False
         return super().has_change_permission(request, obj)
-    
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
     def user_address(self, obj):
         # Return the user's address from hdwallet-service API
         if obj.user:
