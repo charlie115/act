@@ -11,7 +11,7 @@ services:
       - ${HOME}/test-trade-core-api/logs:/home/trade_core/trade_core/loggers/logs
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.trade-test-api.rule=Host(`acw-test.orbitholdings.org`) && PathPrefix(`/trade-api/`)"
+      - "traefik.http.routers.trade-test-api.rule=Host(`test.arbicrypto.net`) && PathPrefix(`/trade-api/`)"
       - "traefik.http.routers.trade-test-api.entrypoints=websecure"
       - "traefik.http.routers.trade-test-api.tls.certresolver=letsencrypt"
       - "traefik.http.routers.trade-test-api.middlewares=trade-ip-allowlist@file"

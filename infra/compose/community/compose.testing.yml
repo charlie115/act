@@ -19,12 +19,12 @@ services:
     image: community-web-next:test
     container_name: test-community-web-next
     environment:
-      - NEXT_PUBLIC_SITE_URL=https://acw-test.orbitholdings.org
+      - NEXT_PUBLIC_SITE_URL=https://test.arbicrypto.net
       - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - NEXT_PUBLIC_DRF_URL=https://acw-test.orbitholdings.org/api
+      - NEXT_PUBLIC_DRF_URL=https://test.arbicrypto.net/api
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.acw-test-web.rule=Host(`acw-test.orbitholdings.org`)"
+      - "traefik.http.routers.acw-test-web.rule=Host(`test.arbicrypto.net`)"
       - "traefik.http.routers.acw-test-web.entrypoints=websecure"
       - "traefik.http.routers.acw-test-web.tls.certresolver=letsencrypt"
       - "traefik.http.services.acw-test-web.loadbalancer.server.port=3000"
@@ -38,7 +38,7 @@ services:
       - ${HOME}/test-community-apikey:/api_key:ro
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.acw-test-api.rule=Host(`acw-test.orbitholdings.org`) && PathPrefix(`/api/`)"
+      - "traefik.http.routers.acw-test-api.rule=Host(`test.arbicrypto.net`) && PathPrefix(`/api/`)"
       - "traefik.http.routers.acw-test-api.entrypoints=websecure"
       - "traefik.http.routers.acw-test-api.tls.certresolver=letsencrypt"
       - "traefik.http.services.acw-test-api.loadbalancer.server.port=8000"
