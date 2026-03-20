@@ -129,9 +129,13 @@ MIDDLEWARE = (
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "config.middleware.api_token.ApiTokenMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 )
+
+# API Token (shared secret for HMAC-signed frontend tokens)
+API_TOKEN_SECRET = env("API_TOKEN_SECRET", default="")
 
 #############
 # DATABASES #
@@ -323,6 +327,8 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "60/minute",
         "user": "300/minute",
+        "infocore_kline": "20/minute",
+        "infocore_general": "30/minute",
     },
 }
 

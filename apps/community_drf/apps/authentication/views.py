@@ -26,6 +26,7 @@ from lib.datetime import TZ_ASIA_SEOUL
 from authentication.adapters import CustomGoogleOAuth2Adapter
 from board.models import UserLevels
 from socialaccounts.models import ProxySocialAccount
+from lib.validators.nickname import generate_chat_nickname
 from users.models import User, UserRole, UserSocialApps, UserAuthLog
 from users.serializers import UserSerializer
 
@@ -44,6 +45,11 @@ class AuthGoogleLoginView(SocialLoginView):
 
     def process_login(self):
         super().process_login()
+
+        # Backfill chat_nickname for existing users who don't have one
+        if not self.user.chat_nickname:
+            self.user.chat_nickname = generate_chat_nickname()
+            self.user.save(update_fields=["chat_nickname"])
 
         # Log
         UserAuthLog.objects.create(user=self.user, endpoint="/login/")
@@ -185,6 +191,11 @@ class AuthBasicLoginView(LoginView):
 
     def process_login(self):
         super().process_login()
+
+        # Backfill chat_nickname for existing users who don't have one
+        if not self.user.chat_nickname:
+            self.user.chat_nickname = generate_chat_nickname()
+            self.user.save(update_fields=["chat_nickname"])
 
         # Log
         UserAuthLog.objects.create(user=self.user, endpoint="/login/basic/")

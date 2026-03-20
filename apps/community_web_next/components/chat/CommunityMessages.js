@@ -7,7 +7,7 @@ import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 
 function msgKey(m) {
-  return `${m.username}-${m.datetime}-${(m.message || "").slice(0, 20)}`;
+  return `${m.nickname || m.username}-${m.datetime}-${(m.message || "").slice(0, 20)}`;
 }
 
 export default function CommunityMessages({ visible, onNewCount }) {
@@ -20,6 +20,7 @@ export default function CommunityMessages({ visible, onNewCount }) {
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);
+  const [nickname, setNickname] = useState("");
   const [blocklist, setBlocklist] = useState(() => {
     if (typeof window === "undefined") {
       return [];
@@ -32,7 +33,56 @@ export default function CommunityMessages({ visible, onNewCount }) {
     }
   });
 
-  const username = user?.username || "";
+  // Resolve nickname: logged-in users use user.chat_nickname, anon users use localStorage or fetch one
+  useEffect(() => {
+    if (loggedIn && user?.chat_nickname) {
+      setNickname(user.chat_nickname);
+      return;
+    }
+
+    if (loggedIn) {
+      // Logged in but no chat_nickname yet — use username as fallback
+      setNickname(user?.username || "");
+      return;
+    }
+
+    // Anonymous: check localStorage first
+    const stored = localStorage.getItem("acw-chat-nickname");
+    if (stored) {
+      setNickname(stored);
+      return;
+    }
+
+    // Fetch a generated nickname
+    let cancelled = false;
+    fetch("/api/chat/nickname/generate/")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data?.nickname) {
+          localStorage.setItem("acw-chat-nickname", data.nickname);
+          setNickname(data.nickname);
+        }
+      })
+      .catch(() => {
+        // ignore
+      });
+
+    return () => { cancelled = true; };
+  }, [loggedIn, user?.chat_nickname, user?.username]);
+
+  // Listen for anonymous nickname changes from NicknameSettings
+  useEffect(() => {
+    if (loggedIn) return;
+
+    function handleStorage(e) {
+      if (e.key === "acw-chat-nickname" && e.newValue) {
+        setNickname(e.newValue);
+      }
+    }
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [loggedIn]);
 
   // Persist blocklist
   useEffect(() => {
@@ -99,11 +149,11 @@ export default function CommunityMessages({ visible, onNewCount }) {
     }
   }, [page, fetchPastMessages]);
 
-  // WebSocket connection for real-time messages
+  // WebSocket connection for real-time messages (connects regardless of login status)
   useEffect(() => {
     const wsUrl = process.env.NEXT_PUBLIC_DRF_WS_URL || process.env.REACT_APP_DRF_WS_URL;
 
-    if (!wsUrl || !loggedIn) {
+    if (!wsUrl) {
       return;
     }
 
@@ -123,8 +173,9 @@ export default function CommunityMessages({ visible, onNewCount }) {
         try {
           const data = JSON.parse(event.data);
           const msg = data?.message || data;
+          const displayName = msg.nickname || msg.username;
 
-          if (msg && msg.username && msg.datetime) {
+          if (msg && displayName && msg.datetime) {
             setMessages((prev) => {
               const key = msgKey(msg);
               // If exact key exists, skip
@@ -133,7 +184,7 @@ export default function CommunityMessages({ visible, onNewCount }) {
               }
               // Replace optimistic message from same user with server version
               const optimisticIdx = prev.findIndex(
-                (m) => m._optimistic && m.username === msg.username && m.message === msg.message
+                (m) => m._optimistic && (m.nickname || m.username) === displayName && m.message === msg.message
               );
               if (optimisticIdx !== -1) {
                 const next = [...prev];
@@ -143,7 +194,7 @@ export default function CommunityMessages({ visible, onNewCount }) {
               return [...prev, msg];
             });
 
-            if (msg.username !== username) {
+            if (displayName !== nickname) {
               const key = msgKey(msg);
               setNewMessageIds((prev) => new Set(prev).add(key));
             }
@@ -152,7 +203,7 @@ export default function CommunityMessages({ visible, onNewCount }) {
             const el = containerRef.current;
             if (el) {
               const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
-              if (nearBottom || msg.username === username) {
+              if (nearBottom || displayName === nickname) {
                 shouldScrollRef.current = true;
               }
             }
@@ -185,7 +236,7 @@ export default function CommunityMessages({ visible, onNewCount }) {
         ws.close();
       }
     };
-  }, [username, loggedIn]);
+  }, [nickname]);
 
   // Report badge count
   useEffect(() => {
@@ -208,13 +259,19 @@ export default function CommunityMessages({ visible, onNewCount }) {
   }, [visible, messages, scrollToBottom]);
 
   function handleSend(text) {
+    if (!nickname) return;
+
+    const isAnon = !loggedIn;
+
     // Optimistic local add
     const now = new Date().toISOString();
     const localMsg = {
-      username,
+      nickname,
+      username: nickname,
       email: user?.email || "",
       message: text,
       datetime: now,
+      is_anon: isAnon,
       _optimistic: true,
     };
 
@@ -222,12 +279,14 @@ export default function CommunityMessages({ visible, onNewCount }) {
     shouldScrollRef.current = true;
 
     // Send via WebSocket
-    if (wsRef.current?.readyState === WebSocket.OPEN && username) {
+    if (wsRef.current?.readyState === WebSocket.OPEN && nickname) {
       wsRef.current.send(
         JSON.stringify({
-          username,
+          nickname,
+          username: nickname,
           email: user?.email || "",
           message: text,
+          is_anon: isAnon,
         })
       );
     }
@@ -241,9 +300,12 @@ export default function CommunityMessages({ visible, onNewCount }) {
 
   const filtered = useMemo(() =>
     messages.filter(
-      (m) => !blocklist.includes(m.username) && !(m.username !== username && m.status === "BLOCKED")
+      (m) => {
+        const name = m.nickname || m.username;
+        return !blocklist.includes(name) && !(name !== nickname && m.status === "BLOCKED");
+      }
     ),
-    [messages, blocklist, username]
+    [messages, blocklist, nickname]
   );
 
   return (
@@ -267,14 +329,15 @@ export default function CommunityMessages({ visible, onNewCount }) {
             </button>
           </div>
         ) : null}
-        {filtered.map((item, idx) => (
+        {filtered.map((item) => (
           <ChatMessage
             key={msgKey(item)}
             datetime={item.datetime}
             id={item.id}
-            isOwnMessage={item.username === username}
+            isAnon={Boolean(item.is_anon)}
+            isOwnMessage={(item.nickname || item.username) === nickname}
             message={item.message}
-            username={item.username}
+            username={item.nickname || item.username}
             onBlockUser={handleBlock}
           />
         ))}
@@ -282,7 +345,7 @@ export default function CommunityMessages({ visible, onNewCount }) {
           <div className="text-center text-xs text-ink-muted py-4">메시지가 없습니다.</div>
         ) : null}
       </div>
-      <ChatInput disabled={!loggedIn || !username} onSend={handleSend} />
+      <ChatInput disabled={!nickname} nickname={nickname} onSend={handleSend} />
     </div>
   );
 }

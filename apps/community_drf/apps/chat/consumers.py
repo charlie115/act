@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -13,7 +14,8 @@ from platform_common.integrations.chat import (
 from pymongo.errors import PyMongoError
 
 from lib.datetime import DATE_FORMAT_NUM, TZ_ASIA_SEOUL, TZ_UTC
-from users.models import UserBlocklist
+from lib.validators.nickname import validate_nickname_format, validate_nickname_not_reserved
+from users.models import User, UserBlocklist
 
 
 REDIS_CLI = get_chat_redis_connection(client_name="django")
@@ -25,17 +27,17 @@ MAX_MESSAGE_LENGTH = 2000
 # Blocklist cache TTL in seconds (5 minutes)
 BLOCKLIST_CACHE_TTL = 300
 
+# Minimum interval between messages for anonymous users (seconds)
+ANON_RATE_LIMIT_SECONDS = 3
+
 logger = logging.getLogger(__name__)
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         user = self.scope.get("user")
-        if not user or not user.is_authenticated:
-            await self.close()
-            return
 
-        self.user = user
+        self.is_anon = not user or not user.is_authenticated
         self.mongodb = MONGODB_CLI.get_database(settings.MONGO_CHAT_DB)
         self.headers = {
             header[0].decode(): header[1].decode() for header in self.scope["headers"]
@@ -49,6 +51,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
         self.ip_blocklist = []
         self.username_blocklist = []
+
+        if self.is_anon:
+            self.user = None
+            self.nickname = None  # Will be set from first message
+            self._last_message_time = 0.0
+        else:
+            self.user = user
+            self.nickname = getattr(user, "chat_nickname", None) or user.username
 
         self.group_name = "chat"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -75,26 +85,78 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }))
                 return
 
+            # --- Anonymous user handling ---
+            if self.is_anon:
+                # Rate limit: reject if < ANON_RATE_LIMIT_SECONDS since last message
+                now_monotonic = time.monotonic()
+                if now_monotonic - self._last_message_time < ANON_RATE_LIMIT_SECONDS:
+                    await self.send(text_data=json.dumps({
+                        "error": "Please wait a few seconds between messages."
+                    }))
+                    return
+                self._last_message_time = now_monotonic
+
+                # Read nickname from message data
+                client_nickname = data.get("nickname")
+                if not client_nickname or not isinstance(client_nickname, str):
+                    await self.send(text_data=json.dumps({
+                        "error": "Nickname is required for anonymous users."
+                    }))
+                    return
+
+                # Validate nickname format and reserved words
+                valid, error = validate_nickname_format(client_nickname)
+                if not valid:
+                    await self.send(text_data=json.dumps({"error": error}))
+                    return
+
+                valid, error = validate_nickname_not_reserved(client_nickname)
+                if not valid:
+                    await self.send(text_data=json.dumps({"error": error}))
+                    return
+
+                # Ensure the nickname is not a registered user's chat_nickname or username
+                is_taken = await self._is_nickname_taken_by_user(client_nickname)
+                if is_taken:
+                    await self.send(text_data=json.dumps({
+                        "error": "This nickname belongs to a registered user."
+                    }))
+                    return
+
+                self.nickname = client_nickname
+                email = ""
+                username = client_nickname
+            else:
+                # Authenticated: always use server-side nickname, ignore client-sent
+                email = self.user.email
+                username = self.nickname
+
             now = datetime.now(TZ_UTC)
 
             chat = {
                 "type": "chatbox_message",
-                "email": self.user.email,
-                "username": self.user.username,
+                "email": email,
+                "username": username,
                 "message": message,
                 "ip": self.ip,
                 "datetime": now,
                 "status": "OK",
+                "is_anon": self.is_anon,
             }
 
             await self.get_blocklist()
 
             # S4-BUG1 fix: block if username OR IP matches (not AND)
-            if (
-                self.user.username in self.username_blocklist
-                or self.ip in self.ip_blocklist
-            ):
-                chat["status"] = "BLOCKED"
+            # For anonymous users, check by IP; for logged-in, check by username or IP
+            if self.is_anon:
+                if self.ip in self.ip_blocklist:
+                    chat["status"] = "BLOCKED"
+            else:
+                if (
+                    self.user.username in self.username_blocklist
+                    or self.ip in self.ip_blocklist
+                ):
+                    chat["status"] = "BLOCKED"
 
             # Mongodb collection is in KST to be easier for devs viewing the db
             await self.save_chat(
@@ -113,6 +175,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "username": event["username"],
                     "datetime": event["datetime"],
                     "status": event["status"],
+                    "is_anon": event.get("is_anon", False),
                 }
             )
         )
@@ -153,3 +216,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
             username for username in username_list if bool(username)
         ]
         self.ip_blocklist = ip_list
+
+    @database_sync_to_async
+    def _is_nickname_taken_by_user(self, nickname):
+        """Check if the nickname matches any registered user's chat_nickname or username (case-insensitive)."""
+        from django.db.models import Q
+
+        return User.objects.filter(
+            Q(chat_nickname__iexact=nickname) | Q(username__iexact=nickname)
+        ).exists()

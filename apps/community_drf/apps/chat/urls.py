@@ -4,7 +4,13 @@ from collections import OrderedDict
 from django.urls import path
 from rest_framework import response
 
-from chat.views import PastChatMessagesView, RandomUsernameView, chatbox
+from chat.views import (
+    GenerateNicknameView,
+    NicknameView,
+    PastChatMessagesView,
+    RandomUsernameView,
+    chatbox,
+)
 from lib.views import BaseAPIListView
 
 
@@ -37,6 +43,8 @@ app_name = "chat"
 urlpatterns = [
     path("", ChatAPIListView.as_view(), name="chat-root"),
     path("username/", RandomUsernameView.as_view(), name="username-view"),
+    path("nickname/generate/", GenerateNicknameView.as_view(), name="nickname-generate"),
+    path("nickname/", NicknameView.as_view(), name="nickname-view"),
     path("past/", PastChatMessagesView.as_view(), name="past-view"),
 ]
 

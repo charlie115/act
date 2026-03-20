@@ -56,11 +56,13 @@ export default function AuthProvider({ children }) {
     async (url, options = {}) => {
       if (!token) throw new Error("Not authenticated");
       const { body, ...rest } = options;
+      const apiToken = (await import("../../lib/clientCache")).getGlobalApiToken();
       const res = await fetch(`/api${url}`, {
         ...rest,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(apiToken ? { "X-Api-Token": apiToken } : {}),
           ...rest.headers,
         },
         body: body ? JSON.stringify(body) : undefined,

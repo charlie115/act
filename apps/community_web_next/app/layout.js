@@ -1,8 +1,10 @@
 import { Inter } from "next/font/google";
 
 import AppShell from "../components/AppShell";
+import { ApiTokenProvider } from "../components/ApiTokenProvider";
 import Providers from "../components/Providers";
 import JsonLd from "../components/seo/JsonLd";
+import { generateApiToken } from "../lib/apiToken.server";
 import { buildMetadata, siteConfig } from "../lib/site";
 import "./globals.css";
 
@@ -21,7 +23,9 @@ export const viewport = {
   themeColor: "#080c16",
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const initialApiToken = generateApiToken();
+
   return (
     <html lang="ko">
       <head>
@@ -50,9 +54,11 @@ export default function RootLayout({ children }) {
         className={`${inter.variable} ${inter.className}`}
         suppressHydrationWarning
       >
-        <Providers>
-          <AppShell>{children}</AppShell>
-        </Providers>
+        <ApiTokenProvider initialToken={initialApiToken}>
+          <Providers>
+            <AppShell>{children}</AppShell>
+          </Providers>
+        </ApiTokenProvider>
       </body>
     </html>
   );

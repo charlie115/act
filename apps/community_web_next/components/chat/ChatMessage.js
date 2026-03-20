@@ -48,7 +48,7 @@ const MESSAGE_TYPE_COLORS = {
 };
 
 const ChatMessage = memo(function ChatMessage({
-  id, message, username, datetime, isOwnMessage, isTelegram, messageType, onBlockUser,
+  id, message, username, datetime, isOwnMessage, isAnon, isTelegram, messageType, onBlockUser,
 }) {
   const userColor = useMemo(() => stringToColor(username || ""), [username]);
   const typeColor = isTelegram ? MESSAGE_TYPE_COLORS[messageType] || "" : "";
@@ -60,8 +60,11 @@ const ChatMessage = memo(function ChatMessage({
     >
       {/* Avatar dot */}
       {!isOwnMessage ? (
-        <div className="flex-shrink-0 mt-1">
-          <div className="h-6 w-6 rounded-full flex items-center justify-center text-[0.5rem] font-bold text-white" style={{ backgroundColor: userColor }}>
+        <div className="flex-shrink-0 mt-1 relative">
+          <div
+            className={`h-6 w-6 rounded-full flex items-center justify-center text-[0.5rem] font-bold text-white ${isAnon ? "ring-1 ring-ink-muted/30" : ""}`}
+            style={{ backgroundColor: isAnon ? "hsl(0, 0%, 45%)" : userColor }}
+          >
             {(username || "?")[0].toUpperCase()}
           </div>
         </div>
@@ -70,9 +73,17 @@ const ChatMessage = memo(function ChatMessage({
       <div className={`max-w-[78%] min-w-0 flex flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
         {!isOwnMessage ? (
           <div className="flex items-center gap-1.5 mb-0.5 px-1">
-            <span className="text-[0.65rem] font-semibold truncate max-w-[120px]" style={{ color: userColor }}>
+            <span
+              className={`text-[0.65rem] font-semibold truncate max-w-[120px] ${isAnon ? "italic" : ""}`}
+              style={{ color: isAnon ? "hsl(0, 0%, 55%)" : userColor }}
+            >
               {username}
             </span>
+            {isAnon ? (
+              <span className="text-[0.5rem] font-medium px-1 py-px rounded bg-ink-muted/15 text-ink-muted/60 leading-none">
+                G
+              </span>
+            ) : null}
             {!isTelegram && onBlockUser ? (
               <button
                 className="text-[0.55rem] text-ink-muted/40 hover:text-negative transition-colors cursor-pointer"

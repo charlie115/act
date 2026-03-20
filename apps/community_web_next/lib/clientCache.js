@@ -1,6 +1,11 @@
 const MAX_ENTRIES = 300;
 const cacheStore = new Map();
 
+// Global API token for X-Api-Token header injection
+let _apiToken = "";
+export function setGlobalApiToken(token) { _apiToken = token; }
+export function getGlobalApiToken() { return _apiToken; }
+
 function evict() {
   // Prune expired entries first
   const now = Date.now();
@@ -34,7 +39,10 @@ export async function fetchCachedJson(url, { ttlMs = 30000, fetchOptions = {} } 
     return cached.promise || cached.data;
   }
 
-  const promise = fetch(url, { cache: "no-store", ...fetchOptions }).then(async (response) => {
+  const headers = { ...fetchOptions.headers };
+  if (_apiToken) headers["X-Api-Token"] = _apiToken;
+
+  const promise = fetch(url, { cache: "no-store", ...fetchOptions, headers }).then(async (response) => {
     if (!response.ok) {
       throw new Error(`Failed to fetch ${url}: ${response.status}`);
     }

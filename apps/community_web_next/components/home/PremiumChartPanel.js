@@ -96,22 +96,26 @@ function precomputeTimestamps(points) {
   });
 }
 
-function makeTimeSeries(cached, key, dollarRate = 0) {
+function makeTimeSeries(cached, key, useTether = false) {
   const result = [];
-  const convert = dollarRate > 0;
   for (let i = 0; i < cached.length; i++) {
     const { item, time } = cached[i];
     if (!Number.isFinite(time)) continue;
     const value = Number(item?.[key]);
     if (!Number.isFinite(value)) continue;
-    result.push({ time, value: convert ? dollarRate * (1 + value * 0.01) : value });
+    if (useTether) {
+      const d = Number(item?.dollar);
+      if (!Number.isFinite(d) || d <= 0) continue;
+      result.push({ time, value: d * (1 + value * 0.01) });
+    } else {
+      result.push({ time, value });
+    }
   }
   return result;
 }
 
-function makeCandlestickSeries(cached, prefix, dollarRate = 0) {
+function makeCandlestickSeries(cached, prefix, useTether = false) {
   const result = [];
-  const convert = dollarRate > 0;
   for (let i = 0; i < cached.length; i++) {
     const { item, time } = cached[i];
     if (!Number.isFinite(time)) continue;
@@ -120,13 +124,15 @@ function makeCandlestickSeries(cached, prefix, dollarRate = 0) {
     const low = Number(item?.[`${prefix}_low`]);
     const close = Number(item?.[`${prefix}_close`]);
     if (!Number.isFinite(open) || !Number.isFinite(high) || !Number.isFinite(low) || !Number.isFinite(close)) continue;
-    if (convert) {
+    if (useTether) {
+      const d = Number(item?.dollar);
+      if (!Number.isFinite(d) || d <= 0) continue;
       result.push({
         time,
-        open: dollarRate * (1 + open * 0.01),
-        high: dollarRate * (1 + high * 0.01),
-        low: dollarRate * (1 + low * 0.01),
-        close: dollarRate * (1 + close * 0.01),
+        open: d * (1 + open * 0.01),
+        high: d * (1 + high * 0.01),
+        low: d * (1 + low * 0.01),
+        close: d * (1 + close * 0.01),
       });
     } else {
       result.push({ time, open, high, low, close });
@@ -406,6 +412,7 @@ export default function PremiumChartPanel({
   const chartRef = useRef(null);
   const priceSeriesRef = useRef(null);
   const premiumSeriesRef = useRef(null);
+  const showTetherRef = useRef(false);
   const lastLiveTimeRef = useRef(null);
   const chartDataLengthRef = useRef(0);
   const preserveLogicalRangeRef = useRef(null);
@@ -428,6 +435,7 @@ export default function PremiumChartPanel({
   const [hasOlderHistory, setHasOlderHistory] = useState(true);
   const [error, setError] = useState("");
   const showTether = isTetherPriceView;
+  showTetherRef.current = showTether;
 
   useEffect(() => {
     hasOlderHistoryRef.current = hasOlderHistory;
@@ -717,10 +725,7 @@ export default function PremiumChartPanel({
   }, [asset, interval, originMarketCode, targetMarketCode]);
 
 
-  const dollarRate = showTether ? Number(row?.dollar || 0) : 0;
-
   const chartPayload = useMemo(() => {
-    // Pre-compute timestamps once — avoids repeated new Date() for each series
     const cached = precomputeTimestamps(history);
 
     const priceLine = {
@@ -737,12 +742,9 @@ export default function PremiumChartPanel({
       prefix = "tp"; color = "#f0b90b"; label = showTether ? "테더" : "김프";
     }
 
-    // Pass dollarRate to convert % → KRW when tether view is active
-    const dr = dollarRate > 0 ? dollarRate : 0;
-
     return {
       priceLine,
-      candlestickData: insertWhitespace(makeCandlestickSeries(cached, prefix, dr), interval),
+      candlestickData: insertWhitespace(makeCandlestickSeries(cached, prefix, showTether), interval),
       legend: [
         { color: "#4a83ff", label: "현재가" },
         { color, label },
@@ -750,12 +752,12 @@ export default function PremiumChartPanel({
       premiumLines: [
         {
           color,
-          data: insertWhitespace(makeTimeSeries(cached, `${prefix}_close`, dr), interval),
+          data: insertWhitespace(makeTimeSeries(cached, `${prefix}_close`, showTether), interval),
           label,
         },
       ],
     };
-  }, [dataMode, dollarRate, history, interval, showTether]);
+  }, [dataMode, history, interval, showTether]);
 
   const liveChartPoint = useMemo(() => {
     if (!liveRow?.datetime_now) {
@@ -926,7 +928,12 @@ export default function PremiumChartPanel({
         lines.push(`<span style="color:#4a83ff">가격</span> <strong>${formatNumber(priceValue, 1)}</strong>`);
       }
       if (premiumValue !== undefined) {
-        lines.push(`<span style="color:#16c784">프리미엄</span> <strong>${premiumValue.toFixed(3)}%</strong>`);
+        const tetherActive = showTetherRef.current;
+        const fmtPremium = tetherActive
+          ? `${formatNumber(premiumValue, 1)} KRW`
+          : `${premiumValue.toFixed(3)}%`;
+        const premiumLabel = tetherActive ? "테더" : "프리미엄";
+        lines.push(`<span style="color:#16c784">${premiumLabel}</span> <strong>${fmtPremium}</strong>`);
       }
 
       tooltip.innerHTML = lines.join("<br>");
@@ -994,16 +1001,35 @@ export default function PremiumChartPanel({
         ? chartPayload.priceLine.data[chartPayload.priceLine.data.length - 1]
         : null;
 
+    // Y-axis format: tether → KRW with compact notation, kimp → %
+    const premiumPriceFormat = showTether
+      ? {
+          type: "custom",
+          formatter: (price) => {
+            const abs = Math.abs(price);
+            if (abs >= 1_0000) return `${(price / 1_0000).toFixed(1)}만`;
+            return `${price.toFixed(1)} ₩`;
+          },
+          minMove: 0.1,
+        }
+      : {
+          type: "custom",
+          formatter: (price) => `${price.toFixed(3)}%`,
+          minMove: 0.001,
+        };
+
     priceSeriesRef.current.applyOptions({
       color: chartPayload.priceLine.color,
     });
     priceSeriesRef.current.setData(chartPayload.priceLine.data);
 
     if (chartStyle === "ohlc") {
+      premiumSeriesRef.current.applyOptions({ priceFormat: premiumPriceFormat });
       premiumSeriesRef.current.setData(chartPayload.candlestickData);
     } else {
       premiumSeriesRef.current.applyOptions({
         color: chartPayload.premiumLines[0]?.color || "#16c784",
+        priceFormat: premiumPriceFormat,
       });
       premiumSeriesRef.current.setData(chartPayload.premiumLines[0]?.data || []);
     }
@@ -1053,7 +1079,7 @@ export default function PremiumChartPanel({
     }
 
     chartDataLengthRef.current = nextLength;
-  }, [chartPayload, chartStyle, loading]);
+  }, [chartPayload, chartStyle, loading, showTether]);
 
   useEffect(() => {
     if (!liveChartPoint || !priceSeriesRef.current || !premiumSeriesRef.current) {
@@ -1280,7 +1306,7 @@ export default function PremiumChartPanel({
             가격
           </div>
           <div className="pointer-events-none absolute top-1 right-1 z-10 rounded bg-background/80 px-1.5 py-0.5 text-[0.6rem] font-bold text-positive">
-            프리미엄 %
+            {showTether ? "테더 ₩" : "프리미엄 %"}
           </div>
           {/* Crosshair tooltip */}
           <div

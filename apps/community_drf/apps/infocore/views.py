@@ -12,6 +12,7 @@ from django_filters import FilterSet
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import exceptions, response, views
+from rest_framework.throttling import ScopedRateThrottle
 from pymongo import ASCENDING, DESCENDING
 from pytz import timezone
 
@@ -126,6 +127,8 @@ class AssetViewSet(BaseViewSet):
 class MarketCodesView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "infocore_general"
     _prefix = "INFO_CORE|ACTIVATED|"
     _index_key = "INFO_CORE|ACTIVATED_INDEX"
     _ttl_seconds = 35
@@ -192,6 +195,8 @@ class MarketCodesView(views.APIView):
 class CurrentKlineSnapshotView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "infocore_kline"
 
     def get(self, request):
         target_market_code = request.query_params.get("target_market_code")
@@ -253,6 +258,8 @@ class CurrentKlineSnapshotView(views.APIView):
 class DollarView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "infocore_general"
 
     def get(self, request):
         redis_key = "INFO_CORE|dollar"
@@ -279,6 +286,8 @@ class DollarView(views.APIView):
 class USDTView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "infocore_general"
 
     def get(self, request):
         redis_key = "INFO_CORE|usdt"
@@ -306,6 +315,8 @@ class USDTView(views.APIView):
 class KlineDataView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "infocore_kline"
     page_size = 200
     CACHE_TTL_LATEST = 6
     CACHE_TTL_HISTORICAL = 1800
@@ -499,6 +510,8 @@ class KlineDataView(views.APIView):
 class KlineVolatilityView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "infocore_kline"
     page_size = 200
     CACHE_TTL = 30
 
@@ -585,6 +598,8 @@ class KlineVolatilityView(views.APIView):
 class FundingRateDataView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "infocore_general"
     CACHE_TTL = 10  # 10 seconds - short TTL to minimize staleness
     FUNDING_LATEST_PREFIX = "INFO_CORE|FUNDING_LATEST|"
 
@@ -743,6 +758,8 @@ class FundingRateDataView(views.APIView):
 class AverageFundingRateDataView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "infocore_general"
     CACHE_TTL = 10  # 10 seconds - short TTL to minimize staleness
 
     def get(self, request):
@@ -813,6 +830,8 @@ class AverageFundingRateDataView(views.APIView):
 class FundingRateDiffDataView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "infocore_general"
     CACHE_TTL = 10  # 10 seconds - short TTL to minimize staleness
 
     def get(self, request):
@@ -900,6 +919,8 @@ class FundingRateDiffDataView(views.APIView):
 class WalletStatusView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "infocore_general"
 
     def get(self, request):
         query_params = WalletStatusQueryParamsSerializer(data=request.query_params)
@@ -1032,6 +1053,8 @@ class WalletStatusView(views.APIView):
 class RankIndicatorView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "infocore_general"
     
     def get(self, request):
         query_params = RankIndicatorQueryParamsSerializer(data=request.query_params)
@@ -1302,6 +1325,8 @@ class RankIndicatorView(views.APIView):
 class AiRankRecommendationView(views.APIView):
     http_method_names = ["get"]
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "infocore_general"
     
     def get(self, request):
         try:

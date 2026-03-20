@@ -17,7 +17,7 @@ class PastChatMessagesQueryParamsSerializer(serializers.Serializer):
 
 
 class PastChatMessagesSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    email = serializers.EmailField(required=False, default="")
     username = serializers.CharField()
     # ip = serializers.IPAddressField()
     message = serializers.CharField()
@@ -25,3 +25,4 @@ class PastChatMessagesSerializer(serializers.Serializer):
         format=DATE_TIME_TZ_FORMAT,
         default_timezone=TZ_UTC,
     )
+    is_anon = serializers.BooleanField(required=False, default=False)

@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessageCircle, X, Send } from "lucide-react";
+import { MessageCircle, X, Settings } from "lucide-react";
 
 import TelegramMessages from "./TelegramMessages";
 import CommunityMessages from "./CommunityMessages";
+import NicknameSettings from "./NicknameSettings";
 
 const CHANNELS = [
   { key: "community", label: "커뮤니티" },
@@ -66,6 +67,7 @@ export default function ChatWidget() {
   const [channel, setChannel] = useState("community");
   const [communityBadge, setCommunityBadge] = useState(0);
   const [telegramBadge, setTelegramBadge] = useState(0);
+  const [nicknameOpen, setNicknameOpen] = useState(false);
   const panelRef = useRef(null);
 
   const totalBadge = communityBadge + telegramBadge;
@@ -76,11 +78,18 @@ export default function ChatWidget() {
     function handlePointerDown(event) {
       if (panelRef.current && !panelRef.current.contains(event.target)) {
         setOpen(false);
+        setNicknameOpen(false);
       }
     }
 
     function handleKeyDown(event) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        if (nicknameOpen) {
+          setNicknameOpen(false);
+        } else {
+          setOpen(false);
+        }
+      }
     }
 
     window.addEventListener("pointerdown", handlePointerDown);
@@ -90,7 +99,7 @@ export default function ChatWidget() {
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open]);
+  }, [open, nicknameOpen]);
 
   const handleCommunityCount = useCallback((count) => setCommunityBadge(count), []);
   const handleTelegramCount = useCallback((count) => setTelegramBadge(count), []);
@@ -99,11 +108,24 @@ export default function ChatWidget() {
     <>
       {/* ── Desktop: docked sidebar ── */}
       <aside className="hidden min-[1440px]:flex fixed right-0 top-0 bottom-0 z-30 w-[320px] flex-col border-l border-border/40 bg-background/95 backdrop-blur-lg">
-        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border/30 bg-gradient-to-r from-accent/10 to-transparent">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/15">
-            <MessageCircle size={14} strokeWidth={2} className="text-accent" />
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-gradient-to-r from-accent/10 to-transparent">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/15">
+              <MessageCircle size={14} strokeWidth={2} className="text-accent" />
+            </div>
+            <span className="text-sm font-bold text-ink tracking-tight">채팅</span>
           </div>
-          <span className="text-sm font-bold text-ink tracking-tight">채팅</span>
+          <div className="relative">
+            <button
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-ink-muted/50 transition-colors hover:bg-surface-elevated hover:text-ink cursor-pointer"
+              onClick={() => setNicknameOpen((prev) => !prev)}
+              title="닉네임 설정"
+              type="button"
+            >
+              <Settings size={14} strokeWidth={2} />
+            </button>
+            <NicknameSettings open={nicknameOpen} onClose={() => setNicknameOpen(false)} />
+          </div>
         </div>
         <ChannelTabs
           channel={channel}
@@ -132,7 +154,10 @@ export default function ChatWidget() {
             onMouseLeave={() => setHovered(false)}
             onClick={(event) => {
               event.stopPropagation();
-              setOpen((prev) => !prev);
+              setOpen((prev) => {
+                if (prev) setNicknameOpen(false);
+                return !prev;
+              });
             }}
             type="button"
           >
@@ -160,13 +185,26 @@ export default function ChatWidget() {
                 </div>
                 <span className="text-sm font-bold text-ink tracking-tight">채팅</span>
               </div>
-              <button
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-ink-muted/60 transition-colors hover:bg-surface-elevated hover:text-ink cursor-pointer"
-                onClick={() => setOpen(false)}
-                type="button"
-              >
-                <X size={15} strokeWidth={2} />
-              </button>
+              <div className="flex items-center gap-1">
+                <div className="relative">
+                  <button
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-ink-muted/50 transition-colors hover:bg-surface-elevated hover:text-ink cursor-pointer"
+                    onClick={() => setNicknameOpen((prev) => !prev)}
+                    title="닉네임 설정"
+                    type="button"
+                  >
+                    <Settings size={14} strokeWidth={2} />
+                  </button>
+                  <NicknameSettings open={nicknameOpen} onClose={() => setNicknameOpen(false)} />
+                </div>
+                <button
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-ink-muted/60 transition-colors hover:bg-surface-elevated hover:text-ink cursor-pointer"
+                  onClick={() => { setOpen(false); setNicknameOpen(false); }}
+                  type="button"
+                >
+                  <X size={15} strokeWidth={2} />
+                </button>
+              </div>
             </div>
 
             <ChannelTabs

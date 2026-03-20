@@ -14,6 +14,7 @@ from django.utils.translation import gettext_lazy as _
 from api.models import Permission
 from fee.models import UserFeeLevel
 from socialaccounts.models import ProxySocialApp
+from lib.validators.nickname import generate_chat_nickname
 from users.managers import UserManager
 
 class UserRole(models.Model):
@@ -74,6 +75,14 @@ class User(AbstractUser):
         related_name="users",
     )
     telegram_chat_id = models.CharField(max_length=150, blank=True, null=True)
+    chat_nickname = models.CharField(
+        _("chat nickname"),
+        max_length=20,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text="Unique display name for the chat. 2-20 chars, starts with a letter.",
+    )
 
     objects = UserManager()
 
@@ -87,6 +96,9 @@ class User(AbstractUser):
             email_username = list(self.email.split("@")[0])
             temp_username = "".join(random.sample(email_username, len(email_username)))
             self.username = f"@{temp_username}{datetime.now().microsecond}"
+
+        if self._state.adding and not self.chat_nickname:
+            self.chat_nickname = generate_chat_nickname()
 
         super(User, self).save(*args, **kwargs)
 

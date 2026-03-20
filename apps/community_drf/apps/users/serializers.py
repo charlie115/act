@@ -108,6 +108,7 @@ class UserSerializer(serializers.ModelSerializer):
             "uuid",
             "email",
             "username",
+            "chat_nickname",
             "password",
             "first_name",
             "last_name",
@@ -121,7 +122,7 @@ class UserSerializer(serializers.ModelSerializer):
             "trade_config_allocations",
             "affiliate",
         )
-        read_only_fields = ("role", "is_active", "affiliate")
+        read_only_fields = ("role", "is_active", "affiliate", "chat_nickname")
         extra_kwargs = {
             "email": {"style": {"input_type": "email", "placeholder": "Email"}},
             "password": {

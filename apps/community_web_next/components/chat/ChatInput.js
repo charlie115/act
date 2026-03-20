@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Send } from "lucide-react";
 
-export default function ChatInput({ onSend, disabled }) {
+export default function ChatInput({ onSend, disabled, nickname }) {
   const inputRef = useRef(null);
   const composingRef = useRef(false);
   const justSentRef = useRef(false);
@@ -34,44 +34,53 @@ export default function ChatInput({ onSend, disabled }) {
   }
 
   return (
-    <div className={`flex items-end gap-1.5 border-t border-border p-2 ${disabled ? "opacity-40 pointer-events-none" : ""}`}>
-      <textarea
-        ref={inputRef}
-        className="flex-1 resize-none rounded-lg border border-border bg-surface-elevated px-3 py-2 text-base text-ink placeholder:text-ink-muted/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
-        disabled={disabled}
-        maxLength={500}
-        onChange={(event) => {
-          if (justSentRef.current) return;
-          const val = event.target.value;
-          if (val !== "\n") {
-            setMessage(val);
-          }
-        }}
-        onCompositionStart={() => { composingRef.current = true; }}
-        onCompositionEnd={() => { composingRef.current = false; }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.shiftKey && !composingRef.current && event.keyCode !== 229) {
-            event.preventDefault();
-            handleSubmit();
-          }
-        }}
-        placeholder="메시지 입력..."
-        rows={1}
-        value={message}
-      />
-      <button
-        className={`inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-all duration-150 cursor-pointer active:scale-90 disabled:opacity-30 ${
-          /\S/.test(message)
-            ? "bg-accent text-white shadow-[0_4px_12px_-2px_rgba(43,115,255,0.4)] hover:bg-accent/90"
-            : "text-ink-muted/40"
-        }`}
-        disabled={!/\S/.test(message)}
-        onClick={handleSubmit}
-        title="전송"
-        type="button"
-      >
-        <Send size={15} strokeWidth={2} />
-      </button>
+    <div className={`border-t border-border ${disabled ? "opacity-40 pointer-events-none" : ""}`}>
+      {nickname ? (
+        <div className="px-3 pt-1.5 pb-0">
+          <span className="text-[0.6rem] text-ink-muted/50">
+            <span className="text-ink-muted/70 font-medium">{nickname}</span>(으)로 채팅 중
+          </span>
+        </div>
+      ) : null}
+      <div className="flex items-end gap-1.5 p-2">
+        <textarea
+          ref={inputRef}
+          className="flex-1 resize-none rounded-lg border border-border bg-surface-elevated px-3 py-2 text-base text-ink placeholder:text-ink-muted/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
+          disabled={disabled}
+          maxLength={500}
+          onChange={(event) => {
+            if (justSentRef.current) return;
+            const val = event.target.value;
+            if (val !== "\n") {
+              setMessage(val);
+            }
+          }}
+          onCompositionStart={() => { composingRef.current = true; }}
+          onCompositionEnd={() => { composingRef.current = false; }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey && !composingRef.current && event.keyCode !== 229) {
+              event.preventDefault();
+              handleSubmit();
+            }
+          }}
+          placeholder="메시지 입력..."
+          rows={1}
+          value={message}
+        />
+        <button
+          className={`inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-all duration-150 cursor-pointer active:scale-90 disabled:opacity-30 ${
+            /\S/.test(message)
+              ? "bg-accent text-white shadow-[0_4px_12px_-2px_rgba(43,115,255,0.4)] hover:bg-accent/90"
+              : "text-ink-muted/40"
+          }`}
+          disabled={!/\S/.test(message)}
+          onClick={handleSubmit}
+          title="전송"
+          type="button"
+        >
+          <Send size={15} strokeWidth={2} />
+        </button>
+      </div>
     </div>
   );
 }

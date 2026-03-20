@@ -6,8 +6,9 @@ from django.shortcuts import render
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from platform_common.integrations.chat import get_chat_mongo_client
 from pytz import timezone
-from rest_framework import response, views
+from rest_framework import response, serializers as drf_serializers, status, views
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
 
 from chat.serializers import (
     PastChatMessagesSerializer,
@@ -19,6 +20,12 @@ from lib.datetime import (
     create_list_of_dates,
 )
 from lib.utils import get_client_ip, generate_username
+from lib.validators.nickname import (
+    generate_chat_nickname,
+    validate_nickname_format,
+    validate_nickname_not_reserved,
+    validate_nickname_unique,
+)
 from users.models import UserBlocklist
 
 # Regex pattern matching date-formatted collection names (e.g., "20260317")
@@ -168,3 +175,67 @@ class RandomUsernameView(views.APIView):
         random_username = generate_username()
 
         return response.Response(random_username)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="Generate a random chat nickname",
+        description="Generates a random chat nickname for anonymous users.",
+        responses={200: {"type": "object", "properties": {"nickname": {"type": "string"}}}},
+        tags=["ChatNickname"],
+    ),
+)
+class GenerateNicknameView(views.APIView):
+    """Generate a random chat nickname. No authentication required."""
+
+    http_method_names = ["get"]
+    permission_classes = []
+
+    def get(self, request):
+        nickname = generate_chat_nickname()
+        return response.Response({"nickname": nickname})
+
+
+class NicknameSerializer(drf_serializers.Serializer):
+    nickname = drf_serializers.CharField(min_length=2, max_length=20)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        operation_id="Set chat nickname",
+        description="Set or update the authenticated user's chat nickname.",
+        request=NicknameSerializer,
+        responses={200: {"type": "object", "properties": {"nickname": {"type": "string"}}}},
+        tags=["ChatNickname"],
+    ),
+)
+class NicknameView(views.APIView):
+    """Set or update the authenticated user's chat nickname."""
+
+    http_method_names = ["post"]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = NicknameSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        nickname = serializer.validated_data["nickname"]
+
+        # Validate format
+        valid, error = validate_nickname_format(nickname)
+        if not valid:
+            return response.Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate not reserved
+        valid, error = validate_nickname_not_reserved(nickname)
+        if not valid:
+            return response.Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate uniqueness (exclude current user)
+        valid, error = validate_nickname_unique(nickname, exclude_user_id=request.user.pk)
+        if not valid:
+            return response.Response({"error": error}, status=status.HTTP_409_CONFLICT)
+
+        request.user.chat_nickname = nickname
+        request.user.save(update_fields=["chat_nickname"])
+
+        return response.Response({"nickname": nickname})
