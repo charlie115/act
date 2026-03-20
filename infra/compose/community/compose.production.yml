@@ -1,19 +1,4 @@
 services:
-  certbot:
-    build:
-      context: production/certbot
-
-  nginx:
-    image: community-nginx
-    build:
-      context: production/nginx
-    container_name: prod-community-nginx
-    volumes:
-      - ${HOME}/prod-community-drf/static/:/opt/community_drf/static/
-      - ${HOME}/prod-community-drf/media/:/opt/community_drf/media/
-      - ${HOME}/certbot/conf:/etc/letsencrypt
-      - ${HOME}/certbot/www:/var/www/certbot
-
   postgres:
     container_name: prod-community-postgres
     expose:
@@ -43,6 +28,12 @@ services:
       - NEXT_PUBLIC_SITE_URL=https://arbicrypto.net
       - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - NEXT_PUBLIC_DRF_URL=https://arbicrypto.net/api
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.acw-web.rule=Host(`arbicrypto.net`)"
+      - "traefik.http.routers.acw-web.entrypoints=websecure"
+      - "traefik.http.routers.acw-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.acw-web.loadbalancer.server.port=3000"
 
   drf:
     image: community-drf
@@ -51,6 +42,12 @@ services:
       - ${HOME}/prod-community-drf/static:/opt/community_drf/static
       - ${HOME}/prod-community-drf/media:/opt/community_drf/media
       - ${HOME}/prod-community-apikey:/api_key:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.acw-api.rule=Host(`arbicrypto.net`) && PathPrefix(`/api/`)"
+      - "traefik.http.routers.acw-api.entrypoints=websecure"
+      - "traefik.http.routers.acw-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.acw-api.loadbalancer.server.port=8000"
 
   celery-worker:
     image: community-celery-worker
@@ -100,3 +97,5 @@ secrets:
 networks:
   community-network:
     name: prod-community-network
+  traefik-network:
+    external: true

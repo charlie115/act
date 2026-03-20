@@ -1,19 +1,4 @@
 services:
-  certbot:
-    build:
-      context: testing/certbot
-
-  nginx:
-    image: community-nginx:test
-    build:
-      context: testing/nginx
-    container_name: test-community-nginx
-    volumes:
-      - ${HOME}/test-community-drf/static/:/opt/community_drf/static/
-      - ${HOME}/test-community-drf/media/:/opt/community_drf/media/
-      - ${HOME}/certbot/conf:/etc/letsencrypt
-      - ${HOME}/certbot/www:/var/www/certbot
-
   postgres:
     container_name: test-community-postgres
     volumes:
@@ -37,6 +22,12 @@ services:
       - NEXT_PUBLIC_SITE_URL=https://acw-test.orbitholdings.org
       - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - NEXT_PUBLIC_DRF_URL=https://acw-test.orbitholdings.org/api
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.acw-test-web.rule=Host(`acw-test.orbitholdings.org`)"
+      - "traefik.http.routers.acw-test-web.entrypoints=websecure"
+      - "traefik.http.routers.acw-test-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.acw-test-web.loadbalancer.server.port=3000"
 
   drf:
     image: community-drf:test
@@ -45,6 +36,12 @@ services:
       - ${HOME}/test-community-drf/static:/opt/community_drf/static
       - ${HOME}/test-community-drf/media:/opt/community_drf/media
       - ${HOME}/test-community-apikey:/api_key:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.acw-test-api.rule=Host(`acw-test.orbitholdings.org`) && PathPrefix(`/api/`)"
+      - "traefik.http.routers.acw-test-api.entrypoints=websecure"
+      - "traefik.http.routers.acw-test-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.acw-test-api.loadbalancer.server.port=8000"
 
   celery-worker:
     image: community-celery-worker:test
@@ -90,3 +87,5 @@ secrets:
 networks:
   community-network:
     name: test-community-network
+  traefik-network:
+    external: true

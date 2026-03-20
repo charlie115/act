@@ -32,6 +32,7 @@ services:
         condition: service_healthy
     networks:
       - trade-network
+      - traefik-network
     restart: always
     logging: *default-logging
 
@@ -48,19 +49,9 @@ services:
     restart: always
     logging: *default-logging
 
-  trade-nginx:
-    image: nginx:alpine
-    container_name: nginx
-    ports:
-      - "20081:20081"
-    depends_on:
-      - trade-core-api
-    networks:
-      - trade-network
-    restart: always
-    logging: *default-logging
-
 networks:
   trade-network:
     driver: bridge
+  traefik-network:
+    external: true
 

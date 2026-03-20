@@ -28,3 +28,4 @@ pymongo==4.5.0
 pyTelegramBotAPI==4.18.1
 psycopg[binary]==3.1.10
 rq==1.15.1
+whitenoise==6.7.0

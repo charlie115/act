@@ -20,9 +20,6 @@ services:
     volumes:
       - ${HOME}/dev-trade-core/logs:/home/trade_core/trade_core/loggers/logs
 
-  trade-nginx:
-    profiles: ["disabled"]
-
 networks:
   trade-network:
     name: dev-trade-network

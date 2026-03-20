@@ -122,6 +122,7 @@ API_APP_SETTINGS = {
 
 MIDDLEWARE = (
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -400,15 +401,16 @@ OBJECT_STORAGE_SECRET_ACCESS_KEY = env("OBJECT_STORAGE_SECRET_ACCESS_KEY", defau
 OBJECT_STORAGE_REGION_NAME = env("OBJECT_STORAGE_REGION_NAME", default="us-east-1")
 OBJECT_STORAGE_LOCATION = env("OBJECT_STORAGE_LOCATION", default="")
 
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
 if OBJECT_STORAGE_ENABLED:
     INSTALLED_APPS += ("storages",)
-    STORAGES = {
-        "default": {
-            "BACKEND": "config.storage_backends.MinIOMediaStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-        },
+    STORAGES["default"] = {
+        "BACKEND": "config.storage_backends.MinIOMediaStorage",
     }
     if OBJECT_STORAGE_PUBLIC_URL:
         MEDIA_URL = urljoin(f"{OBJECT_STORAGE_PUBLIC_URL.rstrip('/')}/", OBJECT_STORAGE_LOCATION.strip("/") + "/") if OBJECT_STORAGE_LOCATION else f"{OBJECT_STORAGE_PUBLIC_URL.rstrip('/')}/"

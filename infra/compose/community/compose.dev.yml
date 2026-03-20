@@ -1,10 +1,4 @@
 services:
-  certbot:
-    profiles: ["disabled"]
-
-  nginx:
-    profiles: ["disabled"]
-
   postgres:
     container_name: dev-community-postgres
     ports:

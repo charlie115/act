@@ -5,27 +5,6 @@ x-logging: &default-logging
     max-file: "5"
 
 services:
-  certbot:
-    container_name: certbot
-    volumes:
-      - ${HOME}/certbot/conf:/etc/letsencrypt
-      - ${HOME}/certbot/www:/var/www/certbot
-    networks:
-      - community-network
-    logging: *default-logging
-
-  nginx:
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - drf
-      - community-web-next
-    networks:
-      - community-network
-    restart: always
-    logging: *default-logging
-
   postgres:
     image: postgres:16-alpine
     environment:
@@ -84,6 +63,7 @@ services:
       - drf
     networks:
       - community-network
+      - traefik-network
     restart: always
     logging: *default-logging
 
@@ -100,6 +80,7 @@ services:
       - "8000"
     networks:
       - community-network
+      - traefik-network
     restart: always
     logging: *default-logging
 
@@ -192,3 +173,5 @@ secrets:
 networks:
   community-network:
     driver: bridge
+  traefik-network:
+    external: true
