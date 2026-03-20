@@ -11,10 +11,10 @@ from sqlalchemy.exc import IntegrityError
 from uuid import UUID
 import uuid
 import sys, os
-import models, schemas
-from utils import encrypt_data, decrypt_data, find_api_keys
-from decorators import handle_db_exceptions
-from database import engine
+from api import models, schemas
+from api.utils import encrypt_data, decrypt_data, find_api_keys
+from api.decorators import handle_db_exceptions
+from api.database import engine
 import datetime
 import _pickle as pickle
 from exchange_plugin.integrated_plug import UserExchangeAdaptor
@@ -25,7 +25,7 @@ from etc.redis_connector.redis_helper import RedisHelper
 from standalone_func.premium_data_generator import get_or_build_premium_df
 from loggers.logger import TradeCoreLogger
 from dotenv import load_dotenv
-from config import logging_dir, PROD, NODE, ADMIN_TELEGRAM_ID, USER_UUID_FOR_WALLET, ACW_API_URL, mongo_db_dict, redis_dict, acw_api, postgres_db_dict
+from api.config import logging_dir, PROD, NODE, ADMIN_TELEGRAM_ID, USER_UUID_FOR_WALLET, ACW_API_URL, mongo_db_dict, redis_dict, acw_api, postgres_db_dict
 
 logger = TradeCoreLogger("api_crud", logging_dir).logger
 
@@ -505,6 +505,61 @@ async def create_exchange_api_key(exchange_api_key: schemas.ExchangeApiKeyCreate
 
     db_exchange_api_key = models.ExchangeApiKey(**exchange_api_key.dict())
     db.add(db_exchange_api_key)
+    await db.commit()
+    await db.refresh(db_exchange_api_key)
+    return db_exchange_api_key
+
+@handle_db_exceptions
+async def update_exchange_api_key(uuid: UUID, exchange_api_key: schemas.ExchangeApiKeyUpdate, db: AsyncSession):
+    result = await db.execute(select(models.ExchangeApiKey).filter(
+        models.ExchangeApiKey.uuid == uuid
+    ))
+    db_exchange_api_key = result.scalar_one_or_none()
+    if db_exchange_api_key is None:
+        raise HTTPException(status_code=404, detail="Exchange api key not found")
+
+    # If market_code is being updated, derive exchange/spot/futures from it
+    if exchange_api_key.market_code is not None:
+        exchange_api_key.market_code = exchange_api_key.market_code.upper()
+        exchange_api_key.exchange = exchange_api_key.market_code.split('_')[0]
+        exchange_api_key.spot = True if 'SPOT' in exchange_api_key.market_code else False
+        exchange_api_key.futures = True if 'SPOT' not in exchange_api_key.market_code else False
+
+    # If access_key or secret_key are being updated, validate and encrypt them
+    if exchange_api_key.access_key is not None and exchange_api_key.secret_key is not None:
+        access_key_to_check = exchange_api_key.access_key.decode()
+        secret_key_to_check = exchange_api_key.secret_key.decode()
+        if exchange_api_key.passphrase is not None:
+            passphrase_to_check = exchange_api_key.passphrase.decode()
+        else:
+            passphrase_to_check = None
+
+        # Determine exchange for validation
+        exchange_name = exchange_api_key.exchange if exchange_api_key.exchange else db_exchange_api_key.exchange
+        futures_flag = exchange_api_key.futures if exchange_api_key.futures is not None else db_exchange_api_key.futures
+
+        # Validate the API key
+        try:
+            validated_flag, error_str = user_exchange_adaptor.check_api_key(
+                exchange_name, access_key_to_check, secret_key_to_check, passphrase_to_check, futures_flag
+            )
+        except Exception as e:
+            validated_flag = False
+            error_str = str(e)
+        if not validated_flag:
+            raise HTTPException(status_code=400, detail=error_str)
+
+        # Encrypt keys before storing
+        exchange_api_key.access_key = encrypt_data(exchange_api_key.access_key)
+        exchange_api_key.secret_key = encrypt_data(exchange_api_key.secret_key)
+        if exchange_api_key.passphrase is not None:
+            exchange_api_key.passphrase = encrypt_data(exchange_api_key.passphrase)
+
+    # Apply all non-None updates
+    for var, value in vars(exchange_api_key).items():
+        if value is not None:
+            setattr(db_exchange_api_key, var, value)
+
     await db.commit()
     await db.refresh(db_exchange_api_key)
     return db_exchange_api_key

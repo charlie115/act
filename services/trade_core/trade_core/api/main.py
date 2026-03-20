@@ -1,19 +1,13 @@
-import random
 from fastapi import FastAPI
 from fastapi import status, Body
-from fastapi.responses import Response
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 from typing import Optional
 from typing import List
 from uuid import UUID
-import sys, os
 from api import schemas
 from api import crud
-from config import acw_api, NODE, ADMIN_TELEGRAM_ID
+from api.config import acw_api, NODE, ADMIN_TELEGRAM_ID
 
 app = FastAPI()
 
@@ -40,7 +34,7 @@ async def remove_trade_config(uuid: UUID, db: AsyncSession = Depends(crud.get_db
     return await crud.delete_trade_config(uuid, db)
 
 @app.delete("/trade-config/")
-async def remove_trade_config(user: UUID, db: AsyncSession = Depends(crud.get_db)):
+async def remove_all_trade_configs(user: UUID, db: AsyncSession = Depends(crud.get_db)):
     return await crud.delete_all_trade_configs(user, db)
 
 @app.get("/trades/", response_model=List[schemas.Trade])

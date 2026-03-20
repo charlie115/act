@@ -1,23 +1,12 @@
-import sys
-import os
 import datetime
 import traceback
 import pandas as pd
 import time
 from okx.Account import AccountAPI
-from okx.BlockTrading import BlockTradingAPI
-from okx.Convert import ConvertAPI
-from okx.Earning import EarningAPI
-from okx.FDBroker import FDBrokerAPI
 from okx.Funding import FundingAPI
-from okx.Grid import GridAPI
 from okx.MarketData import MarketAPI
-from okx.NDBroker import NDBrokerAPI
 from okx.PublicData import PublicAPI
-from okx.Status import StatusAPI
-from okx.SubAccount import SubAccountAPI
 from okx.Trade import TradeAPI
-from okx.TradingData import TradingDataAPI
 
 from loggers.logger import TradeCoreLogger
 
@@ -27,19 +16,10 @@ class OkxClient:
         self.okx_secret_key = okx_secret_key
         self.passphrase = passphrase
         self.AccountAPI = AccountAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
-        self.BlockTradingAPI = BlockTradingAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
-        self.ConvertAPI = ConvertAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
-        self.EarningAPI = EarningAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
-        self.FDBrokerAPI = FDBrokerAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
         self.FundingAPI = FundingAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
-        self.GridAPI = GridAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
         self.MarketAPI = MarketAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
-        self.NDBrokerAPI = NDBrokerAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
         self.PublicAPI = PublicAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
-        self.StatusAPI = StatusAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
-        self.SubAccountAPI = SubAccountAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
         self.TradeAPI = TradeAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
-        self.TradingDataAPI = TradingDataAPI(api_key=okx_api_key, api_secret_key=okx_secret_key, passphrase=passphrase, flag=demo_trading, debug=debug)
 
 class InitOkxAdaptor:
     def __init__(self, read_only_okx_access_key='-1', read_only_okx_secret_key='-1', passphrase='-1', demo_trading='0', debug=False, logging_dir=None):

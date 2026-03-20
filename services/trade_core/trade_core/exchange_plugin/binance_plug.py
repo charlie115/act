@@ -1,11 +1,8 @@
-import sys
 import os
 import datetime
 import traceback
-import pickle
 import pandas as pd
 from queue import Queue
-import numpy as np
 import time
 from binance.client import Client
 from binance import AsyncClient, BinanceSocketManager # For MarginCallback
@@ -19,7 +16,6 @@ from etc.db_handler.postgres_client import InitDBClient as InitPostgresDBClient
 from etc.redis_connector.redis_helper import RedisHelper
 from etc.utils import get_trade_df
 from api.utils import decrypt_data, MyException
-from etc.redis_connector.redis_helper import RedisHelper
 
 # P2-10: Externalize Binance trading fee rate to env var instead of hardcoding.
 # Default 0.0005 (0.05%) matches Binance USD-M futures taker fee.

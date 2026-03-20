@@ -6,7 +6,6 @@ from psycopg2 import extras
 from etc.db_handler.mongodb_client import InitDBClient as InitMongoDBClient
 from etc.db_handler.postgres_client import InitDBClient as InitPostgresDBClient
 from loggers.logger import TradeCoreLogger
-from threading import Thread
 from multiprocessing import Process
 from threading import Thread
 from standalone_func.trigger_functions import (fetch_users_with_negative_balance, 

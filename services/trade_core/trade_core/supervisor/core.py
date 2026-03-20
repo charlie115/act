@@ -44,7 +44,7 @@ class TradeCoreSupervisor:
             acw_api=acw_api,
             redis_dict=market_runtime.redis_dict,
             postgres_db_dict=market_runtime.postgres_db_dict,
-            mongo_db_dict=market_runtime.mogno_db_dict,
+            mongo_db_dict=market_runtime.mongo_db_dict,
             logging_dir=market_runtime.logging_dir,
         )
         self.components = {

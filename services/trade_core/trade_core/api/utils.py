@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from uuid import UUID
 # append current dir
-import models
-from config import ENCRYPTION_KEY
+from api import models
+from api.config import ENCRYPTION_KEY
 
 # Initialize Fernet with your key
 # In a real application, load this key from a secure location

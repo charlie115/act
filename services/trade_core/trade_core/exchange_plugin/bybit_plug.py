@@ -1,14 +1,11 @@
 import os
-import sys
 import datetime
 import pandas as pd
 pd.set_option('future.no_silent_downcasting', True)
 import time
 import traceback
 import requests
-import _pickle as pickle
 from pybit.unified_trading import HTTP, WebSocket
-import json
 from psycopg2 import extras
 from threading import Thread
 from queue import Queue

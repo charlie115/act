@@ -1,5 +1,4 @@
 import pandas as pd
-# from price_websocket import dict_convert, update_dollar, price_websocket
 from exchange_plugin.okx_plug import InitOkxAdaptor
 from exchange_plugin.upbit_plug import InitUpbitAdaptor
 from exchange_plugin.binance_plug import InitBinanceAdaptor
@@ -27,9 +26,6 @@ from standalone_func.premium_data_generator import get_premium_df, store_premium
 from standalone_func.store_exchange_status import store_markets_servercheck_loop, fetch_market_servercheck
 import requests
 
-current_file_dir = os.path.realpath(__file__)
-current_folder_dir = os.path.abspath(os.path.join(current_file_dir, os.pardir))
-logging_dir = f"{current_folder_dir}/loggers/logs/"
 MARKET_STATE_VERSION_PREFIX = "MARKET_STATE_VERSION"
 
 class MarketRuntime:
@@ -58,7 +54,7 @@ class MarketRuntime:
         self.enabled_websocket_list = self.generate_enabled_websocket_list()
         self.enabled_markets_dict = self.generate_enabled_market_code_dict()
         self.postgres_db_dict = postgres_db_dict
-        self.mogno_db_dict = mongo_db_dict
+        self.mongo_db_dict = mongo_db_dict
         self.redis_dict = redis_dict
         self.postgres_client = InitPostgresDBClient(**{**postgres_db_dict, 'database': 'trade_core'})
         self.postgres_client.create_all_tables()
